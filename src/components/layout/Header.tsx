@@ -37,7 +37,7 @@ export default function Header() {
         <div className="container-px flex items-center justify-center gap-2 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
           <span className="text-accent">FLASH SALE:</span>
           <span className="text-white/90">
-            Hasta 15% OFF en Whey Protein · Envío gratis en Metro sobre $40.000
+            Hasta 16% OFF en suplementos · Envío gratis en Metro sobre $40.000
           </span>
         </div>
       </div>

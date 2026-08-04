@@ -14,7 +14,7 @@ export default function PromoStrip() {
             <div className="flex-1">
               <h3 className="font-display text-xl uppercase tracking-wide">Flash Sale</h3>
               <p className="mt-1 text-sm text-muted">
-                Hasta 15% OFF en productos seleccionados de whey protein.
+                Whey, creatina y más con hasta 16% OFF. Por tiempo limitado.
               </p>
             </div>
             <Link href="/productos" className="shrink-0 text-sm font-bold text-accentDeep">
