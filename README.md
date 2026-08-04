@@ -2,6 +2,8 @@
 
 Tienda online de suplementos deportivos y bienestar en Chile. **Nutrición • Energía • Resultados.**
 
+**En vivo:** https://nutrifit-web-nu.vercel.app
+
 Venta directa por WhatsApp con entrega coordinada en estaciones de Metro de Santiago (líneas 1, 2, 3, 4, 4A, 5 y 6). Envío gratis sobre $40.000.
 
 ## Stack
