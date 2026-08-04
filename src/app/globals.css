@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: 11 11 11;
+  --paper: 255 255 255;
+  --soft: 246 247 244;
+  --soft-2: 235 238 230;
+  --muted: 108 112 105;
+  --line: rgba(11, 11, 11, 0.09);
+  --accent: 178 242 55;
+  --accent-deep: 96 154 20;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink;
+  }
+
+  ::selection {
+    background: rgb(var(--accent));
+    color: rgb(var(--ink));
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--paper));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--soft-2));
+    border-radius: 999px;
+    border: 2px solid rgb(var(--paper));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--accent));
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@layer components {
+  .container-px {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-bold tracking-wide text-paper transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-paper/60 px-7 py-3.5 text-sm font-bold tracking-wide text-ink backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-outline-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border border-line px-3 py-1 text-xs font-medium transition-colors;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-soft/60 px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:bg-paper focus:ring-2 focus:ring-accent/40;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-muted;
+  }
+
+  .section-label {
+    @apply text-xs font-extrabold uppercase tracking-[0.25em] text-accentDeep;
+  }
+
+  .section-title {
+    @apply mt-2 font-display text-3xl uppercase leading-tight tracking-wide sm:text-4xl lg:text-5xl;
+  }
+
+  .section-title-dark {
+    @apply mt-2 font-display text-3xl uppercase leading-tight tracking-wide text-white sm:text-4xl lg:text-5xl;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.7s ease,
+      transform 0.7s ease;
+  }
+
+  .reveal.js {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  .reveal.js.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--soft)) 25%,
+    rgb(var(--soft-2)) 37%,
+    rgb(var(--soft)) 63%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
