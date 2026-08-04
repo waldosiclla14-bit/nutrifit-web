@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
-import { Heart, Instagram, Menu, Search, ShoppingBag, X } from 'lucide-react';
+import { useState } from 'react';
+import { Heart, Instagram, Menu, ShoppingBag, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { BRAND } from '@/data/seed';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
+import SearchBox from '@/components/layout/SearchBox';
 
 const NAV = [
   { href: '/', label: 'Inicio' },
@@ -19,17 +19,9 @@ const NAV = [
 ];
 
 export default function Header() {
-  const router = useRouter();
   const { itemCount, openCart } = useCart();
   const { count: favCount } = useFavorites();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [query, setQuery] = useState('');
-
-  const onSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    router.push(q ? `/productos?q=${encodeURIComponent(q)}` : '/productos');
-  };
 
   return (
     <>
@@ -52,21 +44,9 @@ export default function Header() {
             </span>
           </Link>
 
-          <form onSubmit={onSearch} className="hidden flex-1 justify-center md:flex">
-            <div className="relative w-full max-w-sm">
-              <Search
-                size={16}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
-              />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar producto, marca, beneficio..."
-                aria-label="Buscar productos"
-                className="input pl-10"
-              />
-            </div>
-          </form>
+          <div className="hidden flex-1 justify-center md:flex">
+            <SearchBox className="w-full max-w-sm" />
+          </div>
 
           <nav className="hidden items-center gap-6 lg:flex">
             {NAV.map((item) => (
@@ -139,21 +119,9 @@ export default function Header() {
         {menuOpen && (
           <div className="border-t border-line bg-paper lg:hidden">
             <div className="container-px flex flex-col gap-1 py-4">
-              <form onSubmit={onSearch} className="mb-2">
-                <div className="relative">
-                  <Search
-                    size={16}
-                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
-                  />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar producto, marca, beneficio..."
-                    aria-label="Buscar productos"
-                    className="input pl-10"
-                  />
-                </div>
-              </form>
+              <div className="mb-2">
+                <SearchBox />
+              </div>
               {NAV.map((item) => (
                 <Link
                   key={item.label}

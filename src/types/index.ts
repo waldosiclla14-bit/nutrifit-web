@@ -104,3 +104,19 @@ export type Settings = {
   freeShippingFrom: number;
   shipping: number;
 };
+
+export type BlogBlock =
+  | { type: 'p'; text: string }
+  | { type: 'h2'; text: string }
+  | { type: 'ul'; items: string[] };
+
+export type BlogPost = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  readTime: string;
+  date: string;
+  image?: string;
+  blocks: BlogBlock[];
+};

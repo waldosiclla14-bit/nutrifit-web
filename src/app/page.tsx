@@ -8,6 +8,7 @@ import Benefits from '@/components/home/Benefits';
 import HowTo from '@/components/home/HowTo';
 import FAQ from '@/components/home/FAQ';
 import Testimonials from '@/components/home/Testimonials';
+import BlogPreview from '@/components/home/BlogPreview';
 import Newsletter from '@/components/home/Newsletter';
 
 export default function Home() {
@@ -23,6 +24,7 @@ export default function Home() {
       <HowTo />
       <FAQ />
       <Testimonials />
+      <BlogPreview />
       <Newsletter />
     </>
   );

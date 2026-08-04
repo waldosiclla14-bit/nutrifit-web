@@ -52,6 +52,7 @@ export default function Footer() {
             <li><Link href="/#combos" className="transition-colors hover:text-accent">Combos</Link></li>
             <li><Link href="/#beneficios" className="transition-colors hover:text-accent">Beneficios</Link></li>
             <li><Link href="/#opiniones" className="transition-colors hover:text-accent">Opiniones</Link></li>
+            <li><Link href="/blog" className="transition-colors hover:text-accent">Blog y guías</Link></li>
             <li><Link href="/favoritos" className="transition-colors hover:text-accent">Mis favoritos</Link></li>
           </ul>
         </div>
