@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Check, ChevronRight, Heart, MessageCircle, Minus, Plus, ShoppingBag, ShieldCheck, Truck } from 'lucide-react';
 import type { Product } from '@/types';
-import { REVIEWS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount } from '@/lib/utils';
@@ -13,6 +12,9 @@ import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
 import Stars from '@/components/ui/Stars';
 import ProductCard from '@/components/product/ProductCard';
+import BuyTogether from '@/components/product/BuyTogether';
+import ProductReviews from '@/components/product/ProductReviews';
+import StockUrgency from '@/components/product/StockUrgency';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -196,6 +198,12 @@ export default function ProductDetail({
             </button>
           </div>
 
+          {product.stock <= 10 && (
+            <div className="mt-4 max-w-xs">
+              <StockUrgency stock={product.stock} variant="bar" />
+            </div>
+          )}
+
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => addToCart(qty)} className="btn-primary">
               <ShoppingBag size={16} /> Agregar al carrito
@@ -245,20 +253,13 @@ export default function ProductDetail({
         </div>
       </div>
 
-      <div className="mt-12">
-        <SectionTitle>Reseñas de clientes</SectionTitle>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {REVIEWS.map((r) => (
-            <article key={r.name} className="rounded-3xl border border-line bg-soft p-5">
-              <Stars rating={r.rating} size={14} />
-              <p className="mt-3 text-sm leading-relaxed">&ldquo;{r.text}&rdquo;</p>
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted">
-                — {r.name}
-              </p>
-            </article>
-          ))}
-        </div>
-      </div>
+      <ProductReviews
+        productId={product.id}
+        initialRating={product.rating}
+        reviewCount={product.reviews}
+      />
+
+      {related.length > 0 && <BuyTogether product={product} related={related} />}
 
       {related.length > 0 && (
         <div className="mt-14">

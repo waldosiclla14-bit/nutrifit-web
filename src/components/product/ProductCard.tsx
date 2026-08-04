@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount } from '@/lib/utils';
 import Stars from '@/components/ui/Stars';
+import StockUrgency from '@/components/product/StockUrgency';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
@@ -52,6 +53,7 @@ export default function ProductCard({ product }: { product: Product }) {
               Más vendido
             </span>
           )}
+          <StockUrgency stock={product.stock} />
         </div>
       </Link>
 

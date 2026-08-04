@@ -53,6 +53,15 @@ export type Review = {
   text: string;
 };
 
+export type UserReview = {
+  id: string;
+  productId: number;
+  name: string;
+  rating: number;
+  text: string;
+  createdAt: number;
+};
+
 export type CartItem = {
   key: string;
   productId: number;

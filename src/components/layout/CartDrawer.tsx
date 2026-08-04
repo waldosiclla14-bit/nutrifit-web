@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Minus, Plus, Trash2, Truck, X } from 'lucide-react';
+import { BadgeCheck, MessageCircle, Minus, Plus, ShieldCheck, Trash2, Truck, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { METRO_LINES } from '@/data/metro';
 import { formatPrice, uid } from '@/lib/utils';
@@ -289,6 +289,17 @@ export default function CartDrawer() {
                   <option value="Transferencia">Transferencia</option>
                   <option value="Efectivo">Efectivo</option>
                 </select>
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-muted">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck size={13} className="text-accentDeep" /> Garantía 30 días
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <BadgeCheck size={13} className="text-accentDeep" /> Productos originales
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle size={13} className="text-accentDeep" /> Confirmación por WhatsApp
+                  </span>
+                </div>
                 {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
                 <button type="submit" className="btn-accent w-full">
                   Finalizar compra por WhatsApp
