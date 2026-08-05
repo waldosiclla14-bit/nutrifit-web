@@ -34,7 +34,6 @@ export default function CartDrawer() {
     updateQuantity,
     removeItem,
     subtotal,
-    discount,
     rewardDiscount,
     shipping,
     total,
@@ -132,7 +131,7 @@ export default function CartDrawer() {
       id: uid('NF'),
       name: name.trim(),
       phone: phone.trim(),
-      metroLine: `Línea ${metroLine}`,
+      metroLine,
       metroStation: metroStation.trim(),
       payment,
       items: toOrderItems(),
@@ -168,11 +167,15 @@ export default function CartDrawer() {
     } else {
       itemsNext.push({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image });
     }
+    const subtotalNext = lastOrder.subtotal + p.price;
+    const shippingNext =
+      subtotalNext >= settings.freeShippingFrom ? 0 : settings.shipping;
     const message = buildWhatsAppMessage({
       ...lastOrder,
       items: itemsNext,
-      subtotal: lastOrder.subtotal + p.price,
-      total: lastOrder.total + p.price,
+      subtotal: subtotalNext,
+      shipping: shippingNext,
+      total: Math.max(0, subtotalNext - (lastOrder.discount ?? 0) + shippingNext),
     });
     openWhatsApp(getSettings().whatsapp, message);
     setOfferAdded(p.id);
@@ -520,12 +523,6 @@ export default function CartDrawer() {
                   <span className="text-muted">Subtotal</span>
                   <span className="font-semibold">{formatPrice(subtotal)}</span>
                 </div>
-                {discount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted">Descuento</span>
-                    <span className="font-semibold text-accentDeep">-{formatPrice(discount)}</span>
-                  </div>
-                )}
                 {rewardDiscount > 0 && (
                   <div className="flex justify-between">
                     <span className="text-accentDeep">Descuento meta ({settings.rewardPercent}%)</span>

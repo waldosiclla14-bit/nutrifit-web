@@ -179,7 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       discount,
       rewardDiscount,
       shipping,
-      total: Math.max(0, subtotal - discount - rewardDiscount + shipping),
+      total: Math.max(0, subtotal - rewardDiscount + shipping),
       itemCount,
       freeShippingFrom: settings.freeShippingFrom,
       addItem,

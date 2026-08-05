@@ -77,5 +77,11 @@ export function buildComboMessage(combo: {
 export function openWhatsApp(phone: string, message: string) {
   const clean = phone.replace(/[^\d]/g, '');
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
