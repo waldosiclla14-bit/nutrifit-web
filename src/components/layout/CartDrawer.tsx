@@ -227,7 +227,7 @@ export default function CartDrawer() {
         </div>
 
         {placed ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-6 py-8 text-center">
             <motion.div
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -306,6 +306,7 @@ export default function CartDrawer() {
           </div>
         ) : (
           <>
+            <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="border-b border-line px-5 py-3">
               <div className="flex items-center justify-between text-xs font-semibold">
                 <span className="flex items-center gap-1.5 text-muted">
@@ -385,7 +386,7 @@ export default function CartDrawer() {
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="px-5 py-4">
               <ul className="space-y-4">
                 <AnimatePresence initial={false}>
                   {items.map((item) => (
@@ -537,15 +538,11 @@ export default function CartDrawer() {
                     {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-line pt-2 text-base">
-                  <span className="font-bold">Total</span>
-                  <span className="font-display text-lg">{formatPrice(total)}</span>
-                </div>
               </div>
 
               <TrustBadges className="mt-4" />
 
-              <form onSubmit={checkout} className="mt-4 space-y-2.5">
+              <form id="checkout-form" onSubmit={checkout} className="mt-4 space-y-2.5">
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -609,15 +606,23 @@ export default function CartDrawer() {
                     <MessageCircle size={13} className="text-accentDeep" /> Confirmación por WhatsApp
                   </span>
                 </div>
-                {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
-                <button type="submit" className="btn-accent w-full">
-                  Finalizar compra por WhatsApp
-                </button>
-                <p className="text-center text-[11px] leading-relaxed text-muted">
-                  Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
-                  estación de metro.
-                </p>
               </form>
+            </div>
+            </div>
+
+            <div className="shrink-0 border-t border-line bg-paper px-5 py-4">
+              {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted">Total</span>
+                <span className="font-display text-xl">{formatPrice(total)}</span>
+              </div>
+              <button type="submit" form="checkout-form" className="btn-accent w-full">
+                Finalizar compra por WhatsApp
+              </button>
+              <p className="mt-2 text-center text-[11px] leading-relaxed text-muted">
+                Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
+                estación de metro.
+              </p>
             </div>
           </>
         )}
