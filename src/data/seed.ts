@@ -645,6 +645,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['multivitaminico', 'hombre', 'vitamina', 'minerales', 'energia', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 29,
+    name: 'FNL BCAA + Amino 180 Cápsulas',
+    brand: 'FNL',
+    category: 'rendimiento',
+    categoryLabel: 'Rendimiento',
+    price: 20000,
+    oldPrice: 22000,
+    desc: 'BCAA + AMINO combina los 3 aminoácidos de cadena ramificada esenciales (L-Leucina, L-Isoleucina y L-Valina) con un perfil completo de 8 aminoácidos adicionales, incluyendo L-Glutamina y L-Arginina. Esta fórmula favorece la recuperación muscular, ayuda a reducir la fatiga durante el ejercicio y apoya la síntesis proteica, ideal para entrenamientos intensos y mantenimiento de masa magra. 180 cápsulas (1 mes), 6 cápsulas al día.',
+    benefits: ['Aporta los 3 BCAA esenciales (L-Leucina, L-Isoleucina, L-Valina)', 'Perfil completo de 11 aminoácidos para recuperación integral', 'Ayuda a reducir la fatiga durante el entrenamiento', 'Apoya la síntesis proteica y el mantenimiento de masa muscular', 'Incluye L-Glutamina y L-Arginina para mayor recuperación'],
+    stock: 20,
+    rating: 4.8,
+    reviews: 21,
+    badge: 'Oferta',
+    image: '/img/producto32.jpg',
+    modoUso: 'Tomar 6 cápsulas al día, idealmente después del entrenamiento o entre comidas.',
+    nutrientes: [['Formato', 'BCAA + Aminoácidos esenciales'], ['Presentación', '180 cápsulas (1 mes)'], ['Posología', '6 cápsulas al día'], ['BCAA', 'L-Leucina, L-Isoleucina, L-Valina']],
+    ingredientes: ['L-Leucina', 'L-Isoleucina', 'L-Valina', 'L-Glutamina', 'L-Treonina', 'L-Arginina', 'L-Lisina', 'L-Fenilalanina', 'L-Metionina', 'L-Triptófano', 'L-Histidina', 'Gelatina (de la cápsula)'],
+    goal: ['rendimiento', 'fuerza'],
+    tags: ['bcaa', 'aminoacidos', 'amino', 'leucina', 'glutamina', 'recuperacion', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
