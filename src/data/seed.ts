@@ -579,6 +579,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['keto', 'slim', 'quemador', 'grasa', 'cetosis', 'vinagre de manzana', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 26,
+    name: 'FNL Cola de Pavo (Turkey Tail) 784mg – 60 Cápsulas (1 mes)',
+    brand: 'FNL',
+    category: 'bienestar',
+    categoryLabel: 'Bienestar',
+    price: 15000,
+    oldPrice: 18000,
+    desc: 'Cola de Pavo, también conocido como Turkey Tail (Coriolus versicolor), es un hongo medicinal milenario usado por sus potentes propiedades inmunomoduladoras y digestivas. Su composición rica en polisacáridos (PSP y PSK) lo convierte en un aliado natural para fortalecer las defensas, equilibrar la microbiota intestinal y aportar antioxidantes. 60 cápsulas (1 mes), 2 cápsulas al día.',
+    benefits: ['Estimula el sistema inmune y las defensas naturales', 'Contribuye a equilibrar la microbiota intestinal', 'Rico en antioxidantes que combaten el daño celular', 'Apoya el bienestar digestivo y metabólico', 'Ideal como complemento en procesos de fatiga, estrés o recuperación'],
+    stock: 18,
+    rating: 4.8,
+    reviews: 21,
+    badge: 'Oferta',
+    image: '/img/producto29.webp',
+    modoUso: 'Tomar 2 cápsulas al día, preferentemente por la mañana o junto a las comidas, con abundante agua. No recomendado en embarazo, lactancia ni en menores de 8 años sin indicación médica.',
+    nutrientes: [['Cola de Pavo / Turkey Tail (Coriolus versicolor) por porción (2 cápsulas)', '784 mg'], ['Presentación', '60 cápsulas (1 mes)']],
+    ingredientes: ['Turkey Tail (Coriolus versicolor)', 'Gelatina (de la cápsula)', 'Agua'],
+    goal: ['salud', 'bienestar'],
+    tags: ['cola de pavo', 'turkey tail', 'coriolus', 'hongos', 'inmunidad', 'microbiota', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
