@@ -491,6 +491,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['colageno', 'hidrolizado', 'piel', 'articulaciones', 'uñas', 'cabello', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 22,
+    name: 'FNL Creatina Monohidratada 1kg – 200 porciones (6,6 meses)',
+    brand: 'FNL',
+    category: 'creatinas',
+    categoryLabel: 'Creatinas',
+    price: 29990,
+    oldPrice: 35000,
+    desc: 'La creatina es el suplemento de rendimiento deportivo con mayor evidencia científica disponible. FNL la presenta en su forma más pura: 100% creatina monohidratada en polvo, sin aditivos, sin saborizantes y sin rellenos. 1 kilo = 200 porciones de 5g (6,6 meses). La fosfocreatina muscular regenera el ATP más rápido, retrasando la fatiga y permitiendo más repeticiones, más carga y mejor rendimiento. Apto para veganos, elaborado en Chile.',
+    benefits: ['Aumenta el volumen muscular — mejora la hidratación intracelular', 'Eleva la fuerza y potencia — entrena más pesado en cada sesión', 'Potencia la carga de glucógeno — favorece masa magra y síntesis proteica', 'Acelera la recuperación muscular — entrena más duro y más seguido', '100% creatina monohidratada pura, apta para veganos'],
+    stock: 12,
+    rating: 4.9,
+    reviews: 48,
+    badge: 'Oferta',
+    image: '/img/producto25.webp',
+    modoUso: 'Disolver 1 scoop (5g) en 500 ml de agua u otra bebida. Fase de carga (opcional): 20g/día en 4 tomas durante 5-7 días. Mantenimiento: 5g/día. Sin carga: 5g/día durante 3-4 semanas. No requiere ciclado. Conservar bajo 20°C, en lugar fresco y seco.',
+    nutrientes: [['Creatina monohidratada (por porción de 5g)', '5,0 g'], ['Energía', '0 kcal'], ['Porciones por envase', '200 (5g c/u)'], ['Contenido neto', '1.000 g (1 kg)']],
+    ingredientes: ['Creatina Monohidratada (100% pura)'],
+    goal: ['rendimiento', 'fuerza', 'ganancia-muscular', 'vegano'],
+    tags: ['creatina', 'monohidratada', '1kg', 'fuerza', 'potencia', 'vegano', 'fnl', 'polvo'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
