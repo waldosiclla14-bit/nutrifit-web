@@ -667,6 +667,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['bcaa', 'aminoacidos', 'amino', 'leucina', 'glutamina', 'recuperacion', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 30,
+    name: 'Rain TestoFull Ultra 180 Cápsulas',
+    brand: 'Rain',
+    category: 'rendimiento',
+    categoryLabel: 'Rendimiento',
+    price: 18000,
+    oldPrice: 22000,
+    desc: 'Suplemento alimenticio pro-hormonal comercializado bajo la marca Rain / Rain Nutracéuticos. Formulado para apoyar la energía física, el rendimiento deportivo, la fuerza y la vitalidad masculina. Envase con 180 cápsulas; uso recomendado: 6 cápsulas diarias, habitualmente divididas junto con las comidas principales o el entrenamiento. Dirigido a adultos que realizan actividad física regular o buscan reforzar niveles de energía, rendimiento y recuperación muscular.',
+    benefits: ['Soporte de testosterona y vitalidad: el zinc, magnesio y ácido D-aspártico intervienen en los procesos de optimización hormonal natural', 'Rendimiento y vasodilatación: la L-arginina favorece la circulación sanguínea mediante la producción de óxido nítrico, promoviendo mayor resistencia física', 'Recuperación muscular: la L-glutamina y la vitamina B6 apoyan la síntesis de proteínas y la reducción de la fatiga muscular'],
+    stock: 20,
+    rating: 4.9,
+    reviews: 15,
+    badge: 'Oferta',
+    image: '/img/producto33.jpg',
+    modoUso: 'Tomar 6 cápsulas diarias, habitualmente divididas junto con las comidas principales o alrededor del entrenamiento, con abundante agua. No exceder la dosis diaria recomendada. Este producto no sustituye una dieta balanceada ni tratamientos médicos; si tienes condiciones médicas previas o consumes otros fármacos, consulta a un profesional de la salud.',
+    nutrientes: [['Formato', '180 cápsulas'], ['Dosis diaria', '6 cápsulas (divididas en comidas)'], ['Vitaminas y minerales', 'Vitamina B6, Magnesio (cloruro y citrato) y Zinc (complejo ZMA)'], ['Aminoácidos', 'Ácido D-Aspártico (DAA), L-Arginina y L-Glutamina'], ['Extractos funcionales', 'Shiitake, semillas de calabaza y ajo negro']],
+    ingredientes: ['Vitamina B6', 'Magnesio (cloruro y citrato)', 'Zinc (complejo ZMA)', 'Ácido D-Aspártico (DAA)', 'L-Arginina', 'L-Glutamina', 'Extracto de Shiitake', 'Semillas de calabaza', 'Ajo negro'],
+    goal: ['rendimiento', 'fuerza', 'energia'],
+    tags: ['testofull', 'testosterona', 'zma', 'acido d-aspartico', 'arginina', 'glutamina', 'shiitake', 'vitalidad', 'rain', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
