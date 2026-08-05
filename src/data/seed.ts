@@ -10,7 +10,7 @@ export const BRAND = {
   instagramUrl: 'https://www.instagram.com/nutrifitsuplementos_cl',
   city: 'Santiago, Chile',
   url: 'https://nutrifitsuplementos.cl',
-  freeShippingFrom: 40000,
+  freeShippingFrom: 30000,
   rating: 4.9,
   orders: 500,
 };
@@ -797,7 +797,7 @@ export const BANNERS: Banner[] = [
   {
     id: 'envio-gratis',
     title: 'Envío gratis en metro',
-    subtitle: 'Sobre $40.000. Coordinamos la entrega en tu estación de metro, todas las líneas.',
+    subtitle: 'Sobre $30.000. Coordinamos la entrega en tu estación de metro, todas las líneas.',
     image: '/img/producto1.webp',
     link: '/productos',
     cta: 'Ver catálogo',

@@ -31,7 +31,7 @@ export default function LegalPage() {
               Las entregas normalmente se coordinan dentro de las 24 a 48 horas desde la confirmación
               del pedido.
             </li>
-            <li>En compras sobre $40.000 la entrega en metro es sin costo adicional.</li>
+            <li>En compras sobre $30.000 la entrega en metro es sin costo adicional.</li>
             <li>
               Los productos viajan sellados y protegidos. En caso de productos dañados, contáctanos
               al {BRAND.whatsapp} dentro de las 24 horas siguientes a la recepción.
