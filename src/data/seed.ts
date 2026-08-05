@@ -601,6 +601,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['cola de pavo', 'turkey tail', 'coriolus', 'hongos', 'inmunidad', 'microbiota', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 27,
+    name: 'FNL L-Carnitina 90 Cápsulas 1500mg Sin Sabor',
+    brand: 'FNL',
+    category: 'control-peso',
+    categoryLabel: 'Control de Peso',
+    price: 15000,
+    oldPrice: 17000,
+    desc: 'La L-carnitina es valorada por su importancia en el metabolismo energético. Desempeña un papel crucial en el transporte de ácidos grasos a las mitocondrias, donde se queman para producir energía, optimizando la utilización de las grasas como fuente de energía. Apoya la salud cardiovascular, el rendimiento deportivo y la gestión del peso. 90 cápsulas, 3 cápsulas al día. País de origen: Chile. No apto para veganos.',
+    benefits: ['Promueve la utilización de grasa como fuente de energía', 'Ayuda a movilizar el tejido adiposo hacia el interior de las mitocondrias', 'Mejora la salud cardiovascular al disminuir los niveles de colesterol LDL', 'Apoya el rendimiento deportivo retrasando la aparición de la fatiga', 'Contribuye a reducir el daño producido por ejercicio de alta intensidad'],
+    stock: 20,
+    rating: 4.7,
+    reviews: 24,
+    badge: 'Oferta',
+    image: '/img/producto30.webp',
+    modoUso: 'Consumir 3 cápsulas al día con abundante agua o según indicación profesional. No exponer a temperaturas sobre los 20ºC.',
+    nutrientes: [['L-Carnitina tartrato (por cápsula)', '500 mg'], ['Presentación', '90 cápsulas']],
+    ingredientes: ['L-Carnitina tartrato', 'Gelatina (de la cápsula)', 'Agua'],
+    goal: ['control-peso', 'rendimiento', 'energia'],
+    tags: ['l-carnitina', 'carnitina', 'grasa', 'metabolismo', 'rendimiento', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
