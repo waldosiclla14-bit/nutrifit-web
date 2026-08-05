@@ -9,6 +9,7 @@ type OrderPayload = {
   payment?: string;
   items: OrderItem[];
   subtotal: number;
+  discount?: number;
   shipping: number;
   total: number;
 };
@@ -35,6 +36,9 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   lines.push('');
   lines.push('─'.repeat(24));
   lines.push(`*Subtotal:* ${formatPrice(order.subtotal)}`);
+  if (order.discount) {
+    lines.push(`*Descuento:* -${formatPrice(order.discount)}`);
+  }
   lines.push(
     `*Entrega:* ${order.shipping === 0 ? 'GRATIS EN METRO' : formatPrice(order.shipping)}`,
   );

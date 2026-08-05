@@ -49,3 +49,25 @@ export function formatDate(timestamp: number) {
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+export function bundlePricing(
+  bundle: {
+    items: { productId: number; quantity: number }[];
+    pricing: 'sum' | 'fixed';
+    fixedPrice?: number;
+  },
+  resolve: (productId: number) => { price: number } | undefined,
+) {
+  const sum = bundle.items.reduce((acc, it) => {
+    const p = resolve(it.productId);
+    return acc + (p ? p.price * it.quantity : 0);
+  }, 0);
+  const price =
+    bundle.pricing === 'fixed' && bundle.fixedPrice != null ? bundle.fixedPrice : sum;
+  return {
+    sum,
+    price,
+    saving: Math.max(0, sum - price),
+    percent: sum > 0 ? Math.round(((sum - price) / sum) * 100) : 0,
+  };
+}

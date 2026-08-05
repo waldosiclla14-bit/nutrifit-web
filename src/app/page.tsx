@@ -1,9 +1,11 @@
 import Hero from '@/components/home/Hero';
 import Marquee from '@/components/home/Marquee';
 import PromoStrip from '@/components/home/PromoStrip';
+import PromoBanner from '@/components/home/PromoBanner';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import Combos from '@/components/home/Combos';
+import BundlesSection from '@/components/home/BundlesSection';
 import Benefits from '@/components/home/Benefits';
 import HowTo from '@/components/home/HowTo';
 import FAQ from '@/components/home/FAQ';
@@ -17,9 +19,11 @@ export default function Home() {
       <Hero />
       <Marquee />
       <PromoStrip />
+      <PromoBanner />
       <Categories />
       <FeaturedCarousel />
       <Combos />
+      <BundlesSection />
       <Benefits />
       <HowTo />
       <FAQ />

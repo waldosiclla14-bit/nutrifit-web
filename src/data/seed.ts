@@ -1,4 +1,4 @@
-import type { Category, Combo, Product, Review, Testimonial } from '@/types';
+import type { Banner, Bundle, Category, Combo, Product, Review, Testimonial } from '@/types';
 import { slugify } from '@/lib/utils';
 
 export const BRAND = {
@@ -499,8 +499,7 @@ export const CATEGORIES: Category[] = [
   },
 ];
 
-export const COMBOS: Combo[] = [
-  {
+export const COMBOS: Combo[] = [  {
     id: 'recuperacion',
     name: 'Combo Recuperación',
     desc: 'Whey Vainilla 1kg + Creatina 300g para músculo y fuerza.',
@@ -529,6 +528,69 @@ export const COMBOS: Combo[] = [
     price: 30000,
     oldPrice: 33000,
     tag: 'Ahorras $3.000',
+  },
+];
+
+export const BUNDLES: Bundle[] = [
+  {
+    id: 'masa-fuerza',
+    title: 'Set Masa + Fuerza',
+    subtitle: 'Whey protein + creatina para volumen y fuerza máxima.',
+    items: [
+      { productId: 4, quantity: 1 },
+      { productId: 7, quantity: 1 },
+    ],
+    pricing: 'fixed',
+    fixedPrice: 27000,
+    image: '/img/producto4.webp',
+    tag: 'Ahorras $4.000',
+  },
+  {
+    id: 'pump-total',
+    title: 'Set Pump Total',
+    subtitle: 'Óxido nítrico + L-citrulina para el mejor pump y circulación.',
+    items: [
+      { productId: 8, quantity: 1 },
+      { productId: 12, quantity: 1 },
+    ],
+    pricing: 'fixed',
+    fixedPrice: 27000,
+    image: '/img/producto8.webp',
+    tag: 'Ahorras $3.000',
+  },
+  {
+    id: 'bienestar',
+    title: 'Set Bienestar',
+    subtitle: 'Omega 3 + berberina para corazón, colesterol y metabolismo.',
+    items: [
+      { productId: 9, quantity: 1 },
+      { productId: 10, quantity: 1 },
+    ],
+    pricing: 'fixed',
+    fixedPrice: 29000,
+    image: '/img/producto9.webp',
+    tag: 'Ahorras $4.000',
+  },
+];
+
+export const BANNERS: Banner[] = [
+  {
+    id: 'envio-gratis',
+    title: 'Envío gratis en metro',
+    subtitle: 'Sobre $40.000. Coordinamos la entrega en tu estación de metro, todas las líneas.',
+    image: '/img/producto1.webp',
+    link: '/productos',
+    cta: 'Ver catálogo',
+    active: true,
+  },
+  {
+    id: 'set-masa-fuerza',
+    title: 'Set Masa + Fuerza',
+    subtitle: 'Whey protein + creatina por solo $27.000. Ahorra $4.000 hoy.',
+    image: '/img/producto8.webp',
+    link: '/productos',
+    cta: 'Armar mi set',
+    active: true,
   },
 ];
 

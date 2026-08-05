@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
+import RecentSalesToast from '@/components/ui/RecentSalesToast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -75,6 +76,7 @@ export default function RootLayout({
             <Footer />
             <CartDrawer />
             <WhatsAppFloat />
+            <RecentSalesToast />
           </CartProvider>
         </FavoritesProvider>
       </body>

@@ -10,11 +10,12 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount } from '@/lib/utils';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
-import Stars from '@/components/ui/Stars';
+import RatingSummary from '@/components/ui/RatingSummary';
 import ProductCard from '@/components/product/ProductCard';
 import BuyTogether from '@/components/product/BuyTogether';
 import ProductReviews from '@/components/product/ProductReviews';
 import StockUrgency from '@/components/product/StockUrgency';
+import BundleOffers from '@/components/product/BundleOffers';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -128,10 +129,8 @@ export default function ProductDetail({
           <h1 className="mt-3 font-display text-3xl uppercase leading-tight tracking-wide sm:text-4xl">
             {product.name}
           </h1>
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <Stars rating={product.rating} size={16} />
-            <span className="font-bold">{product.rating.toFixed(1)}</span>
-            <span className="text-muted">({product.reviews} reseñas)</span>
+          <div className="mt-3">
+            <RatingSummary rating={product.rating} count={product.reviews} />
           </div>
 
           <div className="mt-5 flex items-end gap-3">
@@ -212,6 +211,7 @@ export default function ProductDetail({
               <MessageCircle size={16} /> Comprar por WhatsApp
             </button>
           </div>
+          <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-muted sm:text-left">
             Envío gratis en metro sobre {formatPrice(getSettings().freeShippingFrom)}.
           </p>

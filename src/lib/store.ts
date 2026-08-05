@@ -7,6 +7,11 @@ export const DEFAULT_SETTINGS: Settings = {
   whatsapp: '56923883826',
   freeShippingFrom: 40000,
   shipping: 2000,
+  giftProductId: 13,
+  giftThreshold: 45000,
+  giftLabel: 'recibir un regalo',
+  rewardThreshold: 60000,
+  rewardPercent: 5,
 };
 
 export type DB = {

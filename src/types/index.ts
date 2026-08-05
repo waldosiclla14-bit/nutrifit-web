@@ -72,6 +72,30 @@ export type CartItem = {
   discount: number;
   image: string;
   quantity: number;
+  isGift?: boolean;
+};
+
+export type BundleItem = { productId: number; quantity: number };
+
+export type Bundle = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  items: BundleItem[];
+  pricing: 'sum' | 'fixed';
+  fixedPrice?: number;
+  image?: string;
+  tag?: string;
+};
+
+export type Banner = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  image: string;
+  link?: string;
+  cta?: string;
+  active: boolean;
 };
 
 export type OrderItem = {
@@ -93,6 +117,7 @@ export type Order = {
   payment?: string;
   items: OrderItem[];
   subtotal: number;
+  discount?: number;
   shipping: number;
   total: number;
   status: OrderStatus;
@@ -103,6 +128,11 @@ export type Settings = {
   whatsapp: string;
   freeShippingFrom: number;
   shipping: number;
+  giftProductId?: number;
+  giftThreshold?: number;
+  giftLabel?: string;
+  rewardThreshold?: number;
+  rewardPercent?: number;
 };
 
 export type BlogBlock =
