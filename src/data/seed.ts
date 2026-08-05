@@ -469,6 +469,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['vitamina c', 'ascorbato de sodio', 'antioxidante', 'inmunidad', 'no acida', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 21,
+    name: 'FNL Colágeno Hidrolizado 150 Cápsulas (2,5 meses)',
+    brand: 'FNL',
+    category: 'bienestar',
+    categoryLabel: 'Bienestar',
+    price: 12000,
+    oldPrice: 13500,
+    desc: 'Formulado en base a péptidos de colágeno hidrolizado tipo I de bovino, grado alimenticio, libre de gluten, nueces, soya, leche, azúcar, aditivos y preservantes. Estructura de bajo peso molecular (máx. 2.000 Da) encapsulada en cápsulas de gelatina animal. El colágeno compone la piel, uñas, cabello, tendones y tejidos conectivos (más del 70% de la piel); su suplementación es clave porque el cuerpo pierde capacidad de producirlo. 150 cápsulas (2,5 meses), 2 cápsulas al día.',
+    benefits: ['Mejor mantenimiento de las funciones mecánicas del cuerpo, principalmente la movilidad articular', 'Mayor metabolismo articular: proteoglicanos, condrocitos y colágeno de recubrimiento (tipo II)', 'Mantiene la producción de proteínas de piel, uñas y pelo, vital para la formación de ácido hialurónico', 'Aumenta la producción de colágeno nativo'],
+    stock: 20,
+    rating: 4.8,
+    reviews: 27,
+    badge: 'Oferta',
+    image: '/img/producto24.webp',
+    modoUso: 'Adultos: consumir 2 cápsulas al día con abundante agua o jugos naturales. No exponer a temperaturas sobre los 20ºC.',
+    nutrientes: [['Colágeno hidrolizado', 'Péptidos tipo I de bovino (≤2.000 Da)'], ['Presentación', '150 cápsulas (2,5 meses)']],
+    ingredientes: ['Péptidos de colágeno hidrolizado de bajo peso molecular', 'Gelatina (de la cápsula)', 'Agua'],
+    goal: ['bienestar', 'salud'],
+    tags: ['colageno', 'hidrolizado', 'piel', 'articulaciones', 'uñas', 'cabello', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
