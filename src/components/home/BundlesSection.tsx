@@ -21,7 +21,7 @@ export default function BundlesSection() {
       </Reveal>
       <div className="grid gap-6 md:grid-cols-2">
         {BUNDLES.map((bundle) => (
-          <Reveal key={bundle.id} className="h-full">
+          <Reveal key={bundle.id} className="h-full min-w-0">
             <BundleCard bundle={bundle} products={PRODUCTS} />
           </Reveal>
         ))}
