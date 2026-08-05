@@ -27,7 +27,26 @@ export default function BundleCard({ bundle, products }: Props) {
   return (
     <div className="flex flex-col overflow-hidden rounded-3xl border border-line bg-paper shadow-soft">
       <div className="relative aspect-[4/3] overflow-hidden bg-soft">
-        {bundle.image ? (
+        {items.length > 0 ? (
+          <div className="relative flex h-full items-center justify-center">
+            {items.map((it) => (
+              <div key={it.productId} className="relative h-full min-w-0 flex-1">
+                <Image
+                  src={it.product.image}
+                  alt={it.product.name}
+                  fill
+                  sizes="(min-width:1024px) 25vw, 50vw"
+                  className="object-contain p-4"
+                />
+              </div>
+            ))}
+            {items.length > 1 && (
+              <span className="absolute z-10 flex h-7 w-7 items-center justify-center rounded-full border border-line bg-paper text-sm font-extrabold text-accentDeep shadow-soft">
+                +
+              </span>
+            )}
+          </div>
+        ) : bundle.image ? (
           <Image
             src={bundle.image}
             alt={bundle.title}
