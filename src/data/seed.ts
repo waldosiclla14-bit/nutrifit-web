@@ -513,6 +513,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['creatina', 'monohidratada', '1kg', 'fuerza', 'potencia', 'vegano', 'fnl', 'polvo'],
     bestseller: true,
   },
+  {
+    id: 23,
+    name: 'FNL Omega Veggie 60 Softgel – Omega-3 Vegetal',
+    brand: 'FNL',
+    category: 'bienestar',
+    categoryLabel: 'Bienestar',
+    price: 15000,
+    oldPrice: 18000,
+    desc: 'Las fuentes vegetales de omega-3 (linaza, chía, nueces) solo aportan ALA, que el organismo convierte a EPA y DHA con una eficiencia muy baja (2-5%). El Omega Veggie aporta DHA y EPA directamente desde microalgas marinas, la misma fuente de la que los peces obtienen su omega-3, eliminando el intermediario. Ideal para veganos y para cualquiera que quiera DHA y EPA sin riesgo de contaminantes marinos (mercurio, PCBs) ni sabor a pescado. Microalgas cultivadas en condiciones controladas.',
+    benefits: ['DHA y EPA de microalgas marinas, la fuente primaria de omega-3', 'DHA, el ácido graso más abundante en cerebro y retina, esencial para cognición y visión', 'EPA con rol antiinflamatorio y cardiovascular documentado', '100% vegano, sin sabor a pescado ni riesgo de contaminantes marinos'],
+    stock: 20,
+    rating: 4.8,
+    reviews: 22,
+    badge: 'Oferta',
+    image: '/img/producto26.webp',
+    modoUso: 'Tomar 1-2 softgel al día con una comida que contenga algo de grasa para optimizar la absorción de los ácidos grasos liposolubles.',
+    nutrientes: [['Formato', '60 softgels (~2 meses)'], ['Dosis', '1-2 softgel al día'], ['Omega-3', 'DHA y EPA de microalgas marinas']],
+    ingredientes: ['DHA y EPA de microalgas marinas', 'Gelatina (de la softgel)', 'Glicerina', 'Agua'],
+    goal: ['salud', 'bienestar', 'vegano'],
+    tags: ['omega 3', 'vegano', 'veggie', 'microalgas', 'dha', 'epa', 'fnl', 'softgel'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
