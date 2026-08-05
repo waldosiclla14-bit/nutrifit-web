@@ -535,6 +535,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['omega 3', 'vegano', 'veggie', 'microalgas', 'dha', 'epa', 'fnl', 'softgel'],
     bestseller: true,
   },
+  {
+    id: 24,
+    name: 'FNL Resveratrol 250mg + NMN 250mg Premium 30 Cápsulas (1 mes)',
+    brand: 'FNL',
+    category: 'bienestar',
+    categoryLabel: 'Bienestar',
+    price: 16500,
+    oldPrice: 20000,
+    desc: 'Fórmula avanzada para estimular la producción de energía celular, activar procesos de longevidad y proteger frente al envejecimiento oxidativo. El NMN es un precursor directo del NAD+, cuya producción cae con la edad; el resveratrol activa las sirtuinas (SIRT1), las "proteínas de la longevidad". Combinados generan un efecto sinérgico sobre la salud celular, el metabolismo y la vitalidad. 30 cápsulas (1 mes), 1 cápsula al día.',
+    benefits: ['Aumento de energía celular — mejora la producción de ATP elevando el NAD+', 'Activación de las sirtuinas (SIRT1) — vías de longevidad y regulación epigenética', 'Protección antioxidante frente al estrés oxidativo y el envejecimiento prematuro', 'Apoyo a la reparación del ADN — regeneración celular y estabilidad genética', 'Mejora del metabolismo — sensibilidad a la insulina y perfil lipídico'],
+    stock: 18,
+    rating: 4.8,
+    reviews: 19,
+    badge: 'Oferta',
+    image: '/img/producto27.webp',
+    modoUso: 'Tomar 1 cápsula al día, preferentemente por la mañana, con el estómago vacío o según indicación profesional. Conservar en lugar fresco y seco.',
+    nutrientes: [['NMN (β-nicotinamida mononucleótido)', '250 mg'], ['Resveratrol', '250 mg'], ['Presentación', '30 cápsulas (1 mes)']],
+    ingredientes: ['Resveratrol', 'NMN (β-nicotinamida mononucleótido)', 'Gelatina (de la cápsula)', 'Agua'],
+    goal: ['salud', 'bienestar', 'energia'],
+    tags: ['resveratrol', 'nmn', 'nad', 'sirtuinas', 'longevidad', 'anti-envejecimiento', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
