@@ -10,12 +10,13 @@ export default function BundlesSection() {
   return (
     <section className="container-px py-14" id="sets">
       <Reveal className="mb-10 text-center">
-        <p className="section-label">SETS CON DESCUENTO</p>
+        <p className="section-label">SETS AL CARRITO</p>
         <h2 className="section-title">
           Combina y <span className="text-accentDeep">ahorra</span>
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted">
-          Arma tu stack de suplementos con nuestros sets y paga menos por cada producto.
+          Arma tu stack de suplementos, agrégalo al carrito y suma el regalo y los descuentos por
+          monto al pagar.
         </p>
       </Reveal>
       <div className="grid gap-6 md:grid-cols-2">
