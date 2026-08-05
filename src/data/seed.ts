@@ -557,6 +557,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['resveratrol', 'nmn', 'nad', 'sirtuinas', 'longevidad', 'anti-envejecimiento', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 25,
+    name: 'FNL Keto Blue Slim 90 Cápsulas (1,5 meses)',
+    brand: 'FNL',
+    category: 'control-peso',
+    categoryLabel: 'Control de Peso',
+    price: 13000,
+    oldPrice: 15000,
+    desc: 'Formulado en base a ingredientes 100% naturales. Keto Slim contribuye a acelerar el metabolismo, reducir la absorción de carbohidratos mediante la cetosis celular y optimizar la oxidación de las grasas, usando los carbohidratos malos en lugar de los buenos para obtener energía en tus actividades físicas. Facilita la pérdida de grasa de manera rápida y saludable, eleva el desempeño físico y aporta claridad mental.',
+    benefits: ['Activación del metabolismo, favoreciendo la pérdida de peso', 'Favorece el bloqueo de la absorción de grasas', 'Optimiza la oxidación de las grasas', 'Rico en ingredientes naturales que favorecen la nutrición', 'Genera una reducción del apetito', 'Contribuye a la desintoxicación natural y segura', 'Revitaliza y da energía, mejorando el estado de ánimo', 'Protege la salud mental, reduciendo síntomas de estrés y agotamiento'],
+    stock: 20,
+    rating: 4.7,
+    reviews: 26,
+    badge: 'Oferta',
+    image: '/img/producto28.webp',
+    modoUso: 'La dosis recomendada para adultos es de 2 cápsulas al día, con abundante agua durante el desayuno o según indicación profesional. No exponer a temperaturas sobre los 20°C.',
+    nutrientes: [['Formato', '90 cápsulas de 600 mg (1,5 meses)'], ['Dosis', '2 cápsulas al día'], ['Tipo', 'Quemador keto (cetosis celular)']],
+    ingredientes: ['Vinagre de Manzana', 'Picolinato de Cromo', 'Calcio Carbonato', 'Cafeína', 'Té Verde Matcha', 'Café Verde', 'Frambuesa', 'Triptófano'],
+    goal: ['control-peso', 'energia'],
+    tags: ['keto', 'slim', 'quemador', 'grasa', 'cetosis', 'vinagre de manzana', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
