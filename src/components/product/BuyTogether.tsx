@@ -45,7 +45,7 @@ export default function BuyTogether({
       <div className="rounded-3xl border border-line bg-soft p-6">
         <div className="grid gap-4 sm:grid-cols-3">
           {picks.map((p, i) => (
-            <div key={p.id} className="relative">
+            <div key={p.id} className="relative min-w-0">
               {i > 0 && (
                 <span className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 sm:flex">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-accent">
