@@ -447,6 +447,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['arginina', 'aminoacido', 'oxido nitrico', 'pump', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 20,
+    name: 'FNL Vitamina C 1000mg Neutra / No Ácida 90 Cápsulas (3 meses)',
+    brand: 'FNL',
+    category: 'vitaminas',
+    categoryLabel: 'Vitaminas',
+    price: 13500,
+    oldPrice: 15000,
+    desc: 'Vitamina C 1000mg no ácida en forma de ascorbato de sodio, diseñada para minimizar la irritación estomacal o gastrointestinal que algunas personas experimentan con la vitamina C ácida. Comparte los beneficios generales de la vitamina C, sumando estabilidad y excelente tolerancia gastrointestinal. 90 cápsulas (3 meses), 1 cápsula al día.',
+    benefits: ['Contribuye a prevenir el envejecimiento prematuro y enfermedades crónicas por su acción antioxidante', 'Ayuda a estimular la producción de glóbulos blancos para combatir infecciones', 'Mantiene la salud de los vasos sanguíneos y favorece la función endotelial', 'Mejor tolerada por personas con sensibilidad estomacal o gastrointestinal'],
+    stock: 20,
+    rating: 4.8,
+    reviews: 31,
+    badge: 'Oferta',
+    image: '/img/producto23.webp',
+    modoUso: 'Ingerir 1 cápsula al día con abundante agua o según indicación profesional. No exponer a temperaturas sobre los 20ºC.',
+    nutrientes: [['Vitamina C (ascorbato de sodio)', '1000 mg'], ['Presentación', '90 cápsulas (3 meses)']],
+    ingredientes: ['Vitamina C (ascorbato de sodio)', 'HPMC (de la cápsula)', 'Agua'],
+    goal: ['salud', 'bienestar'],
+    tags: ['vitamina c', 'ascorbato de sodio', 'antioxidante', 'inmunidad', 'no acida', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
