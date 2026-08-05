@@ -761,7 +761,7 @@ export const BUNDLES: Bundle[] = [
       { productId: 7, quantity: 1 },
     ],
     pricing: 'fixed',
-    fixedPrice: 27000,
+    fixedPrice: 29000,
     image: '/img/producto4.webp',
     tag: 'Ahorras $4.000',
   },
@@ -806,7 +806,7 @@ export const BANNERS: Banner[] = [
   {
     id: 'set-masa-fuerza',
     title: 'Set Masa + Fuerza',
-    subtitle: 'Whey protein + creatina por solo $27.000. Ahorra $4.000 hoy.',
+    subtitle: 'Whey protein + creatina por solo $29.000. Ahorra $2.000 hoy.',
     image: '/img/producto8.webp',
     link: '/productos',
     cta: 'Armar mi set',
