@@ -623,6 +623,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['l-carnitina', 'carnitina', 'grasa', 'metabolismo', 'rendimiento', 'fnl', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 28,
+    name: 'FNL Vitamins Men 60 Cápsulas',
+    brand: 'FNL',
+    category: 'vitaminas',
+    categoryLabel: 'Vitaminas',
+    price: 13000,
+    oldPrice: 15000,
+    desc: 'VITAMINS MEN es un suplemento multivitamínico diseñado para apoyar la salud integral del cuerpo. Su fórmula combina vitaminas y minerales esenciales que contribuyen al funcionamiento del sistema inmunológico, la producción de energía y el cuidado de piel, cabello, uñas, huesos y músculos. Contiene vitamina D y vitamina B12, fundamentales para el sistema nervioso y el metabolismo energético. 60 cápsulas (2 meses), 1 cápsula al día.',
+    benefits: ['Apoya el bienestar general y previene deficiencias nutricionales', 'Contribuye a reducir la fatiga física y mental', 'Fortalece el sistema inmune', 'Aporta al buen funcionamiento cardiovascular', 'Favorece la salud de piel, cabello y uñas'],
+    stock: 20,
+    rating: 4.8,
+    reviews: 23,
+    badge: 'Oferta',
+    image: '/img/producto31.webp',
+    modoUso: 'Tomar 1 cápsula al día, idealmente después de una comida.',
+    nutrientes: [['Formato', 'Multivitamínico hombre'], ['Presentación', '60 cápsulas (2 meses)'], ['Vitaminas', 'A, C, D, E, B1, B2, B3, B5, B6, B12'], ['Minerales', 'Magnesio, Calcio, Zinc, Hierro, Cobre, Manganeso']],
+    ingredientes: ['Magnesio', 'Calcio', 'Vitamina C', 'Vitamina B1', 'Vitamina B2', 'Vitamina B3', 'Vitamina B5', 'Vitamina B6', 'Vitamina B12', 'Vitamina D', 'Vitamina E', 'Vitamina A', 'Zinc', 'Hierro', 'Cobre', 'Manganeso', 'Gelatina (de la cápsula)'],
+    goal: ['salud', 'bienestar'],
+    tags: ['multivitaminico', 'hombre', 'vitamina', 'minerales', 'energia', 'fnl', 'capsulas'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
