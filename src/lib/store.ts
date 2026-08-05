@@ -7,8 +7,8 @@ export const DEFAULT_SETTINGS: Settings = {
   whatsapp: '56923883826',
   freeShippingFrom: 30000,
   shipping: 2000,
-  giftProductId: 13,
-  giftThreshold: 45000,
+  giftProductId: undefined,
+  giftThreshold: 0,
   giftLabel: 'recibir un regalo',
   rewardThreshold: 60000,
   rewardPercent: 5,
@@ -37,6 +37,9 @@ export function loadDB(): DB {
     if (settings.freeShippingFrom === 40000) {
       settings.freeShippingFrom = DEFAULT_SETTINGS.freeShippingFrom;
     }
+    // Gift feature temporarily disabled: force off for users with old stored values
+    if (settings.giftThreshold === 45000) settings.giftThreshold = 0;
+    if (settings.giftProductId === 13) settings.giftProductId = undefined;
     return {
       orders: parsed.orders ?? [],
       settings,

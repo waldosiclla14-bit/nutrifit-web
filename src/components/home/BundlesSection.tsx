@@ -15,8 +15,8 @@ export default function BundlesSection() {
           Combina y <span className="text-accentDeep">ahorra</span>
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted">
-          Arma tu stack de suplementos, agrégalo al carrito y suma el regalo y los descuentos por
-          monto al pagar.
+          Arma tu stack de suplementos, agrégalo al carrito y suma los descuentos por monto al
+          pagar.
         </p>
       </Reveal>
       <div className="grid gap-6 md:grid-cols-2">
