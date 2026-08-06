@@ -760,6 +760,33 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['vegan', 'vegana', 'proteina vegetal', 'guisante', 'pea protein', 'vegetariano', 'sin lactosa', 'sin gluten', 'sin soya', 'fnl', '900g', 'masa muscular', 'fitness'],
     bestseller: true,
   },
+  {
+    id: 34,
+    name: 'Ultimate Nutrition ProStar Whey Protein 5 Lb',
+    brand: 'Ultimate Nutrition',
+    category: 'proteinas',
+    categoryLabel: 'Proteínas',
+    price: 86500,
+    oldPrice: 95000,
+    desc: 'ProStar Whey es una mezcla de concentrado y aislado de proteína de suero de leche, con una elevada concentración de aminoácidos que puede contribuir al soporte y recuperación de las fibras musculares después de la práctica deportiva. Aporta 25 g de proteína, 5 g de carbohidratos y solo 1 g de grasa por porción. La presentación de 5 lb destaca por su equilibrio entre calidad, sabor y composición, con aproximadamente 80 porciones por envase.',
+    benefits: [
+      '25 g de proteína por porción: mezcla de concentrado y aislado de proteína de suero de leche de alta calidad',
+      'Soporte y recuperación muscular: elevada concentración de aminoácidos para las fibras musculares después del ejercicio',
+      'Baja en grasas y carbohidratos: solo 1 g de grasa y 5 g de carbohidratos por porción',
+      'Rendimiento de largo plazo: envase de 5 lb con aproximadamente 80 porciones',
+    ],
+    stock: 10,
+    rating: 4.9,
+    reviews: 6,
+    badge: 'Oferta',
+    image: '/img/producto37.jpg',
+    modoUso: 'Disolver 1 medida (1 porción) en 240 ml de agua o leche. Tomar preferentemente justo después de entrenar o como refuerzo proteico para completar tus requerimientos proteicos diarios.',
+    nutrientes: [['Porciones por envase', '80'], ['Porción', '30 g'], ['Energía', '120 kcal'], ['Proteínas', '25 g'], ['Grasa total', '1.0 g'], ['Hidratos de carbono', '2.0 g'], ['Azúcares totales', '1.0 g'], ['Sodio', '30 mg']],
+    ingredientes: ['Mezcla de concentrado y aislado de proteína de suero de leche', 'Perfil elevado de aminoácidos (BCAAs)', 'Saborizante natural'],
+    goal: ['ganancia-muscular', 'rendimiento'],
+    tags: ['whey', 'proteina', 'prostar', 'ultimate nutrition', '5lb', 'banana', 'suero', 'aminoacidos', 'recuperacion', 'isolado'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
