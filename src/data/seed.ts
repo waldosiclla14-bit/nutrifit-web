@@ -787,6 +787,31 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['whey', 'proteina', 'prostar', 'ultimate nutrition', '5lb', 'banana', 'suero', 'aminoacidos', 'recuperacion', 'isolado'],
     bestseller: true,
   },
+  {
+    id: 35,
+    name: 'Botella Keep Sport Shaker 700 ml (Surtido)',
+    brand: 'Keep',
+    category: 'accesorios',
+    categoryLabel: 'Accesorios',
+    price: 6000,
+    desc: 'Botella Sport Shaker 700 cc, perfecta para llevarla a cualquier lugar. Idónea para transportar tus líquidos seguros sin riesgo de derrames. Keep, con su enorme variedad de botellas y utensilios en general, te facilita tu día a día.\n\nNOTA SURTIDO: Este producto se vende como parte de un surtido. Distintas variedades se venden bajo el mismo código, por lo que la foto puede mostrar un diseño o color en particular, pero la disponibilidad real podría variar. Al agregar este producto al carrito, es muy importante que indiques en la casilla de comentarios el diseño y/o color de tu preferencia. En cualquier caso, nos pondremos en contacto contigo para que puedas seleccionar la variedad que prefieras.',
+    benefits: [
+      'Capacidad de 700 ml, ideal para agua, batidos o bebidas en cualquier lugar',
+      'Diseño deportivo con cierre anti-derrame para transportar líquidos sin riesgos',
+      'Producto surtido: elige el diseño y/o color de tu preferencia al comprar',
+      'Marca Keep: funcionalidad y estilo para mantener tus bebidas a mano',
+    ],
+    stock: 30,
+    rating: 4.8,
+    reviews: 4,
+    badge: 'Nuevo',
+    image: '/img/producto38.webp',
+    modoUso: 'Lavar antes del primer uso. Ideal para transportar agua, batidos proteicos o bebidas a cualquier lugar con seguridad anti-derrame.',
+    nutrientes: [['Capacidad', '700 ml'], ['Cierre', 'Anti-derrame'], ['Uso', 'Agua, batidos y bebidas'], ['Presentación', 'Surtido (diseño/color puede variar)']],
+    ingredientes: ['Botella deportiva 700 ml', 'Cierre anti-derrame', 'Marca Keep', 'Diseño surtido'],
+    goal: [],
+    tags: ['shaker', 'botella', 'keep', '700ml', 'surtido', 'deportiva', 'agua', 'batido', 'accesorio'],
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
@@ -836,6 +861,12 @@ export const CATEGORIES: Category[] = [
     label: 'Minerales',
     image: '/img/producto21.webp',
     blurb: 'Magnesio, zinc y recuperación',
+  },
+  {
+    key: 'accesorios',
+    label: 'Accesorios',
+    image: '/img/producto38.webp',
+    blurb: 'Shakers, botellas y complementos deportivos',
   },
 ];
 export const COMBOS: Combo[] = [

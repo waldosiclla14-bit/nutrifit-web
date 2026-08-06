@@ -35,6 +35,7 @@ export default function ProductDetail({
   const [qty, setQty] = useState(1);
   const discount = getDiscount(product);
   const fav = isFavorite(product.id);
+  const isAccessory = product.category === 'accesorios';
 
   const addToCart = (q: number) => {
     addItem({
@@ -148,10 +149,6 @@ export default function ProductDetail({
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-accentDeep">
-            Precio incluye IVA
-          </p>
-
           <p className="mt-5 text-sm leading-relaxed text-ink/80">{product.desc}</p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -223,11 +220,11 @@ export default function ProductDetail({
           <SectionTitle>Detalles del producto</SectionTitle>
           <div className="space-y-6 text-sm leading-relaxed text-ink/80">
             <div>
-              <h3 className="mb-1.5 font-bold text-ink">Modo de uso</h3>
+              <h3 className="mb-1.5 font-bold text-ink">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
               <p>{product.modoUso}</p>
             </div>
             <div>
-              <h3 className="mb-1.5 font-bold text-ink">Ingredientes</h3>
+              <h3 className="mb-1.5 font-bold text-ink">{isAccessory ? 'Detalles' : 'Ingredientes'}</h3>
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 {product.ingredientes.map((ing) => (
                   <li key={ing} className="flex items-start gap-2">
@@ -241,7 +238,7 @@ export default function ProductDetail({
         </div>
 
         <div className="rounded-3xl border border-line p-6">
-          <SectionTitle>Nutrientes</SectionTitle>
+          <SectionTitle>{isAccessory ? 'Especificaciones' : 'Nutrientes'}</SectionTitle>
           <ul className="divide-y divide-line">
             {product.nutrientes.map(([label, value]) => (
               <li key={label} className="flex items-center justify-between py-2.5 text-sm">
