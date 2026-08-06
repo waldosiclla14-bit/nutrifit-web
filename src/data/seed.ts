@@ -762,7 +762,7 @@ const PRODUCT_RAW: ProductRaw[] = [
   },
   {
     id: 34,
-    name: 'Ultimate Nutrition ProStar Whey Protein 5 Lb',
+    name: 'Ultimate Nutrition ProStar Whey Protein 5 Lb Sabor Banana',
     brand: 'Ultimate Nutrition',
     category: 'proteinas',
     categoryLabel: 'Proteínas',
