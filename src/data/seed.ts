@@ -711,6 +711,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['creatina', 'monohidratada', '300g', 'eco naturales', 'fuerza', 'polvo', 'rendimiento'],
     bestseller: true,
   },
+  {
+    id: 32,
+    name: 'FNL Sport Nutrition Whey Protein Woman',
+    brand: 'FNL',
+    category: 'proteinas',
+    categoryLabel: 'Proteínas',
+    price: 48000,
+    oldPrice: 50000,
+    desc: 'Whey Protein Woman está especialmente pensada en el apoyo de la salud muscular y la belleza de la mujer. Su formulación contempla nutrientes esenciales para contribuir a mejorar diversos aspectos de la salud de la piel, el cabello y las uñas. El aporte de antioxidantes como la Coenzima Q10 juega un papel importante en el retraso del envejecimiento prematuro; efecto que puede verse potenciado con la adición de colágeno, ayudando no solo con la hidratación de la piel, sino también con la prevención y tratamiento de lesiones. 28 g de proteína por porción. Apta para intolerantes a la lactosa: contiene adición de lactasa y no tiene azúcar añadida, lo que lo hace ideal para quienes sufren intolerancia a la lactosa y para quienes lo utilicen como coadyuvante de dietas de pérdida de peso para fomentar la sensación de saciedad.',
+    benefits: ['Ayuda a mantener y generar masa muscular', 'Contribuye a la regeneración y recuperación de tejidos', 'Previene y contribuye al tratamiento de algunos tipos de anemia', 'Previene la caída del cabello y fortalece el folículo', 'Ayuda a prevenir el envejecimiento prematuro y líneas de expresión', 'Reduce el daño oxidativo producido por ejercicio de alta intensidad', 'Ayuda a prevenir y tratar lesiones osteoarticulares'],
+    stock: 15,
+    rating: 4.9,
+    reviews: 10,
+    badge: 'Oferta',
+    image: '/img/producto35.jpg',
+    modoUso: 'Disolver 1 porción (28 g de proteína) en 200–250 ml de agua fría o leche descremada, preferentemente justo después de entrenar o como refuerzo proteico durante el día. Apta para personas con intolerancia a la lactosa gracias a la adición de lactasa.',
+    nutrientes: [['Proteínas por porción', '28 g'], ['Formato', 'Polvo'], ['Lactosa', 'Apta para intolerantes (adición de lactasa)'], ['Azúcar añadida', 'Sin azúcar añadida'], ['Aportes especiales', 'Biotina, Coenzima Q10, Vitamina B12 y Colágeno']],
+    ingredientes: ['Proteína de leche (concentrado de proteína de suero)', 'Lecitina de girasol', 'Fosfato de calcio', 'Colágeno hidrolizado', 'Dióxido de silicio', 'Lactasa', 'Coenzima Q10 (Ubiquinona)', 'Maltodextrina de maíz', 'Sabor idéntico al natural', 'Sucralosa', 'Biotina', 'Vitamina B12 (cianocobalamina)'],
+    goal: ['ganancia-muscular', 'rendimiento', 'bienestar'],
+    tags: ['whey', 'mujer', 'woman', 'biotina', 'coenzima q10', 'q10', 'colageno', 'vitamina b12', 'lactasa', 'sin lactosa', 'fnl', 'proteina'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
