@@ -733,6 +733,33 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['whey', 'mujer', 'woman', 'biotina', 'coenzima q10', 'q10', 'colageno', 'vitamina b12', 'lactasa', 'sin lactosa', 'fnl', 'proteina'],
     bestseller: true,
   },
+  {
+    id: 33,
+    name: 'FNL Vegan Protein 900g Proteína Vegana',
+    brand: 'FNL',
+    category: 'proteinas',
+    categoryLabel: 'Proteínas',
+    price: 30000,
+    oldPrice: 35000,
+    desc: 'Proteína vegetal en polvo de Laboratorio FNL, formulada a partir de aislado de proteína de guisante, ofreciendo un perfil completo de aminoácidos para la recuperación y el desarrollo muscular. Es la alternativa ideal para veganos, vegetarianos o cualquier persona que busque una proteína de alta calidad libre de lácteos, gluten y soya. Con un envase de 900 g (aprox. 30 porciones de 30 g), tienes el soporte necesario para alimentar tus músculos de forma natural y efectiva.',
+    benefits: [
+      'Máxima proteína por porción: 24 g de proteína por porción de 30 g, esencial para la síntesis proteica muscular, la recuperación y el aumento de masa muscular magra',
+      'Cero azúcares: 0 g de azúcares totales, una opción limpia ideal para dietas de control de peso, definición y bajo consumo de azúcar',
+      'Baja en carbohidratos y grasas: solo 2.3 g de hidratos y 1.7 g de grasa por porción, sin calorías no deseadas',
+      'Fácil digestión: 100% vegetal, libre de lactosa, gluten y soya; perfecta para intolerantes y dietas específicas',
+    ],
+    stock: 15,
+    rating: 4.9,
+    reviews: 8,
+    badge: 'Oferta',
+    image: '/img/producto36.jpg',
+    modoUso: 'Disolver 1 porción (30 g, aproximadamente 2 cucharadas soperas) en 200–250 ml de agua fría o bebida vegetal. Tomar principalmente justo después de entrenar o como refuerzo proteico entre comidas para completar tus requerimientos proteicos diarios.',
+    nutrientes: [['Energía', '120 kcal'], ['Proteínas', '24 g'], ['Grasa total', '1.7 g'], ['Hidratos de carbono disponibles', '2.3 g'], ['Azúcares totales', '0 g'], ['Sodio', '0 mg']],
+    ingredientes: ['Aislado de proteína de guisante', 'Perfil completo de aminoácidos (rica en BCAAs)', 'Sin lácteos, gluten ni soya', 'Certificación Vegan'],
+    goal: ['vegano', 'ganancia-muscular', 'rendimiento'],
+    tags: ['vegan', 'vegana', 'proteina vegetal', 'guisante', 'pea protein', 'vegetariano', 'sin lactosa', 'sin gluten', 'sin soya', 'fnl', '900g', 'masa muscular', 'fitness'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
