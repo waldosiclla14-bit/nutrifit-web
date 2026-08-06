@@ -4,6 +4,7 @@ import PromoStrip from '@/components/home/PromoStrip';
 import PromoBanner from '@/components/home/PromoBanner';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
+import CategoryCarousel from '@/components/home/CategoryCarousel';
 import Combos from '@/components/home/Combos';
 import BundlesSection from '@/components/home/BundlesSection';
 import Benefits from '@/components/home/Benefits';
@@ -22,6 +23,13 @@ export default function Home() {
       <PromoBanner />
       <Categories />
       <FeaturedCarousel />
+      <CategoryCarousel
+        category="accesorios"
+        eyebrow="COMPLEMENTOS"
+        title="Accesorios y"
+        highlight="shakers"
+        linkLabel="Todos los accesorios"
+      />
       <Combos />
       <BundlesSection />
       <Benefits />
