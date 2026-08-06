@@ -689,6 +689,28 @@ const PRODUCT_RAW: ProductRaw[] = [
     tags: ['testofull', 'testosterona', 'zma', 'acido d-aspartico', 'arginina', 'glutamina', 'shiitake', 'vitalidad', 'rain', 'capsulas'],
     bestseller: true,
   },
+  {
+    id: 31,
+    name: 'Eco Naturales Creatina Monohidratada 300g',
+    brand: 'Eco Naturales',
+    category: 'creatinas',
+    categoryLabel: 'Creatinas',
+    price: 14000,
+    oldPrice: 16000,
+    desc: 'Suplemento de creatina diseñado para optimizar el rendimiento deportivo, la fuerza muscular y la energía celular. Formato en polvo con creatina monohidratada de alta pureza y fácil disolución. Envase de 300 g (aprox. 60 porciones de 5 g). Público objetivo: deportistas de fuerza, atletas de alto rendimiento o personas que realizan entrenamiento contra resistencia y buscan acelerar su desarrollo y recuperación muscular.',
+    benefits: ['Aumento de fuerza y potencia: incrementa los depósitos musculares de fosfocreatina, permitiendo generar mayor energía (ATP) durante esfuerzos de alta intensidad', 'Mayor resistencia física: retarda la aparición de la fatiga en series pesadas o entrenamientos de alta exigencia', 'Hipertrofia y volumen muscular: favorece la hidratación celular a nivel muscular, promoviendo la síntesis de proteínas y un aspecto muscular más pleno'],
+    stock: 20,
+    rating: 4.9,
+    reviews: 12,
+    badge: 'Oferta',
+    image: '/img/producto34.jpg',
+    modoUso: 'Dosis diaria de 3 a 5 gramos (1 scoop) al día. Puede tomarse antes o inmediatamente después del entrenamiento, preferentemente junto a un carbohidrato para optimizar su absorción. En días de descanso, mantener la dosis habitual a la misma hora para mantener la saturación muscular. Es fundamental mantener un consumo adecuado de agua durante todo el día mientras se suplementa con creatina.',
+    nutrientes: [['Formato', '300 g en polvo (aprox. 60 porciones)'], ['Ingrediente principal', 'Creatina monohidratada de alta pureza'], ['Dosis diaria', '3–5 g (1 scoop)'], ['Porciones', '60 porciones de 5 g']],
+    ingredientes: ['100% Creatina monohidratada de alta pureza', 'Fácil disolución', 'Sin saborizantes ni colorantes añadidos'],
+    goal: ['rendimiento', 'fuerza', 'ganancia-muscular'],
+    tags: ['creatina', 'monohidratada', '300g', 'eco naturales', 'fuerza', 'polvo', 'rendimiento'],
+    bestseller: true,
+  },
 ];
 
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
