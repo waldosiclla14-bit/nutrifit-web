@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
+  BarChart3,
   Boxes,
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Pencil,
   RefreshCw,
   ShoppingBag,
+  Trash2,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -44,6 +47,7 @@ type Variant = {
   name: string;
   sku: string;
   price: number;
+  costPrice: number;
   stock: number;
   lowStockAlert: number | null;
   active: boolean;
@@ -55,8 +59,12 @@ type ApiProduct = {
   brand?: string;
   sku?: string;
   price: number;
+  costPrice: number;
   stock?: number;
   active: boolean;
+  comparePrice?: number | null;
+  description?: string | null;
+  category?: { id: string; name: string } | null;
   variants?: Variant[];
 };
 
@@ -73,11 +81,53 @@ type ApiCustomer = {
 type Stats = {
   todaySales: number;
   todayOrders: number;
+  todayProfit: number;
+  todayMargin: number;
   monthSales: number;
   monthOrders: number;
+  monthProfit: number;
+  monthMargin: number;
+  salesGrowth: number;
+  avgTicket: number;
+  monthAvgTicket: number;
   totalOrders: number;
   pendingOrders: number;
   totalCustomers: number;
+  topProducts: { name: string; quantity: number; revenue: number }[];
+  salesByDay: { date: string; total: number; profit: number; orders: number }[];
+};
+
+type Goals = {
+  dailySales: number;
+  monthlySales: number;
+  dailyOrders: number;
+  monthlyOrders: number;
+  targetMargin: number;
+  avgTicket: number;
+};
+
+type Report = {
+  from: string;
+  to: string;
+  totalSales: number;
+  totalProfit: number;
+  margin: number;
+  orderCount: number;
+  avgTicket: number;
+  methods: { method: string; total: number; count: number }[];
+  categories: { product: string; quantity: number; total: number; profit: number }[];
+  orders: {
+    orderNumber: string;
+    customerName: string;
+    createdAt: string;
+    paymentMethod: string | null;
+    subtotal: number;
+    discount: number;
+    shippingCost: number;
+    total: number;
+    profit: number;
+    margin: number;
+  }[];
 };
 
 type CashRegister = {
@@ -123,6 +173,8 @@ const PAYMENT_LABEL: Record<string, string> = {
   MIXTO: 'Mixto',
 };
 
+const CHART_COLORS = ['#16a34a', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+
 function waLink(order: ApiOrder) {
   const phone = (order.customer?.phone || '').replace(/\D/g, '');
   const msg = encodeURIComponent(
@@ -133,9 +185,45 @@ function waLink(order: ApiOrder) {
   return `https://wa.me/56${phone}?text=${msg}`;
 }
 
+function marginOf(price: number, cost: number) {
+  if (!price || price <= 0) return 0;
+  return Math.round(((price - cost) / price) * 100);
+}
+
+function progressPct(actual: number, goal: number) {
+  if (!goal || goal <= 0) return 0;
+  return Math.min(100, Math.round((actual / goal) * 100));
+}
+
+function exportCSV(orders: Report['orders']) {
+  const rows = [
+    ['Pedido', 'Cliente', 'Fecha', 'Método', 'Subtotal', 'Descuento', 'Envío', 'Total', 'Utilidad', 'Margen%'],
+    ...orders.map((o) => [
+      o.orderNumber,
+      o.customerName,
+      new Date(o.createdAt).toLocaleString('es-CL'),
+      o.paymentMethod || '',
+      String(o.subtotal),
+      String(o.discount),
+      String(o.shippingCost),
+      String(o.total),
+      String(o.profit),
+      String(o.margin),
+    ]),
+  ];
+  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'reporte-ventas.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminPage() {
   const [token, setTokenState] = useState<string | null>(null);
-  const [tab, setTab] = useState<'resumen' | 'ordenes' | 'productos' | 'clientes' | 'caja'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'ordenes' | 'productos' | 'clientes' | 'caja' | 'reportes'>('resumen');
 
   useEffect(() => {
     setTokenState(getToken());
@@ -218,6 +306,7 @@ function Dashboard({
 }) {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [goals, setGoals] = useState<Goals | null>(null);
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
@@ -227,12 +316,13 @@ function Dashboard({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, o, p, c, cr] = await Promise.all([
+      const [s, o, p, c, cr, g] = await Promise.all([
         apiFetch<Stats>('/orders/stats', { token }),
         apiFetch<ApiOrder[]>('/orders', { token }),
         apiFetch<any[]>('/products', { token }),
         apiFetch<ApiCustomer[]>('/customers', { token }),
         apiFetch<any | null>('/cash-register/current', { token }),
+        apiFetch<Goals>('/config/goals', { token }),
       ]);
       setStats(s);
       setOrders(o);
@@ -242,12 +332,17 @@ function Dashboard({
           name: x.name,
           sku: x.sku,
           price: x.basePrice ?? x.price,
+          costPrice: x.costPrice ?? 0,
           active: x.isActive !== false,
+          comparePrice: x.comparePrice,
+          description: x.description,
+          category: x.category ? { id: x.category.id, name: x.category.name } : null,
           variants: (x.variants || []).map((v: any) => ({
             id: v.id,
             name: v.variantName || v.name || 'Sin variante',
             sku: v.sku,
             price: v.price,
+            costPrice: v.costPrice ?? 0,
             stock: v.stock,
             lowStockAlert: v.lowStockAlert,
             active: v.isActive !== false,
@@ -270,6 +365,7 @@ function Dashboard({
             }
           : null,
       );
+      setGoals(g);
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
@@ -299,6 +395,7 @@ function Dashboard({
     { key: 'productos', label: 'Productos', icon: Boxes },
     { key: 'clientes', label: 'Clientes', icon: Users },
     { key: 'caja', label: 'Caja', icon: Wallet },
+    { key: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
 
   return (
@@ -338,33 +435,234 @@ function Dashboard({
 
       <div className="mt-6">
         {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
-        {!loading && tab === 'resumen' && <Resumen stats={stats} />}
+        {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} token={token} onChanged={load} />}
         {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
         {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={load} />}
         {!loading && tab === 'clientes' && <Clientes customers={customers} />}
         {!loading && tab === 'caja' && <Caja cash={cash} token={token} onChanged={load} />}
+        {!loading && tab === 'reportes' && <Reportes token={token} />}
       </div>
     </div>
   );
 }
 
-function Resumen({ stats }: { stats: Stats | null }) {
+function Resumen({
+  stats,
+  goals,
+  token,
+  onChanged,
+}: {
+  stats: Stats | null;
+  goals: Goals | null;
+  token: string;
+  onChanged: () => void;
+}) {
+  const [showGoals, setShowGoals] = useState(false);
   if (!stats) return null;
+
+  const growth = stats.salesGrowth;
+  const growthTxt =
+    stats.todaySales === 0 && stats.salesGrowth === 0
+      ? 'sin ventas aún'
+      : `${growth > 0 ? '▲' : growth < 0 ? '▼' : '•'} ${Math.abs(growth)}% vs ayer`;
+
   const cards = [
-    { label: 'Ventas hoy', value: formatPrice(stats.todaySales), sub: `${stats.todayOrders} órdenes` },
-    { label: 'Ventas del mes', value: formatPrice(stats.monthSales), sub: `${stats.monthOrders} órdenes` },
-    { label: 'Órdenes pendientes', value: String(stats.pendingOrders), sub: `${stats.totalOrders} totales` },
-    { label: 'Clientes', value: String(stats.totalCustomers), sub: 'registrados' },
+    {
+      label: 'Ventas hoy',
+      value: formatPrice(stats.todaySales),
+      sub: `${stats.todayOrders} órdenes · ticket ${formatPrice(stats.avgTicket)}`,
+      extra: growthTxt,
+    },
+    {
+      label: 'Ventas del mes',
+      value: formatPrice(stats.monthSales),
+      sub: `${stats.monthOrders} órdenes · ticket ${formatPrice(stats.monthAvgTicket)}`,
+      extra: `Utilidad ${formatPrice(stats.monthProfit)} · margen ${stats.monthMargin}%`,
+    },
+    {
+      label: 'Órdenes pendientes',
+      value: String(stats.pendingOrders),
+      sub: `${stats.totalOrders} totales`,
+      extra: `Utilidad hoy ${formatPrice(stats.todayProfit)}`,
+    },
+    {
+      label: 'Clientes',
+      value: String(stats.totalCustomers),
+      sub: 'registrados',
+      extra: `Margen hoy ${stats.todayMargin}%`,
+    },
   ];
+
+  const goalBars = goals
+    ? [
+        { label: 'Venta diaria', actual: stats.todaySales, goal: goals.dailySales, fmt: true },
+        { label: 'Venta mensual', actual: stats.monthSales, goal: goals.monthlySales, fmt: true },
+        { label: 'Pedidos diarios', actual: stats.todayOrders, goal: goals.dailyOrders, fmt: false },
+        { label: 'Pedidos mensuales', actual: stats.monthOrders, goal: goals.monthlyOrders, fmt: false },
+        { label: 'Margen objetivo', actual: stats.monthMargin, goal: goals.targetMargin, fmt: false, suffix: '%' },
+        { label: 'Ticket promedio', actual: stats.monthAvgTicket, goal: goals.avgTicket, fmt: true },
+      ]
+    : [];
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((c) => (
-        <div key={c.label} className="rounded-3xl border border-line bg-paper p-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">{c.label}</p>
-          <p className="mt-2 font-display text-3xl uppercase">{c.value}</p>
-          <p className="mt-1 text-xs text-muted">{c.sub}</p>
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-3xl border border-line bg-paper p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">{c.label}</p>
+            <p className="mt-2 font-display text-3xl uppercase">{c.value}</p>
+            <p className="mt-1 text-xs text-muted">{c.sub}</p>
+            <p className="mt-1 text-[11px] font-semibold text-accent">{c.extra}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-line bg-paper p-6">
+          <div className="flex items-center justify-between">
+            <p className="font-display text-lg uppercase">Metas de ventas</p>
+            <button onClick={() => setShowGoals(true)} className="btn-outline px-3 py-1.5 text-[11px]">
+              Editar metas
+            </button>
+          </div>
+          <div className="mt-4 space-y-4">
+            {goalBars.map((g) => {
+              const pct = progressPct(g.actual, g.goal);
+              const done = pct >= 100;
+              return (
+                <div key={g.label}>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-semibold">{g.label}</span>
+                    <span className="text-muted">
+                      {g.fmt ? formatPrice(g.actual) : g.actual}
+                      {g.suffix || ''} / {g.fmt ? formatPrice(g.goal) : g.goal}
+                      {g.suffix || ''} · <b className={done ? 'text-emerald-600' : ''}>{pct}%</b>
+                    </span>
+                  </div>
+                  <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft">
+                    <div
+                      className={`h-full rounded-full ${done ? 'bg-emerald-500' : 'bg-accent'}`}
+                      style={{ width: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-line bg-paper p-6">
+          <p className="font-display text-lg uppercase">Últimos 7 días</p>
+          {stats.salesByDay.length > 0 ? (
+            <div className="mt-4">
+              <Bars7 data={stats.salesByDay} />
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted">Sin ventas en los últimos 7 días.</p>
+          )}
+          <p className="mt-4 font-display text-sm uppercase">Top 5 productos</p>
+          {stats.topProducts.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              {stats.topProducts.map((p, i) => (
+                <div key={p.name} className="flex items-center justify-between text-sm">
+                  <span className="text-muted">{i + 1}. {p.name}</span>
+                  <span className="font-semibold">
+                    {p.quantity} uds · {formatPrice(p.revenue)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-muted">Sin datos aún.</p>
+          )}
+        </div>
+      </div>
+
+      {showGoals && <GoalEditor goals={goals} token={token} onClose={() => setShowGoals(false)} onSaved={onChanged} />}
+    </div>
+  );
+}
+
+function Bars7({ data }: { data: { date: string; total: number; profit: number }[] }) {
+  const max = Math.max(...data.map((d) => d.total), 1);
+  return (
+    <div className="flex h-36 items-end gap-2">
+      {data.map((d) => (
+        <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+          <div className="w-full rounded-t-md bg-accent/70" style={{ height: `${Math.max((d.total / max) * 100, 3)}%` }} title={formatPrice(d.total)} />
+          <span className="text-[10px] text-muted">{d.date.slice(5)}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function GoalEditor({
+  goals,
+  token,
+  onClose,
+  onSaved,
+}: {
+  goals: Goals | null;
+  token: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<Goals>(
+    goals || { dailySales: 200000, monthlySales: 5000000, dailyOrders: 10, monthlyOrders: 200, targetMargin: 35, avgTicket: 25000 },
+  );
+  const [saving, setSaving] = useState(false);
+
+  const set = (k: keyof Goals, v: string) => setForm((f) => ({ ...f, [k]: Number(v) || 0 }));
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiFetch('/config/goals', { method: 'PUT', token, body: form });
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      alert(err?.message || 'Error al guardar metas.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fields: { key: keyof Goals; label: string }[] = [
+    { key: 'dailySales', label: 'Venta diaria ($)' },
+    { key: 'monthlySales', label: 'Venta mensual ($)' },
+    { key: 'dailyOrders', label: 'Pedidos diarios' },
+    { key: 'monthlyOrders', label: 'Pedidos mensuales' },
+    { key: 'targetMargin', label: 'Margen objetivo (%)' },
+    { key: 'avgTicket', label: 'Ticket promedio ($)' },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-3xl border border-line bg-paper p-6" onClick={(e) => e.stopPropagation()}>
+        <p className="font-display text-xl uppercase">Editar metas</p>
+        <div className="mt-4 space-y-3">
+          {fields.map((f) => (
+            <label key={f.key} className="block">
+              <span className="text-xs font-semibold text-muted">{f.label}</span>
+              <input
+                type="number"
+                value={form[f.key]}
+                onChange={(e) => set(f.key, e.target.value)}
+                className="input mt-1"
+              />
+            </label>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+            Cancelar
+          </button>
+          <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+            {saving ? 'Guardando…' : 'Guardar metas'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -511,6 +809,27 @@ function Ordenes({
   );
 }
 
+type EditProductForm = {
+  name: string;
+  sku: string;
+  category: string;
+  brand: string;
+  basePrice: string;
+  costPrice: string;
+  comparePrice: string;
+  description: string;
+  reason: string;
+  variants: {
+    id?: string;
+    variantName: string;
+    sku: string;
+    price: string;
+    costPrice: string;
+    stock: string;
+    lowStockAlert: string;
+  }[];
+};
+
 function Productos({
   products,
   token,
@@ -522,12 +841,16 @@ function Productos({
 }) {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
+  const [costEdits, setCostEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', comparePrice: '', category: '', brand: '', description: '' });
+  const [editing, setEditing] = useState<ApiProduct | null>(null);
+  const [editForm, setEditForm] = useState<EditProductForm | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '' });
   const [formVariants, setFormVariants] = useState([
-    { variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' },
+    { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
 
   const save = async (v: Variant, current: number) => {
@@ -545,6 +868,13 @@ function Productos({
         const next = Number(priceRaw);
         if (!Number.isNaN(next) && next >= 0 && next !== v.price) {
           await apiFetch(`/products/${v.id}/price`, { method: 'PATCH', token, body: { price: next } });
+        }
+      }
+      const costRaw = costEdits[v.id];
+      if (costRaw !== undefined) {
+        const next = Number(costRaw);
+        if (!Number.isNaN(next) && next >= 0 && next !== v.costPrice) {
+          await apiFetch(`/products/${v.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } });
         }
       }
       await onChanged();
@@ -572,6 +902,7 @@ function Productos({
           name: form.name,
           sku: form.sku,
           basePrice: Number(form.basePrice) || undefined,
+          costPrice: Number(form.costPrice) || undefined,
           comparePrice: Number(form.comparePrice) || undefined,
           category: form.category,
           brand: form.brand,
@@ -582,14 +913,15 @@ function Productos({
               variantName: v.variantName,
               sku: v.sku,
               price: Number(v.price) || undefined,
+              costPrice: Number(v.costPrice) || undefined,
               stock: Number(v.stock) || 0,
               lowStockAlert: Number(v.lowStockAlert) || 5,
             })),
         },
       });
       setShowForm(false);
-      setForm({ name: '', sku: '', basePrice: '', comparePrice: '', category: '', brand: '', description: '' });
-      setFormVariants([{ variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' }]);
+      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '' });
+      setFormVariants([{ variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
       await onChanged();
     } catch (err: any) {
       alert(err?.message || 'Error al crear el producto.');
@@ -598,14 +930,118 @@ function Productos({
     }
   };
 
+  const openEdit = (p: ApiProduct) => {
+    setEditing(p);
+    setEditForm({
+      name: p.name,
+      sku: p.sku || '',
+      category: p.category?.name || '',
+      brand: p.brand || '',
+      basePrice: String(p.price ?? ''),
+      costPrice: String(p.costPrice ?? 0),
+      comparePrice: String(p.comparePrice ?? ''),
+      description: p.description || '',
+      reason: '',
+      variants: (p.variants || []).map((v) => ({
+        id: v.id,
+        variantName: v.name,
+        sku: v.sku,
+        price: String(v.price ?? ''),
+        costPrice: String(v.costPrice ?? 0),
+        stock: String(v.stock ?? 0),
+        lowStockAlert: String(v.lowStockAlert ?? 5),
+      })),
+    });
+  };
+
+  const setEditVariant = (i: number, field: string, value: string) =>
+    setEditForm((f) =>
+      f
+        ? {
+            ...f,
+            variants: f.variants.map((v, idx) => (idx === i ? { ...v, [field]: value } : v)),
+          }
+        : f,
+    );
+
+  const saveEdit = async () => {
+    if (!editing || !editForm) return;
+    if (!editForm.name.trim()) {
+      alert('El nombre del producto es obligatorio.');
+      return;
+    }
+    const stockChanges = editForm.variants
+      .map((v) => ({ id: v.id, old: (editing.variants || []).find((x) => x.id === v.id)?.stock ?? 0, next: Number(v.stock) || 0 }))
+      .filter((s) => s.id && s.next !== s.old);
+
+    setSubmitting(true);
+    try {
+      await apiFetch(`/products/${editing.id}`, {
+        method: 'PATCH',
+        token,
+        body: {
+          name: editForm.name,
+          sku: editForm.sku,
+          category: editForm.category,
+          brand: editForm.brand,
+          basePrice: Number(editForm.basePrice) || undefined,
+          costPrice: Number(editForm.costPrice) || undefined,
+          comparePrice: Number(editForm.comparePrice) || undefined,
+          description: editForm.description,
+          variants: editForm.variants.map((v) => ({
+            id: v.id,
+            variantName: v.variantName,
+            sku: v.sku,
+            price: Number(v.price) || undefined,
+            costPrice: Number(v.costPrice) || undefined,
+            lowStockAlert: Number(v.lowStockAlert) || 5,
+          })),
+        },
+      });
+
+      if (stockChanges.length > 0) {
+        if (!editForm.reason.trim()) {
+          alert('Los cambios de stock necesitan un motivo (campo "Motivo de ajuste de stock").');
+          setSubmitting(false);
+          return;
+        }
+        for (const sc of stockChanges) {
+          await apiFetch(`/products/${sc.id}/adjust-stock`, {
+            method: 'PATCH',
+            token,
+            body: { newStock: sc.next, reason: editForm.reason },
+          });
+        }
+      }
+
+      setEditing(null);
+      setEditForm(null);
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'Error al guardar el producto.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const remove = async (p: ApiProduct) => {
+    if (!window.confirm(`¿Desactivar el producto "${p.name}"? No se eliminará del historial de ventas.`)) return;
+    setDeleting(p.id);
+    try {
+      await apiFetch(`/products/${p.id}`, { method: 'DELETE', token });
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'Error al eliminar el producto.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted">{products.length} producto(s)</p>
-        <button
-          onClick={() => setShowForm((s) => !s)}
-          className="btn-accent px-4 py-2 text-xs"
-        >
+        <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
           {showForm ? 'Cancelar' : '+ Nuevo producto'}
         </button>
       </div>
@@ -614,52 +1050,35 @@ function Productos({
         <div className="mb-6 rounded-3xl border border-line bg-paper p-6">
           <p className="font-display text-lg uppercase">Nuevo producto</p>
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Nombre *"
-              className="input md:col-span-2"
-            />
+            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
             <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría (ej: Whey Protein)" className="input" />
             <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
+            <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />
             <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Descripción (opcional)"
-              className="input md:col-span-2"
-              rows={2}
-            />
+            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descripción (opcional)" className="input md:col-span-2" rows={2} />
           </div>
 
           <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
           <div className="mt-2 space-y-2">
             {formVariants.map((v, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-6">
+              <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-7">
                 <input value={v.variantName} onChange={(e) => setVariant(i, 'variantName', e.target.value)} placeholder="Variante (ej: Vainilla 1kg)" className="input md:col-span-2" />
                 <input value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
                 <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
+                <input value={v.costPrice} onChange={(e) => setVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
                 <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
                 <div className="flex items-center gap-2">
                   <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input" />
-                  <button
-                    onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))}
-                    disabled={formVariants.length === 1}
-                    className="text-red-500 disabled:opacity-30"
-                    title="Quitar variante"
-                  >
+                  <button onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))} disabled={formVariants.length === 1} className="text-red-500 disabled:opacity-30" title="Quitar variante">
                     ✕
                   </button>
                 </div>
               </div>
             ))}
           </div>
-          <button
-            onClick={() => setFormVariants((vs) => [...vs, { variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' }])}
-            className="mt-2 text-xs font-bold text-accent"
-          >
+          <button onClick={() => setFormVariants((vs) => [...vs, { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }])} className="mt-2 text-xs font-bold text-accent">
             + Agregar variante
           </button>
 
@@ -675,72 +1094,158 @@ function Productos({
       )}
 
       <div className="overflow-x-auto rounded-3xl border border-line bg-paper">
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
-            <th className="px-4 py-3">Producto</th>
-            <th className="px-4 py-3">Variante</th>
-            <th className="px-4 py-3">SKU</th>
-            <th className="px-4 py-3">Precio</th>
-            <th className="px-4 py-3">Stock</th>
-            <th className="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => {
-            const variants = p.variants && p.variants.length > 0 ? p.variants : [];
-            const rows = variants.length > 0 ? variants : [p];
-            return rows.map((v: any, i: number) => (
-              <tr key={v.id} className="border-b border-line/60 last:border-0">
-                <td className="px-4 py-3">
-                  <p className="font-semibold">{i === 0 ? p.name : ''}</p>
-                  {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
-                </td>
-                <td className="px-4 py-3">{v.name || '—'}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{v.sku || '—'}</td>
-                <td className="px-4 py-3">
-                  <input
-                    type="number"
-                    defaultValue={v.price}
-                    onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                    className="input w-28 py-1.5"
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
+        <table className="w-full min-w-[960px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
+              <th className="px-4 py-3">Producto</th>
+              <th className="px-4 py-3">Variante</th>
+              <th className="px-4 py-3">SKU</th>
+              <th className="px-4 py-3">Precio</th>
+              <th className="px-4 py-3">Costo</th>
+              <th className="px-4 py-3">Margen</th>
+              <th className="px-4 py-3">Stock</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => {
+              const variants = p.variants && p.variants.length > 0 ? p.variants : [];
+              const rows = variants.length > 0 ? variants : [p];
+              return rows.map((v: any, i: number) => (
+                <tr key={v.id} className="border-b border-line/60 last:border-0">
+                  <td className="px-4 py-3">
+                    <p className="font-semibold">{i === 0 ? p.name : ''}</p>
+                    {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
+                    {i === 0 && (
+                      <div className="mt-1 flex gap-1.5">
+                        <button
+                          onClick={() => openEdit(p)}
+                          className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] font-bold text-ink hover:border-accent"
+                        >
+                          <Pencil size={10} /> Editar
+                        </button>
+                        <button
+                          onClick={() => remove(p)}
+                          disabled={deleting === p.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-700 disabled:opacity-50"
+                        >
+                          <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{v.name || '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">{v.sku || '—'}</td>
+                  <td className="px-4 py-3">
                     <input
                       type="number"
-                      defaultValue={v.stock}
-                      onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                      className={`input w-24 py-1.5 ${v.stock <= (v.lowStockAlert ?? 0) ? 'border-red-300 text-red-600' : ''}`}
+                      defaultValue={v.price}
+                      onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                      className="input w-28 py-1.5"
                     />
-                    {v.stock <= (v.lowStockAlert ?? 0) && (
-                      <span className="text-[11px] font-bold text-red-500">stock bajo</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    disabled={saving === v.id}
-                    onClick={() => save(v, v.stock)}
-                    className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
-                  >
-                    Guardar
-                  </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="number"
+                      defaultValue={v.costPrice}
+                      onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                      className="input w-28 py-1.5"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`font-bold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
+                      {marginOf(v.price, v.costPrice)}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        defaultValue={v.stock}
+                        onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                        className={`input w-24 py-1.5 ${v.stock <= (v.lowStockAlert ?? 0) ? 'border-red-300 text-red-600' : ''}`}
+                      />
+                      {v.stock <= (v.lowStockAlert ?? 0) && <span className="text-[11px] font-bold text-red-500">bajo</span>}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button disabled={saving === v.id} onClick={() => save(v, v.stock)} className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50">
+                      Guardar
+                    </button>
+                  </td>
+                </tr>
+              ));
+            })}
+            {products.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">
+                  Sin productos.
                 </td>
               </tr>
-            ));
-          })}
-          {products.length === 0 && (
-            <tr>
-              <td colSpan={6} className="px-4 py-10 text-center text-muted">
-                Sin productos.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {editing && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setEditing(null)}>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-line bg-paper p-6" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-xl uppercase">Editar producto</p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
+              <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
+              <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />
+              <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" />
+              <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" className="input" />
+              <input value={editForm.costPrice} onChange={(e) => setEditForm((f) => (f ? { ...f, costPrice: e.target.value } : f))} placeholder="Costo" type="number" className="input" />
+              <input value={editForm.comparePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, comparePrice: e.target.value } : f))} placeholder="Precio tachado" type="number" className="input" />
+              <input value={editForm.reason} onChange={(e) => setEditForm((f) => (f ? { ...f, reason: e.target.value } : f))} placeholder="Motivo de ajuste de stock (si cambias stock)" className="input md:col-span-2" />
+              <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="Descripción" className="input md:col-span-2" rows={2} />
+            </div>
+
+            <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
+            <div className="mt-2 space-y-2">
+              {editForm.variants.map((v, i) => (
+                <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-6">
+                  <input value={v.variantName} onChange={(e) => setEditVariant(i, 'variantName', e.target.value)} placeholder="Variante" className="input md:col-span-2" />
+                  <input value={v.sku} onChange={(e) => setEditVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
+                  <input value={v.price} onChange={(e) => setEditVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
+                  <input value={v.costPrice} onChange={(e) => setEditVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
+                  <div className="flex items-center gap-2">
+                    <input value={v.stock} onChange={(e) => setEditVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
+                    <input value={v.lowStockAlert} onChange={(e) => setEditVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input w-20" />
+                    <button
+                      onClick={() => setEditForm((f) => (f ? { ...f, variants: f.variants.filter((_, idx) => idx !== i) } : f))}
+                      disabled={editForm.variants.length === 1}
+                      className="text-red-500 disabled:opacity-30"
+                      title="Quitar variante"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() =>
+                setEditForm((f) => (f ? { ...f, variants: [...f.variants, { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }] } : f))
+              }
+              className="mt-2 text-xs font-bold text-accent"
+            >
+              + Agregar variante
+            </button>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setEditing(null)} className="btn-outline px-4 py-2 text-xs">
+                Cancelar
+              </button>
+              <button onClick={saveEdit} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+                {submitting ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -755,12 +1260,7 @@ function Clientes({ customers }: { customers: ApiCustomer[] }) {
 
   return (
     <div>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar cliente…"
-        className="input max-w-md"
-      />
+      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" className="input max-w-md" />
       <div className="mt-4 overflow-x-auto rounded-3xl border border-line bg-paper">
         <table className="w-full min-w-[600px] text-left text-sm">
           <thead>
@@ -841,9 +1341,7 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
         </>
       ) : (
         <>
-          <p className="font-display text-xl uppercase">
-            Caja {cash.status === 'OPEN' ? 'abierta' : 'cerrada'}
-          </p>
+          <p className="font-display text-xl uppercase">Caja {cash.status === 'OPEN' ? 'abierta' : 'cerrada'}</p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted">Apertura</dt>
@@ -861,22 +1359,14 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted">Diferencia</dt>
-                  <dd className={`font-bold ${(cash.diff ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {formatPrice(cash.diff ?? 0)}
-                  </dd>
+                  <dd className={`font-bold ${(cash.diff ?? 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatPrice(cash.diff ?? 0)}</dd>
                 </div>
               </>
             )}
           </dl>
           {cash.status === 'OPEN' && (
             <div className="mt-4 space-y-3">
-              <input
-                type="number"
-                value={final}
-                onChange={(e) => setFinal(e.target.value)}
-                className="input"
-                placeholder="Total contado al cierre"
-              />
+              <input type="number" value={final} onChange={(e) => setFinal(e.target.value)} className="input" placeholder="Total contado al cierre" />
               <button onClick={close} disabled={saving} className="btn-primary w-full">
                 {saving ? 'Cerrando…' : 'Cerrar caja'}
               </button>
@@ -885,5 +1375,266 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
         </>
       )}
     </div>
+  );
+}
+
+function Reportes({ token }: { token: string }) {
+  const [range, setRange] = useState<'7d' | '30d' | 'mes'>('30d');
+  const [report, setReport] = useState<Report | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const to = new Date();
+      let from = new Date();
+      if (range === '7d') from.setDate(from.getDate() - 7);
+      else if (range === '30d') from.setDate(from.getDate() - 30);
+      else from = new Date(to.getFullYear(), to.getMonth(), 1);
+      const q = `from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`;
+      const r = await apiFetch<Report>(`/orders/reports?${q}`, { token });
+      setReport(r);
+    } catch (err: any) {
+      alert(err?.message || 'Error al cargar reportes.');
+    } finally {
+      setLoading(false);
+    }
+  }, [range, token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const byDay = useMemo(() => {
+    if (!report) return [];
+    const map = new Map<string, { total: number; profit: number }>();
+    for (const o of report.orders) {
+      const d = o.createdAt.slice(0, 10);
+      const cur = map.get(d) || { total: 0, profit: 0 };
+      cur.total += o.total;
+      cur.profit += o.profit;
+      map.set(d, cur);
+    }
+    return [...map.entries()].map(([date, v]) => ({ date, ...v })).sort((a, b) => a.date.localeCompare(b.date));
+  }, [report]);
+
+  const top5 = useMemo(() => {
+    if (!report) return [];
+    return report.categories.slice(0, 5);
+  }, [report]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-2">
+        {(
+          [
+            ['7d', '7 días'],
+            ['30d', '30 días'],
+            ['mes', 'Este mes'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setRange(k)}
+            className={`rounded-full px-4 py-2 text-sm font-bold transition ${range === k ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+          >
+            {label}
+          </button>
+        ))}
+        <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
+          <RefreshCw size={14} /> Actualizar
+        </button>
+        <button onClick={() => report && exportCSV(report.orders)} disabled={!report || report.orders.length === 0} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+          Exportar CSV
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="py-10 text-center text-sm text-muted">Cargando reportes…</p>
+      ) : !report ? (
+        <p className="py-10 text-center text-sm text-muted">Sin datos.</p>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              { label: 'Ventas', value: formatPrice(report.totalSales) },
+              { label: 'Utilidad', value: formatPrice(report.totalProfit) },
+              { label: 'Margen', value: `${report.margin}%` },
+              { label: 'Órdenes', value: String(report.orderCount) },
+              { label: 'Ticket promedio', value: formatPrice(report.avgTicket) },
+            ].map((c) => (
+              <div key={c.label} className="rounded-3xl border border-line bg-paper p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">{c.label}</p>
+                <p className="mt-2 font-display text-2xl uppercase">{c.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-3xl border border-line bg-paper p-6">
+              <p className="font-display text-lg uppercase">Ventas vs utilidad</p>
+              {byDay.length > 0 ? (
+                <div className="mt-4">
+                  <div className="flex h-44 items-end gap-2">
+                    {byDay.map((d) => {
+                      const max = Math.max(...byDay.map((x) => x.total), 1);
+                      return (
+                        <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+                          <div className="w-full rounded-t-md bg-accent/70" style={{ height: `${Math.max((d.total / max) * 100, 3)}%` }} title={`${formatPrice(d.total)} (utilidad ${formatPrice(d.profit)})`} />
+                          <span className="text-[10px] text-muted">{d.date.slice(5)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted">Barras verdes = ventas por día. Pasa el cursor para ver utilidad.</p>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-line bg-paper p-6">
+              <p className="font-display text-lg uppercase">Por método de pago</p>
+              {report.methods.length > 0 ? (
+                <div className="mt-4 flex items-center gap-6">
+                  <Donut data={report.methods} />
+                  <div className="space-y-2">
+                    {report.methods.map((m, i) => (
+                      <div key={m.method} className="flex items-center gap-2 text-sm">
+                        <span className="h-3 w-3 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                        <span className="text-muted">{PAYMENT_LABEL[m.method] || m.method}</span>
+                        <span className="font-semibold">{formatPrice(m.total)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-3xl border border-line bg-paper p-6">
+              <p className="font-display text-lg uppercase">Rendimiento por producto</p>
+              {report.categories.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {report.categories.slice(0, 8).map((c) => {
+                    const max = Math.max(...report.categories.map((x) => x.total), 1);
+                    return (
+                      <div key={c.product}>
+                        <div className="flex justify-between text-xs">
+                          <span className="font-semibold">{c.product}</span>
+                          <span className="text-muted">{c.quantity} uds · {formatPrice(c.total)}</span>
+                        </div>
+                        <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft">
+                          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max((c.total / max) * 100, 2)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted">Sin datos.</p>
+              )}
+            </div>
+
+            <div className="rounded-3xl border border-line bg-paper p-6">
+              <p className="font-display text-lg uppercase">Top 5 productos</p>
+              {top5.length > 0 ? (
+                <div className="mt-4 space-y-2">
+                  {top5.map((p, i) => (
+                    <div key={p.product} className="flex items-center justify-between rounded-2xl border border-line/60 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent">{i + 1}</span>
+                        <div>
+                          <p className="text-sm font-semibold">{p.product}</p>
+                          <p className="text-[11px] text-muted">{p.quantity} unidades</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">{formatPrice(p.total)}</p>
+                        <p className="text-[11px] text-emerald-600">Utilidad {formatPrice(p.profit)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-muted">Sin datos.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-line bg-paper">
+            <div className="flex items-center justify-between px-6 pt-6">
+              <p className="font-display text-lg uppercase">Detalle de órdenes</p>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
+                    <th className="px-4 py-3">Pedido</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Fecha</th>
+                    <th className="px-4 py-3">Método</th>
+                    <th className="px-4 py-3">Total</th>
+                    <th className="px-4 py-3">Utilidad</th>
+                    <th className="px-4 py-3">Margen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.orders.map((o) => (
+                    <tr key={o.orderNumber} className="border-b border-line/60 last:border-0">
+                      <td className="px-4 py-3 font-bold">{o.orderNumber}</td>
+                      <td className="px-4 py-3">{o.customerName}</td>
+                      <td className="px-4 py-3 text-xs text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</td>
+                      <td className="px-4 py-3 text-xs">{PAYMENT_LABEL[o.paymentMethod || ''] || '—'}</td>
+                      <td className="px-4 py-3 font-bold">{formatPrice(o.total)}</td>
+                      <td className="px-4 py-3 text-emerald-600">{formatPrice(o.profit)}</td>
+                      <td className="px-4 py-3">{o.margin}%</td>
+                    </tr>
+                  ))}
+                  {report.orders.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                        Sin órdenes en el período.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Donut({ data }: { data: { method: string; total: number }[] }) {
+  const total = data.reduce((s, d) => s + d.total, 0);
+  if (!total) return <p className="text-sm text-muted">Sin ventas.</p>;
+  let acc = 0;
+  return (
+    <svg viewBox="0 0 42 42" className="h-40 w-40 flex-shrink-0">
+      {data.map((d, i) => {
+        const start = (acc / total) * 100;
+        acc += d.total;
+        const end = (acc / total) * 100;
+        return (
+          <circle
+            key={d.method}
+            cx="21"
+            cy="21"
+            r="15.9"
+            fill="transparent"
+            stroke={CHART_COLORS[i % CHART_COLORS.length]}
+            strokeWidth="6"
+            strokeDasharray={`${end - start} ${100 - (end - start)}`}
+            strokeDashoffset={25 - start}
+          />
+        );
+      })}
+    </svg>
   );
 }

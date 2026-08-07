@@ -114,6 +114,7 @@ model Product {
   slug         String   @unique
   description  String?
   basePrice    Int
+  costPrice    Int      @default(0)
   comparePrice Int?
   imageUrl     String?
   isActive     Boolean  @default(true)
@@ -138,6 +139,7 @@ model ProductVariant {
   variantName   String
   attributes    Json
   price         Int?
+  costPrice     Int?    @default(0)
   imageUrl      String?
   isActive      Boolean @default(true)
   stock         Int     @default(0)
@@ -183,6 +185,9 @@ model Order {
   discount        Int           @default(0)
   shippingCost    Int           @default(0)
   total           Int
+  totalCost       Int           @default(0)
+  profit          Int           @default(0)
+  profitMargin    Float         @default(0)
   paymentStatus   PaymentStatus @default(PENDING)
   paymentMethod   PaymentMethod?
   paymentProofUrl String?
@@ -213,8 +218,10 @@ model OrderItem {
   variantName String
   sku         String
   unitPrice   Int
+  unitCost    Int    @default(0)
   quantity    Int
   total       Int
+  profit      Int    @default(0)
 
   order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?       @relation(fields: [productId], references: [id])
