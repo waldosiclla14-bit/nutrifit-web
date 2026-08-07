@@ -342,7 +342,7 @@ function Dashboard({
             name: v.variantName || v.name || 'Sin variante',
             sku: v.sku,
             price: v.price,
-            costPrice: v.costPrice ?? 0,
+            costPrice: (v.costPrice || 0) || (x.costPrice || 0),
             stock: v.stock,
             lowStockAlert: v.lowStockAlert,
             active: v.isActive !== false,
