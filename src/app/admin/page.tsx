@@ -523,6 +523,12 @@ function Productos({
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', comparePrice: '', category: '', brand: '', description: '' });
+  const [formVariants, setFormVariants] = useState([
+    { variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' },
+  ]);
 
   const save = async (v: Variant, current: number) => {
     setSaving(v.id);
@@ -549,8 +555,126 @@ function Productos({
     }
   };
 
+  const setVariant = (i: number, field: string, value: string) =>
+    setFormVariants((vs) => vs.map((v, idx) => (idx === i ? { ...v, [field]: value } : v)));
+
+  const create = async () => {
+    if (!form.name.trim()) {
+      alert('El nombre del producto es obligatorio.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiFetch('/products', {
+        method: 'POST',
+        token,
+        body: {
+          name: form.name,
+          sku: form.sku,
+          basePrice: Number(form.basePrice) || undefined,
+          comparePrice: Number(form.comparePrice) || undefined,
+          category: form.category,
+          brand: form.brand,
+          description: form.description,
+          variants: formVariants
+            .filter((v) => v.variantName.trim() || v.sku.trim())
+            .map((v) => ({
+              variantName: v.variantName,
+              sku: v.sku,
+              price: Number(v.price) || undefined,
+              stock: Number(v.stock) || 0,
+              lowStockAlert: Number(v.lowStockAlert) || 5,
+            })),
+        },
+      });
+      setShowForm(false);
+      setForm({ name: '', sku: '', basePrice: '', comparePrice: '', category: '', brand: '', description: '' });
+      setFormVariants([{ variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' }]);
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'Error al crear el producto.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="overflow-x-auto rounded-3xl border border-line bg-paper">
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted">{products.length} producto(s)</p>
+        <button
+          onClick={() => setShowForm((s) => !s)}
+          className="btn-accent px-4 py-2 text-xs"
+        >
+          {showForm ? 'Cancelar' : '+ Nuevo producto'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mb-6 rounded-3xl border border-line bg-paper p-6">
+          <p className="font-display text-lg uppercase">Nuevo producto</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Nombre *"
+              className="input md:col-span-2"
+            />
+            <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
+            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría (ej: Whey Protein)" className="input" />
+            <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
+            <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
+            <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Descripción (opcional)"
+              className="input md:col-span-2"
+              rows={2}
+            />
+          </div>
+
+          <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
+          <div className="mt-2 space-y-2">
+            {formVariants.map((v, i) => (
+              <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-6">
+                <input value={v.variantName} onChange={(e) => setVariant(i, 'variantName', e.target.value)} placeholder="Variante (ej: Vainilla 1kg)" className="input md:col-span-2" />
+                <input value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
+                <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
+                <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
+                <div className="flex items-center gap-2">
+                  <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input" />
+                  <button
+                    onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))}
+                    disabled={formVariants.length === 1}
+                    className="text-red-500 disabled:opacity-30"
+                    title="Quitar variante"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setFormVariants((vs) => [...vs, { variantName: '', sku: '', price: '', stock: '', lowStockAlert: '5' }])}
+            className="mt-2 text-xs font-bold text-accent"
+          >
+            + Agregar variante
+          </button>
+
+          <div className="mt-6 flex justify-end gap-2">
+            <button onClick={() => setShowForm(false)} className="btn-outline px-4 py-2 text-xs">
+              Cancelar
+            </button>
+            <button onClick={create} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+              {submitting ? 'Guardando…' : 'Guardar producto'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-3xl border border-line bg-paper">
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead>
           <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
@@ -616,6 +740,7 @@ function Productos({
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

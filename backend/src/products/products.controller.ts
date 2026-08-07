@@ -35,8 +35,7 @@ export class ProductsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Body() data: any) {
-    // Crear producto con variantes
-    return data;
+    return this.productsService.create(data);
   }
 
   @Patch(':id/stock')
