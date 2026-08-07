@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: nutrifit-api
+    runtime: docker
+    repo: https://github.com/waldosiclla14-bit/nutrifit-web
+    rootDir: backend
+    healthCheckPath: /api/docs
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: PORT
+        value: 3001
