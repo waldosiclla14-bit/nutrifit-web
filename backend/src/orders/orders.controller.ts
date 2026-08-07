@@ -18,6 +18,12 @@ export class OrdersController {
     return this.ordersService.getStats();
   }
 
+  @Get('reports')
+  @UseGuards(JwtAuthGuard)
+  getReports(@Query() query: any) {
+    return this.ordersService.getReports(query);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {

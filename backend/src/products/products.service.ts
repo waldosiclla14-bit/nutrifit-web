@@ -66,6 +66,169 @@ export class ProductsService {
     return this.prisma.product.update({ where: { id }, data: { basePrice: price } });
   }
 
+  async update(id: string, data: any) {
+    const existing = await this.prisma.product.findUnique({ where: { id } });
+    if (!existing) throw new Error('Producto no encontrado');
+
+    const productData: any = {};
+    if (data.name !== undefined) {
+      const name = String(data.name).trim();
+      if (!name) throw new Error('El nombre del producto no puede quedar vacío');
+      productData.name = name;
+      if (data.name !== existing.name) productData.slug = await this.uniqueSlug(name);
+    }
+    if (data.description !== undefined) productData.description = data.description ? String(data.description) : null;
+    if (data.basePrice !== undefined) productData.basePrice = Math.max(0, Number(data.basePrice) || 0);
+    if (data.costPrice !== undefined) productData.costPrice = Math.max(0, Number(data.costPrice) || 0);
+    if (data.comparePrice !== undefined) {
+      const cp = Number(data.comparePrice);
+      productData.comparePrice = !Number.isNaN(cp) && cp > 0 ? Math.round(cp) : null;
+    }
+    if (data.imageUrl !== undefined) productData.imageUrl = data.imageUrl ? String(data.imageUrl) : null;
+    if (data.isActive !== undefined) productData.isActive = !!data.isActive;
+    if (data.isFeatured !== undefined) productData.isFeatured = !!data.isFeatured;
+    if (data.sku !== undefined) {
+      const sku = String(data.sku).trim().toUpperCase() || existing.sku;
+      if (sku !== existing.sku) productData.sku = await this.uniqueSku(sku, 'product');
+    }
+    if (data.categoryId !== undefined || data.category !== undefined) {
+      const categoryId = await this.resolveCategory(data.categoryId, data.category ?? existing.categoryId);
+      if (categoryId) productData.categoryId = categoryId;
+    }
+    if (data.brandId !== undefined || data.brand !== undefined) {
+      const brandId = await this.resolveBrand(data.brandId, data.brand);
+      productData.brandId = brandId ?? null;
+    }
+
+    const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
+    return this.prisma.$transaction(async (tx) => {
+      for (const v of variants) {
+        const vSku = String(v.sku || '').trim().toUpperCase();
+        const vPrice = Number(v.price);
+        const vCost = Number(v.costPrice);
+        if (v.id) {
+          await tx.productVariant.update({
+            where: { id: v.id },
+            data: {
+              variantName: String(v.variantName || '').trim() || undefined,
+              sku: vSku ? await this.uniqueSkuForTx(tx, vSku, v.id) : undefined,
+              attributes: v.attributes || undefined,
+              price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
+              costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
+              stock: v.stock !== undefined ? Math.max(0, Number(v.stock) || 0) : undefined,
+              lowStockAlert: v.lowStockAlert !== undefined ? Math.max(0, Number(v.lowStockAlert) || 5) : undefined,
+              isActive: v.isActive !== undefined ? !!v.isActive : undefined,
+            },
+          });
+        } else {
+          await tx.productVariant.create({
+            data: {
+              productId: id,
+              sku: await this.uniqueSkuForTx(tx, vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, undefined),
+              variantName: String(v.variantName || '').trim() || 'Única',
+              attributes: v.attributes || {},
+              price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
+              costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
+              stock: Math.max(0, Number(v.stock) || 0),
+              lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
+            },
+          });
+        }
+      }
+
+      if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
+        productData.costPrice = productData.costPrice ?? 0;
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: productData,
+        include: { category: true, brand: true, variants: true },
+      });
+    });
+  }
+
+  async delete(id: string, userId?: string) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) throw new Error('Producto no encontrado');
+
+    await this.prisma.productVariant.updateMany({
+      where: { productId: id },
+      data: { isActive: false },
+    });
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'PRODUCT_DEACTIVATED',
+        entity: 'Product',
+        entityId: id,
+        oldValue: { isActive: true },
+        newValue: { isActive: false },
+      },
+    });
+
+    return updated;
+  }
+
+  async adjustStock(variantId: string, newStock: number, reason: string, userId?: string) {
+    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new Error('Variante no encontrada');
+
+    const stock = Math.max(0, Number(newStock) || 0);
+    const updated = await this.prisma.productVariant.update({
+      where: { id: variantId },
+      data: { stock },
+      include: { product: true },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'STOCK_ADJUSTED',
+        entity: 'ProductVariant',
+        entityId: variantId,
+        oldValue: { stock: variant.stock },
+        newValue: { stock, reason },
+      },
+    });
+
+    return updated;
+  }
+
+  async getInventoryValue() {
+    const products = await this.prisma.product.findMany({
+      where: { isActive: true },
+      include: { variants: { where: { isActive: true } } },
+    });
+
+    let totalCost = 0;
+    let totalRetail = 0;
+    let totalItems = 0;
+
+    for (const product of products) {
+      for (const variant of product.variants) {
+        const cost = variant.costPrice || product.costPrice || 0;
+        const price = variant.price || product.basePrice;
+        totalCost += cost * variant.stock;
+        totalRetail += price * variant.stock;
+        totalItems += variant.stock;
+      }
+    }
+
+    return {
+      totalCost,
+      totalRetail,
+      totalItems,
+      potentialProfit: totalRetail - totalCost,
+      avgMargin: totalRetail > 0 ? Math.round(((totalRetail - totalCost) / totalRetail) * 100) : 0,
+    };
+  }
+
   async create(data: any) {
     const name = String(data.name || '').trim();
     if (!name) throw new Error('El nombre del producto es obligatorio');
@@ -87,6 +250,11 @@ export class ProductsService {
     const finalBasePrice =
       !Number.isNaN(basePrice) && basePrice > 0 ? basePrice : !Number.isNaN(firstVariantPrice) ? firstVariantPrice : 0;
 
+    const costPrice = Number(data.costPrice);
+    const firstVariantCost = Number(variants[0]?.costPrice);
+    const finalCostPrice =
+      !Number.isNaN(costPrice) && costPrice > 0 ? costPrice : !Number.isNaN(firstVariantCost) ? firstVariantCost : 0;
+
     const comparePrice = Number(data.comparePrice);
     const finalComparePrice = !Number.isNaN(comparePrice) && comparePrice > 0 ? comparePrice : null;
 
@@ -97,6 +265,7 @@ export class ProductsService {
           slug,
           sku,
           basePrice: finalBasePrice,
+          costPrice: finalCostPrice,
           comparePrice: finalComparePrice,
           description: data.description ? String(data.description) : null,
           categoryId,
@@ -106,11 +275,13 @@ export class ProductsService {
 
       for (const v of variants) {
         const vName = String(v.variantName || '').trim() || 'Única';
-        const vSku = await this.uniqueSku(
+        const vSku = await this.uniqueSkuForTx(
+          tx,
           String(v.sku || '').trim().toUpperCase() || `${sku}-${this.slugify(vName).toUpperCase()}`,
-          'variant',
+          undefined,
         );
         const vPrice = Number(v.price);
+        const vCost = Number(v.costPrice);
         await tx.productVariant.create({
           data: {
             productId: product.id,
@@ -118,6 +289,7 @@ export class ProductsService {
             variantName: vName,
             attributes: {},
             price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
+            costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
             stock: Math.max(0, Number(v.stock) || 0),
             lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
           },
@@ -163,6 +335,17 @@ export class ProductsService {
       while (await this.prisma.productVariant.findUnique({ where: { sku: candidate } })) {
         candidate = `${base}-${n++}`;
       }
+    }
+    return candidate;
+  }
+
+  private async uniqueSkuForTx(tx: any, sku: string, excludeId?: string) {
+    let candidate = sku;
+    let n = 2;
+    for (;;) {
+      const existing = await tx.productVariant.findUnique({ where: { sku: candidate } });
+      if (!existing || existing.id === excludeId) break;
+      candidate = `${sku}-${n++}`;
     }
     return candidate;
   }

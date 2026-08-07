@@ -45,16 +45,26 @@ export class OrdersService {
   async create(data: any) {
     const orderNumber = await this.generateOrderNumber();
 
-    // Validar stock y reservar (solo items con variante en la DB)
+    // Validar stock, calcular costos unitarios y reservar (solo items con variante en la DB)
+    const itemsWithCost: any[] = [];
+    let totalCost = 0;
+
     for (const item of data.items) {
-      if (!item.variantId) continue;
-      const variant = await this.prisma.productVariant.findUnique({
-        where: { id: item.variantId },
-      });
-      if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-      if (variant.stock - variant.reservedStock < item.quantity) {
-        throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+      let unitCost = 0;
+      if (item.variantId) {
+        const variant = await this.prisma.productVariant.findUnique({
+          where: { id: item.variantId },
+          include: { product: true },
+        });
+        if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
+        if (variant.stock - variant.reservedStock < item.quantity) {
+          throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+        }
+        unitCost = variant.costPrice ?? variant.product.costPrice ?? 0;
       }
+
+      itemsWithCost.push({ ...item, unitCost });
+      totalCost += unitCost * item.quantity;
     }
 
     // Reservar stock
@@ -65,6 +75,10 @@ export class OrdersService {
         data: { reservedStock: { increment: item.quantity } },
       });
     }
+
+    const total = data.total;
+    const profit = total - totalCost;
+    const profitMargin = total > 0 ? (profit / total) * 100 : 0;
 
     const order = await this.prisma.order.create({
       data: {
@@ -80,21 +94,26 @@ export class OrdersService {
         subtotal: data.subtotal,
         discount: data.discount || 0,
         shippingCost: data.shippingCost || 0,
-        total: data.total,
+        total,
+        totalCost,
+        profit,
+        profitMargin,
         status: OrderStatus.PENDING,
         paymentStatus: PaymentStatus.PENDING,
         needsInvoice: data.needsInvoice || false,
         createdById: data.createdById,
         items: {
-          create: data.items.map((item: any) => ({
+          create: itemsWithCost.map((item: any) => ({
             productId: item.productId,
             variantId: item.variantId,
             productName: item.productName,
             variantName: item.variantName,
             sku: item.sku,
             unitPrice: item.unitPrice,
+            unitCost: item.unitCost,
             quantity: item.quantity,
             total: item.total,
+            profit: item.total - item.unitCost * item.quantity,
           })),
         },
       },
@@ -215,31 +234,184 @@ export class OrdersService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-    const [todaySales, monthSales, totalOrders, pendingOrders, totalCustomers] = await Promise.all([
-      this.prisma.order.aggregate({
-        where: { status: { in: [OrderStatus.PAID, OrderStatus.DELIVERED] }, createdAt: { gte: today } },
-        _sum: { total: true },
-        _count: true,
-      }),
-      this.prisma.order.aggregate({
-        where: { status: { in: [OrderStatus.PAID, OrderStatus.DELIVERED] }, createdAt: { gte: monthStart } },
-        _sum: { total: true },
-        _count: true,
-      }),
-      this.prisma.order.count(),
-      this.prisma.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] } } }),
-      this.prisma.customer.count(),
-    ]);
+    const paidStatuses = [OrderStatus.PAID, OrderStatus.DELIVERED];
+
+    const [todaySales, yesterdaySales, monthSales, totalOrders, pendingOrders, totalCustomers, topProducts, salesByDay] =
+      await Promise.all([
+        this.prisma.order.aggregate({
+          where: { status: { in: paidStatuses }, createdAt: { gte: today } },
+          _sum: { total: true, profit: true },
+          _count: true,
+        }),
+        this.prisma.order.aggregate({
+          where: { status: { in: paidStatuses }, createdAt: { gte: yesterday, lt: today } },
+          _sum: { total: true },
+          _count: true,
+        }),
+        this.prisma.order.aggregate({
+          where: { status: { in: paidStatuses }, createdAt: { gte: monthStart } },
+          _sum: { total: true, profit: true },
+          _count: true,
+        }),
+        this.prisma.order.count(),
+        this.prisma.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] } } }),
+        this.prisma.customer.count(),
+        this.prisma.orderItem.groupBy({
+          by: ['productName'],
+          where: { order: { status: { in: paidStatuses } } },
+          _sum: { quantity: true, total: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 5,
+        }),
+        this.prisma.$queryRaw`
+          SELECT
+            DATE("createdAt") as date,
+            SUM("total")::int as total,
+            SUM("profit")::int as profit,
+            COUNT(*)::int as count
+          FROM "orders"
+          WHERE "status" IN ('PAID', 'DELIVERED')
+            AND "createdAt" >= CURRENT_DATE - INTERVAL '7 days'
+          GROUP BY DATE("createdAt")
+          ORDER BY date ASC
+        `,
+      ]);
+
+    const todayTotal = todaySales._sum.total || 0;
+    const yesterdayTotal = yesterdaySales._sum.total || 0;
+    const todayProfit = todaySales._sum.profit || 0;
+    const monthTotal = monthSales._sum.total || 0;
+    const monthProfit = monthSales._sum.profit || 0;
+
+    const salesGrowth =
+      yesterdayTotal > 0 ? Math.round(((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 * 10) / 10 : 0;
+    const avgTicket = todaySales._count > 0 ? Math.round(todayTotal / todaySales._count) : 0;
+    const monthAvgTicket = monthSales._count > 0 ? Math.round(monthTotal / monthSales._count) : 0;
+    const todayMargin = todayTotal > 0 ? Math.round((todayProfit / todayTotal) * 100 * 10) / 10 : 0;
+    const monthMargin = monthTotal > 0 ? Math.round((monthProfit / monthTotal) * 100 * 10) / 10 : 0;
 
     return {
-      todaySales: todaySales._sum.total || 0,
+      todaySales: todayTotal,
       todayOrders: todaySales._count,
-      monthSales: monthSales._sum.total || 0,
+      todayProfit,
+      todayMargin,
+      monthSales: monthTotal,
       monthOrders: monthSales._count,
+      monthProfit,
+      monthMargin,
+      salesGrowth,
+      avgTicket,
+      monthAvgTicket,
       totalOrders,
       pendingOrders,
       totalCustomers,
+      topProducts: topProducts.map((p: any) => ({
+        name: p.productName,
+        quantity: p._sum.quantity || 0,
+        revenue: p._sum.total || 0,
+      })),
+      salesByDay: (salesByDay as any[]).map((d: any) => ({
+        date: d.date.toISOString().split('T')[0],
+        total: Number(d.total) || 0,
+        profit: Number(d.profit) || 0,
+        orders: Number(d.count) || 0,
+      })),
+    };
+  }
+
+  async getReports(query: any = {}) {
+    const to = query.to ? new Date(query.to) : new Date();
+    to.setHours(23, 59, 59, 999);
+    const from = query.from ? new Date(query.from) : new Date(to);
+    from.setHours(0, 0, 0, 0);
+    from.setMonth(from.getMonth() - 1);
+
+    const where: any = {
+      status: { in: [OrderStatus.PAID, OrderStatus.DELIVERED] },
+      createdAt: { gte: from, lte: to },
+    };
+
+    const [orders, totals, byMethod, byCategory] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        select: {
+          orderNumber: true,
+          customerName: true,
+          createdAt: true,
+          paymentMethod: true,
+          subtotal: true,
+          discount: true,
+          shippingCost: true,
+          total: true,
+          profit: true,
+          profitMargin: true,
+          items: { select: { productName: true, variantName: true, quantity: true, unitPrice: true, total: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.order.aggregate({
+        where,
+        _sum: { total: true, profit: true, subtotal: true, discount: true },
+        _count: true,
+      }),
+      this.prisma.order.groupBy({
+        by: ['paymentMethod'],
+        where,
+        _sum: { total: true },
+        _count: true,
+      }),
+      this.prisma.orderItem.groupBy({
+        by: ['productName'],
+        where: { order: where },
+        _sum: { quantity: true, total: true, profit: true },
+        orderBy: { _sum: { total: 'desc' } },
+        take: 20,
+      }),
+    ]);
+
+    const total = totals._sum.total || 0;
+    const profit = totals._sum.profit || 0;
+
+    const methods = byMethod
+      .filter((m: any) => m.paymentMethod)
+      .map((m: any) => ({
+        method: m.paymentMethod,
+        total: m._sum.total || 0,
+        count: m._count,
+      }));
+
+    const categories = byCategory.map((c: any) => ({
+      product: c.productName,
+      quantity: c._sum.quantity || 0,
+      total: c._sum.total || 0,
+      profit: c._sum.profit || 0,
+    }));
+
+    return {
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0],
+      totalSales: total,
+      totalProfit: profit,
+      margin: total > 0 ? Math.round((profit / total) * 100 * 10) / 10 : 0,
+      orderCount: totals._count,
+      avgTicket: totals._count > 0 ? Math.round(total / totals._count) : 0,
+      methods,
+      categories,
+      orders: orders.map((o: any) => ({
+        orderNumber: o.orderNumber,
+        customerName: o.customerName,
+        createdAt: o.createdAt,
+        paymentMethod: o.paymentMethod,
+        subtotal: o.subtotal,
+        discount: o.discount,
+        shippingCost: o.shippingCost,
+        total: o.total,
+        profit: o.profit,
+        margin: o.profitMargin,
+      })),
     };
   }
 

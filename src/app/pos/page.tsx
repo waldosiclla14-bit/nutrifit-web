@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { apiFetch, clearToken, getToken, setToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -11,18 +11,26 @@ type ApiProduct = {
   brand?: { id: string; name: string; slug: string } | null;
   sku?: string;
   price: number;
+  costPrice: number;
   stock?: number;
   active: boolean;
+  category?: { id: string; name: string } | null;
   variants?: {
     id: string;
     name: string;
     sku: string;
     price: number;
+    costPrice: number;
     stock: number;
     lowStockAlert: number | null;
     active: boolean;
   }[];
 };
+
+function marginOf(price: number, cost: number) {
+  if (!price || price <= 0) return 0;
+  return Math.round(((price - cost) / price) * 100);
+}
 
 type CartLine = {
   variantId: string | null;
@@ -94,6 +102,8 @@ function LoginView({ onLogin }: { onLogin: (token: string) => void }) {
 function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [discountPct, setDiscountPct] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -102,6 +112,18 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,13 +139,16 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           brand: x.brand,
           sku: x.sku,
           price: x.basePrice ?? x.price,
+          costPrice: x.costPrice ?? 0,
           stock: x.stock,
           active: x.isActive !== false,
+          category: x.category ? { id: x.category.id, name: x.category.name } : null,
           variants: (x.variants || []).map((v: any) => ({
             id: v.id,
             name: v.variantName || v.name || 'Sin variante',
             sku: v.sku,
             price: v.price,
+            costPrice: v.costPrice ?? 0,
             stock: v.stock,
             lowStockAlert: v.lowStockAlert,
             active: v.isActive !== false,
@@ -147,9 +172,18 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   }, [load]);
 
   const filtered = useMemo(() => {
+    let list = products;
+    if (category !== 'all') list = list.filter((p) => p.category?.name === category);
     const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => `${p.name} ${p.brand?.name || ''} ${p.sku || ''}`.toLowerCase().includes(q));  }, [products, query]);
+    if (q) list = list.filter((p) => `${p.name} ${p.brand?.name || ''} ${p.sku || ''}`.toLowerCase().includes(q));
+    return list;
+  }, [products, query, category]);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) if (p.category?.name) set.add(p.category.name);
+    return [...set];
+  }, [products]);
 
   const addToCart = (p: ApiProduct, variantId: string | null) => {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
@@ -178,6 +212,8 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   };
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), [cart]);
+  const discountAmount = useMemo(() => Math.round((subtotal * discountPct) / 100), [subtotal, discountPct]);
+  const total = Math.max(0, subtotal - discountAmount);
 
   const openRegister = async () => {
     try {
@@ -208,9 +244,9 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           customerPhone: customerPhone.trim(),
           deliveryType: 'RETIRO_TIENDA',
           subtotal,
-          discount: 0,
+          discount: discountAmount,
           shippingCost: 0,
-          total: subtotal,
+          total,
           paymentMethod: payment,
           items: cart.map((l) => ({
             productId: null,
@@ -233,6 +269,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       setCart([]);
       setCustomerName('');
       setCustomerPhone('');
+      setDiscountPct(0);
       await load();
     } catch (err: any) {
       alert(err?.message || 'Error al cobrar.');
@@ -273,12 +310,32 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
             <input
+              ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar producto…"
+              placeholder="Buscar producto o SKU… (F1)"
               className="input pl-10"
             />
           </div>
+          {categories.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setCategory('all')}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+              >
+                Todos
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === c ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
           {loading ? (
             <p className="py-10 text-center text-sm text-muted">Cargando…</p>
           ) : (
@@ -302,7 +359,12 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
                             {v.name || 'Sin variante'}
                             <span className="ml-1 font-normal text-muted">({v.stock} uds)</span>
                           </span>
-                          <span className="text-sm font-bold">{formatPrice(v.price)}</span>
+                          <span className="flex flex-col items-end">
+                            <span className="text-sm font-bold">{formatPrice(v.price)}</span>
+                            <span className={`text-[10px] font-semibold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
+                              margen {marginOf(v.price, v.costPrice)}%
+                            </span>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -352,9 +414,38 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
             </select>
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
-            <span className="text-sm font-semibold text-muted">Total</span>
-            <span className="font-display text-2xl">{formatPrice(subtotal)}</span>
+          {cart.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Descuento</p>
+              <div className="mt-2 grid grid-cols-5 gap-1.5">
+                {[0, 5, 10, 15, 20].map((pct) => (
+                  <button
+                    key={pct}
+                    onClick={() => setDiscountPct(pct)}
+                    className={`rounded-full border px-1 py-1.5 text-[11px] font-bold transition ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted'}`}
+                  >
+                    {pct === 0 ? '0%' : `-${pct}%`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 border-t border-line pt-3 text-sm">
+            <div className="flex justify-between text-muted">
+              <span>Subtotal</span>
+              <span>{formatPrice(subtotal)}</span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-red-500">
+                <span>Descuento (-{discountPct}%)</span>
+                <span>-{formatPrice(discountAmount)}</span>
+              </div>
+            )}
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted">Total</span>
+              <span className="font-display text-2xl">{formatPrice(total)}</span>
+            </div>
           </div>
           <button onClick={checkout} disabled={saving || cart.length === 0} className="btn-accent mt-3 w-full">
             {saving ? 'Cobrando…' : 'Cobrar'}
