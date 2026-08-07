@@ -4,8 +4,12 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Credenciales iniciales: leer de env (obligatorio en producción).
+  // En un deploy real setea SEED_ADMIN_PASSWORD y SEED_SELLER_PASSWORD.
+  const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD ?? 'admin123', 10);
+  const sellerPassword = await bcrypt.hash(process.env.SEED_SELLER_PASSWORD ?? 'vendedor123', 10);
+
   // Usuario admin
-  const adminPassword = await bcrypt.hash('admin123', 10);
   await prisma.user.upsert({
     where: { email: 'admin@nutrifit.cl' },
     update: {},
@@ -18,7 +22,6 @@ async function main() {
   });
 
   // Usuario vendedor
-  const sellerPassword = await bcrypt.hash('vendedor123', 10);
   await prisma.user.upsert({
     where: { email: 'vendedor@nutrifit.cl' },
     update: {},
