@@ -16,7 +16,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
+    const user = await this.validateUser(String(email || '').trim().toLowerCase(), password);
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
     const payload = { sub: user.id, email: user.email, role: user.role };

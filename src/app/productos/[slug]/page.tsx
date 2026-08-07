@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { PRODUCTS } from '@/data/seed';
+import { PRODUCTS, BRAND } from '@/data/seed';
 import ProductDetail from '@/components/product/ProductDetail';
 import { getDiscount } from '@/lib/utils';
 
@@ -42,5 +42,36 @@ export default async function ProductPage({
     (p) => p.id !== product.id && p.category === product.category,
   ).slice(0, 4);
 
-  return <ProductDetail product={product} related={related} />;
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    image: `${BRAND.url}${product.image}`,
+    description: product.desc,
+    sku: `seed-${product.slug}`,
+    brand: { '@type': 'Brand', name: product.brand },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: product.rating,
+      reviewCount: product.reviews,
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `${BRAND.url}/productos/${product.slug}`,
+      priceCurrency: 'CLP',
+      price: product.price,
+      availability:
+        product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <ProductDetail product={product} related={related} />
+    </>
+  );
 }

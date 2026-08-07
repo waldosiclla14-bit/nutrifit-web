@@ -24,6 +24,7 @@ export function saveReview(
   name: string,
   rating: number,
   text: string,
+  verified?: boolean,
 ): UserReview[] {
   const review: UserReview = {
     id: uid('RV'),
@@ -32,6 +33,7 @@ export function saveReview(
     rating,
     text: text.trim(),
     createdAt: Date.now(),
+    verified: !!verified,
   };
   const reviews = [review, ...loadReviews()];
   try {

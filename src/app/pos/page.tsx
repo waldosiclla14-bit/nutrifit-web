@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
-import { apiFetch, clearToken, getToken, setToken } from '@/lib/api';
+import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
 type ApiProduct = {
@@ -50,52 +51,28 @@ type CashRegister = {
 };
 
 export default function PosPage() {
+  const router = useRouter();
   const [token, setTokenState] = useState<string | null>(null);
 
   useEffect(() => {
-    setTokenState(getToken());
-  }, []);
-
-  if (!token) return <LoginView onLogin={(t) => setTokenState(t)} />;
-  return <Pos token={token} onLogout={() => { clearToken(); setTokenState(null); }} />;
-}
-
-function LoginView({ onLogin }: { onLogin: (token: string) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await apiFetch<{ access_token: string }>('/auth/login', { method: 'POST', body: { email, password } });
-      setToken(res.access_token);
-      onLogin(res.access_token);
-    } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión.');
-    } finally {
-      setLoading(false);
+    const t = getToken();
+    if (!t) {
+      router.replace('/login?next=/pos');
+      return;
     }
-  };
+    setTokenState(t);
+  }, [router]);
 
+  if (!token) return null;
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-line bg-paper p-8 shadow-soft">
-        <p className="section-label">PUNTO DE VENTA</p>
-        <h1 className="mt-2 font-display text-2xl uppercase tracking-wide">POS NutriFit</h1>
-        <div className="mt-6 space-y-3">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="input" autoComplete="username" />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" className="input" autoComplete="current-password" />
-        </div>
-        {error && <p className="mt-3 text-xs font-semibold text-red-500">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-accent mt-6 w-full">
-          {loading ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
-    </div>
+    <Pos
+      token={token}
+      onLogout={() => {
+        clearToken();
+        clearSessionCookie();
+        router.replace('/login?next=/pos');
+      }}
+    />
   );
 }
 

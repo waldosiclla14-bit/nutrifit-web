@@ -21,6 +21,7 @@ export default function ProductReviews({
   const [name, setName] = useState('');
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
@@ -44,12 +45,13 @@ export default function ProductReviews({
       setError('Escribe al menos 5 caracteres.');
       return;
     }
-    setReviews(saveReview(productId, name, rating, text.trim()));
+    setReviews(saveReview(productId, name, rating, text.trim(), verified));
     setError('');
     setDone(true);
     setName('');
     setRating(5);
     setText('');
+    setVerified(false);
   };
 
   return (
@@ -77,6 +79,11 @@ export default function ProductReviews({
               <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted">
                 — {r.name}
               </p>
+              {r.verified && (
+                <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                  ✓ Compra verificada
+                </p>
+              )}
             </article>
           ))}
         </div>
@@ -130,6 +137,15 @@ export default function ProductReviews({
             className="input resize-none"
           />
           {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-muted">
+            <input
+              type="checkbox"
+              checked={verified}
+              onChange={(e) => setVerified(e.target.checked)}
+              className="h-4 w-4 accent-emerald-600"
+            />
+            Compré este producto (compra verificada)
+          </label>
           <button type="submit" className="btn-accent">
             <Star size={16} /> Publicar reseña
           </button>

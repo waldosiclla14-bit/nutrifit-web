@@ -150,6 +150,11 @@ export default function ProductDetail({
             )}
           </div>
           <p className="mt-5 text-sm leading-relaxed text-ink/80">{product.desc}</p>
+          {product.registroIsp && (
+            <p className="mt-2 text-xs font-semibold text-muted">
+              Reg. ISP N° {product.registroIsp}
+            </p>
+          )}
 
           <div className="mt-5 flex flex-wrap gap-2">
             {product.benefits.map((b) => (
