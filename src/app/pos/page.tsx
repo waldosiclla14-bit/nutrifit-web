@@ -107,11 +107,34 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     setLoading(true);
     try {
       const [p, cr] = await Promise.all([
-        apiFetch<ApiProduct[]>('/products', { token }),
-        apiFetch<CashRegister | null>('/cash-register/current', { token }),
+        apiFetch<any[]>('/products', { token }),
+        apiFetch<any | null>('/cash-register/current', { token }),
       ]);
-      setProducts(p);
-      setCash(cr);
+      setProducts(
+        (p || []).map((x) => ({
+          id: x.id,
+          name: x.name,
+          brand: x.brand,
+          sku: x.sku,
+          price: x.basePrice ?? x.price,
+          stock: x.stock,
+          active: x.isActive !== false,
+          variants: (x.variants || []).map((v: any) => ({
+            id: v.id,
+            name: v.variantName || v.name || 'Sin variante',
+            sku: v.sku,
+            price: v.price,
+            stock: v.stock,
+            lowStockAlert: v.lowStockAlert,
+            active: v.isActive !== false,
+          })),
+        })),
+      );
+      setCash(
+        cr
+          ? { id: cr.id, status: cr.isOpen ? 'OPEN' : 'CLOSED', initialAmount: cr.initialAmount, openedAt: cr.openedAt }
+          : null,
+      );
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
@@ -126,7 +149,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) => `${p.name} ${p.brand || ''} ${p.sku || ''}`.toLowerCase().includes(q));  }, [products, query]);
+    return products.filter((p) => `${p.name} ${p.brand?.name || ''} ${p.sku || ''}`.toLowerCase().includes(q));  }, [products, query]);
 
   const addToCart = (p: ApiProduct, variantId: string | null) => {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
