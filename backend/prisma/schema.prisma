@@ -204,7 +204,6 @@ model Order {
   customer  Customer    @relation(fields: [customerId], references: [id])
   items     OrderItem[]
   createdBy User?       @relation("CreatedBy", fields: [createdById], references: [id])
-  auditLogs AuditLog[]
 
   @@map("orders")
 }
@@ -326,7 +325,6 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   user   User?  @relation(fields: [userId], references: [id])
-  order  Order? @relation(fields: [entityId], references: [id], map: "audit_order_fk")
 
   @@map("audit_logs")
 }

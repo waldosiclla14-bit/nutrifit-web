@@ -35,7 +35,6 @@ export class OrdersService {
         customer: { include: { addresses: true } },
         items: { include: { product: true, variant: true } },
         createdBy: { select: { id: true, name: true } },
-        auditLogs: { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!order) throw new NotFoundException('Orden no encontrada');
