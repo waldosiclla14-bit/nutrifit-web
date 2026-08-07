@@ -853,7 +853,7 @@ function Productos({
     { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
 
-  const save = async (v: Variant, current: number) => {
+  const save = async (p: ApiProduct, v: Variant, current: number) => {
     setSaving(v.id);
     try {
       const stockRaw = edits[v.id];
@@ -874,7 +874,7 @@ function Productos({
       if (costRaw !== undefined) {
         const next = Number(costRaw);
         if (!Number.isNaN(next) && next >= 0 && next !== v.costPrice) {
-          await apiFetch(`/products/${v.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } });
+          await apiFetch(`/products/${p.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } });
         }
       }
       await onChanged();
@@ -1169,7 +1169,7 @@ function Productos({
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <button disabled={saving === v.id} onClick={() => save(v, v.stock)} className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50">
+                    <button disabled={saving === v.id} onClick={() => save(p, v, v.stock)} className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50">
                       Guardar
                     </button>
                   </td>
