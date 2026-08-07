@@ -230,15 +230,46 @@ function Dashboard({
       const [s, o, p, c, cr] = await Promise.all([
         apiFetch<Stats>('/orders/stats', { token }),
         apiFetch<ApiOrder[]>('/orders', { token }),
-        apiFetch<ApiProduct[]>('/products', { token }),
+        apiFetch<any[]>('/products', { token }),
         apiFetch<ApiCustomer[]>('/customers', { token }),
-        apiFetch<CashRegister | null>('/cash-register/current', { token }),
+        apiFetch<any | null>('/cash-register/current', { token }),
       ]);
       setStats(s);
       setOrders(o);
-      setProducts(p);
+      setProducts(
+        (p || []).map((x) => ({
+          id: x.id,
+          name: x.name,
+          sku: x.sku,
+          price: x.basePrice ?? x.price,
+          active: x.isActive !== false,
+          variants: (x.variants || []).map((v: any) => ({
+            id: v.id,
+            name: v.variantName || v.name || 'Sin variante',
+            sku: v.sku,
+            price: v.price,
+            stock: v.stock,
+            lowStockAlert: v.lowStockAlert,
+            active: v.isActive !== false,
+          })),
+        })),
+      );
       setCustomers(c);
-      setCash(cr);
+      setCash(
+        cr
+          ? {
+              id: cr.id,
+              status: cr.isOpen ? 'OPEN' : 'CLOSED',
+              openedAt: cr.openedAt,
+              closedAt: cr.closedAt,
+              initialAmount: cr.initialAmount,
+              finalAmount: cr.finalAmount,
+              expectedAmount: cr.expectedAmount,
+              diff: cr.difference,
+              openedBy: cr.openedBy,
+            }
+          : null,
+      );
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
