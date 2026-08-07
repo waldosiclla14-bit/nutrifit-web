@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -29,13 +31,19 @@ const nextConfig = {
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
           {
             key: 'Content-Security-Policy',
-            value:
-              "default-src 'self'; base-uri 'self'; connect-src 'self'; " +
-              "font-src 'self' https://fonts.gstatic.com; form-action 'self'; " +
-              "frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; " +
-              "script-src 'self' 'unsafe-inline'; " +
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            value: [
+              "default-src 'self'",
+              "base-uri 'self'",
+              `connect-src 'self' ${apiOrigin}`,
+              "font-src 'self' https://fonts.gstatic.com",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "img-src 'self' data: blob:",
+              "object-src 'none'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               'upgrade-insecure-requests',
+            ].join('; '),
           },
         ],
       },

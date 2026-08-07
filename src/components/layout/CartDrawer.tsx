@@ -23,6 +23,7 @@ import { METRO_LINES } from '@/data/metro';
 import { formatPrice, uid } from '@/lib/utils';
 import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
 import { getSettings, saveOrder } from '@/lib/store';
+import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
@@ -53,6 +54,7 @@ export default function CartDrawer() {
   const [placed, setPlaced] = useState(false);
   const [offerAdded, setOfferAdded] = useState<number | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'ok' | 'offline'>('ok');
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -148,6 +150,10 @@ export default function CartDrawer() {
     setLastOrder(order);
     setPlaced(true);
     setError('');
+
+    submitStoreOrder(order)
+      .then(() => setSyncStatus('ok'))
+      .catch(() => setSyncStatus('offline'));
   };
 
   const finishOrder = () => {
@@ -240,6 +246,15 @@ export default function CartDrawer() {
             <p className="text-sm leading-relaxed text-muted">
               Abrimos WhatsApp con tu pedido listo para enviar. Solo presiona enviar y te
               confirmamos el punto de entrega en tu estación de metro.
+            </p>
+            <p
+              className={`text-xs font-semibold ${
+                syncStatus === 'ok' ? 'text-accentDeep' : 'text-muted'
+              }`}
+            >
+              {syncStatus === 'ok'
+                ? '✓ Pedido registrado en el sistema del local'
+                : 'No pudimos sincronizar con el local; tu pedido va por WhatsApp igualmente.'}
             </p>
 
             {offerProducts.length > 0 && (

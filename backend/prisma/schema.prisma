@@ -1,0 +1,337 @@
+// NutriFit ERP — Prisma Schema
+// Adaptado para: sin pasarela, entrega en metro, productos con variantes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────────────────────────
+// AUTENTICACIÓN Y USUARIOS
+// ───────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(SELLER)
+  password  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cashMovements CashMovement[]
+  openedRegisters CashRegister[]  @relation("RegistersOpened")
+  ordersCreated Order[]        @relation("CreatedBy")
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  DELIVERY
+}
+
+// ───────────────────────────────────────────────
+// CLIENTES (CRM básico)
+// ───────────────────────────────────────────────
+
+model Customer {
+  id          String    @id @default(uuid())
+  name        String
+  email       String?
+  phone       String
+  rut         String?   @unique
+  instagram   String?
+  birthDate   DateTime?
+  notes       String?
+  isVip       Boolean   @default(false)
+  totalSpent  Int       @default(0)
+  totalOrders Int       @default(0)
+  lastOrderAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  orders    Order[]
+  addresses Address[]
+
+  @@map("customers")
+}
+
+model Address {
+  id           String @id @default(uuid())
+  customerId   String
+  metroLine    String
+  metroStation String
+  details      String?
+  isDefault    Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+// ───────────────────────────────────────────────
+// CATEGORÍAS, MARCAS Y PRODUCTOS
+// ───────────────────────────────────────────────
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Brand {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  slug     String    @unique
+  logoUrl  String?
+  isActive Boolean   @default(true)
+
+  products Product[]
+
+  @@map("brands")
+}
+
+model Product {
+  id           String   @id @default(uuid())
+  sku          String   @unique
+  name         String
+  slug         String   @unique
+  description  String?
+  basePrice    Int
+  comparePrice Int?
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  categoryId   String
+  brandId      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category   Category         @relation(fields: [categoryId], references: [id])
+  brand      Brand?           @relation(fields: [brandId], references: [id])
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id            String @id @default(uuid())
+  productId     String
+  sku           String @unique
+  variantName   String
+  attributes    Json
+  price         Int?
+  imageUrl      String?
+  isActive      Boolean @default(true)
+  stock         Int     @default(0)
+  reservedStock Int     @default(0)
+  lowStockAlert Int     @default(5)
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batches    Batch[]
+  orderItems OrderItem[]
+
+  @@map("product_variants")
+}
+
+model Batch {
+  id         String   @id @default(uuid())
+  variantId  String
+  batchCode  String
+  quantity   Int
+  expiryDate DateTime
+  createdAt  DateTime @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@map("batches")
+}
+
+// ───────────────────────────────────────────────
+// ÓRDENES (sin pasarela integrada)
+// ───────────────────────────────────────────────
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     String        @unique
+  customerId      String
+  customerName    String
+  customerPhone   String
+  customerRut     String?
+  deliveryType    DeliveryType  @default(METRO)
+  metroLine       String?
+  metroStation    String?
+  deliveryDetails String?
+  subtotal        Int
+  discount        Int           @default(0)
+  shippingCost    Int           @default(0)
+  total           Int
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   PaymentMethod?
+  paymentProofUrl String?
+  paymentNotes    String?
+  paidAt          DateTime?
+  status          OrderStatus   @default(PENDING)
+  needsInvoice    Boolean       @default(false)
+  invoiceType     InvoiceType?
+  invoiceFolio    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  createdById     String?
+
+  customer  Customer    @relation(fields: [customerId], references: [id])
+  items     OrderItem[]
+  createdBy User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  auditLogs AuditLog[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  productId   String?
+  variantId   String?
+  productName String
+  variantName String
+  sku         String
+  unitPrice   Int
+  quantity    Int
+  total       Int
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?       @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@map("order_items")
+}
+
+enum DeliveryType {
+  METRO
+  RETIRO_TIENDA
+  ENVIO_DOMICILIO
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  TRANSFERENCIA
+  EFECTIVO
+  FLOW_MANUAL
+  MERCADOPAGO_MANUAL
+  TARJETA_MANUAL
+  MIXTO
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum InvoiceType {
+  BOLETA
+  FACTURA
+}
+
+// ───────────────────────────────────────────────
+// CAJA / POS
+// ───────────────────────────────────────────────
+
+model CashRegister {
+  id            String    @id @default(uuid())
+  openedAt      DateTime  @default(now())
+  closedAt      DateTime?
+  openedById    String
+  initialAmount Int
+  finalAmount   Int?
+  expectedAmount Int?
+  difference    Int?
+  isOpen        Boolean   @default(true)
+
+  openedBy  User           @relation("RegistersOpened", fields: [openedById], references: [id])
+  movements CashMovement[]
+
+  @@map("cash_registers")
+}
+
+model CashMovement {
+  id          String          @id @default(uuid())
+  registerId  String
+  type        CashMovementType
+  amount      Int
+  reason      String
+  orderId     String?
+  createdById String
+  createdAt   DateTime        @default(now())
+
+  register  CashRegister @relation(fields: [registerId], references: [id])
+  createdBy User         @relation(fields: [createdById], references: [id])
+
+  @@map("cash_movements")
+}
+
+enum CashMovementType {
+  INCOME
+  EXPENSE
+}
+
+// ───────────────────────────────────────────────
+// AUDITORÍA
+// ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user   User?  @relation(fields: [userId], references: [id])
+  order  Order? @relation(fields: [entityId], references: [id], map: "audit_order_fk")
+
+  @@map("audit_logs")
+}
+
+// ───────────────────────────────────────────────
+// CONFIGURACIÓN
+// ───────────────────────────────────────────────
+
+model Config {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+
+  @@map("config")
+}

@@ -63,6 +63,8 @@ export default function Footer() {
             <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-accent">Políticas de Entrega</Link></li>
             <li><Link href="/legal#terminos" className="transition-colors hover:text-accent">Términos y Condiciones</Link></li>
             <li><Link href="/legal#privacidad" className="transition-colors hover:text-accent">Política de Privacidad</Link></li>
+            <li><Link href="/admin" className="transition-colors hover:text-accent">Panel Admin</Link></li>
+            <li><Link href="/pos" className="transition-colors hover:text-accent">Punto de venta (POS)</Link></li>
           </ul>
         </div>
       </div>
