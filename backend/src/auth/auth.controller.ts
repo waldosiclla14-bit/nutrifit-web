@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Req, HttpException, HttpStatus } from '@nestjs/common';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { AuthService } from './auth.service';
 
@@ -15,7 +15,7 @@ const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 10 * 60 * 1000;
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
-function checkRateLimit(ip: string) {
+function trackAttempt(ip: string) {
   const now = Date.now();
   const entry = attempts.get(ip);
   if (!entry || entry.resetAt < now) {
@@ -39,7 +39,9 @@ export class AuthController {
   async login(@Body() dto: LoginDto, @Req() req: any) {
     const ip =
       req.ip || req.headers?.['x-forwarded-for']?.toString().split(',')[0]?.trim() || 'unknown';
-    checkRateLimit(ip);
-    return this.authService.login(dto.email, dto.password);
+    trackAttempt(ip);
+    const result = await this.authService.login(dto.email, dto.password);
+    attempts.delete(ip);
+    return result;
   }
 }
