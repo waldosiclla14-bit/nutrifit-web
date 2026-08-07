@@ -44,4 +44,10 @@ export class ProductsController {
   updateStock(@Param('id') id: string, @Body() body: { quantity: number }) {
     return this.productsService.updateStock(id, body.quantity);
   }
+
+  @Patch(':id/price')
+  @UseGuards(JwtAuthGuard)
+  updatePrice(@Param('id') id: string, @Body() body: { price: number }) {
+    return this.productsService.updatePrice(id, body.price);
+  }
 }
