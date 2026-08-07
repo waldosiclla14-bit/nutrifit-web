@@ -1,0 +1,41 @@
+version: "3.8"
+
+# Uso local (opcional). En producción: frontend en Vercel, API en Render, Postgres en Neon.
+# No necesitas Docker si usas el flujo de producción (ver DEPLOY.md en la raíz).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nutrifit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nutrifit
+      POSTGRES_PASSWORD: REDACTED_PASSWORD
+      POSTGRES_DB: nutrifit
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutrifit -d nutrifit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: nutrifit-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://nutrifit:REDACTED_PASSWORD@postgres:5432/nutrifit?schema=public
+      JWT_SECRET: REDACTED_SECRET
+      JWT_EXPIRES_IN: 7d
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
