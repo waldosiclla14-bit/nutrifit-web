@@ -60,7 +60,7 @@ export class OrdersService {
         if (variant.stock - variant.reservedStock < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }
-        unitCost = variant.costPrice ?? variant.product.costPrice ?? 0;
+        unitCost = variant.costPrice || variant.product.costPrice || 0;
       }
 
       itemsWithCost.push({ ...item, unitCost });
