@@ -74,6 +74,18 @@ export function clearToken() {
   }
 }
 
+const SESSION_COOKIE = 'nf_session';
+
+export function setSessionCookie() {
+  if (typeof window === 'undefined') return;
+  document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=86400; samesite=lax`;
+}
+
+export function clearSessionCookie() {
+  if (typeof window === 'undefined') return;
+  document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
 export async function submitStoreOrder(order: Order): Promise<void> {
   const customer = await apiFetch<{ id: string }>('/customers', {
     method: 'POST',

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   BarChart3,
   Boxes,
@@ -14,7 +15,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { apiFetch, clearToken, getToken, setToken } from '@/lib/api';
+import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
 type ApiOrder = {
@@ -64,6 +65,7 @@ type ApiProduct = {
   active: boolean;
   comparePrice?: number | null;
   description?: string | null;
+  registroIsp?: string | null;
   category?: { id: string; name: string } | null;
   variants?: Variant[];
 };
@@ -222,74 +224,31 @@ function exportCSV(orders: Report['orders']) {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const [token, setTokenState] = useState<string | null>(null);
   const [tab, setTab] = useState<'resumen' | 'ordenes' | 'productos' | 'clientes' | 'caja' | 'reportes'>('resumen');
 
   useEffect(() => {
-    setTokenState(getToken());
-  }, []);
-
-  if (!token) return <LoginView onLogin={(t) => setTokenState(t)} />;
-  return <Dashboard token={token} tab={tab} setTab={setTab} onLogout={() => { clearToken(); setTokenState(null); }} />;
-}
-
-function LoginView({ onLogin }: { onLogin: (token: string) => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await apiFetch<{ access_token: string }>('/auth/login', {
-        method: 'POST',
-        body: { email, password },
-      });
-      setToken(res.access_token);
-      onLogin(res.access_token);
-    } catch (err: any) {
-      setError(err?.message || 'Error al iniciar sesión.');
-    } finally {
-      setLoading(false);
+    const t = getToken();
+    if (!t) {
+      router.replace('/login?next=/admin');
+      return;
     }
-  };
+    setTokenState(t);
+  }, [router]);
 
+  if (!token) return null;
   return (
-    <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-line bg-paper p-8 shadow-soft">
-        <p className="section-label">NUTRIFIT</p>
-        <h1 className="mt-2 font-display text-2xl uppercase tracking-wide">Panel Admin</h1>
-        <p className="mt-1 text-sm text-muted">Inicia sesión para gestionar la tienda.</p>
-        <div className="mt-6 space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="input"
-            autoComplete="username"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Contraseña"
-            className="input"
-            autoComplete="current-password"
-          />
-        </div>
-        {error && <p className="mt-3 text-xs font-semibold text-red-500">{error}</p>}
-        <button type="submit" disabled={loading} className="btn-accent mt-6 w-full">
-          {loading ? 'Entrando…' : 'Entrar'}
-        </button>
-        <p className="mt-4 text-center text-[11px] text-muted">
-          Por defecto: <span className="font-semibold">admin@nutrifit.cl</span>
-        </p>
-      </form>
-    </div>
+    <Dashboard
+      token={token}
+      tab={tab}
+      setTab={setTab}
+      onLogout={() => {
+        clearToken();
+        clearSessionCookie();
+        router.replace('/login?next=/admin');
+      }}
+    />
   );
 }
 
@@ -336,6 +295,7 @@ function Dashboard({
           active: x.isActive !== false,
           comparePrice: x.comparePrice,
           description: x.description,
+          registroIsp: x.registroIsp || null,
           category: x.category ? { id: x.category.id, name: x.category.name } : null,
           variants: (x.variants || []).map((v: any) => ({
             id: v.id,
@@ -818,6 +778,7 @@ type EditProductForm = {
   costPrice: string;
   comparePrice: string;
   description: string;
+  registroIsp: string;
   reason: string;
   variants: {
     id?: string;
@@ -848,7 +809,7 @@ function Productos({
   const [editing, setEditing] = useState<ApiProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '' });
+  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '' });
   const [formVariants, setFormVariants] = useState([
     { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
@@ -907,6 +868,7 @@ function Productos({
           category: form.category,
           brand: form.brand,
           description: form.description,
+          registroIsp: form.registroIsp,
           variants: formVariants
             .filter((v) => v.variantName.trim() || v.sku.trim())
             .map((v) => ({
@@ -920,7 +882,7 @@ function Productos({
         },
       });
       setShowForm(false);
-      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '' });
+      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '' });
       setFormVariants([{ variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
       await onChanged();
     } catch (err: any) {
@@ -941,6 +903,7 @@ function Productos({
       costPrice: String(p.costPrice ?? 0),
       comparePrice: String(p.comparePrice ?? ''),
       description: p.description || '',
+      registroIsp: p.registroIsp || '',
       reason: '',
       variants: (p.variants || []).map((v) => ({
         id: v.id,
@@ -988,6 +951,7 @@ function Productos({
           costPrice: Number(editForm.costPrice) || undefined,
           comparePrice: Number(editForm.comparePrice) || undefined,
           description: editForm.description,
+          registroIsp: editForm.registroIsp,
           variants: editForm.variants.map((v) => ({
             id: v.id,
             variantName: v.variantName,
@@ -1058,6 +1022,7 @@ function Productos({
             <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />
             <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
             <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descripción (opcional)" className="input md:col-span-2" rows={2} />
+            <input value={form.registroIsp} onChange={(e) => setForm((f) => ({ ...f, registroIsp: e.target.value }))} placeholder="Registro ISP N° (opcional)" className="input" />
           </div>
 
           <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
@@ -1201,6 +1166,7 @@ function Productos({
               <input value={editForm.comparePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, comparePrice: e.target.value } : f))} placeholder="Precio tachado" type="number" className="input" />
               <input value={editForm.reason} onChange={(e) => setEditForm((f) => (f ? { ...f, reason: e.target.value } : f))} placeholder="Motivo de ajuste de stock (si cambias stock)" className="input md:col-span-2" />
               <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="Descripción" className="input md:col-span-2" rows={2} />
+              <input value={editForm.registroIsp} onChange={(e) => setEditForm((f) => (f ? { ...f, registroIsp: e.target.value } : f))} placeholder="Registro ISP N°" className="input" />
             </div>
 
             <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>

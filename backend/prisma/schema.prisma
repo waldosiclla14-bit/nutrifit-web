@@ -116,6 +116,7 @@ model Product {
   basePrice    Int
   costPrice    Int      @default(0)
   comparePrice Int?
+  registroIsp  String?
   imageUrl     String?
   isActive     Boolean  @default(true)
   isFeatured   Boolean  @default(false)

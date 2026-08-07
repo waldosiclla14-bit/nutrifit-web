@@ -58,6 +58,39 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const organizationJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': `${BRAND.url}/#organization`,
+    name: 'NutriFit',
+    url: BRAND.url,
+    logo: `${BRAND.url}/img/logo.png`,
+    image: `${BRAND.url}/img/logo.png`,
+    description:
+      'Suplementos deportivos premium en Chile. Whey protein, creatina, vitaminas y bienestar. Productos originales y entrega en estaciones de metro.',
+    slogan: BRAND.tagline,
+    sameAs: [BRAND.instagramUrl],
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Santiago',
+      addressCountry: 'CL',
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      telephone: `+${BRAND.whatsappDigits}`,
+      availableLanguage: 'es',
+    },
+    openingHoursSpecification: [
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        opens: '10:00',
+        closes: '20:00',
+      },
+    ],
+  };
+
   return (
     <html lang="es">
       <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -69,6 +102,10 @@ export default function RootLayout({
         precedence="default"
       />
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         <FavoritesProvider>
           <CartProvider>
             <Header />

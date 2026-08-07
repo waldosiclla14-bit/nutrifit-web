@@ -13,6 +13,7 @@ export type Product = {
   rating: number;
   reviews: number;
   badge?: string;
+  registroIsp?: string;
   image: string;
   modoUso: string;
   nutrientes: Array<[string, string]>;
@@ -60,6 +61,7 @@ export type UserReview = {
   rating: number;
   text: string;
   createdAt: number;
+  verified?: boolean;
 };
 
 export type CartItem = {

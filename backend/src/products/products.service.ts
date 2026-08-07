@@ -78,6 +78,9 @@ export class ProductsService {
       if (data.name !== existing.name) productData.slug = await this.uniqueSlug(name);
     }
     if (data.description !== undefined) productData.description = data.description ? String(data.description) : null;
+    if (data.registroIsp !== undefined) {
+      productData.registroIsp = data.registroIsp ? String(data.registroIsp).trim() : null;
+    }
     if (data.basePrice !== undefined) productData.basePrice = Math.max(0, Number(data.basePrice) || 0);
     if (data.costPrice !== undefined) productData.costPrice = Math.max(0, Number(data.costPrice) || 0);
     if (data.comparePrice !== undefined) {
@@ -268,6 +271,7 @@ export class ProductsService {
           costPrice: finalCostPrice,
           comparePrice: finalComparePrice,
           description: data.description ? String(data.description) : null,
+          registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
           categoryId,
           brandId,
         },
