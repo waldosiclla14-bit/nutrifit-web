@@ -521,19 +521,29 @@ function Productos({
   onChanged: () => void;
 }) {
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
   const save = async (v: Variant, current: number) => {
-    const raw = edits[v.id];
-    if (raw === undefined) return;
-    const next = Number(raw);
-    if (Number.isNaN(next) || next < 0) return;
     setSaving(v.id);
     try {
-      await apiFetch(`/products/${v.id}/stock`, { method: 'PATCH', token, body: { quantity: next - current } });
+      const stockRaw = edits[v.id];
+      if (stockRaw !== undefined) {
+        const next = Number(stockRaw);
+        if (!Number.isNaN(next) && next >= 0 && next !== current) {
+          await apiFetch(`/products/${v.id}/stock`, { method: 'PATCH', token, body: { quantity: next - current } });
+        }
+      }
+      const priceRaw = priceEdits[v.id];
+      if (priceRaw !== undefined) {
+        const next = Number(priceRaw);
+        if (!Number.isNaN(next) && next >= 0 && next !== v.price) {
+          await apiFetch(`/products/${v.id}/price`, { method: 'PATCH', token, body: { price: next } });
+        }
+      }
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al actualizar stock.');
+      alert(err?.message || 'Error al actualizar.');
     } finally {
       setSaving(null);
     }
@@ -564,7 +574,14 @@ function Productos({
                 </td>
                 <td className="px-4 py-3">{v.name || '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted">{v.sku || '—'}</td>
-                <td className="px-4 py-3 font-bold">{formatPrice(v.price)}</td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    defaultValue={v.price}
+                    onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                    className="input w-28 py-1.5"
+                  />
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <input

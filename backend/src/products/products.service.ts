@@ -58,6 +58,14 @@ export class ProductsService {
     });
   }
 
+  async updatePrice(id: string, price: number) {
+    const variant = await this.prisma.productVariant.findUnique({ where: { id } });
+    if (variant) {
+      return this.prisma.productVariant.update({ where: { id }, data: { price } });
+    }
+    return this.prisma.product.update({ where: { id }, data: { basePrice: price } });
+  }
+
   async reserveStock(variantId: string, quantity: number) {
     return this.prisma.$transaction(async (tx) => {
       const variant = await tx.productVariant.findUnique({ where: { id: variantId } });
