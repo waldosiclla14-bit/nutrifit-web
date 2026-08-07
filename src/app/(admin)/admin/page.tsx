@@ -58,6 +58,7 @@ type ApiProduct = {
   id: string;
   name: string;
   brand?: string;
+  brandName?: string;
   sku?: string;
   price: number;
   costPrice: number;
@@ -78,6 +79,8 @@ type ApiCustomer = {
   totalSpent: number;
   totalOrders: number;
   createdAt: string;
+  lastOrderAt?: string | null;
+  isVip?: boolean;
 };
 
 type Stats = {
@@ -144,6 +147,14 @@ type CashRegister = {
   openedBy?: { name: string } | null;
 };
 
+type InventoryValue = {
+  totalCost: number;
+  totalRetail: number;
+  totalItems: number;
+  potentialProfit: number;
+  avgMargin: number;
+};
+
 const STATUS_LABEL: Record<string, string> = {
   PENDING: 'Nuevo',
   CONFIRMED: 'Confirmado',
@@ -190,6 +201,12 @@ function waLink(order: ApiOrder) {
 function marginOf(price: number, cost: number) {
   if (!price || price <= 0) return 0;
   return Math.round(((price - cost) / price) * 100);
+}
+
+function stockLevel(stock: number, alert: number | null) {
+  if (stock <= 0) return { label: 'agotado', cls: 'border-red-300 text-red-600' };
+  if (stock <= (alert ?? 0)) return { label: 'bajo', cls: 'border-amber-300 text-amber-700' };
+  return { label: 'ok', cls: 'border-emerald-300 text-emerald-700' };
 }
 
 function progressPct(actual: number, goal: number) {
@@ -270,18 +287,20 @@ function Dashboard({
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [customers, setCustomers] = useState<ApiCustomer[]>([]);
   const [cash, setCash] = useState<CashRegister | null>(null);
+  const [inventory, setInventory] = useState<InventoryValue | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, o, p, c, cr, g] = await Promise.all([
+      const [s, o, p, c, cr, g, iv] = await Promise.all([
         apiFetch<Stats>('/orders/stats', { token }),
         apiFetch<ApiOrder[]>('/orders', { token }),
         apiFetch<any[]>('/products', { token }),
         apiFetch<ApiCustomer[]>('/customers', { token }),
         apiFetch<any | null>('/cash-register/current', { token }),
         apiFetch<Goals>('/config/goals', { token }),
+        apiFetch<InventoryValue>('/products/inventory-value', { token }).catch(() => null),
       ]);
       setStats(s);
       setOrders(o);
@@ -290,6 +309,8 @@ function Dashboard({
           id: x.id,
           name: x.name,
           sku: x.sku,
+          brand: x.brand ? x.brand.name : undefined,
+          brandName: x.brand ? x.brand.name : undefined,
           price: x.basePrice ?? x.price,
           costPrice: x.costPrice ?? 0,
           active: x.isActive !== false,
@@ -326,6 +347,7 @@ function Dashboard({
           : null,
       );
       setGoals(g);
+      setInventory(iv);
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
@@ -395,7 +417,7 @@ function Dashboard({
 
       <div className="mt-6">
         {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
-        {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} token={token} onChanged={load} />}
+        {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
         {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
         {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={load} />}
         {!loading && tab === 'clientes' && <Clientes customers={customers} />}
@@ -409,11 +431,13 @@ function Dashboard({
 function Resumen({
   stats,
   goals,
+  inventory,
   token,
   onChanged,
 }: {
   stats: Stats | null;
   goals: Goals | null;
+  inventory: InventoryValue | null;
   token: string;
   onChanged: () => void;
 }) {
@@ -476,6 +500,31 @@ function Resumen({
           </div>
         ))}
       </div>
+
+      {inventory && (
+        <div className="rounded-3xl border border-accent/40 bg-accent/5 p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">Capital en inventario</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-sm text-muted">Invertido (costo)</p>
+              <p className="mt-1 font-display text-2xl uppercase">{formatPrice(inventory.totalCost)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted">Valor a precio venta</p>
+              <p className="mt-1 font-display text-2xl uppercase">{formatPrice(inventory.totalRetail)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted">Utilidad potencial</p>
+              <p className="mt-1 font-display text-2xl uppercase text-emerald-600">{formatPrice(inventory.potentialProfit)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted">Unidades</p>
+              <p className="mt-1 font-display text-2xl uppercase">{inventory.totalItems}</p>
+              <p className="mt-1 text-[11px] text-muted">Margen promedio {inventory.avgMargin}%</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-line bg-paper p-6">
@@ -639,24 +688,51 @@ function Ordenes({
   act: (fn: () => Promise<any>, id: string) => void;
 }) {
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return orders;
     return orders.filter((o) => {
+      if (statusFilter && o.status !== statusFilter) return false;
+      if (!q) return true;
       const hay = `${o.orderNumber} ${o.customer?.name || ''} ${o.customer?.phone || ''} ${o.metroStation || ''}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [orders, query]);
+  }, [orders, query, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
+    return counts;
+  }, [orders]);
+
+  const statusOptions = Object.keys(STATUS_LABEL);
 
   return (
     <div>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar por nº de pedido, cliente, teléfono o estación…"
-        className="input max-w-md"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nº de pedido, cliente, teléfono o estación…"
+          className="input max-w-md"
+        />
+        <button
+          onClick={() => setStatusFilter('')}
+          className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${statusFilter === '' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+        >
+          Todos
+        </button>
+        {statusOptions.map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+            className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${statusFilter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+          >
+            {STATUS_LABEL[s]} · {statusCounts[s] || 0}
+          </button>
+        ))}
+      </div>
       <div className="mt-4 overflow-x-auto rounded-3xl border border-line bg-paper">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
@@ -1063,6 +1139,7 @@ function Productos({
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
               <th className="px-4 py-3">Producto</th>
+              <th className="px-4 py-3">Marca</th>
               <th className="px-4 py-3">Variante</th>
               <th className="px-4 py-3">SKU</th>
               <th className="px-4 py-3">Precio</th>
@@ -1099,6 +1176,11 @@ function Productos({
                       </div>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex rounded-full border border-line bg-soft px-2 py-0.5 text-[11px] font-bold text-muted">
+                      {p.brandName || '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">{v.name || '—'}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">{v.sku || '—'}</td>
                   <td className="px-4 py-3">
@@ -1128,9 +1210,11 @@ function Productos({
                         type="number"
                         defaultValue={v.stock}
                         onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                        className={`input w-24 py-1.5 ${v.stock <= (v.lowStockAlert ?? 0) ? 'border-red-300 text-red-600' : ''}`}
+                        className={`input w-24 py-1.5 ${stockLevel(v.stock, v.lowStockAlert).cls}`}
                       />
-                      {v.stock <= (v.lowStockAlert ?? 0) && <span className="text-[11px] font-bold text-red-500">bajo</span>}
+                      <span className={`text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
+                        {stockLevel(v.stock, v.lowStockAlert).label}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -1143,7 +1227,7 @@ function Productos({
             })}
             {products.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-muted">
+                <td colSpan={9} className="px-4 py-10 text-center text-muted">
                   Sin productos.
                 </td>
               </tr>
@@ -1216,41 +1300,79 @@ function Productos({
   );
 }
 
+function customerSegment(c: ApiCustomer): { label: string; cls: string } {
+  if (c.isVip) return { label: 'VIP', cls: 'bg-amber-100 text-amber-800 border-amber-300' };
+  if (c.totalSpent >= 100000) return { label: 'VIP', cls: 'bg-amber-100 text-amber-800 border-amber-300' };
+  if (c.totalOrders >= 3) return { label: 'Recurrente', cls: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+  if (c.totalOrders >= 1) return { label: 'Activo', cls: 'bg-sky-100 text-sky-800 border-sky-300' };
+  if (c.lastOrderAt) return { label: 'Dormido', cls: 'bg-slate-100 text-slate-700 border-slate-300' };
+  return { label: 'Nuevo', cls: 'bg-soft text-muted border-line' };
+}
+
 function Clientes({ customers }: { customers: ApiCustomer[] }) {
   const [query, setQuery] = useState('');
+  const [segFilter, setSegFilter] = useState('');
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) => `${c.name} ${c.phone} ${c.email || ''}`.toLowerCase().includes(q));
-  }, [customers, query]);
+    return customers.filter((c) => {
+      const matchesQ = !q || `${c.name} ${c.phone} ${c.email || ''}`.toLowerCase().includes(q);
+      const seg = customerSegment(c).label;
+      const matchesSeg = !segFilter || seg === segFilter;
+      return matchesQ && matchesSeg;
+    });
+  }, [customers, query, segFilter]);
+
+  const segOptions = ['VIP', 'Recurrente', 'Activo', 'Nuevo', 'Dormido'];
 
   return (
     <div>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" className="input max-w-md" />
+      <div className="flex flex-wrap items-center gap-2">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" className="input max-w-md" />
+        {segOptions.map((s) => (
+          <button
+            key={s}
+            onClick={() => setSegFilter(segFilter === s ? '' : s)}
+            className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${segFilter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
       <div className="mt-4 overflow-x-auto rounded-3xl border border-line bg-paper">
-        <table className="w-full min-w-[600px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
               <th className="px-4 py-3">Cliente</th>
               <th className="px-4 py-3">Teléfono</th>
+              <th className="px-4 py-3">Segmento</th>
               <th className="px-4 py-3">Órdenes</th>
               <th className="px-4 py-3">Gasto total</th>
+              <th className="px-4 py-3">Última compra</th>
               <th className="px-4 py-3">Registro</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-line/60 last:border-0">
-                <td className="px-4 py-3 font-semibold">{c.name}</td>
-                <td className="px-4 py-3 text-xs">{c.phone}</td>
-                <td className="px-4 py-3">{c.totalOrders}</td>
-                <td className="px-4 py-3 font-bold">{formatPrice(c.totalSpent)}</td>
-                <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
-              </tr>
-            ))}
+            {filtered.map((c) => {
+              const seg = customerSegment(c);
+              return (
+                <tr key={c.id} className="border-b border-line/60 last:border-0">
+                  <td className="px-4 py-3 font-semibold">{c.name}</td>
+                  <td className="px-4 py-3 text-xs">{c.phone}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${seg.cls}`}>{seg.label}</span>
+                  </td>
+                  <td className="px-4 py-3">{c.totalOrders}</td>
+                  <td className="px-4 py-3 font-bold">{formatPrice(c.totalSpent)}</td>
+                  <td className="px-4 py-3 text-xs text-muted">
+                    {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-muted">
                   Sin clientes.
                 </td>
               </tr>
