@@ -16,6 +16,7 @@ import BuyTogether from '@/components/product/BuyTogether';
 import ProductReviews from '@/components/product/ProductReviews';
 import StockUrgency from '@/components/product/StockUrgency';
 import BundleOffers from '@/components/product/BundleOffers';
+import LiveViewers from '@/components/product/LiveViewers';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -148,6 +149,9 @@ export default function ProductDetail({
                 Ahorras {formatPrice((product.oldPrice ?? 0) - product.price)}
               </span>
             )}
+          </div>
+          <div className="mt-3">
+            <LiveViewers productId={product.id} />
           </div>
           <p className="mt-5 text-sm leading-relaxed text-ink/80">{product.desc}</p>
           {product.registroIsp && (
