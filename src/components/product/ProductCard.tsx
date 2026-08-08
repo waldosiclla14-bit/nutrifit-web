@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, ShoppingBag } from 'lucide-react';
@@ -9,10 +10,12 @@ import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount } from '@/lib/utils';
 import Stars from '@/components/ui/Stars';
 import StockUrgency from '@/components/product/StockUrgency';
+import { cx } from '@/lib/utils';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const [loaded, setLoaded] = useState(false);
   const discount = getDiscount(product);
   const fav = isFavorite(product.id);
 
@@ -35,12 +38,17 @@ export default function ProductCard({ product }: { product: Product }) {
         href={`/productos/${product.slug}`}
         className="relative block aspect-square overflow-hidden bg-soft"
       >
+        {!loaded && <div className="skeleton absolute inset-0" aria-hidden="true" />}
         <Image
           src={product.image}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-contain p-5 transition-transform duration-500 group-hover:scale-105"
+          onLoad={() => setLoaded(true)}
+          className={cx(
+            'object-contain p-5 transition-transform duration-500 group-hover:scale-105',
+            !loaded && 'opacity-0',
+          )}
         />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {discount && (

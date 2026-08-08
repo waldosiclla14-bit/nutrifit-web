@@ -2,12 +2,25 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Truck } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
+import Counter from '@/components/ui/Counter';
 import { BRAND } from '@/data/seed';
 
-function Stat({ value, label }: { value: string; label: string }) {
+function Stat({
+  value,
+  suffix,
+  label,
+  decimal = false,
+}: {
+  value: number;
+  suffix?: string;
+  label: string;
+  decimal?: boolean;
+}) {
   return (
     <div>
-      <p className="font-display text-3xl tracking-wide text-accent">{value}</p>
+      <p className="font-display text-3xl tracking-wide text-accent">
+        <Counter end={value} suffix={suffix} decimal={decimal} />
+      </p>
       <p className="mt-1 text-xs text-white/60">{label}</p>
     </div>
   );
@@ -55,9 +68,9 @@ export default function Hero() {
           </Reveal>
           <Reveal delay={340}>
             <div className="mt-10 grid max-w-md grid-cols-3 gap-4">
-              <Stat value="+500" label="Pedidos entregados" />
-              <Stat value="100%" label="Productos originales" />
-              <Stat value="4.9/5" label="Valoración media" />
+              <Stat value={500} suffix="+" label="Pedidos entregados" />
+              <Stat value={100} suffix="%" label="Productos originales" />
+              <Stat value={4.9} suffix="/5" decimal label="Valoración media" />
             </div>
           </Reveal>
         </div>

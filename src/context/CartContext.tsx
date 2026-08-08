@@ -12,6 +12,7 @@ import {
 import type { Bundle, CartItem, Settings } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { getSettings, subscribeStore } from '@/lib/store';
+import { trackEvent } from '@/components/analytics/MetaPixel';
 
 type CartValue = {
   items: CartItem[];
@@ -106,7 +107,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated, giftThreshold, giftProductId]);
 
-  const openCart = useCallback(() => setIsOpen(true), []);
+  const openCart = useCallback(() => {
+    setIsOpen(true);
+    trackEvent('BeginCheckout', { currency: 'CLP' });
+  }, []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const addItem = useCallback((item: Omit<CartItem, 'key'>) => {
@@ -120,6 +124,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [...prev, { ...item, key: `p${item.productId}-${Date.now()}` }];
     });
     setIsOpen(true);
+    trackEvent('AddToCart', {
+      currency: 'CLP',
+      value: item.price * item.quantity,
+      content_ids: [String(item.productId)],
+      content_name: item.name,
+      content_type: 'product',
+    });
   }, []);
 
   const addBundle = useCallback(

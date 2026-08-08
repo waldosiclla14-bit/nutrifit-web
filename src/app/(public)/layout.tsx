@@ -7,6 +7,9 @@ import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
 import RecentSalesToast from '@/components/ui/RecentSalesToast';
+import StickyCTAMobile from '@/components/home/StickyCTAMobile';
+import MetaPixel from '@/components/analytics/MetaPixel';
+import GA4 from '@/components/analytics/GA4';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
@@ -35,14 +38,12 @@ export const metadata: Metadata = {
     title: 'NUTRIFIT | Suplementos Deportivos Premium',
     description:
       'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
-    images: [{ url: '/img/logo.png', width: 512, height: 512, alt: 'NUTRIFIT' }],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'NUTRIFIT | Suplementos Deportivos Premium',
     description:
       'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
-    images: ['/img/logo.png'],
   },
   robots: { index: true, follow: true },
   icons: { icon: '/img/logo.png' },
@@ -98,6 +99,9 @@ export default function PublicLayout({
           <CartDrawer />
           <WhatsAppFloat />
           <RecentSalesToast />
+          <StickyCTAMobile />
+          <MetaPixel />
+          <GA4 />
         </CartProvider>
       </FavoritesProvider>
     </>

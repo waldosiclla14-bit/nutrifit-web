@@ -46,6 +46,8 @@ export type Testimonial = {
   role: string;
   rating: number;
   text: string;
+  avatar?: string;
+  verified?: boolean;
 };
 
 export type Review = {
