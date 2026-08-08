@@ -8,6 +8,7 @@ import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
 import RecentSalesToast from '@/components/ui/RecentSalesToast';
 import StickyCTAMobile from '@/components/home/StickyCTAMobile';
+import ExitIntentPopup from '@/components/home/ExitIntentPopup';
 import MetaPixel from '@/components/analytics/MetaPixel';
 import GA4 from '@/components/analytics/GA4';
 
@@ -100,6 +101,7 @@ export default function PublicLayout({
           <WhatsAppFloat />
           <RecentSalesToast />
           <StickyCTAMobile />
+          <ExitIntentPopup />
           <MetaPixel />
           <GA4 />
         </CartProvider>

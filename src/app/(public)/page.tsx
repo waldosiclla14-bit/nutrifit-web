@@ -9,6 +9,7 @@ import Combos from '@/components/home/Combos';
 import BundlesSection from '@/components/home/BundlesSection';
 import Benefits from '@/components/home/Benefits';
 import HowTo from '@/components/home/HowTo';
+import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 import Testimonials from '@/components/home/Testimonials';
 import BlogPreview from '@/components/home/BlogPreview';
@@ -34,6 +35,7 @@ export default function Home() {
       <BundlesSection />
       <Benefits />
       <HowTo />
+      <MetroCoverage />
       <FAQ />
       <Testimonials />
       <BlogPreview />

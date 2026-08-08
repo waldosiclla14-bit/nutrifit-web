@@ -12,7 +12,7 @@ import {
 import type { Bundle, CartItem, Settings } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { getSettings, subscribeStore } from '@/lib/store';
-import { trackEvent } from '@/components/analytics/MetaPixel';
+import { trackEvent } from '@/lib/analytics';
 
 type CartValue = {
   items: CartItem[];
