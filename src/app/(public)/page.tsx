@@ -12,6 +12,7 @@ import HowTo from '@/components/home/HowTo';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 import Testimonials from '@/components/home/Testimonials';
+import Storytelling from '@/components/home/Storytelling';
 import BlogPreview from '@/components/home/BlogPreview';
 import Newsletter from '@/components/home/Newsletter';
 
@@ -38,6 +39,7 @@ export default function Home() {
       <MetroCoverage />
       <FAQ />
       <Testimonials />
+      <Storytelling />
       <BlogPreview />
       <Newsletter />
     </>
