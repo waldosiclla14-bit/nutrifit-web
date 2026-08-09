@@ -12,7 +12,11 @@ async function main() {
   // Usuario admin
   await prisma.user.upsert({
     where: { email: 'admin@nutrifit.cl' },
-    update: {},
+    update: {
+      name: 'Administrador',
+      role: 'ADMIN',
+      password: adminPassword,
+    },
     create: {
       email: 'admin@nutrifit.cl',
       name: 'Administrador',
@@ -24,7 +28,11 @@ async function main() {
   // Usuario vendedor
   await prisma.user.upsert({
     where: { email: 'vendedor@nutrifit.cl' },
-    update: {},
+    update: {
+      name: 'Vendedor POS',
+      role: 'SELLER',
+      password: sellerPassword,
+    },
     create: {
       email: 'vendedor@nutrifit.cl',
       name: 'Vendedor POS',
