@@ -1,0 +1,16 @@
+{
+  "name": "nutrifit-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node mejoras-e2e.js",
+    "test:prod": "cross-env BASE=https://nutrifit-web-nu.vercel.app node mejoras-e2e.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^22.15.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
