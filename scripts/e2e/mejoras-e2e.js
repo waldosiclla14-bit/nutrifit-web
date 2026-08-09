@@ -133,6 +133,49 @@ async function main() {
   );
   check('seo: canonical /productos', new URL(prodCanonical).pathname, '/productos');
 
+  // PDP: JSON-LD Product + twitter image
+  await page.goto(
+    `${BASE}/productos/fullenergic-100-whey-protein-vainilla-1kg`,
+    { waitUntil: 'networkidle2', timeout: 60000 },
+  );
+  const pdp = await page.evaluate(() => {
+    const ld = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+      .map((s) => JSON.parse(s.textContent || '{}'))
+      .find((o) => o['@type'] === 'Product');
+    const twImg = document.querySelector('meta[name="twitter:image"]')?.content || '';
+    return {
+      product: !!ld,
+      rating: ld?.aggregateRating?.ratingValue === 4.9,
+      offer: !!ld?.offers?.price,
+      twImg: twImg.length > 0,
+    };
+  });
+  check('pdp: JSON-LD Product', pdp.product, true);
+  check('pdp: AggregateRating', pdp.rating, true);
+  check('pdp: Offer price', pdp.offer, true);
+  check('pdp: twitter:image presente', pdp.twImg, true);
+
+  // Blog: JSON-LD BlogPosting
+  await page.goto(`${BASE}/blog/que-proteina-elegir`, {
+    waitUntil: 'networkidle2',
+    timeout: 60000,
+  });
+  const blog = await page.evaluate(() => {
+    const ld = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
+      .map((s) => JSON.parse(s.textContent || '{}'))
+      .find((o) => o['@type'] === 'BlogPosting');
+    return {
+      posting: !!ld,
+      headline: !!ld?.headline,
+      datePublished: !!ld?.datePublished,
+      publisher: ld?.publisher?.name === 'NutriFit',
+    };
+  });
+  check('blog: JSON-LD BlogPosting', blog.posting, true);
+  check('blog: headline', blog.headline, true);
+  check('blog: datePublished', blog.datePublished, true);
+  check('blog: publisher NutriFit', blog.publisher, true);
+
   await ctx.close();
   await browser.close();
 

@@ -25,6 +25,11 @@ export async function generateMetadata({
       description: product.desc,
       images: [{ url: product.image }],
     },
+    twitter: {
+      title: `${product.name} · NUTRIFIT`,
+      description: product.desc,
+      images: [{ url: product.image }],
+    },
     alternates: { canonical: `/productos/${product.slug}` },
   };
 }
