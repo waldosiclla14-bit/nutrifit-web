@@ -181,6 +181,7 @@ model Order {
   deliveryType    DeliveryType  @default(METRO)
   metroLine       String?
   metroStation    String?
+  deliveryDay     String?
   deliveryTime    String?
   deliveryDetails String?
   subtotal        Int

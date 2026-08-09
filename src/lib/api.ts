@@ -100,6 +100,7 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       deliveryType: 'METRO',
       metroLine: order.metroLine,
       metroStation: order.metroStation,
+      deliveryDay: order.deliveryDay,
       deliveryTime: order.deliveryTime,
       subtotal: order.subtotal,
       discount: order.discount ?? 0,

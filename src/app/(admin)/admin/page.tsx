@@ -31,6 +31,7 @@ type ApiOrder = {
   deliveryType?: string;
   metroLine?: string;
   metroStation?: string;
+  deliveryDay?: string;
   deliveryTime?: string;
   createdAt: string;
   customer?: { id: string; name: string; phone: string } | null;
@@ -763,6 +764,7 @@ function Ordenes({
                     <>
                       <p>Metro {o.metroLine}</p>
                       <p className="text-muted">{o.metroStation}</p>
+                      {o.deliveryDay && <p className="text-muted">Día: {o.deliveryDay}</p>}
                       {o.deliveryTime && <p className="text-muted">Hora: {o.deliveryTime}</p>}
                     </>
                   ) : (

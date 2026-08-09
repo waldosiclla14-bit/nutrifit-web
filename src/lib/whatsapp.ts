@@ -6,6 +6,7 @@ type OrderPayload = {
   phone: string;
   metroLine?: string;
   metroStation?: string;
+  deliveryDay?: string;
   deliveryTime?: string;
   payment?: string;
   items: OrderItem[];
@@ -26,6 +27,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   if (order.metroStation) {
     lines.push(`*Entrega:* Metro ${order.metroStation} — Línea ${order.metroLine}`);
   }
+  if (order.deliveryDay) lines.push(`*Día de entrega:* ${order.deliveryDay}`);
   if (order.deliveryTime) lines.push(`*Hora de entrega:* ${order.deliveryTime}`);
   lines.push(`*Pago:* ${order.payment ?? 'Contra entrega'}`);
   lines.push('');

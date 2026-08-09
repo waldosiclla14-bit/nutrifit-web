@@ -27,6 +27,16 @@ import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
+const DELIVERY_DAY_OPTIONS = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+];
+
 const DELIVERY_TIME_OPTIONS = Array.from({ length: 23 }, (_, i) => {
   const minutes = 10 * 60 + i * 30;
   const h = Math.floor(minutes / 60);
@@ -56,6 +66,7 @@ export default function CartDrawer() {
   const [phone, setPhone] = useState('');
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
+  const [deliveryDay, setDeliveryDay] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [payment, setPayment] = useState('');
   const [error, setError] = useState('');
@@ -132,6 +143,10 @@ export default function CartDrawer() {
       setError('Elige tu línea y estación de metro.');
       return;
     }
+    if (!deliveryDay) {
+      setError('Elige el día de entrega.');
+      return;
+    }
     if (!deliveryTime) {
       setError('Elige la hora de entrega.');
       return;
@@ -147,6 +162,7 @@ export default function CartDrawer() {
       phone: phone.trim(),
       metroLine,
       metroStation: metroStation.trim(),
+      deliveryDay,
       deliveryTime,
       payment,
       items: toOrderItems(),
@@ -613,6 +629,19 @@ export default function CartDrawer() {
                     ))}
                   </select>
                 </div>
+                <select
+                  value={deliveryDay}
+                  onChange={(e) => setDeliveryDay(e.target.value)}
+                  aria-label="Día de entrega"
+                  className="input"
+                >
+                  <option value="">Día de entrega...</option>
+                  {DELIVERY_DAY_OPTIONS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
                 <select
                   value={deliveryTime}
                   onChange={(e) => setDeliveryTime(e.target.value)}
