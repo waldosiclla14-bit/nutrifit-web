@@ -22,11 +22,11 @@ export default function StockUrgency({
     return (
       <div className="w-full">
         <div className="flex items-center justify-between text-xs font-bold">
-          <span className={low ? 'text-red-500' : 'text-amber-600'}>{label}</span>
+          <span className={low ? 'text-red-700' : 'text-amber-700'}>{label}</span>
           <span
             className={cx(
               'rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide',
-              low ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+              low ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
             )}
           >
             Stock bajo
@@ -49,7 +49,7 @@ export default function StockUrgency({
     <span
       className={cx(
         'rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide',
-        low ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700',
+        low ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700',
       )}
     >
       {label}

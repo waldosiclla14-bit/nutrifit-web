@@ -5,12 +5,15 @@
   "type": "commonjs",
   "scripts": {
     "test": "node mejoras-e2e.js",
-    "test:prod": "cross-env BASE=https://nutrifit-web-nu.vercel.app node mejoras-e2e.js"
+    "test:prod": "cross-env BASE=https://nutrifit-web-nu.vercel.app node mejoras-e2e.js",
+    "test:a11y": "node audit-a11y.js",
+    "test:a11y:prod": "cross-env BASE=https://nutrifit-web-nu.vercel.app node audit-a11y.js"
   },
   "dependencies": {
     "puppeteer-core": "^22.15.0"
   },
   "devDependencies": {
+    "axe-core": "^4.13.0",
     "cross-env": "^7.0.3"
   }
 }

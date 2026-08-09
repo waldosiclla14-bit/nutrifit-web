@@ -8,7 +8,7 @@ export default function Stars({
   size?: number;
 }) {
   return (
-    <div className="flex items-center gap-0.5" aria-label={`${rating} de 5 estrellas`}>
+    <div className="flex items-center gap-0.5" role="img" aria-label={`${rating} de 5 estrellas`}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
