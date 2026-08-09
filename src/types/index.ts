@@ -118,6 +118,7 @@ export type Order = {
   phone: string;
   metroLine?: string;
   metroStation?: string;
+  deliveryTime?: string;
   payment?: string;
   items: OrderItem[];
   subtotal: number;

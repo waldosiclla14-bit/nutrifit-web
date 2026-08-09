@@ -89,6 +89,7 @@ export class OrdersService {
         deliveryType: data.deliveryType || 'METRO',
         metroLine: data.metroLine,
         metroStation: data.metroStation,
+        deliveryTime: data.deliveryTime,
         deliveryDetails: data.deliveryDetails,
         subtotal: data.subtotal,
         discount: data.discount || 0,

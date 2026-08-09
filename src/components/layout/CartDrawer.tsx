@@ -27,6 +27,16 @@ import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
+const DELIVERY_TIME_OPTIONS = [
+  'Lo antes posible',
+  '09:00 – 11:00',
+  '11:00 – 13:00',
+  '13:00 – 15:00',
+  '15:00 – 17:00',
+  '17:00 – 19:00',
+  '19:00 – 21:00',
+];
+
 export default function CartDrawer() {
   const {
     items,
@@ -49,6 +59,7 @@ export default function CartDrawer() {
   const [phone, setPhone] = useState('');
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('');
   const [payment, setPayment] = useState('');
   const [error, setError] = useState('');
   const [placed, setPlaced] = useState(false);
@@ -124,6 +135,10 @@ export default function CartDrawer() {
       setError('Elige tu línea y estación de metro.');
       return;
     }
+    if (!deliveryTime) {
+      setError('Elige la hora de entrega.');
+      return;
+    }
     if (!payment) {
       setError('Elige tu método de pago.');
       return;
@@ -135,6 +150,7 @@ export default function CartDrawer() {
       phone: phone.trim(),
       metroLine,
       metroStation: metroStation.trim(),
+      deliveryTime,
       payment,
       items: toOrderItems(),
       subtotal,
@@ -600,6 +616,19 @@ export default function CartDrawer() {
                     ))}
                   </select>
                 </div>
+                <select
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  aria-label="Hora de entrega"
+                  className="input"
+                >
+                  <option value="">Hora de entrega...</option>
+                  {DELIVERY_TIME_OPTIONS.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
                 <select
                   value={payment}
                   onChange={(e) => setPayment(e.target.value)}
