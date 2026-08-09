@@ -27,15 +27,12 @@ import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
-const DELIVERY_TIME_OPTIONS = [
-  'Lo antes posible',
-  '09:00 – 11:00',
-  '11:00 – 13:00',
-  '13:00 – 15:00',
-  '15:00 – 17:00',
-  '17:00 – 19:00',
-  '19:00 – 21:00',
-];
+const DELIVERY_TIME_OPTIONS = Array.from({ length: 23 }, (_, i) => {
+  const minutes = 10 * 60 + i * 30;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+});
 
 export default function CartDrawer() {
   const {
