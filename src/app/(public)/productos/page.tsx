@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Catálogo de Suplementos',
   description:
     'Explora el catálogo de suplementos deportivos NutriFit: whey protein, creatina, vitaminas y bienestar. Filtra por marca, precio y objetivo.',
+  alternates: { canonical: '/productos' },
 };
 
 export default async function CatalogPage({

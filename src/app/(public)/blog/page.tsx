@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: 'Blog y Guías',
   description:
     'Guías y consejos de nutrición deportiva: proteínas, creatina, suplementos y más. Aprende a elegir y usar tus suplementos NutriFit.',
+  alternates: { canonical: '/blog' },
 };
 
 export default function BlogPage() {

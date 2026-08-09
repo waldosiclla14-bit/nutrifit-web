@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Información Legal',
   description:
     'Políticas de entrega, términos y condiciones y política de privacidad de NutriFit, suplementos deportivos en Santiago de Chile.',
+  alternates: { canonical: '/legal' },
 };
 
 export default function LegalPage() {

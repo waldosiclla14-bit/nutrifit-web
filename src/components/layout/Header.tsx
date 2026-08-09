@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Heart, Instagram, Menu, ShoppingBag, X } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
@@ -37,8 +38,15 @@ export default function Header() {
       <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
         <div className="container-px flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label="NutriFit – Inicio">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/img/logo.png" alt="NUTRIFIT" className="h-10 w-auto" />
+            <Image
+              src="/img/logo.png"
+              alt="NUTRIFIT"
+              width={1536}
+              height={1024}
+              sizes="120px"
+              priority
+              className="h-10 w-auto"
+            />
             <span className="font-display text-xl uppercase tracking-wide">
               Nutri<span className="text-accentDeep">Fit</span>
             </span>

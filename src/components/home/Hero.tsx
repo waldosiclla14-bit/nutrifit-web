@@ -85,6 +85,7 @@ export default function Hero() {
                   alt="FullEnergic 100% Whey Protein Vainilla 1kg"
                   width={420}
                   height={420}
+                  priority
                   className="mx-auto w-full object-contain"
                 />
               </div>
