@@ -734,13 +734,13 @@ const PRODUCT_RAW: ProductRaw[] = [
   },
   {
     id: 36,
-    name: 'Ostrovit 100% Whey Protein 700g Chocolate',
-    brand: 'Ostrovit',
+    name: 'OstroVit 100% Whey Protein 700g Chocolate Dream',
+    brand: 'OstroVit',
     category: 'proteinas',
     categoryLabel: 'Proteínas',
     price: 31500,
     oldPrice: 35000,
-    desc: 'Proteína 100% whey en polvo de Ostrovit, formato 700 g que rinde 23 servicios. Aporta 21 g de proteína y 4,8 g de BCAAs por servicio. Alto contenido proteico con efecto anabólico y anticatabólico, ideal para desarrollar y conservar masa muscular en todas las disciplinas deportivas.',
+    desc: 'Proteína 100% whey en polvo de OstroVit, formato 700 g sabor Chocolate Dream que rinde 23 servicios. Aporta 21 g de proteína y 4,8 g de BCAAs por servicio. Alto contenido proteico con efecto anabólico y anticatabólico, ideal para desarrollar y conservar masa muscular en todas las disciplinas deportivas.',
     benefits: [
       'Alto contenido de proteínas',
       'Fuente de aminoácidos de cadena ramificada (BCAA)',
@@ -760,7 +760,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     nutrientes: [['Servicios', '23'], ['Proteína por servicio', '21 g'], ['BCAAs por servicio', '4,8 g'], ['Peso', '700 g']],
     ingredientes: ['100% Whey Protein (concentrado de proteína de suero de leche)', 'Saborizante natural chocolate', 'Aminoácidos de cadena ramificada (BCAAs)', 'Sin azúcares añadidos'],
     goal: ['ganancia-muscular', 'rendimiento'],
-    tags: ['ostrovit', 'whey', 'proteina', '700g', 'chocolate', 'bcaa', 'suero'],
+    tags: ['ostrovit', 'whey', 'proteina', '700g', 'chocolate', 'chocolate-dream', 'bcaa', 'suero'],
     bestseller: true,
   },
 ];
@@ -776,6 +776,7 @@ export const PRODUCT_ALIASES: Record<string, string> = {
   'fullenergic-100-whey-protein-galleta-1kg': 'fullenergic-100-whey-protein-1kg',
   'fullenergic-100-whey-protein-chocolate-1kg': 'fullenergic-100-whey-protein-1kg',
   'fullenergic-100-whey-protein-manjar-1kg': 'fullenergic-100-whey-protein-1kg',
+  'ostrovit-100-whey-protein-700g-chocolate': 'ostrovit-100-whey-protein-700g-chocolate-dream',
 };
 
 export const CATEGORIES: Category[] = [
