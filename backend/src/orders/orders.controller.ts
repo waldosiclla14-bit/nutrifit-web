@@ -37,16 +37,16 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
-  @Post()
-  create(@Body() data: any, @Request() req: any) {
-    return this.ordersService.create({ ...data, createdById: req.user?.id });
-  }
-
   @Post('reset-history')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   resetHistory() {
     return this.ordersService.resetHistory();
+  }
+
+  @Post()
+  create(@Body() data: any, @Request() req: any) {
+    return this.ordersService.create({ ...data, createdById: req.user?.id });
   }
 
   @Patch(':id/status')
@@ -57,7 +57,8 @@ export class OrdersController {
   }
 
   @Patch(':id/payment')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   confirmPayment(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     return this.ordersService.confirmPayment(id, body, req.user?.id);
   }
