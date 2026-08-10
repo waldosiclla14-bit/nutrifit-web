@@ -672,7 +672,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     rating: 4.9,
     reviews: 8,
     badge: 'Oferta',
-    image: '/img/producto36.jpg',
+    image: '/img/ostrovit-whey.jpg',
     modoUso: 'Disolver 1 porción (30 g, aproximadamente 2 cucharadas soperas) en 200–250 ml de agua fría o bebida vegetal. Tomar principalmente justo después de entrenar o como refuerzo proteico entre comidas para completar tus requerimientos proteicos diarios.',
     nutrientes: [['Energía', '120 kcal'], ['Proteínas', '24 g'], ['Grasa total', '1.7 g'], ['Hidratos de carbono disponibles', '2.3 g'], ['Azúcares totales', '0 g'], ['Sodio', '0 mg']],
     ingredientes: ['Aislado de proteína de guisante', 'Perfil completo de aminoácidos (rica en BCAAs)', 'Sin lácteos, gluten ni soya', 'Certificación Vegan'],
