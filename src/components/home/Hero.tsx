@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { Truck } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
 import Counter from '@/components/ui/Counter';
-import { BRAND } from '@/data/seed';
 
 function Stat({
   value,
@@ -36,33 +35,48 @@ export default function Hero() {
       <div className="container-px relative grid min-h-[70vh] items-center gap-12 py-16 lg:grid-cols-2 lg:py-20">
         <div>
           <Reveal>
-            <p className="text-xs font-extrabold uppercase tracking-[0.3em] text-accent">
-              Suplementos deportivos · Chile
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-accent sm:tracking-[0.3em]">
+              Pack más vendido · elige tu sabor
             </p>
           </Reveal>
           <Reveal delay={80}>
-            <h1 className="mt-4 font-display text-6xl uppercase leading-[0.9] tracking-wide sm:text-7xl lg:text-8xl">
-              Nutri<span className="text-accent">Fit</span>
+            <h1 className="mt-4 max-w-3xl font-display text-5xl uppercase leading-[0.9] tracking-wide sm:text-7xl lg:text-8xl">
+              Whey +<br />
+              <span className="text-accent">creatina.</span>
             </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="mt-3 text-base font-bold uppercase tracking-[0.25em] text-white/85 sm:text-lg">
-              {BRAND.tagline}
+            <p className="mt-4 text-base font-bold uppercase tracking-[0.14em] text-white/85 sm:text-lg sm:tracking-[0.2em]">
+              Tu stack empieza aquí
             </p>
           </Reveal>
           <Reveal delay={220}>
             <p className="mt-4 max-w-md text-base leading-relaxed text-white/70">
-              Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad.
-              Productos originales, entrega en metro en todas las líneas.
+              FullEnergic Whey Protein 1kg + Creatina Eco Naturales 300g. Elige entre 5 sabores y
+              entrena con productos originales.
             </p>
+          </Reveal>
+          <Reveal delay={250}>
+            <div className="mt-6 inline-flex max-w-full flex-col rounded-2xl border border-accent/35 bg-white/10 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:gap-5">
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-accent">
+                  Pack proteína + creatina
+                </p>
+                <p className="mt-1 text-xs text-white/65">5 sabores · entrega en Metro</p>
+              </div>
+              <div className="mt-2 flex items-baseline gap-2 sm:mt-0">
+                <span className="text-xs text-white/50 line-through">$30.000</span>
+                <strong className="font-display text-2xl tracking-wide text-white">$27.500</strong>
+              </div>
+            </div>
           </Reveal>
           <Reveal delay={280}>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/productos" className="btn-accent">
-                Comprar Ahora
+                Comprar ahora
               </Link>
-              <Link href="/#destacados" className="btn-outline-dark">
-                Ver Destacados
+              <Link href="/#sets" className="btn-outline-dark">
+                Ver el pack
               </Link>
             </div>
           </Reveal>
@@ -81,16 +95,19 @@ export default function Hero() {
             <div className="animate-floaty">
               <div className="relative rounded-[2.5rem] border border-white/10 bg-white/5 p-8 backdrop-blur">
                 <Image
-                  src="/img/producto1.webp"
-                  alt="FullEnergic 100% Whey Protein Vainilla 1kg"
-                  width={420}
-                  height={420}
+                  src="/img/proteina whey full energic + creatina eco naturales 300g.png"
+                  alt="Pack FullEnergic Whey Protein y Creatina Eco Naturales"
+                  width={720}
+                  height={720}
                   priority
                   className="mx-auto w-full object-contain"
                 />
               </div>
-              <span className="absolute -left-3 top-10 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold text-ink shadow-glow">
-                -11% OFF
+              <span className="absolute -left-3 top-8 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold text-ink shadow-glow sm:top-10">
+                -8% OFF
+              </span>
+              <span className="absolute -right-3 bottom-10 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-ink shadow-soft sm:bottom-12">
+                5 sabores
               </span>
               <span className="absolute -bottom-3 right-4 flex items-center gap-1.5 rounded-full bg-dark px-3.5 py-1.5 text-xs font-bold text-white ring-1 ring-white/25">
                 <Truck size={13} className="text-accent" /> Entrega en Metro

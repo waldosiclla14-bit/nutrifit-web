@@ -976,7 +976,7 @@ export const BANNERS: Banner[] = [
     id: 'pack-proteina-creatina',
     title: 'Pack Proteína + Creatina',
     subtitle: 'Whey FullEnergic 1kg + Creatina Eco Naturales por solo $27.500. Elige tu sabor.',
-    image: '/img/producto1.webp',
+    image: '/img/proteina whey full energic + creatina eco naturales 300g.png',
     link: '/#sets',
     cta: 'Ver el pack',
     active: true,

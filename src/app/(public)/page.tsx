@@ -80,6 +80,7 @@ export default function Home() {
       <PromoStrip />
       <PromoBanner />
       <TrackOrderChip />
+      <BundlesSection />
       <Categories />
       <FeaturedCarousel />
       <CategoryCarousel
@@ -90,7 +91,6 @@ export default function Home() {
         linkLabel="Todos los accesorios"
       />
       <Combos />
-      <BundlesSection />
       <Benefits />
       <HowTo />
       <MetroCoverage />
