@@ -75,8 +75,8 @@ export default function Hero() {
           </Reveal>
         </div>
 
-        <Reveal delay={200} className="hidden lg:block">
-          <div className="relative mx-auto max-w-md">
+        <Reveal delay={200} className="block">
+          <div className="relative mx-auto max-w-xs sm:max-w-md">
             <div className="absolute inset-0 -z-10 rounded-full bg-accent/20 blur-[90px]" />
             <div className="animate-floaty">
               <div className="relative rounded-[2.5rem] border border-white/10 bg-white/5 p-8 backdrop-blur">

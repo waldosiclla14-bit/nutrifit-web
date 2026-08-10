@@ -973,12 +973,12 @@ export const BANNERS: Banner[] = [
     active: true,
   },
   {
-    id: 'set-masa-fuerza',
-    title: 'Set Masa + Fuerza',
-    subtitle: 'Whey protein + creatina por solo $29.000. Ahorra $2.000 hoy.',
-    image: '/img/producto8.webp',
-    link: '/productos',
-    cta: 'Armar mi set',
+    id: 'pack-proteina-creatina',
+    title: 'Pack Proteína + Creatina',
+    subtitle: 'Whey FullEnergic 1kg + Creatina Eco Naturales por solo $27.500. Elige tu sabor.',
+    image: '/img/producto1.webp',
+    link: '/#sets',
+    cta: 'Ver el pack',
     active: true,
   },
 ];
