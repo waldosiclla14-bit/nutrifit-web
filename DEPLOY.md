@@ -49,7 +49,7 @@ Para regenerar el API key si se pierde: render.com → Settings → API Keys →
 2. **New → Web Service**, elige el repo y la carpeta raíz `backend`.
 3. Configura:
    - **Runtime**: Docker (usa el `Dockerfile` incluido).
-   - **Health Check Path**: `/api/docs` (o `/api/products`).
+    - **Health Check Path**: `/api/products`.
 4. **Environment variables**:
 
    | Variable            | Valor                                        |
@@ -58,14 +58,14 @@ Para regenerar el API key si se pierde: render.com → Settings → API Keys →
    | `JWT_SECRET`        | Clave larga y aleatoria (p. ej. `openssl rand -hex 32`) |
    | `JWT_EXPIRES_IN`    | `7d`                                         |
    | `PORT`              | `3001` (Render la asigna igual, se deja igual) |
-   | `CORS_ORIGIN`       | `https://tu-dominio.vercel.app` (opcional)   |
+    | `CORS_ORIGINS`      | `https://nutrifit-web-nu.vercel.app`         |
+    | `ADMIN_PASSWORD`    | Contraseña inicial segura, mínimo 12 caracteres |
+    | `SELLER_PASSWORD`   | Contraseña inicial segura, mínimo 12 caracteres |
 
-5. Al arrancar, el contenedor ejecuta `npx prisma db push` + seed automáticamente (crea tablas y usuarios iniciales). La primera vez se crean:
-   - `admin@nutrifit.cl` / `REDACTED_PASSWORD`
-   - `vendedor@nutrifit.cl` / `REDACTED_PASSWORD`
+5. Al arrancar, el contenedor ejecuta `npx prisma db push` + seed automáticamente. Las contraseñas iniciales se leen de `ADMIN_PASSWORD` y `SELLER_PASSWORD`; no están hardcodeadas.
 6. Anota la URL del servicio, p. ej. `https://nutrifit-api.onrender.com`.
 
-> ⚠️ Cambia las contraseñas por defecto tras el primer deploy y guarda un `JWT_SECRET` fuerte.
+> ⚠️ Usa secretos únicos en Render y no los guardes en GitHub.
 
 ## 3. Frontend en Vercel
 

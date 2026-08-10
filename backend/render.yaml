@@ -4,7 +4,7 @@ services:
     runtime: docker
     repo: https://github.com/waldosiclla14-bit/nutrifit-web
     rootDir: backend
-    healthCheckPath: /api/docs
+    healthCheckPath: /api/products
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
@@ -13,5 +13,11 @@ services:
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
+      - key: CORS_ORIGINS
+        value: https://nutrifit-web-nu.vercel.app
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: SELLER_PASSWORD
+        generateValue: true
       - key: PORT
         value: 3001
