@@ -15,56 +15,50 @@ export default async function Image() {
           width: '100%',
           height: '100%',
           display: 'flex',
+          position: 'relative',
+          overflow: 'hidden',
           flexDirection: 'column',
           justifyContent: 'space-between',
           background: '#0b0b0b',
           color: '#ffffff',
-          padding: 64,
+          padding: 72,
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              background: '#b2f237',
-              color: '#0b0b0b',
-              fontSize: 40,
-              fontWeight: 800,
-            }}
-          >
-            N
+        <div
+          style={{
+            position: 'absolute',
+            right: -120,
+            top: -180,
+            width: 620,
+            height: 620,
+            borderRadius: 999,
+            background: '#b2f237',
+            opacity: 0.9,
+          }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: 4 }}>NUTRI<span style={{ color: '#b2f237' }}>FIT</span></div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#b2f237', letterSpacing: 3 }}>
+            SUPLEMENTOS DEPORTIVOS · SANTIAGO
           </div>
-          <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: 4 }}>
-            NUTRIFIT
+          <div style={{ display: 'flex', flexDirection: 'column', fontSize: 82, fontWeight: 900, lineHeight: 0.98 }}>
+            <span>WHEY +</span>
+            <span style={{ color: '#b2f237' }}>CREATINA</span>
+          </div>
+          <div style={{ fontSize: 32, color: 'rgba(255,255,255,0.78)' }}>
+            Packs desde $27.500 · Elige tu sabor
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', fontSize: 72, fontWeight: 800, lineHeight: 1.1 }}>
-            <span>Suplementos Deportivos&nbsp;</span>
-            <span style={{ color: '#b2f237' }}>Premium</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative' }}>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>
+            Entrega en estaciones de Metro · Compra por WhatsApp
           </div>
-          <div style={{ fontSize: 30, color: 'rgba(255,255,255,0.75)' }}>
-            Whey protein · Creatina · Vitaminas · Bienestar — Santiago de Chile
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: 22, color: '#b2f237', fontWeight: 700 }}>
-              {BRAND.tagline}
-            </div>
-            <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }}>
-              Entrega en estaciones de metro · Compra por WhatsApp
-            </div>
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#b2f237' }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#0b0b0b', background: '#b2f237', padding: '12px 20px', borderRadius: 999 }}>
             {BRAND.whatsapp}
           </div>
         </div>

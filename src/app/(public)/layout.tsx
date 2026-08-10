@@ -32,14 +32,15 @@ export const metadata: Metadata = {
     'suplementos Santiago',
   ],
   authors: [{ name: 'NutriFit' }],
-  openGraph: {
+    openGraph: {
     type: 'website',
     locale: 'es_CL',
     url: BRAND.url,
     siteName: BRAND.name,
     title: 'NUTRIFIT | Suplementos Deportivos Premium',
-    description:
-      'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
+      description:
+        'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit Whey y Creatina' }],
   },
   twitter: {
     card: 'summary_large_image',
