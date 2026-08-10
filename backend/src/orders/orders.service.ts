@@ -128,6 +128,17 @@ export class OrdersService {
     return order;
   }
 
+  async resetHistory() {
+    return this.prisma.$transaction(async (tx) => {
+      const orders = await tx.order.count();
+      const customers = await tx.customer.count();
+      await tx.orderItem.deleteMany();
+      await tx.order.deleteMany();
+      await tx.customer.deleteMany();
+      return { orders, customers };
+    });
+  }
+
   async updateStatus(id: string, status: OrderStatus, userId?: string) {
     const order = await this.findOne(id);
     const oldStatus = order.status;

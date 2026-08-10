@@ -42,6 +42,13 @@ export class OrdersController {
     return this.ordersService.create({ ...data, createdById: req.user?.id });
   }
 
+  @Post('reset-history')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  resetHistory() {
+    return this.ordersService.resetHistory();
+  }
+
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)

@@ -375,6 +375,16 @@ function Dashboard({
     }
   };
 
+  const resetHistory = async () => {
+    const first = window.confirm(
+      'Esto eliminará permanentemente todos los pedidos, ventas y clientes. Los productos y usuarios se conservarán. ¿Continuar?',
+    );
+    if (!first) return;
+    const second = window.prompt('Escribe REINICIAR para confirmar:');
+    if (second !== 'REINICIAR') return;
+    await act(() => apiFetch('/orders/reset-history', { method: 'POST', token }), 'reset-history');
+  };
+
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
     { key: 'ordenes', label: 'Órdenes', icon: ShoppingBag },
@@ -397,6 +407,14 @@ function Dashboard({
           </button>
           <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs" title="Cambiar contraseña">
             <KeyRound size={14} /> Contraseña
+          </button>
+          <button
+            onClick={resetHistory}
+            disabled={busyId === 'reset-history'}
+            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            title="Reiniciar pedidos, ventas y clientes"
+          >
+            <Trash2 size={14} /> Reiniciar historial
           </button>
           <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
             <LogOut size={14} /> Salir
