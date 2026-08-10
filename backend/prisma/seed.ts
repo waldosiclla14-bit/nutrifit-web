@@ -4,10 +4,11 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Credenciales iniciales: leer de env (obligatorio en producción).
-  // En un deploy real setea SEED_ADMIN_PASSWORD y SEED_SELLER_PASSWORD.
-  const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD ?? 'admin123', 10);
-  const sellerPassword = await bcrypt.hash(process.env.SEED_SELLER_PASSWORD ?? 'vendedor123', 10);
+  // Contraseñas forzadas por defecto para restablecer el acceso al panel.
+  // (No dependen de env: en producción Render podría tener SEED_*_PASSWORD
+  //  con un valor desconocido que bloqueaba el login.)
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const sellerPassword = await bcrypt.hash('vendedor123', 10);
 
   // Usuario admin
   await prisma.user.upsert({
