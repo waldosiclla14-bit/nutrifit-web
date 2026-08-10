@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { Gift, Plus } from 'lucide-react';
 import type { Bundle, Product } from '@/types';
@@ -21,6 +22,14 @@ export default function BundleCard({ bundle, products }: Props) {
         it.product !== undefined,
     );
   const pricing = bundlePricing(bundle, (id) => resolve(id));
+
+  const [selections, setSelections] = useState<Record<number, string>>(() =>
+    Object.fromEntries(
+      items
+        .filter((it) => it.product.variants && it.product.variants.length > 0)
+        .map((it) => [it.productId, it.product.variants![0].name]),
+    ),
+  );
 
   if (items.length === 0) return null;
 
@@ -74,16 +83,37 @@ export default function BundleCard({ bundle, products }: Props) {
         <h3 className="font-display text-lg uppercase tracking-wide">{bundle.title}</h3>
         {bundle.subtitle && <p className="mt-1.5 text-sm text-muted">{bundle.subtitle}</p>}
 
-        <ul className="mt-4 flex flex-col gap-2">
+        <ul className="mt-4 flex flex-col gap-3">
           {items.map((it) => (
-            <li key={it.productId} className="flex items-center gap-3 text-sm">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-soft text-xs font-bold text-muted">
-                {it.quantity}
-              </span>
-              <span className="flex-1 truncate font-medium text-ink">{it.product.name}</span>
-              <span className="text-xs text-muted">
-                {formatPrice(it.product.price * it.quantity)}
-              </span>
+            <li key={it.productId} className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-soft text-xs font-bold text-muted">
+                  {it.quantity}
+                </span>
+                <span className="flex-1 truncate font-medium text-ink">{it.product.name}</span>
+                <span className="text-xs text-muted">
+                  {formatPrice(it.product.price * it.quantity)}
+                </span>
+              </div>
+              {it.product.variants && it.product.variants.length > 0 && (
+                <label className="ml-9 flex items-center gap-2 text-xs text-muted">
+                  <span className="shrink-0 font-semibold">Sabor</span>
+                  <select
+                    value={selections[it.productId] ?? it.product.variants[0].name}
+                    onChange={(e) =>
+                      setSelections((prev) => ({ ...prev, [it.productId]: e.target.value }))
+                    }
+                    aria-label={`Sabor de ${it.product.name}`}
+                    className="input !h-9 !py-1 text-xs font-semibold"
+                  >
+                    {it.product.variants.map((v) => (
+                      <option key={v.name} value={v.name}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </li>
           ))}
         </ul>
@@ -97,7 +127,11 @@ export default function BundleCard({ bundle, products }: Props) {
               {formatPrice(pricing.price)}
             </p>
           </div>
-          <button type="button" onClick={() => addBundle(bundle)} className="btn-accent !px-5 !py-2.5 text-xs">
+          <button
+            type="button"
+            onClick={() => addBundle(bundle, selections)}
+            className="btn-accent !px-5 !py-2.5 text-xs"
+          >
             <Plus size={15} />
             Añadir el set
           </button>

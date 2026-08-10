@@ -832,6 +832,21 @@ export const COMBOS: Combo[] = [
 
 export const BUNDLES: Bundle[] = [
   {
+    id: 'pack-proteina-creatina-shaker',
+    title: 'Pack Proteína + Creatina + Shaker',
+    subtitle:
+      'FullEnergic Whey 1kg (elige entre 5 sabores) + Eco Naturales Creatina 300g + Shaker Keep 700ml.',
+    items: [
+      { productId: 4, quantity: 1 },
+      { productId: 31, quantity: 1 },
+      { productId: 35, quantity: 1 },
+    ],
+    pricing: 'fixed',
+    fixedPrice: 32000,
+    image: '/img/producto1.webp',
+    tag: 'Ahorras $4.000',
+  },
+  {
     id: 'masa-fuerza',
     title: 'Set Masa + Fuerza',
     subtitle: 'Whey protein + creatina para volumen y fuerza máxima.',

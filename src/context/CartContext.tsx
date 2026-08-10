@@ -25,7 +25,7 @@ type CartValue = {
   itemCount: number;
   freeShippingFrom: number;
   addItem: (item: Omit<CartItem, 'key'>) => void;
-  addBundle: (bundle: Bundle) => void;
+  addBundle: (bundle: Bundle, variants?: Record<number, string>) => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
   clearCart: () => void;
@@ -139,19 +139,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addBundle = useCallback(
-    (bundle: Bundle) => {
+    (bundle: Bundle, variants?: Record<number, string>) => {
       bundle.items.forEach((it) => {
         const p = PRODUCTS.find((x) => x.id === it.productId);
         if (!p || p.stock <= 0) return;
+        const variant = p.variants?.find((v) => v.name === (variants?.[p.id] ?? p.variants?.[0]?.name));
         addItem({
           productId: p.id,
           slug: p.slug,
-          name: p.name,
+          name: variant ? `${p.name} (${variant.name})` : p.name,
           price: p.price,
           oldPrice: p.oldPrice,
           discount: Math.max(0, (p.oldPrice ?? p.price) - p.price),
-          image: p.image,
+          image: variant?.image ?? p.image,
           quantity: it.quantity,
+          variant: variant?.name,
         });
       });
     },
