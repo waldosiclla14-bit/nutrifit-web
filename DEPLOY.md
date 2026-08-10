@@ -8,8 +8,27 @@ Tienda + Admin + POS (Next.js)  →  API (NestJS)  →  Postgres
 ```
 
 - **Frontend** (tienda `/`, panel `/admin`, POS `/pos`): Vercel (ya conectado, deploy automático al hacer push).
-- **API / ERP** (`backend/`): Render (Web Service con el `Dockerfile` incluido).
+- **API / ERP** (`backend/`): Render (Web Service con el `Dockerfile` incluido). Deploy automático vía GitHub Actions (`.github/workflows/deploy-render.yml`) cuando hay cambios en `backend/**`.
 - **Base de datos** (Postgres): Neon (capa gratuita, sin servidor).
+
+---
+
+## 0. Auto-deploy del backend (Render via GitHub Actions)
+
+Render no estaba conectado a GitHub, por lo que los pushes al backend no se desplegaban solos.
+Esto quedó resuelto con un workflow que dispara el deploy vía la API de Render.
+
+Requisitos (ya configurados en GitHub → Settings → Secrets):
+
+| Secret              | Valor                                      |
+| ------------------- | ------------------------------------------ |
+| `RENDER_API_KEY`    | Tu API key de Render (empieza con `rnd_`) |
+| `RENDER_SERVICE_ID` | ID del servicio (p. ej. `srv-...`)         |
+
+El workflow `.github/workflows/deploy-render.yml` se ejecuta en cada push a `main`
+que toque archivos dentro de `backend/` y lanza el deploy a Render automáticamente.
+
+Para regenerar el API key si se pierde: render.com → Settings → API Keys → Create API Key.
 
 ---
 

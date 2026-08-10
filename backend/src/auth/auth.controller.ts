@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Req, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Req, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 class LoginDto {
   @IsEmail()
@@ -9,6 +10,16 @@ class LoginDto {
   @IsString()
   @IsNotEmpty()
   password: string;
+}
+
+class ChangePasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  currentPassword: string;
+
+  @IsString()
+  @IsNotEmpty()
+  newPassword: string;
 }
 
 const MAX_ATTEMPTS = 5;
@@ -43,5 +54,11 @@ export class AuthController {
     const result = await this.authService.login(dto.email, dto.password);
     attempts.delete(ip);
     return result;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: any) {
+    return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 }

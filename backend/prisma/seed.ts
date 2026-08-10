@@ -4,9 +4,9 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Contraseñas forzadas por defecto para restablecer el acceso al panel.
-  // (No dependen de env: en producción Render podría tener SEED_*_PASSWORD
-  //  con un valor desconocido que bloqueaba el login.)
+  // Contraseñas por defecto SOLO al crear el usuario (base de datos nueva).
+  // No dependen de env ni sobrescriben contraseñas existentes, para que
+  // los cambios hechos desde el panel admin persistan entre reinicios.
   const adminPassword = await bcrypt.hash('admin123', 10);
   const sellerPassword = await bcrypt.hash('vendedor123', 10);
 
@@ -16,7 +16,6 @@ async function main() {
     update: {
       name: 'Administrador',
       role: 'ADMIN',
-      password: adminPassword,
     },
     create: {
       email: 'admin@nutrifit.cl',
@@ -32,7 +31,6 @@ async function main() {
     update: {
       name: 'Vendedor POS',
       role: 'SELLER',
-      password: sellerPassword,
     },
     create: {
       email: 'vendedor@nutrifit.cl',
