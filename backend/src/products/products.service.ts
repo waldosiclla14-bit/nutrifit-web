@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -52,6 +52,7 @@ export class ProductsService {
   }
 
   async updateStock(variantId: string, quantity: number) {
+    if (!Number.isSafeInteger(quantity)) throw new BadRequestException('Cantidad de stock inválida');
     return this.prisma.productVariant.update({
       where: { id: variantId },
       data: { stock: { increment: quantity } },
@@ -59,6 +60,7 @@ export class ProductsService {
   }
 
   async updatePrice(id: string, price: number) {
+    if (!Number.isSafeInteger(price) || price < 0) throw new BadRequestException('Precio inválido');
     const variant = await this.prisma.productVariant.findUnique({ where: { id } });
     if (variant) {
       return this.prisma.productVariant.update({ where: { id }, data: { price } });
@@ -182,7 +184,10 @@ export class ProductsService {
     const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
     if (!variant) throw new Error('Variante no encontrada');
 
-    const stock = Math.max(0, Number(newStock) || 0);
+    if (!Number.isSafeInteger(newStock) || newStock < 0) {
+      throw new BadRequestException('Stock inválido');
+    }
+    const stock = newStock;
     const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
       data: { stock },

@@ -55,14 +55,11 @@ docker exec -it nutrifit-api npx prisma db seed
 | Panel Admin | http://localhost:3000/admin |
 | POS Táctil | http://localhost:3000/pos |
 | API REST | http://localhost:3001/api |
-| Swagger Docs | http://localhost:3001/api/docs |
+| Documentación API | Deshabilitada en producción |
 
-## Credenciales demo
+## Credenciales iniciales
 
-| Rol | Email | Contraseña |
-|-----|-------|------------|
-| Admin | admin@nutrifit.cl | admin123 |
-| Vendedor | vendedor@nutrifit.cl | vendedor123 |
+Define `ADMIN_PASSWORD` y `SELLER_PASSWORD` como secretos de entorno antes de ejecutar el seed. No se mantienen credenciales demo en el repositorio.
 
 ## Flujo de venta (sin pasarela integrada)
 

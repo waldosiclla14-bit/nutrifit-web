@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -27,17 +27,27 @@ export class CustomersService {
   }
 
   async create(data: any) {
-    if (data.phone) {
-      const existing = await this.prisma.customer.findFirst({ where: { phone: data.phone } });
+    const name = String(data?.name || '').trim();
+    const phone = String(data?.phone || '').trim();
+    const email = data?.email ? String(data.email).trim().toLowerCase() : undefined;
+    if (name.length < 2 || name.length > 120 || phone.length < 6 || phone.length > 30) {
+      throw new BadRequestException('Nombre o teléfono inválido');
+    }
+    if (email && (email.length > 160 || !/^\S+@\S+\.\S+$/.test(email))) {
+      throw new BadRequestException('Email inválido');
+    }
+    const clean = { name, phone, ...(email ? { email } : {}) };
+    if (phone) {
+      const existing = await this.prisma.customer.findFirst({ where: { phone } });
       if (existing) {
         return this.prisma.customer.update({
           where: { id: existing.id },
-          data,
+          data: clean,
           include: { addresses: true },
         });
       }
     }
-    return this.prisma.customer.create({ data, include: { addresses: true } });
+    return this.prisma.customer.create({ data: clean, include: { addresses: true } });
   }
 
   async update(id: string, data: any) {

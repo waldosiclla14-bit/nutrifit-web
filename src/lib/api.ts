@@ -78,7 +78,8 @@ const SESSION_COOKIE = 'nf_session';
 
 export function setSessionCookie() {
   if (typeof window === 'undefined') return;
-  document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=86400; samesite=lax`;
+  const secure = window.location.protocol === 'https:' ? '; secure' : '';
+  document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=86400; samesite=lax${secure}`;
 }
 
 export function clearSessionCookie() {

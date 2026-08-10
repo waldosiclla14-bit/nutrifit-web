@@ -1,5 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '@prisma/client';
 import { ProductsService } from './products.service';
 
 @Controller('products')
@@ -17,13 +20,15 @@ export class ProductsController {
   }
 
   @Get('low-stock')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   getLowStock() {
     return this.productsService.getLowStock();
   }
 
   @Get('inventory-value')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   getInventoryValue() {
     return this.productsService.getInventoryValue();
   }
@@ -39,37 +44,43 @@ export class ProductsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   create(@Body() data: any) {
     return this.productsService.create(data);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   update(@Param('id') id: string, @Body() data: any) {
     return this.productsService.update(id, data);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
   delete(@Param('id') id: string, @Request() req: any) {
     return this.productsService.delete(id, req.user?.id);
   }
 
   @Patch(':id/stock')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   updateStock(@Param('id') id: string, @Body() body: { quantity: number }) {
     return this.productsService.updateStock(id, body.quantity);
   }
 
   @Patch(':id/price')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   updatePrice(@Param('id') id: string, @Body() body: { price: number }) {
     return this.productsService.updatePrice(id, body.price);
   }
 
   @Patch(':id/adjust-stock')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   adjustStock(@Param('id') id: string, @Body() body: { newStock: number; reason: string }, @Request() req: any) {
     return this.productsService.adjustStock(id, body.newStock, body.reason, req.user?.id);
   }

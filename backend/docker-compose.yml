@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: nutrifit
-      POSTGRES_PASSWORD: REDACTED_PASSWORD
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD in your environment}
       POSTGRES_DB: nutrifit
     ports:
       - "5432:5432"
@@ -29,9 +29,12 @@ services:
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgresql://nutrifit:REDACTED_PASSWORD@postgres:5432/nutrifit?schema=public
-      JWT_SECRET: REDACTED_SECRET
-      JWT_EXPIRES_IN: 7d
+      DATABASE_URL: postgresql://nutrifit:${POSTGRES_PASSWORD}@postgres:5432/nutrifit?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET in your environment}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Define ADMIN_PASSWORD in your environment}
+      SELLER_PASSWORD: ${SELLER_PASSWORD:?Define SELLER_PASSWORD in your environment}
       PORT: 3001
     depends_on:
       postgres:

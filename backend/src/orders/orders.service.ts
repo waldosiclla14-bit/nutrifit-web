@@ -42,6 +42,7 @@ export class OrdersService {
   }
 
   async create(data: any) {
+    this.validateOrderPayload(data);
     const orderNumber = await this.generateOrderNumber();
 
     // Validar stock, calcular costos unitarios y reservar (solo items con variante en la DB)
@@ -182,6 +183,11 @@ export class OrdersService {
   }
 
   async confirmPayment(id: string, data: { paymentMethod: string; paymentNotes?: string; paymentProofUrl?: string }, userId?: string) {
+    const existing = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
+    if (!existing) throw new NotFoundException('Orden no encontrada');
+    if (existing.paymentStatus === PaymentStatus.CONFIRMED) {
+      throw new BadRequestException('El pago de esta orden ya está confirmado');
+    }
     const order = await this.prisma.order.update({
       where: { id },
       data: {
@@ -419,5 +425,48 @@ export class OrdersService {
   private async generateOrderNumber(): Promise<string> {
     const count = await this.prisma.order.count();
     return `NF-${String(count + 1).padStart(6, '0')}`;
+  }
+
+  private validateOrderPayload(data: any) {
+    if (!data || !Array.isArray(data.items) || data.items.length === 0 || data.items.length > 100) {
+      throw new BadRequestException('La orden debe contener entre 1 y 100 productos');
+    }
+    if (typeof data.customerId !== 'string' || !data.customerId.trim()) {
+      throw new BadRequestException('Cliente inválido');
+    }
+    for (const field of ['customerName', 'customerPhone']) {
+      if (typeof data[field] !== 'string' || data[field].trim().length < 2 || data[field].length > 120) {
+        throw new BadRequestException(`Campo inválido: ${field}`);
+      }
+    }
+
+    const subtotal = this.integer(data.subtotal, 'subtotal');
+    const discount = this.integer(data.discount ?? 0, 'descuento');
+    const shipping = this.integer(data.shippingCost ?? 0, 'envío');
+    const total = this.integer(data.total, 'total');
+    let calculatedSubtotal = 0;
+
+    for (const item of data.items) {
+      const quantity = this.integer(item?.quantity, 'cantidad');
+      if (quantity < 1 || quantity > 100) throw new BadRequestException('Cantidad inválida');
+      const unitPrice = this.integer(item?.unitPrice, 'precio unitario');
+      const lineTotal = this.integer(item?.total, 'total de línea');
+      if (lineTotal !== unitPrice * quantity) {
+        throw new BadRequestException('El total de una línea no coincide con su precio');
+      }
+      calculatedSubtotal += lineTotal;
+    }
+
+    if (calculatedSubtotal !== subtotal || discount > subtotal || total !== subtotal - discount + shipping) {
+      throw new BadRequestException('Los totales de la orden no son válidos');
+    }
+  }
+
+  private integer(value: unknown, field: string) {
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number < 0) {
+      throw new BadRequestException(`Valor inválido: ${field}`);
+    }
+    return number;
   }
 }

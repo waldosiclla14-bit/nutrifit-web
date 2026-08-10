@@ -4,11 +4,16 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Contraseñas por defecto SOLO al crear el usuario (base de datos nueva).
-  // No dependen de env ni sobrescriben contraseñas existentes, para que
-  // los cambios hechos desde el panel admin persistan entre reinicios.
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const sellerPassword = await bcrypt.hash('vendedor123', 10);
+  const adminPasswordValue = process.env.ADMIN_PASSWORD;
+  const sellerPasswordValue = process.env.SELLER_PASSWORD;
+  if (!adminPasswordValue || !sellerPasswordValue) {
+    throw new Error('ADMIN_PASSWORD y SELLER_PASSWORD son obligatorios para ejecutar el seed');
+  }
+  if (adminPasswordValue.length < 12 || sellerPasswordValue.length < 12) {
+    throw new Error('Las contraseñas iniciales deben tener al menos 12 caracteres');
+  }
+  const adminPassword = await bcrypt.hash(adminPasswordValue, 12);
+  const sellerPassword = await bcrypt.hash(sellerPasswordValue, 12);
 
   // Usuario admin
   await prisma.user.upsert({

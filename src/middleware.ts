@@ -8,9 +8,12 @@ export function middleware(req: NextRequest) {
   const isLogin = pathname === '/login';
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const hasSession = !!req.cookies.get(SESSION_COOKIE);
+  const requestedNext = req.nextUrl.searchParams.get('next');
+  const next = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+    ? requestedNext
+    : '/admin';
 
   if (isLogin && hasSession) {
-    const next = req.nextUrl.searchParams.get('next') || '/admin';
     const url = req.nextUrl.clone();
     url.pathname = next;
     url.search = '';
