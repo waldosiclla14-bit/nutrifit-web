@@ -8,7 +8,7 @@ import Reveal from '@/components/ui/Reveal';
 import BestSellerCard from '@/components/home/BestSellerCard';
 import BestSellerCTA from '@/components/home/BestSellerCTA';
 
-const TOP_SELLER_IDS = [4, 7, 31, 9, 22];
+const TOP_SELLER_IDS = [4, 7, 31, 8, 22];
 
 export default function FeaturedCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
