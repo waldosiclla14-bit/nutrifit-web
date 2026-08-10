@@ -128,14 +128,26 @@ export class OrdersService {
     return order;
   }
 
-  async resetHistory() {
+  async deleteOrder(id: string) {
+    const order = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
+    if (!order) throw new NotFoundException('Orden no encontrada');
+    if (order.status === OrderStatus.PAID || order.status === OrderStatus.DELIVERED) {
+      throw new BadRequestException('No se pueden eliminar órdenes pagadas o entregadas');
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      const orders = await tx.order.count();
-      const customers = await tx.customer.count();
-      await tx.orderItem.deleteMany();
-      await tx.order.deleteMany();
-      await tx.customer.deleteMany();
-      return { orders, customers };
+      if (order.status !== OrderStatus.CANCELLED) {
+        for (const item of order.items) {
+          if (item.variantId && item.quantity > 0) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { reservedStock: { decrement: item.quantity } },
+            });
+          }
+        }
+      }
+      await tx.order.delete({ where: { id } });
+      return { id, deleted: true };
     });
   }
 

@@ -375,16 +375,6 @@ function Dashboard({
     }
   };
 
-  const resetHistory = async () => {
-    const first = window.confirm(
-      'Esto eliminará permanentemente todos los pedidos, ventas y clientes. Los productos y usuarios se conservarán. ¿Continuar?',
-    );
-    if (!first) return;
-    const second = window.prompt('Escribe REINICIAR para confirmar:');
-    if (second !== 'REINICIAR') return;
-    await act(() => apiFetch('/orders/reset-history', { method: 'POST', token }), 'reset-history');
-  };
-
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
     { key: 'ordenes', label: 'Órdenes', icon: ShoppingBag },
@@ -407,14 +397,6 @@ function Dashboard({
           </button>
           <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs" title="Cambiar contraseña">
             <KeyRound size={14} /> Contraseña
-          </button>
-          <button
-            onClick={resetHistory}
-            disabled={busyId === 'reset-history'}
-            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            title="Reiniciar pedidos, ventas y clientes"
-          >
-            <Trash2 size={14} /> Reiniciar historial
           </button>
           <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
             <LogOut size={14} /> Salir
@@ -445,7 +427,7 @@ function Dashboard({
         {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
         {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
         {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={load} />}
-        {!loading && tab === 'clientes' && <Clientes customers={customers} />}
+        {!loading && tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={load} />}
         {!loading && tab === 'caja' && <Caja cash={cash} token={token} onChanged={load} />}
         {!loading && tab === 'reportes' && <Reportes token={token} />}
       </div>
@@ -946,6 +928,18 @@ function Ordenes({
                         Cancelar
                       </button>
                     )}
+                    {!['PAID', 'DELIVERED'].includes(o.status) && (
+                      <button
+                        disabled={busyId === o.id}
+                        onClick={() => {
+                          if (!window.confirm(`¿Eliminar permanentemente la orden ${o.orderNumber}?`)) return;
+                          act(() => apiFetch(`/orders/${o.id}`, { method: 'DELETE', token }), o.id);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
+                      >
+                        <Trash2 size={12} /> Eliminar
+                      </button>
+                    )}
                     {o.customer?.phone && (
                       <a
                         href={waLink(o)}
@@ -1438,9 +1432,18 @@ function customerSegment(c: ApiCustomer): { label: string; cls: string } {
   return { label: 'Nuevo', cls: 'bg-soft text-muted border-line' };
 }
 
-function Clientes({ customers }: { customers: ApiCustomer[] }) {
+function Clientes({
+  customers,
+  token,
+  onChanged,
+}: {
+  customers: ApiCustomer[];
+  token: string;
+  onChanged: () => Promise<void>;
+}) {
   const [query, setQuery] = useState('');
   const [segFilter, setSegFilter] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
@@ -1452,6 +1455,19 @@ function Clientes({ customers }: { customers: ApiCustomer[] }) {
   }, [customers, query, segFilter]);
 
   const segOptions = ['VIP', 'Recurrente', 'Activo', 'Nuevo', 'Dormido'];
+
+  const remove = async (customer: ApiCustomer) => {
+    if (!window.confirm(`¿Eliminar permanentemente al cliente ${customer.name}?`)) return;
+    setDeleting(customer.id);
+    try {
+      await apiFetch(`/customers/${customer.id}`, { method: 'DELETE', token });
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo eliminar el cliente.');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   return (
     <div>
@@ -1477,7 +1493,8 @@ function Clientes({ customers }: { customers: ApiCustomer[] }) {
               <th className="px-4 py-3">Órdenes</th>
               <th className="px-4 py-3">Gasto total</th>
               <th className="px-4 py-3">Última compra</th>
-              <th className="px-4 py-3">Registro</th>
+               <th className="px-4 py-3">Registro</th>
+               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -1495,13 +1512,23 @@ function Clientes({ customers }: { customers: ApiCustomer[] }) {
                   <td className="px-4 py-3 text-xs text-muted">
                     {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
+                   <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
+                   <td className="px-4 py-3">
+                     <button
+                       type="button"
+                       onClick={() => remove(c)}
+                       disabled={deleting === c.id}
+                       className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
+                     >
+                       <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
+                     </button>
+                   </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">
+                 <td colSpan={8} className="px-4 py-10 text-center text-muted">
                   Sin clientes.
                 </td>
               </tr>

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -52,5 +52,18 @@ export class CustomersService {
 
   async update(id: string, data: any) {
     return this.prisma.customer.update({ where: { id }, data, include: { addresses: true } });
+  }
+
+  async delete(id: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      include: { _count: { select: { orders: true } } },
+    });
+    if (!customer) throw new NotFoundException('Cliente no encontrado');
+    if (customer._count.orders > 0) {
+      throw new BadRequestException('Elimina primero las órdenes de este cliente');
+    }
+    await this.prisma.customer.delete({ where: { id } });
+    return { id, deleted: true };
   }
 }
