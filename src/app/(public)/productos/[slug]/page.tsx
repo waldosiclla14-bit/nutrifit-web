@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { PRODUCTS, BRAND } from '@/data/seed';
+import { notFound, redirect } from 'next/navigation';
+import { PRODUCTS, PRODUCT_ALIASES, BRAND } from '@/data/seed';
 import ProductDetail from '@/components/product/ProductDetail';
 import { getDiscount } from '@/lib/utils';
 
 export function generateStaticParams() {
-  return PRODUCTS.map((p) => ({ slug: p.slug }));
+  return [...PRODUCTS.map((p) => ({ slug: p.slug })), ...Object.keys(PRODUCT_ALIASES).map((slug) => ({ slug }))];
 }
 
 export async function generateMetadata({
@@ -40,8 +40,12 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = PRODUCTS.find((p) => p.slug === slug);
-  if (!product) notFound();
+  let product = PRODUCTS.find((p) => p.slug === slug);
+  if (!product) {
+    const target = PRODUCT_ALIASES[slug];
+    if (target) redirect(`/productos/${target}`);
+    notFound();
+  }
 
   const related = PRODUCTS.filter(
     (p) => p.id !== product.id && p.category === product.category,
@@ -55,6 +59,15 @@ export default async function ProductPage({
     description: product.desc,
     sku: `seed-${product.slug}`,
     brand: { '@type': 'Brand', name: product.brand },
+    ...(product.variants && product.variants.length > 0
+      ? {
+          hasVariant: product.variants.map((v) => ({
+            '@type': 'Product',
+            name: `${product.name} ${v.name}`,
+            image: `${BRAND.url}${v.image}`,
+          })),
+        }
+      : {}),
     aggregateRating: {
       '@type': 'AggregateRating',
       ratingValue: product.rating,

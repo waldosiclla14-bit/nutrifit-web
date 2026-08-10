@@ -3,7 +3,7 @@ import Reveal from '@/components/ui/Reveal';
 import BestSellerCard from '@/components/home/BestSellerCard';
 import BestSellerCTA from '@/components/home/BestSellerCTA';
 
-const TOP_SELLER_IDS = [1, 7, 22, 9];
+const TOP_SELLER_IDS = [4, 7, 22, 9];
 
 export default function FeaturedCarousel() {
   const featured = TOP_SELLER_IDS.map((id) => PRODUCTS.find((p) => p.id === id)).filter(

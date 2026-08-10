@@ -1,3 +1,11 @@
+export type ProductVariant = {
+  name: string;
+  image: string;
+  stock: number;
+  rating?: number;
+  reviews?: number;
+};
+
 export type Product = {
   id: number;
   slug: string;
@@ -21,6 +29,7 @@ export type Product = {
   goal: string[];
   tags: string[];
   bestseller?: boolean;
+  variants?: ProductVariant[];
 };
 
 export type Category = {
@@ -76,6 +85,7 @@ export type CartItem = {
   discount: number;
   image: string;
   quantity: number;
+  variant?: string;
   isGift?: boolean;
 };
 

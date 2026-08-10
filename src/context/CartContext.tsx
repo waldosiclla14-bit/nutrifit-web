@@ -115,13 +115,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: Omit<CartItem, 'key'>) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.productId === item.productId);
+      const existing = prev.find(
+        (i) =>
+          i.productId === item.productId &&
+          (i.variant ?? '') === (item.variant ?? '') &&
+          i.isGift === item.isGift,
+      );
       if (existing) {
         return prev.map((i) =>
           i.key === existing.key ? { ...i, quantity: i.quantity + item.quantity } : i,
         );
       }
-      return [...prev, { ...item, key: `p${item.productId}-${Date.now()}` }];
+      return [...prev, { ...item, key: `p${item.productId}-${item.variant ?? 'base'}-${Date.now()}` }];
     });
     setIsOpen(true);
     trackEvent('AddToCart', {

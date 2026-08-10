@@ -7,7 +7,7 @@ import { Check, ChevronRight, Heart, MessageCircle, Minus, Plus, ShoppingBag, Sh
 import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
-import { formatPrice, getDiscount } from '@/lib/utils';
+import { formatPrice, getDiscount, cx } from '@/lib/utils';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
 import RatingSummary from '@/components/ui/RatingSummary';
@@ -34,20 +34,28 @@ export default function ProductDetail({
   const { addItem, openCart } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [qty, setQty] = useState(1);
+  const [flavor, setFlavor] = useState(product.variants?.[0]?.name ?? '');
   const discount = getDiscount(product);
   const fav = isFavorite(product.id);
   const isAccessory = product.category === 'accesorios';
+  const selected = product.variants?.find((v) => v.name === flavor) ?? null;
+  const img = selected?.image ?? product.image;
+  const stock = selected?.stock ?? product.stock;
+  const rating = selected?.rating ?? product.rating;
+  const reviews = selected?.reviews ?? product.reviews;
+  const cartName = selected ? `${product.name} (${selected.name})` : product.name;
 
   const addToCart = (q: number) => {
     addItem({
       productId: product.id,
       slug: product.slug,
-      name: product.name,
+      name: cartName,
       price: product.price,
       oldPrice: product.oldPrice,
       discount: Math.max(0, (product.oldPrice ?? product.price) - product.price),
-      image: product.image,
+      image: img,
       quantity: q,
+      variant: selected?.name,
     });
     openCart();
   };
@@ -58,7 +66,7 @@ export default function ProductDetail({
       'QUIERO ESTE PRODUCTO',
       '─'.repeat(24),
       '',
-      `*Producto:* ${product.name}`,
+      `*Producto:* ${cartName}`,
       `*Cantidad:* ${qty}`,
       `*Precio:* ${formatPrice(product.price * qty)}`,
       '',
@@ -94,8 +102,8 @@ export default function ProductDetail({
         <div>
           <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-line bg-soft">
             <Image
-              src={product.image}
-              alt={product.name}
+              src={img}
+              alt={cartName}
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -132,7 +140,7 @@ export default function ProductDetail({
             {product.name}
           </h1>
           <div className="mt-3">
-            <RatingSummary rating={product.rating} count={product.reviews} />
+            <RatingSummary rating={rating} count={reviews} />
           </div>
 
           <div className="mt-5 flex items-end gap-3">
@@ -168,6 +176,30 @@ export default function ProductDetail({
             ))}
           </div>
 
+          {product.variants && product.variants.length > 0 && (
+            <div className="mt-6">
+              <p className="label">Sabor</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {product.variants.map((v) => (
+                  <button
+                    key={v.name}
+                    type="button"
+                    onClick={() => setFlavor(v.name)}
+                    aria-pressed={v.name === flavor}
+                    className={cx(
+                      'rounded-full border px-4 py-2 text-sm font-bold transition-all',
+                      v.name === flavor
+                        ? 'border-accent bg-accent text-ink shadow-sm'
+                        : 'border-line bg-paper text-ink hover:border-accent',
+                    )}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 flex items-center gap-4">
             <div className="flex items-center rounded-full border border-line">
               <button
@@ -189,7 +221,7 @@ export default function ProductDetail({
               </button>
             </div>
             <p className="text-xs text-muted">
-              Stock disponible: <strong className="text-ink">{product.stock} uds.</strong>
+              Stock disponible: <strong className="text-ink">{stock} uds.</strong>
             </p>
             <button
               type="button"
@@ -203,9 +235,9 @@ export default function ProductDetail({
             </button>
           </div>
 
-          {product.stock <= 10 && (
+          {stock <= 10 && (
             <div className="mt-4 max-w-xs">
-              <StockUrgency stock={product.stock} variant="bar" />
+              <StockUrgency stock={stock} variant="bar" />
             </div>
           )}
 
@@ -265,7 +297,9 @@ export default function ProductDetail({
         reviewCount={product.reviews}
       />
 
-      {related.length > 0 && <BuyTogether product={product} related={related} />}
+      {related.length > 0 && (
+        <BuyTogether product={product} related={related} variantName={selected?.name} />
+      )}
 
       {related.length > 0 && (
         <div className="mt-14">

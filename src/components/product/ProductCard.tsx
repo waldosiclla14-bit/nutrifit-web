@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Heart, ShoppingBag } from 'lucide-react';
 import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
@@ -15,11 +16,17 @@ import { cx } from '@/lib/utils';
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const discount = getDiscount(product);
   const fav = isFavorite(product.id);
+  const hasVariants = !!product.variants && product.variants.length > 0;
 
   const addToCart = () => {
+    if (hasVariants) {
+      router.push(`/productos/${product.slug}`);
+      return;
+    }
     addItem({
       productId: product.id,
       slug: product.slug,
@@ -59,6 +66,11 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.bestseller && (
             <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
               Más vendido
+            </span>
+          )}
+          {hasVariants && (
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-accentDeep shadow-sm">
+              {product.variants!.length} sabores
             </span>
           )}
           <StockUrgency stock={product.stock} />

@@ -10,9 +10,11 @@ import Stars from '@/components/ui/Stars';
 export default function BuyTogether({
   product,
   related,
+  variantName,
 }: {
   product: Product;
   related: Product[];
+  variantName?: string;
 }) {
   const { addItem, openCart } = useCart();
   const picks = [product, ...related.slice(0, 2)];
@@ -21,17 +23,28 @@ export default function BuyTogether({
   const oldTotal = picks.reduce((acc, p) => acc + (p.oldPrice ?? p.price), 0);
   const savings = Math.max(0, oldTotal - total);
 
+  const pickMeta = (p: Product) => {
+    if (p.id !== product.id || !variantName) return { name: p.name, image: p.image };
+    const variant = p.variants?.find((v) => v.name === variantName);
+    return {
+      name: variant ? `${p.name} (${variant.name})` : p.name,
+      image: variant?.image ?? p.image,
+    };
+  };
+
   const addAll = () => {
     picks.forEach((p) => {
+      const meta = pickMeta(p);
       addItem({
         productId: p.id,
         slug: p.slug,
-        name: p.name,
+        name: meta.name,
         price: p.price,
         oldPrice: p.oldPrice,
         discount: Math.max(0, (p.oldPrice ?? p.price) - p.price),
-        image: p.image,
+        image: meta.image,
         quantity: 1,
+        variant: p.id === product.id ? variantName : undefined,
       });
     });
     openCart();
@@ -44,8 +57,10 @@ export default function BuyTogether({
       </h2>
       <div className="rounded-3xl border border-line bg-soft p-6">
         <div className="grid gap-4 sm:grid-cols-3">
-          {picks.map((p, i) => (
-            <div key={p.id} className="relative min-w-0">
+          {picks.map((p, i) => {
+            const meta = pickMeta(p);
+            return (
+              <div key={p.id} className="relative min-w-0">
               {i > 0 && (
                 <span className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 sm:flex">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-accent">
@@ -56,15 +71,15 @@ export default function BuyTogether({
               <div className="flex items-center gap-3 rounded-2xl border border-line bg-paper p-3 sm:flex-col sm:gap-2 sm:text-center">
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-soft sm:h-24 sm:w-24">
                   <Image
-                    src={p.image}
-                    alt={p.name}
+                    src={meta.image}
+                    alt={meta.name}
                     fill
                     sizes="96px"
                     className="object-contain p-1.5"
                   />
                 </div>
                 <div className="min-w-0 sm:w-full">
-                  <p className="truncate text-xs font-bold leading-snug">{p.name}</p>
+                  <p className="truncate text-xs font-bold leading-snug">{meta.name}</p>
                   <div className="mt-1 flex items-center gap-1.5 sm:justify-center">
                     <Stars rating={p.rating} size={12} />
                   </div>
@@ -81,7 +96,8 @@ export default function BuyTogether({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-5 flex flex-col items-center justify-between gap-4 border-t border-line pt-5 sm:flex-row">
