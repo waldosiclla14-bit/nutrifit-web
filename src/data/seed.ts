@@ -864,6 +864,20 @@ export const COMBOS: Combo[] = [
 
 export const BUNDLES: Bundle[] = [
   {
+    id: 'pack-proteina-creatina',
+    title: 'Pack Proteína + Creatina',
+    subtitle:
+      'FullEnergic Whey 1kg (elige entre 5 sabores) + Eco Naturales Creatina 300g.',
+    items: [
+      { productId: 4, quantity: 1 },
+      { productId: 31, quantity: 1 },
+    ],
+    pricing: 'fixed',
+    fixedPrice: 27500,
+    image: '/img/producto1.webp',
+    tag: 'Ahorras $2.500',
+  },
+  {
     id: 'pack-proteina-creatina-shaker',
     title: 'Pack Proteína + Creatina + Shaker',
     subtitle:
