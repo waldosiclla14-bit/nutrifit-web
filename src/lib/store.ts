@@ -6,7 +6,7 @@ const CHANGE_EVENT = 'nutrifit:store:changed';
 export const DEFAULT_SETTINGS: Settings = {
   whatsapp: '56923883826',
   freeShippingFrom: 30000,
-  shipping: 2000,
+  shipping: 1000,
   giftProductId: undefined,
   giftThreshold: 0,
   giftLabel: 'recibir un regalo',
@@ -36,6 +36,9 @@ export function loadDB(): DB {
     const settings = { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) };
     if (settings.freeShippingFrom === 40000) {
       settings.freeShippingFrom = DEFAULT_SETTINGS.freeShippingFrom;
+    }
+    if (settings.shipping === 2000) {
+      settings.shipping = DEFAULT_SETTINGS.shipping;
     }
     // Gift feature temporarily disabled: force off for users with old stored values
     if (settings.giftThreshold === 45000) settings.giftThreshold = 0;
