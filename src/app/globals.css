@@ -28,6 +28,14 @@
     @apply bg-paper font-sans text-ink;
   }
 
+  @media screen and (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
   ::selection {
     background: rgb(var(--accent));
     color: rgb(var(--ink));
