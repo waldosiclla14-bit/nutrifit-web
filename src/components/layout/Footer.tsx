@@ -26,7 +26,7 @@ export default function Footer() {
             </span>
           </div>
           <p className="mt-4 text-sm leading-relaxed text-white/70">
-            Suplementos deportivos premium para quienes entrenan sin excusas. Santiago, Chile.
+            Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en Metro.
           </p>
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
             {BRAND.tagline}

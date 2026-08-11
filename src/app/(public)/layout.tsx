@@ -16,11 +16,11 @@ import GA4 from '@/components/analytics/GA4';
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
   title: {
-    default: 'NUTRIFIT | Suplementos Deportivos Premium — Santiago de Chile',
+    default: 'NutriFit | Whey, creatina y packs',
     template: '%s · NUTRIFIT',
   },
   description:
-    'Tienda online de suplementos deportivos en Chile. Whey protein, creatina, vitaminas y bienestar. Productos originales, compra por WhatsApp y entrega en estaciones de metro.',
+    'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
   keywords: [
     'suplementos deportivos chile',
     'whey protein',
@@ -32,21 +32,22 @@ export const metadata: Metadata = {
     'suplementos Santiago',
   ],
   authors: [{ name: 'NutriFit' }],
-    openGraph: {
+  openGraph: {
     type: 'website',
     locale: 'es_CL',
     url: BRAND.url,
     siteName: BRAND.name,
-    title: 'NUTRIFIT | Suplementos Deportivos Premium',
-      description:
-        'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
-      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit Whey y Creatina' }],
+    title: 'NutriFit | Whey, creatina y packs',
+    description:
+      'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit whey, creatina y packs' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NUTRIFIT | Suplementos Deportivos Premium',
+    title: 'NutriFit | Whey, creatina y packs',
     description:
-      'Potencia tu rendimiento con suplementos deportivos y vitaminas de alta calidad en Chile.',
+      'Suplementos originales en Chile. Whey, creatina y vitaminas. Compra por WhatsApp y recibe en Metro de Santiago.',
+    images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
   icons: { icon: '/img/logo.png' },
@@ -64,7 +65,7 @@ export default function PublicLayout({
     logo: `${BRAND.url}/img/logo.png`,
     image: `${BRAND.url}/img/logo.png`,
     description:
-      'Suplementos deportivos premium en Chile. Whey protein, creatina, vitaminas y bienestar. Productos originales y entrega en estaciones de metro.',
+      'Suplementos originales en Chile. Whey protein, creatina, vitaminas y bienestar. Compra por WhatsApp y entrega en estaciones de metro.',
     slogan: BRAND.tagline,
     sameAs: [BRAND.instagramUrl],
     address: {

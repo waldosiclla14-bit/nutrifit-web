@@ -89,7 +89,7 @@ export default function Catalog({
       <Reveal className="mb-8">
         <p className="section-label">CATÁLOGO</p>
         <h1 className="section-title">
-          Suplementos <span className="text-accentDeep">premium</span>
+          Suplementos <span className="text-accentDeep">originales</span>
         </h1>
       </Reveal>
 

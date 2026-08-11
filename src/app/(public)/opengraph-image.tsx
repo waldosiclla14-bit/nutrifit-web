@@ -3,7 +3,7 @@ import { BRAND } from '@/data/seed';
 
 export const runtime = 'edge';
 
-export const alt = 'NUTRIFIT — Suplementos Deportivos Premium en Chile';
+export const alt = 'NUTRIFIT — Suplementos originales en Chile';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -43,7 +43,7 @@ export default async function Image() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
           <div style={{ fontSize: 24, fontWeight: 700, color: '#b2f237', letterSpacing: 3 }}>
-            SUPLEMENTOS DEPORTIVOS · SANTIAGO
+            PRODUCTOS ORIGINALES · SANTIAGO
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', fontSize: 82, fontWeight: 900, lineHeight: 0.98 }}>
             <span>WHEY +</span>
@@ -56,7 +56,7 @@ export default async function Image() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative' }}>
           <div style={{ fontSize: 24, fontWeight: 700 }}>
-            Entrega en estaciones de Metro · Compra por WhatsApp
+            Compra por WhatsApp · Entrega en estaciones de Metro
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0b0b0b', background: '#b2f237', padding: '12px 20px', borderRadius: 999 }}>
             {BRAND.whatsapp}
