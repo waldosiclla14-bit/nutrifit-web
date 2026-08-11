@@ -37,14 +37,14 @@ export default async function Image() {
             opacity: 0.9,
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 118,
-              height: 118,
+              width: 240,
+              height: 110,
               borderRadius: 28,
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.12)',
@@ -55,18 +55,10 @@ export default async function Image() {
             <img
               src={`${BRAND.url}/img/logo.png`}
               alt="Logo NutriFit"
-              width={104}
-              height={104}
-              style={{ width: 104, height: 104, objectFit: 'contain' }}
+              width={210}
+              height={96}
+              style={{ width: 210, height: 96, objectFit: 'contain' }}
             />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: 4 }}>
-              NUTRI<span style={{ color: '#b2f237' }}>FIT</span>
-            </div>
-            <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.72)', fontWeight: 600 }}>
-              Productos originales y compra por WhatsApp
-            </div>
           </div>
         </div>
 
