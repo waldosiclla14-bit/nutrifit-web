@@ -6,6 +6,11 @@ on:
     paths:
       - 'backend/**'
   workflow_dispatch:
+    inputs:
+      deploy_id:
+        description: 'Deploy id a Render a monitorear (dep-xxxx). Si se deja vacio se crea uno nuevo.'
+        required: false
+        default: ''
 
 env:
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -15,25 +20,32 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Disparar deploy en Render
-        id: trigger
+      - name: Resolver / Disparar deploy en Render
+        id: deploy
         run: |
-          resp=$(curl -s -f -X POST -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" -H "Content-Type: application/json" -d '{"clearCache":"do_not_clear"}' "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys")
-          echo "RESP: $resp"
-          id=$(printf '%s' "$resp" | grep -oE '"id":"dep-[A-Za-z0-9_-]+"' | grep -oE 'dep-[A-Za-z0-9_-]+')
-          if [ -z "$id" ]; then echo "no deploy id found"; exit 1; fi
-          echo "deploy_id=$id" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.deploy_id }}" ]; then
+            echo "Usando deploy existente: ${{ inputs.deploy_id }}"
+            echo "deploy_id=${{ inputs.deploy_id }}" >> "$GITHUB_OUTPUT"
+          else
+            resp=$(curl -s -f -X POST -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" -H "Content-Type: application/json" -d '{"clearCache":"do_not_clear"}' "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys")
+            echo "RESP: $resp"
+            id=$(printf '%s' "$resp" | grep -oE '"id":"dep-[A-Za-z0-9_-]+"' | grep -oE 'dep-[A-Za-z0-9_-]+')
+            if [ -z "$id" ]; then echo "::error::no deploy id found"; exit 1; fi
+            echo "deploy_id=$id" >> "$GITHUB_OUTPUT"
+          fi
       - name: Esperar y consultar estado del deploy
         run: |
-          id="${{ steps.trigger.outputs.deploy_id }}"
+          set +e
+          id="${{ steps.deploy.outputs.deploy_id }}"
           echo "Observando deploy: $id"
-          for i in $(seq 1 30); do
+          for i in $(seq 1 40); do
             sleep 25
-            raw=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${id}")
+            raw=$(curl -s -w "\n__HTTP_%{http_code}__" -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${id}")
+            echo "raw: $raw"
             deploy_status=$(printf '%s' "$raw" | grep -oE '"status":"[a-z_]+"' | head -1 | grep -oE '[a-z_]+')
             build_status=$(printf '%s' "$raw" | grep -oE '"status":"[a-z_]+"' | sed -n '2p' | grep -oE '[a-z_]+')
-            err=$(printf '%s' "$raw" | grep -oiE '"(error|reason|message)":"[^"]*"' | head -1)
-            echo "[$(date -u +%H:%M:%S)] deploy=$deploy_status build=$build_status $err"
+            err=$(printf '%s' "$raw" | grep -oiE '"(error|reason|message)":"[^"]*"' | head -3 | tr '\n' ' ')
+            echo "[$(date -u +%H:%M:%S)] deploy=$deploy_status build=$build_status | $err"
             case "$deploy_status" in
               ready|active|live|succeeded) echo "DEPLOY_OK"; break ;;
               failed|canceled) echo "DEPLOY_FAILED"; break ;;
