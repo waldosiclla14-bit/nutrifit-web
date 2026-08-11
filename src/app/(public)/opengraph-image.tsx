@@ -37,27 +37,26 @@ export default async function Image() {
             opacity: 0.9,
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 240,
-              height: 110,
-              borderRadius: 28,
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              backdropFilter: 'blur(8px)',
+              width: 420,
+              height: 180,
+              borderRadius: 30,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.10)',
               overflow: 'hidden',
             }}
           >
             <img
               src={`${BRAND.url}/img/logo.png`}
               alt="Logo NutriFit"
-              width={210}
-              height={96}
-              style={{ width: 210, height: 96, objectFit: 'contain' }}
+              width={420}
+              height={180}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
             />
           </div>
         </div>
