@@ -140,20 +140,51 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addBundle = useCallback(
     (bundle: Bundle, variants?: Record<number, string>) => {
-      bundle.items.forEach((it) => {
-        const p = PRODUCTS.find((x) => x.id === it.productId);
-        if (!p || p.stock <= 0) return;
-        const variant = p.variants?.find((v) => v.name === (variants?.[p.id] ?? p.variants?.[0]?.name));
+      const resolved = bundle.items
+        .map((it) => {
+          const p = PRODUCTS.find((x) => x.id === it.productId);
+          if (!p || p.stock <= 0) return null;
+          const variant = p.variants?.find(
+            (v) => v.name === (variants?.[p.id] ?? p.variants?.[0]?.name),
+          );
+          return {
+            item: it,
+            product: p,
+            variant,
+            regularLine: p.price * it.quantity,
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+      if (!resolved.length) return;
+
+      const sum = resolved.reduce((acc, entry) => acc + entry.regularLine, 0);
+      const targetPrice =
+        bundle.pricing === 'fixed' && bundle.fixedPrice != null ? bundle.fixedPrice : sum;
+      const totalDiscount = Math.max(0, sum - targetPrice);
+      let remainingDiscount = totalDiscount;
+
+      resolved.forEach((entry, index) => {
+        const lineDiscount =
+          index === resolved.length - 1
+            ? remainingDiscount
+            : Math.round((totalDiscount * entry.regularLine) / sum);
+        remainingDiscount -= lineDiscount;
+        const actualLine = Math.max(0, entry.regularLine - lineDiscount);
+        const quantity = entry.item.quantity;
+        const unitPrice = Math.round(actualLine / quantity);
+        const unitDiscount = Math.round(lineDiscount / quantity);
+
         addItem({
-          productId: p.id,
-          slug: p.slug,
-          name: variant ? `${p.name} (${variant.name})` : p.name,
-          price: p.price,
-          oldPrice: p.oldPrice,
-          discount: Math.max(0, (p.oldPrice ?? p.price) - p.price),
-          image: variant?.image ?? p.image,
-          quantity: it.quantity,
-          variant: variant?.name,
+          productId: entry.product.id,
+          slug: entry.product.slug,
+          name: entry.variant ? `${entry.product.name} (${entry.variant.name})` : entry.product.name,
+          price: unitPrice,
+          oldPrice: entry.product.oldPrice,
+          discount: unitDiscount,
+          image: entry.variant?.image ?? entry.product.image,
+          quantity,
+          variant: entry.variant?.name,
         });
       });
     },
