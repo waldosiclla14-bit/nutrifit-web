@@ -1,10 +1,11 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { CouponsService } from '../coupons/coupons.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private couponsService: CouponsService) {}
 
   async findAll(query: any = {}) {
     const where: any = {};
@@ -45,87 +46,115 @@ export class OrdersService {
     this.validateOrderPayload(data);
     const orderNumber = await this.generateOrderNumber();
 
-    // Validar stock, calcular costos unitarios y reservar (solo items con variante en la DB)
-    const itemsWithCost: any[] = [];
-    let totalCost = 0;
+    return this.prisma.$transaction(async (tx) => {
+      // Validar stock, calcular costos unitarios y reservar (solo items con variante en la DB)
+      const itemsWithCost: any[] = [];
+      let totalCost = 0;
 
-    for (const item of data.items) {
-      let unitCost = 0;
-      if (item.variantId) {
-        const variant = await this.prisma.productVariant.findUnique({
-          where: { id: item.variantId },
-          include: { product: true },
-        });
-        if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-        if (variant.stock - variant.reservedStock < item.quantity) {
-          throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+      for (const item of data.items) {
+        let unitCost = 0;
+        if (item.variantId) {
+          const variant = await tx.productVariant.findUnique({
+            where: { id: item.variantId },
+            include: { product: true },
+          });
+          if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
+          if (variant.stock - variant.reservedStock < item.quantity) {
+            throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+          }
+          unitCost = variant.costPrice || variant.product.costPrice || 0;
         }
-        unitCost = variant.costPrice || variant.product.costPrice || 0;
+
+        itemsWithCost.push({ ...item, unitCost });
+        totalCost += unitCost * item.quantity;
       }
 
-      itemsWithCost.push({ ...item, unitCost });
-      totalCost += unitCost * item.quantity;
-    }
+      // Reservar stock
+      for (const item of data.items) {
+        if (!item.variantId) continue;
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { reservedStock: { increment: item.quantity } },
+        });
+      }
 
-    // Reservar stock
-    for (const item of data.items) {
-      if (!item.variantId) continue;
-      await this.prisma.productVariant.update({
-        where: { id: item.variantId },
-        data: { reservedStock: { increment: item.quantity } },
-      });
-    }
+      const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
+      const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
+      const couponCode = String(data.couponCode || '').trim().toUpperCase();
+      let appliedDiscount = Math.max(0, Math.round(Number(data.discount) || 0));
 
-    const total = data.total;
-    const profit = total - totalCost;
-    const profitMargin = total > 0 ? (profit / total) * 100 : 0;
+      if (couponCode) {
+        const preview = await this.couponsService.peekCouponInTx(tx, {
+          code: couponCode,
+          phone: data.customerPhone,
+        });
+        appliedDiscount = Math.min(
+          subtotal,
+          Math.round((subtotal * preview.discountPercent) / 100),
+        );
+      }
 
-    const order = await this.prisma.order.create({
-      data: {
-        orderNumber,
-        customerId: data.customerId,
-        customerName: data.customerName,
-        customerPhone: data.customerPhone,
-        customerRut: data.customerRut,
-        deliveryType: data.deliveryType || 'METRO',
-        metroLine: data.metroLine,
-        metroStation: data.metroStation,
-        deliveryDay: data.deliveryDay,
-        deliveryTime: data.deliveryTime,
-        deliveryDetails: data.deliveryDetails,
-        subtotal: data.subtotal,
-        discount: data.discount || 0,
-        shippingCost: data.shippingCost || 0,
-        total,
-        totalCost,
-        profit,
-        profitMargin,
-        status: OrderStatus.PENDING,
-        paymentStatus: PaymentStatus.PENDING,
-        needsInvoice: data.needsInvoice || false,
-        createdById: data.createdById,
-        items: {
-          create: itemsWithCost.map((item: any) => ({
-            productId: item.productId,
-            variantId: item.variantId,
-            productName: item.productName,
-            variantName: item.variantName,
-            sku: item.sku,
-            unitPrice: item.unitPrice,
-            unitCost: item.unitCost,
-            quantity: item.quantity,
-            total: item.total,
-            profit: item.total - item.unitCost * item.quantity,
-          })),
+      const total = Math.max(0, subtotal - appliedDiscount + shippingCost);
+      const profit = total - totalCost;
+      const profitMargin = total > 0 ? (profit / total) * 100 : 0;
+
+      const order = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: data.customerId,
+          customerName: data.customerName,
+          customerPhone: data.customerPhone,
+          customerRut: data.customerRut,
+          deliveryType: data.deliveryType || 'METRO',
+          metroLine: data.metroLine,
+          metroStation: data.metroStation,
+          deliveryDay: data.deliveryDay,
+          deliveryTime: data.deliveryTime,
+          deliveryDetails: data.deliveryDetails,
+          subtotal,
+          discount: appliedDiscount,
+          couponCode: couponCode || null,
+          shippingCost,
+          total,
+          totalCost,
+          profit,
+          profitMargin,
+          status: OrderStatus.PENDING,
+          paymentStatus: PaymentStatus.PENDING,
+          needsInvoice: data.needsInvoice || false,
+          createdById: data.createdById,
+          items: {
+            create: itemsWithCost.map((item: any) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              productName: item.productName,
+              variantName: item.variantName,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              unitCost: item.unitCost,
+              quantity: item.quantity,
+              total: item.total,
+              profit: item.total - item.unitCost * item.quantity,
+            })),
+          },
         },
-      },
-      include: {
-        customer: true,
-        items: { include: { product: true, variant: true } },
-      },
-    });
+        include: {
+          customer: true,
+          items: { include: { product: true, variant: true } },
+        },
+      });
 
-    return order;
+      if (couponCode) {
+        await this.couponsService.consumeCouponInTx(tx, {
+          code: couponCode,
+          phone: data.customerPhone,
+          subtotal,
+          orderId: order.id,
+        });
+      }
+
+      return order;
+    });
   }
 
   async deleteOrder(id: string) {

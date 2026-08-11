@@ -1444,6 +1444,7 @@ function Clientes({
   const [query, setQuery] = useState('');
   const [segFilter, setSegFilter] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [generatingCoupon, setGeneratingCoupon] = useState<string | null>(null);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
@@ -1466,6 +1467,44 @@ function Clientes({
       alert(err?.message || 'No se pudo eliminar el cliente.');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const generateCoupon = async (customer: ApiCustomer) => {
+    if (!window.confirm(`¿Generar cupón de 10% para ${customer.name}?`)) return;
+    setGeneratingCoupon(customer.id);
+    try {
+      const coupon = await apiFetch<{ code: string; discountPercent: number; expiresAt: string | null }>(
+        '/coupons',
+        {
+          method: 'POST',
+          token,
+          body: {
+            customerId: customer.id,
+            customerName: customer.name,
+            customerPhone: customer.phone,
+            discountPercent: 10,
+            daysValid: 30,
+          },
+        },
+      );
+      const phone = customer.phone.replace(/\D/g, '');
+      const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 días';
+      const message = [
+        `Hola ${customer.name}, gracias por tu compra en NutriFit.`,
+        '',
+        `Te dejamos un cupón único para tu próxima compra: *${coupon.code}*`,
+        `Descuento: ${coupon.discountPercent}%`,
+        `Válido hasta: ${expiry}`,
+        '',
+        'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
+      ].join('\n');
+      window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo generar el cupón.');
+    } finally {
+      setGeneratingCoupon(null);
     }
   };
 
@@ -1514,10 +1553,18 @@ function Clientes({
                   </td>
                    <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
                    <td className="px-4 py-3">
-                     <button
-                       type="button"
-                       onClick={() => remove(c)}
-                       disabled={deleting === c.id}
+                      <button
+                        type="button"
+                        onClick={() => generateCoupon(c)}
+                        disabled={generatingCoupon === c.id}
+                        className="mr-2 inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 disabled:opacity-50"
+                      >
+                        <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón 10%'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => remove(c)}
+                        disabled={deleting === c.id}
                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
                      >
                        <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}

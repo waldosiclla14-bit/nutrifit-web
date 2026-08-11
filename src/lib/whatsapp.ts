@@ -9,6 +9,7 @@ type OrderPayload = {
   deliveryDay?: string;
   deliveryTime?: string;
   payment?: string;
+  couponCode?: string;
   items: OrderItem[];
   subtotal: number;
   discount?: number;
@@ -42,6 +43,9 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   lines.push(`*Subtotal:* ${formatPrice(order.subtotal)}`);
   if (order.discount) {
     lines.push(`*Descuento:* -${formatPrice(order.discount)}`);
+  }
+  if (order.couponCode) {
+    lines.push(`*Cupón:* ${order.couponCode}`);
   }
   lines.push(
     `*Entrega:* ${order.shipping === 0 ? 'GRATIS EN METRO' : formatPrice(order.shipping)}`,

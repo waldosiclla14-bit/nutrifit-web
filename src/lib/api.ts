@@ -105,6 +105,7 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       deliveryTime: order.deliveryTime,
       subtotal: order.subtotal,
       discount: order.discount ?? 0,
+      couponCode: order.couponCode ?? undefined,
       shippingCost: order.shipping,
       total: order.total,
       paymentMethod: order.payment === 'Efectivo' ? 'EFECTIVO' : 'TRANSFERENCIA',

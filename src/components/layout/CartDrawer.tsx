@@ -53,12 +53,19 @@ export default function CartDrawer() {
     removeItem,
     subtotal,
     rewardDiscount,
+    couponDiscount,
+    couponCode,
+    couponPhone,
+    couponPercent,
+    activeDiscount,
     shipping,
     total,
     itemCount,
     freeShippingFrom,
     clearCart,
     addItem,
+    applyCoupon,
+    clearCoupon,
   } = useCart();
   const settings = useSettings();
 
@@ -69,6 +76,9 @@ export default function CartDrawer() {
   const [deliveryDay, setDeliveryDay] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [payment, setPayment] = useState('');
+  const [couponInput, setCouponInput] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
   const [error, setError] = useState('');
   const [placed, setPlaced] = useState(false);
   const [offerAdded, setOfferAdded] = useState<number | null>(null);
@@ -108,6 +118,16 @@ export default function CartDrawer() {
   const remaining = Math.max(0, freeShippingFrom - subtotal);
   const progress = Math.min(100, (subtotal / freeShippingFrom) * 100);
 
+  useEffect(() => {
+    if (!couponCode || !couponPhone) return;
+    const currentPhone = phone.replace(/\D/g, '');
+    if (currentPhone && currentPhone !== couponPhone) {
+      clearCoupon();
+      setCouponInput('');
+      setCouponError('El cupón está ligado a otro teléfono. Vuelve a aplicarlo.');
+    }
+  }, [phone, couponCode, couponPhone, clearCoupon]);
+
   const cartIds = useMemo(() => new Set(items.map((i) => i.productId)), [items]);
   const firstPaid = items.find((i) => !i.isGift);
   const firstCategory = firstPaid
@@ -139,6 +159,10 @@ export default function CartDrawer() {
       setError('Completa tu nombre y teléfono.');
       return;
     }
+    if (couponCode && couponPhone && phone.replace(/\D/g, '') !== couponPhone) {
+      setError('El cupón está ligado a otro teléfono.');
+      return;
+    }
     if (!metroLine || !metroStation) {
       setError('Elige tu línea y estación de metro.');
       return;
@@ -165,9 +189,10 @@ export default function CartDrawer() {
       deliveryDay,
       deliveryTime,
       payment,
+      couponCode: couponCode || undefined,
       items: toOrderItems(),
       subtotal,
-      discount: rewardDiscount || undefined,
+      discount: activeDiscount || undefined,
       shipping,
       total,
       status: 'nuevo',
@@ -183,6 +208,27 @@ export default function CartDrawer() {
     submitStoreOrder(order)
       .then(() => setSyncStatus('ok'))
       .catch(() => setSyncStatus('offline'));
+  };
+
+  const handleApplyCoupon = async () => {
+    setCouponError('');
+    if (!couponInput.trim()) {
+      setCouponError('Ingresa un código.');
+      return;
+    }
+    if (!phone.trim()) {
+      setCouponError('Ingresa tu teléfono antes de aplicar el cupón.');
+      return;
+    }
+    setCouponLoading(true);
+    try {
+      await applyCoupon(couponInput, phone);
+      setCouponInput('');
+    } catch (err: any) {
+      setCouponError(err?.message || 'Cupón inválido.');
+    } finally {
+      setCouponLoading(false);
+    }
   };
 
   const finishOrder = () => {
@@ -396,7 +442,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              {rewardEnabled && (
+              {!couponCode && rewardEnabled && (
                 <div className="mt-3">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-soft2">
                     <motion.div
@@ -568,13 +614,25 @@ export default function CartDrawer() {
                   <span className="text-muted">Subtotal</span>
                   <span className="font-semibold">{formatPrice(subtotal)}</span>
                 </div>
-                {rewardDiscount > 0 && (
+                {couponCode ? (
+                  <div className="flex justify-between">
+                    <span className="text-accentDeep">Cupón ({couponPercent}%)</span>
+                    <span className="font-semibold text-accentDeep">
+                      -{formatPrice(couponDiscount)}
+                    </span>
+                  </div>
+                ) : rewardDiscount > 0 ? (
                   <div className="flex justify-between">
                     <span className="text-accentDeep">Descuento meta ({settings.rewardPercent}%)</span>
                     <span className="font-semibold text-accentDeep">
                       -{formatPrice(rewardDiscount)}
                     </span>
                   </div>
+                ) : null}
+                {couponCode && (
+                  <p className="text-[11px] font-semibold text-muted">
+                    El cupón reemplaza cualquier otro descuento automático.
+                  </p>
                 )}
                 <div className="flex justify-between">
                   <span className="text-muted">Entrega en metro</span>
@@ -665,6 +723,50 @@ export default function CartDrawer() {
                   <option value="Transferencia">Transferencia</option>
                   <option value="Efectivo">Efectivo</option>
                 </select>
+                <div className="rounded-2xl border border-line bg-soft/50 p-3">
+                  <div className="flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError('');
+                      }}
+                      placeholder="Código de cupón"
+                      aria-label="Código de cupón"
+                      className="input uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading}
+                      className="btn-outline shrink-0 !px-4 !py-3 text-xs"
+                    >
+                      {couponLoading ? 'Validando…' : 'Aplicar'}
+                    </button>
+                  </div>
+                  {couponError && <p className="mt-2 text-[11px] font-semibold text-red-500">{couponError}</p>}
+                  {couponCode && (
+                    <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-accent/15 px-3 py-2">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-ink">Cupón aplicado</p>
+                        <p className="text-[11px] text-muted">
+                          {couponCode} · {couponPercent}% OFF
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearCoupon();
+                          setCouponInput('');
+                          setCouponError('');
+                        }}
+                        className="text-[11px] font-bold text-accentDeep"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-muted">
                   <span className="flex items-center gap-1">
                     <ShieldCheck size={13} className="text-accentDeep" /> Garantía 30 días

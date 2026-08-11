@@ -60,6 +60,7 @@ model Customer {
 
   orders    Order[]
   addresses Address[]
+  coupons   Coupon[]
 
   @@map("customers")
 }
@@ -186,6 +187,7 @@ model Order {
   deliveryDetails String?
   subtotal        Int
   discount        Int           @default(0)
+  couponCode      String?
   shippingCost    Int           @default(0)
   total           Int
   totalCost       Int           @default(0)
@@ -209,6 +211,25 @@ model Order {
   createdBy User?       @relation("CreatedBy", fields: [createdById], references: [id])
 
   @@map("orders")
+}
+
+model Coupon {
+  id             String   @id @default(uuid())
+  code           String   @unique
+  customerId     String?
+  customerName   String
+  customerPhone  String
+  discountPercent Int
+  expiresAt      DateTime?
+  usedAt         DateTime?
+  usedOrderId    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@map("coupons")
 }
 
 model OrderItem {

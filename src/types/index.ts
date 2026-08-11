@@ -131,6 +131,7 @@ export type Order = {
   deliveryDay?: string;
   deliveryTime?: string;
   payment?: string;
+  couponCode?: string;
   items: OrderItem[];
   subtotal: number;
   discount?: number;

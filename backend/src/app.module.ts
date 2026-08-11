@@ -8,6 +8,7 @@ import { OrdersModule } from './orders/orders.module';
 import { CashRegisterModule } from './cash-register/cash-register.module';
 import { AuditModule } from './audit/audit.module';
 import { ConfigModule as AppConfigModule } from './config/config.module';
+import { CouponsModule } from './coupons/coupons.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { PrismaModule } from './prisma/prisma.module';
     CustomersModule,
     ProductsModule,
     OrdersModule,
+    CouponsModule,
     CashRegisterModule,
     AuditModule,
     AppConfigModule,

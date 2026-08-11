@@ -13,6 +13,16 @@ import type { Bundle, CartItem, Settings } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { getSettings, subscribeStore } from '@/lib/store';
 import { trackEvent } from '@/lib/analytics';
+import { apiFetch } from '@/lib/api';
+
+type AppliedCoupon = {
+  code: string;
+  discountPercent: number;
+  discountAmount: number;
+  customerName: string;
+  expiresAt: string | null;
+  phone: string;
+};
 
 type CartValue = {
   items: CartItem[];
@@ -20,12 +30,19 @@ type CartValue = {
   subtotal: number;
   discount: number;
   rewardDiscount: number;
+  couponDiscount: number;
+  couponCode: string | null;
+  couponPhone: string | null;
+  couponPercent: number;
+  activeDiscount: number;
   shipping: number;
   total: number;
   itemCount: number;
   freeShippingFrom: number;
   addItem: (item: Omit<CartItem, 'key'>) => void;
   addBundle: (bundle: Bundle, variants?: Record<number, string>) => void;
+  applyCoupon: (code: string, phone: string) => Promise<AppliedCoupon>;
+  clearCoupon: () => void;
   updateQuantity: (key: string, quantity: number) => void;
   removeItem: (key: string) => void;
   clearCart: () => void;
@@ -52,6 +69,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] = useState<Settings>(() => getSettings());
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
 
   useEffect(() => {
     setItems(loadCart());
@@ -191,6 +209,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [addItem],
   );
 
+  const clearCoupon = useCallback(() => setCoupon(null), []);
+
+  const applyCoupon = useCallback(
+    async (code: string, phone: string) => {
+      const cleanCode = String(code || '').trim().toUpperCase();
+      const cleanPhone = String(phone || '').replace(/\D/g, '');
+      const currentSubtotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
+      if (!cleanCode) throw new Error('Ingresa un código de cupón.');
+      if (!cleanPhone) throw new Error('Ingresa un teléfono válido.');
+      const result = await apiFetch<Omit<AppliedCoupon, 'phone'>>('/coupons/validate', {
+        method: 'POST',
+        body: { code: cleanCode, phone: cleanPhone, subtotal: currentSubtotal },
+      });
+      const applied = { ...result, phone: cleanPhone };
+      setCoupon(applied);
+      return applied;
+    },
+    [items],
+  );
+
   const updateQuantity = useCallback((key: string, quantity: number) => {
     setItems((prev) =>
       quantity <= 0
@@ -207,15 +245,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const clearCart = useCallback(() => setItems([]), []);
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setCoupon(null);
+  }, []);
+
+  useEffect(() => {
+    if (items.length === 0 && coupon) setCoupon(null);
+  }, [items.length, coupon]);
 
   const value = useMemo<CartValue>(() => {
     const subtotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
     const discount = items.reduce((acc, i) => acc + i.discount * i.quantity, 0);
+    const couponDiscount = coupon ? Math.min(subtotal, Math.round((subtotal * coupon.discountPercent) / 100)) : 0;
     const rewardDiscount =
       rewardThreshold > 0 && subtotal >= rewardThreshold
         ? Math.round((subtotal * rewardPercent) / 100)
         : 0;
+    const activeDiscount = couponDiscount > 0 ? couponDiscount : rewardDiscount;
     const shipping =
       subtotal === 0 || subtotal >= settings.freeShippingFrom ? 0 : settings.shipping;
     const itemCount = items
@@ -227,12 +274,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       subtotal,
       discount,
       rewardDiscount,
+      couponDiscount,
+      couponCode: coupon?.code ?? null,
+      couponPhone: coupon?.phone ?? null,
+      couponPercent: coupon?.discountPercent ?? 0,
+      activeDiscount,
       shipping,
-      total: Math.max(0, subtotal - rewardDiscount + shipping),
+      total: Math.max(0, subtotal - activeDiscount + shipping),
       itemCount,
       freeShippingFrom: settings.freeShippingFrom,
       addItem,
       addBundle,
+      applyCoupon,
+      clearCoupon,
       updateQuantity,
       removeItem,
       clearCart,
@@ -246,8 +300,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     settings.shipping,
     rewardThreshold,
     rewardPercent,
+    coupon,
     addItem,
     addBundle,
+    applyCoupon,
+    clearCoupon,
     updateQuantity,
     removeItem,
     clearCart,
