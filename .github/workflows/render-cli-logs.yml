@@ -1,4 +1,4 @@
-name: "Diagnóstico: logs de deploy vía Render CLI"
+name: "Diagnóstico: logs via Render CLI (oficial)"
 
 on:
   workflow_dispatch:
@@ -7,20 +7,40 @@ env:
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
 jobs:
-  render-cli-logs:
-    runs-on: ubuntu-latest
+  cli-logs:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Instalar Render CLI (python)
+      - name: Install Render CLI (oficial)
         run: |
-          pip install --quiet render 2>&1 | tail -3 || pip install --quiet render-cli 2>&1 | tail -3
-          render --version 2>&1 || true
-      - name: Listar deploys y probar fetch de logs
+          curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh -o /tmp/render-install.sh
+          sh /tmp/render-install.sh 2>&1 | tail -15
+          echo "$HOME/.local/bin:$HOME/.render:/usr/local/bin" >> "$GITHUB_PATH"
+          echo "PATH=$PATH"
+          which render; render --help 2>&1 | head -5 || true
+      - name: workspace + services
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          CI: true
         run: |
-          echo "=== render deploys (list) ==="
-          render --api-key "$RENDER_API_KEY" deploys list 2>&1 | tail -20 || true
-          echo "=== render deployments (list) ==="
-          render --api-key "$RENDER_API_KEY" deployments list 2>&1 | tail -20 || true
-          echo "=== render services logs (tail) ==="
-          render --api-key "$RENDER_API_KEY" services logs nutrifit-api 2>&1 | tail -40 || true
-          echo "=== render deployments logs (failed deploy) ==="
-          render --api-key "$RENDER_API_KEY" deployments logs dep-d9ttb7qd0e5s73a0j8ug 2>&1 | tail -60 || true
+          export RENDER_OUTPUT=json
+          render workspaces --confirm 2>&1 | head -c 800; echo
+          echo "=== services ==="
+          render services --confirm 2>&1 | head -c 1500; echo
+      - name: services logs help + attempt
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          CI: true
+        run: |
+          render services logs --help 2>&1 | head -40
+          echo "=== ATTEMPT services logs ==="
+          timeout 60 render services logs nutrifit-api --output text --confirm 2>&1 | tail -150 || true
+      - name: deploys list + latest deploy logs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          CI: true
+        run: |
+          export RENDER_OUTPUT=json
+          echo "=== deploys list ==="
+          render deploys list ${{ secrets.RENDER_SERVICE_ID }} --output json --confirm 2>&1 | head -c 1500; echo
+          echo "=== render version ==="
+          render version 2>&1 || render --version 2>&1 || true
