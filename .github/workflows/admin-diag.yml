@@ -1,0 +1,67 @@
+name: "diag: tiempos de carga del admin"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  SVC: ${{ secrets.RENDER_SERVICE_ID }}
+  BASE: "https://nutrifit-api-635n.onrender.com"
+
+jobs:
+  diag:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Obtener credencial admin desde Render
+        run: |
+          curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/env-vars" -o /tmp/env.json
+          python3 - <<'PY'
+          import json, os
+          e=json.load(open('/tmp/env.json'))
+          pw=None
+          for item in e:
+              x=item.get('envVar') or {}
+              if x.get('key')=='SEED_ADMIN_PASSWORD':
+                  pw=x.get('value')
+          if not pw:
+              print("::error::SEED_ADMIN_PASSWORD no disponible")
+              raise SystemExit(1)
+          open('/tmp/pw.txt','w').write(pw)
+          print("pw_len=%d" % len(pw))
+          PY
+      - name: Login admin
+        run: |
+          PW=$(cat /tmp/pw.txt)
+          resp=$(curl -s --max-time 20 -X POST -H "Content-Type: application/json" \
+            -d "{\"email\":\"admin@nutrifit.cl\",\"password\":\"$PW\"}" \
+            "$BASE/api/auth/login")
+          echo "LOGIN_RESP_HEAD=$(printf '%s' "$resp" | head -c 120)"
+          tok=$(printf '%s' "$resp" | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
+          if [ -z "$tok" ]; then echo "::error::no token"; exit 1; fi
+          echo "$tok" > /tmp/tok.txt
+          echo "TOKEN_OK len=${#tok}"
+      - name: Medir endpoints del admin
+        run: |
+          TOK=$(cat /tmp/tok.txt)
+          for ep in "orders/stats" "orders" "products" "customers" "reminders" "cash-register/current" "config/goals" "products/inventory-value"; do
+            code=$(curl -s -o /tmp/body.json -w "%{http_code}" --max-time 30 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
+            ms=$(curl -s -o /dev/null -w "%{time_total}" --max-time 30 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
+            size=$(wc -c < /tmp/body.json)
+            echo "[$ep] http=$code time=${ms}s bytes=$size"
+          done
+      - name: Logs recientes del servicio (best-effort)
+        run: |
+          curl -s --max-time 15 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/logs?limit=60" -o /tmp/svclogs.json || true
+          python3 - <<'PY' 2>/dev/null || true
+          import json
+          try:
+              d=json.load(open('/tmp/svclogs.json'))
+              logs=d if isinstance(d,list) else d.get('logs',[])
+              errs=[l for l in logs if l and ('error' in str(l).lower() or 'exception' in str(l).lower())]
+              print("recent_log_lines=%d error_lines=%d" % (len(logs), len(errs)))
+              for e in errs[-15:]: print("ERR>", str(e)[:200])
+          except Exception as ex:
+              print("logs_parse_skip", ex)
+          PY
