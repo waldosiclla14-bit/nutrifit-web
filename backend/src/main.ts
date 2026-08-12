@@ -43,20 +43,8 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     app.useGlobalFilters(new FatalFilter());
 
-    const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,https://nutrifit-web-nu.vercel.app')
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean);
     app.use(helmet());
-    app.use(
-      cors({
-        origin: (origin, callback) => {
-          if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-          return callback(new Error('Origen no permitido por CORS'));
-        },
-        credentials: false,
-      }),
-    );
+    app.use(cors({ origin: true, credentials: true }));
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     app.setGlobalPrefix('api');
 
