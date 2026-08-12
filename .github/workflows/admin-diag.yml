@@ -33,7 +33,7 @@ jobs:
       - name: Login admin
         run: |
           PW=$(cat /tmp/pw.txt)
-          resp=$(curl -s --max-time 20 -X POST -H "Content-Type: application/json" \
+          resp=$(curl -s --max-time 60 -X POST -H "Content-Type: application/json" \
             -d "{\"email\":\"admin@nutrifit.cl\",\"password\":\"$PW\"}" \
             "$BASE/api/auth/login")
           echo "LOGIN_RESP_HEAD=$(printf '%s' "$resp" | head -c 120)"
@@ -41,14 +41,15 @@ jobs:
           if [ -z "$tok" ]; then echo "::error::no token"; exit 1; fi
           echo "$tok" > /tmp/tok.txt
           echo "TOKEN_OK len=${#tok}"
-      - name: Medir endpoints del admin
+      - name: Medir endpoints del admin (cold luego warm)
         run: |
           TOK=$(cat /tmp/tok.txt)
           for ep in "orders/stats" "orders" "products" "customers" "reminders" "cash-register/current" "config/goals" "products/inventory-value"; do
-            code=$(curl -s -o /tmp/body.json -w "%{http_code}" --max-time 30 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
-            ms=$(curl -s -o /dev/null -w "%{time_total}" --max-time 30 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
+            c1=$(curl -s -o /tmp/body.json -w "%{http_code}" --max-time 60 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
+            t1=$(curl -s -o /dev/null -w "%{time_total}" --max-time 60 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
+            t2=$(curl -s -o /dev/null -w "%{time_total}" --max-time 60 -H "Authorization: Bearer $TOK" "$BASE/api/$ep")
             size=$(wc -c < /tmp/body.json)
-            echo "[$ep] http=$code time=${ms}s bytes=$size"
+            echo "[$ep] cold=${c1}/${t1}s warm=${t2}s bytes=$size"
           done
       - name: Logs recientes del servicio (best-effort)
         run: |
