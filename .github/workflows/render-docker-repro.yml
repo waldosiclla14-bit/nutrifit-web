@@ -1,0 +1,55 @@
+name: "Reproducción exacta: imagen Docker de Render (node:20-slim) + NODE_ENV=production"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docker-repro:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_DB: nutrifit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build de la imagen Docker EXACTA (node:20-slim)
+        run: |
+          docker build -f backend/Dockerfile -t nutrifit-render-repro backend/ 2>&1 | tail -40
+      - name: Arrancar contenedor con env de Render (production) y capturar logs
+        env:
+          DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
+        run: |
+          set -e
+          docker run --rm -d \
+            --name nr \
+            -e DATABASE_URL="postgresql://postgres:nutrifit@postgres:5432/nutrifit?schema=public" \
+            -e JWT_SECRET=test-secret-123456 \
+            -e CORS_ORIGINS=http://localhost:3000 \
+            -e PORT=3001 \
+            -e NODE_ENV=production \
+            --network=host \
+            nutrifit-render-repro
+          echo "container arrancado"
+          for i in $(seq 1 30); do
+            sleep 2
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/docs || true)
+            echo "poll $i /api/docs -> $code"
+            if [ "$code" = "200" ] || [ "$code" = "404" ]; then break; fi
+          done
+          echo "=== /api/health ==="; curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3001/api/health || true
+          echo "=== /api/docs ==="; curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3001/api/docs || true
+        - name: Capturar logs del contenedor (stdout/stderr)  # capture even on failure
+        if: always()
+        run: |
+          echo "=== CONTAINER LOG (docker logs nr) ==="
+          docker logs nr 2>&1 || true
+          docker stop nr 2>/dev/null || true

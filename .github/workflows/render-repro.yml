@@ -24,6 +24,7 @@ jobs:
       JWT_SECRET: test-secret-123456
       CORS_ORIGINS: http://localhost:3000
       PORT: 3001
+      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,6 +55,7 @@ jobs:
           JWT_SECRET: test-secret-123456
           CORS_ORIGINS: http://localhost:3000
           PORT: 4001
+          NODE_ENV: production
         run: |
           node dist/main > /tmp/app.log 2>&1 &
           APP_PID=$!
