@@ -40,9 +40,7 @@ async function bootstrap() {
   });
 
   try {
-    const app = await NestFactory.create(AppModule, {
-      bufferLogs: true,
-    });
+    const app = await NestFactory.create(AppModule);
     app.useGlobalFilters(new FatalFilter());
 
     const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,https://nutrifit-web-nu.vercel.app')

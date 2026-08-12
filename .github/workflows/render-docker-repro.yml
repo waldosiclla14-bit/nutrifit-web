@@ -1,4 +1,4 @@
-name: "Reproducción: imagen Docker + 512MiB + captura OOM"
+name: "Reproducción: build 1x, probar 512MiB vs 1024MiB (logs de Nest)"
 
 on:
   workflow_dispatch:
@@ -24,34 +24,32 @@ jobs:
       - name: Build imagen Docker exacta
         run: |
           docker build -f backend/Dockerfile -t nutrifit-render-repro backend/ 2>&1 | tail -8
-      - name: Arrancar con 512MiB (plan free)
+      - name: Probar múltiples topes de memoria
+        env:
+          DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
         run: |
-          docker run -d \
-            --name nr \
-            --memory=512m --memory-swap=512m --cpus=1 \
-            -e DATABASE_URL="postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public" \
-            -e JWT_SECRET=test-secret-123456 \
-            -e CORS_ORIGINS=http://localhost:3000 \
-            -e PORT=3001 \
-            -e NODE_ENV=production \
-            nutrifit-render-repro
-          echo "container arrancado"
-      - name: Health check + detección de salida
-        run: |
-          for i in $(seq 1 20); do
-            if [ ! "$(docker ps -q -f name=nr)" ]; then echo "CONTENEDOR FINALIZADO antes de tiempo"; break; fi
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/docs || true)
-            echo "poll $i /api/docs -> $code"
-            if [ "$code" = "200" ]; then echo "BOOTED"; break; fi
-            sleep 5
+          for LIMIT in 512m 1024m; do
+            echo "########## LIMIT=$LIMIT ##########"
+            docker run -d --name nr \
+              --memory=$LIMIT --memory-swap=$LIMIT --cpus=1 \
+              -e DATABASE_URL="postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public" \
+              -e JWT_SECRET=test-secret-123456 \
+              -e CORS_ORIGINS=http://localhost:3000 \
+              -e PORT=3001 -e NODE_ENV=production \
+              nutrifit-render-repro
+            sleep 3
+            if [ ! "$(docker ps -q -f name=nr)" ]; then echo "CONTENEDOR SALIO (no sirve)"; fi
+            for i in $(seq 1 14); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/docs || true)
+              echo "poll $i /api/docs -> $code"
+              if [ "$code" = "200" ]; then echo "BOOTED 200"; break; fi
+              [ -z "$(docker ps -q -f name=nr)" ] && { echo "container gone"; break; }
+              sleep 5
+            done
+            echo "--- inspect ---"
+            docker inspect --format='Running={{.State.Running}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}}' nr 2>&1 || true
+            echo "--- logs (tail 40) ---"
+            docker logs nr 2>&1 | tail -40 || true
+            docker rm -f nr 2>/dev/null || true
+            echo ""
           done
-      - name: Capturar estado + logs (OOM?)
-        if: always()
-        run: |
-          echo "=== docker inspect ==="
-          docker inspect --format='Exists={{.State.Running}} OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Status={{.State.Status}}' nr 2>&1 || true
-          echo "=== docker wait (codigo salida) ==="
-          docker wait nr 2>&1 || true
-          echo "=== docker logs nr (stdout/stderr) ==="
-          docker logs nr 2>&1 | tail -50 || true
-          docker rm -f nr 2>/dev/null || true
