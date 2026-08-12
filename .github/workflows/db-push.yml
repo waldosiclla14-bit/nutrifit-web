@@ -1,0 +1,38 @@
+name: "db-push: aplicar schema Prisma a la DB de Render"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  SVC: ${{ secrets.RENDER_SERVICE_ID }}
+
+jobs:
+  push:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtener DATABASE_URL desde Render (sin duplicar credenciales)
+        run: |
+          curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/env-vars" -o /tmp/env.json
+          python3 - <<'PY'
+          import json
+          e=json.load(open('/tmp/env.json'))
+          val=None
+          for item in e:
+              x=item.get('envVar') or {}
+              if x.get('key')=='DATABASE_URL':
+                  val=x.get('value')
+          if not val or val.startswith('$') or len(val)<10:
+              print("::error::DATABASE_URL no recuperable via API")
+              raise SystemExit(1)
+          open('/tmp/dburl.txt','w').write(val)
+          print("DATABASE_URL_OK len=%d" % len(val))
+          PY
+      - name: prisma db push
+        run: |
+          export DATABASE_URL="$(cat /tmp/dburl.txt)"
+          cd backend
+          npm ci --no-audit --no-fund
+          npx prisma db push --skip-generate

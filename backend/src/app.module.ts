@@ -11,6 +11,7 @@ import { ConfigModule as AppConfigModule } from './config/config.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { RemindersModule } from './reminders/reminders.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { HealthModule } from './health/health.module';
     AuditModule,
     AppConfigModule,
     HealthModule,
+    RemindersModule,
   ],
 })
 export class AppModule {}
