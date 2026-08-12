@@ -1,0 +1,31 @@
+name: "Diagnóstico: archivos bueno vs actual"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Mostrar archivos clave
+        run: |
+          echo "==== GOOD commit (live) hash detectado del deploy list: 8a35247da7 ===="
+          for f in "backend/Dockerfile" "backend/package.json" "backend/tsconfig.json" "backend/tsconfig.build.json" "backend/prisma/schema.prisma"; do
+            echo ""; echo "############################################";
+            echo "## $f  @ GOOD (8a35247da7)";
+            echo "############################################";
+            gh api "repos/waldosiclla14-bit/nutrifit-web/contents/$f?ref=8a35247da7" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null || echo "(no existe en ese commit)"
+          done
+          echo ""; echo "############################################";
+          echo "## backend/tsconfig.json  @ HEAD (actual)";
+          echo "############################################";
+          cat backend/tsconfig.json 2>/dev/null || echo "(no existe)"
+          echo ""; echo "############################################";
+          echo "## backend/package.json scripts  @ HEAD";
+          echo "############################################";
+          jq '{scripts, dependencies: (.dependencies|keys), devDependencies: (.devDependencies|keys)}' backend/package.json 2>/dev/null || node -e 'const p=require("./backend/package.json");console.log("scripts:",JSON.stringify(p.scripts));'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
