@@ -1,0 +1,23 @@
+name: "Diagnostic: Identificar servicio de Render correcto"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quien soy + lista de servicios
+        run: |
+          echo "=== /v1/owners ==="
+          curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" "https://api.render.com/v1/owners"
+          echo ""
+          echo "=== /v1/services (paginado) ==="
+          for page in "" "?limit=20&offset=0" "?limit=20&offset=20" "?limit=20&offset=40" "?limit=20&offset=60"; do
+            curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" "https://api.render.com/v1/services${page}"
+            echo ""
+            echo "---next page---"
+          done
