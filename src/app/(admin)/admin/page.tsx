@@ -310,79 +310,106 @@ function Dashboard({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadTab = useCallback(async (t: string) => {
     setLoading(true);
     try {
-      const [s, o, p, c, r, cr, g, iv] = await Promise.all([
-        apiFetch<Stats>('/orders/stats', { token }),
-        apiFetch<ApiOrder[]>('/orders', { token }),
-        apiFetch<any[]>('/products', { token }),
-        apiFetch<ApiCustomer[]>('/customers', { token }),
-        apiFetch<ApiReminder[]>('/reminders', { token }).catch(() => []),
-        apiFetch<any | null>('/cash-register/current', { token }),
-        apiFetch<Goals>('/config/goals', { token }),
-        apiFetch<InventoryValue>('/products/inventory-value', { token }).catch(() => null),
-      ]);
-      setStats(s);
-      setOrders(o);
-      setReminders(
-        (r || []).map((x: any) => ({
-          id: x.id,
-          customerId: x.customerId,
-          customerName: x.customer?.name || '',
-          customerPhone: x.customer?.phone || '',
-          title: x.title,
-          message: x.message,
-          dueAt: x.dueAt,
-          status: x.status,
-          sentAt: x.sentAt,
-          createdAt: x.createdAt,
-        })),
-      );
-      setProducts(
-        (p || []).map((x) => ({
-          id: x.id,
-          name: x.name,
-          sku: x.sku,
-          brand: x.brand ? x.brand.name : undefined,
-          brandName: x.brand ? x.brand.name : undefined,
-          price: x.basePrice ?? x.price,
-          costPrice: x.costPrice ?? 0,
-          active: x.isActive !== false,
-          comparePrice: x.comparePrice,
-          description: x.description,
-          registroIsp: x.registroIsp || null,
-          category: x.category ? { id: x.category.id, name: x.category.name } : null,
-          variants: (x.variants || []).map((v: any) => ({
-            id: v.id,
-            name: v.variantName || v.name || 'Sin variante',
-            sku: v.sku,
-            price: v.price,
-            costPrice: (v.costPrice || 0) || (x.costPrice || 0),
-            stock: v.stock,
-            lowStockAlert: v.lowStockAlert,
-            active: v.isActive !== false,
+      if (t === 'resumen') {
+        const [s, cr, g, iv] = await Promise.all([
+          apiFetch<Stats>('/orders/stats', { token }),
+          apiFetch<any | null>('/cash-register/current', { token }),
+          apiFetch<Goals>('/config/goals', { token }),
+          apiFetch<InventoryValue>('/products/inventory-value', { token }).catch(() => null),
+        ]);
+        setStats(s);
+        setCash(
+          cr
+            ? {
+                id: cr.id,
+                status: cr.isOpen ? 'OPEN' : 'CLOSED',
+                openedAt: cr.openedAt,
+                closedAt: cr.closedAt,
+                initialAmount: cr.initialAmount,
+                finalAmount: cr.finalAmount,
+                expectedAmount: cr.expectedAmount,
+                diff: cr.difference,
+                openedBy: cr.openedBy,
+              }
+            : null,
+        );
+        setGoals(g);
+        setInventory(iv);
+      } else if (t === 'ordenes') {
+        const o = await apiFetch<ApiOrder[]>('/orders', { token });
+        setOrders(o || []);
+      } else if (t === 'productos') {
+        const p = await apiFetch<any[]>('/products', { token });
+        setProducts(
+          (p || []).map((x) => ({
+            id: x.id,
+            name: x.name,
+            sku: x.sku,
+            brand: x.brand ? x.brand.name : undefined,
+            brandName: x.brand ? x.brand.name : undefined,
+            price: x.basePrice ?? x.price,
+            costPrice: x.costPrice ?? 0,
+            active: x.isActive !== false,
+            comparePrice: x.comparePrice,
+            description: x.description,
+            registroIsp: x.registroIsp || null,
+            category: x.category ? { id: x.category.id, name: x.category.name } : null,
+            variants: (x.variants || []).map((v: any) => ({
+              id: v.id,
+              name: v.variantName || v.name || 'Sin variante',
+              sku: v.sku,
+              price: v.price,
+              costPrice: (v.costPrice || 0) || (x.costPrice || 0),
+              stock: v.stock,
+              lowStockAlert: v.lowStockAlert,
+              active: v.isActive !== false,
+            })),
           })),
-        })),
-      );
-      setCustomers(c);
-      setCash(
-        cr
-          ? {
-              id: cr.id,
-              status: cr.isOpen ? 'OPEN' : 'CLOSED',
-              openedAt: cr.openedAt,
-              closedAt: cr.closedAt,
-              initialAmount: cr.initialAmount,
-              finalAmount: cr.finalAmount,
-              expectedAmount: cr.expectedAmount,
-              diff: cr.difference,
-              openedBy: cr.openedBy,
-            }
-          : null,
-      );
-      setGoals(g);
-      setInventory(iv);
+        );
+      } else if (t === 'clientes') {
+        const c = await apiFetch<ApiCustomer[]>('/customers', { token });
+        setCustomers(c || []);
+      } else if (t === 'agenda') {
+        const [r, c] = await Promise.all([
+          apiFetch<ApiReminder[]>('/reminders', { token }).catch(() => []),
+          apiFetch<ApiCustomer[]>('/customers', { token }).catch(() => []),
+        ]);
+        setReminders(
+          (r || []).map((x: any) => ({
+            id: x.id,
+            customerId: x.customerId,
+            customerName: x.customer?.name || '',
+            customerPhone: x.customer?.phone || '',
+            title: x.title,
+            message: x.message,
+            dueAt: x.dueAt,
+            status: x.status,
+            sentAt: x.sentAt,
+            createdAt: x.createdAt,
+          })),
+        );
+        setCustomers(c || []);
+      } else if (t === 'caja') {
+        const cr = await apiFetch<any | null>('/cash-register/current', { token });
+        setCash(
+          cr
+            ? {
+                id: cr.id,
+                status: cr.isOpen ? 'OPEN' : 'CLOSED',
+                openedAt: cr.openedAt,
+                closedAt: cr.closedAt,
+                initialAmount: cr.initialAmount,
+                finalAmount: cr.finalAmount,
+                expectedAmount: cr.expectedAmount,
+                diff: cr.difference,
+                openedBy: cr.openedBy,
+              }
+            : null,
+        );
+      }
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
@@ -390,9 +417,11 @@ function Dashboard({
     }
   }, [token]);
 
+  const load = useCallback(() => loadTab(tab), [loadTab, tab]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    loadTab(tab);
+  }, [loadTab, tab]);
 
   const act = async (fn: () => Promise<any>, id: string) => {
     setBusyId(id);

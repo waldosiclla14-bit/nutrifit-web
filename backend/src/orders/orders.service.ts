@@ -22,7 +22,6 @@ export class OrdersService {
       where,
       include: {
         customer: { select: { id: true, name: true, phone: true } },
-        items: { include: { product: true, variant: true } },
         createdBy: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },

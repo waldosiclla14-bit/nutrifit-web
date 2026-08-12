@@ -12,6 +12,7 @@ import { CouponsModule } from './coupons/coupons.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { PingModule } from './ping/ping.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RemindersModule } from './reminders/reminders.module';
     AppConfigModule,
     HealthModule,
     RemindersModule,
+    PingModule,
   ],
 })
 export class AppModule {}
