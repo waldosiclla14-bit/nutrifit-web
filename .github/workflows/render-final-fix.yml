@@ -1,0 +1,104 @@
+name: "Final fix: audit, rotar JWT_SECRET, deploy main, verificar"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  SVC: ${{ secrets.RENDER_SERVICE_ID }}
+  BASE: "https://nutrifit-api-635n.onrender.com"
+
+jobs:
+  fix:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: AUDIT - servicio (fuente del repo)
+        run: |
+          curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC" -o /tmp/svc.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('/tmp/svc.json'))
+          print("serviceType:", s.get('type'))
+          print("repo:", s.get('repo'))
+          print("branch:", s.get('branch'))
+          print("healthCheckPath:", (s.get('serviceDetails') or {}).get('healthCheckPath'))
+          print("envVars:", len(s.get('envVars') or []))
+          print("serviceId:", s.get('id'))
+          PY
+
+      - name: AUDIT - deploys recientes
+        run: |
+          curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/deploys?limit=6" -o /tmp/deploys.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/deploys.json'))
+          for x in d:
+              print(x.get('id'), x.get('status'), "commit="+str(x.get('commit'))[:12], x.get('createdAt','')[:19])
+          PY
+
+      - name: AUDIT - env vars (SOLO KEYS)
+        run: |
+          curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/env-vars" -o /tmp/env.json
+          python3 - <<'PY'
+          import json
+          e=json.load(open('/tmp/env.json'))
+          keys=[v.get('key') for v in e]
+          print("KEYS:", sorted(keys))
+          missing=[k for k in ("DATABASE_URL","JWT_SECRET","PORT","JWT_EXPIRES_IN","CORS_ORIGINS","ADMIN_PASSWORD","SELLER_PASSWORD") if k not in keys]
+          print("MISSING_REQUIRED:", missing)
+          PY
+
+      - name: ROTAR JWT_SECRET (SIN imprimir valor)
+        run: |
+          JW=$(openssl rand -hex 32)
+          code=$(curl -s -o /tmp/rot.json -w "%{http_code}" -X PUT --max-time 20 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" -H "Content-Type: application/json" \
+            -d "{\"key\":\"JWT_SECRET\",\"value\":\"$JW\"}" \
+            "https://api.render.com/v1/services/$SVC/env-vars/JWT_SECRET")
+          echo "PUT_JWT_SECRET_HTTP=$code"
+          [ "$code" = "200" ] || { echo "::error::PUT JWT_SECRET fallo $code"; cat /tmp/rot.json | head -c 400; exit 1; }
+
+      - name: DEPLOY - build fresco de main (clear cache)
+        run: |
+          curl -s --max-time 20 -X POST -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" -H "Content-Type: application/json" \
+            -d '{"clearCache":"clear"}' \
+            "https://api.render.com/v1/services/$SVC/deploys" -o /tmp/dep.json
+          DID=$(python3 -c "import json;print(json.load(open('/tmp/dep.json')).get('id',''))")
+          echo "NEW_DEPLOY=$DID"
+          [ -n "$DID" ] || { echo "::error::no deploy id"; head -c 400 /tmp/dep.json; exit 1; }
+          echo "$DID" > /tmp/did
+          for i in $(seq 1 40); do
+            sleep 15
+            st=$(curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/$SVC/deploys/$DID" | python3 -c "import sys,json;print(json.load(sys.stdin).get('status',''))")
+            echo "[t=$i] deploy=$st"
+            case "$st" in
+              live|deployed|ready) echo "DEPLOY_OK"; break ;;
+              failed|update_failed|build_failed|canceled|deactivate_failed) echo "::error::DEPLOY_FAILED ($st)"; curl -s --max-time 20 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" "https://api.render.com/v1/services/$SVC/deploys/$DID" | head -c 900; exit 1 ;;
+            esac
+          done
+
+      - name: VERIFICAR - health + rutas del build nuevo
+        run: |
+          for i in $(seq 1 25); do
+            h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$BASE/api/health" 2>/dev/null || echo 000)
+            if [ "$h" = "200" ]; then
+              echo "[t=$i] /api/health=200 -> BUILD_NUEVO_LIVE"
+              curl -s --max-time 15 "$BASE/api/docs-json" -o /tmp/docs.json
+              python3 - <<'PY'
+              import json
+              p=json.load(open('/tmp/docs.json')).get('paths',{})
+              has_health='/api/health' in p
+              print("health_en_swagger:", has_health)
+              print("total_paths:", len(p))
+              PY
+              exit 0
+            fi
+            echo "[t=$i] health=$h"
+            sleep 12
+          done
+          echo "::error::health no llego a 200"
+          exit 1
