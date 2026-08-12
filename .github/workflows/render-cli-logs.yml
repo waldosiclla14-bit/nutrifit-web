@@ -1,0 +1,26 @@
+name: "Diagnóstico: logs de deploy vía Render CLI"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  render-cli-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar Render CLI (python)
+        run: |
+          pip install --quiet render 2>&1 | tail -3 || pip install --quiet render-cli 2>&1 | tail -3
+          render --version 2>&1 || true
+      - name: Listar deploys y probar fetch de logs
+        run: |
+          echo "=== render deploys (list) ==="
+          render --api-key "$RENDER_API_KEY" deploys list 2>&1 | tail -20 || true
+          echo "=== render deployments (list) ==="
+          render --api-key "$RENDER_API_KEY" deployments list 2>&1 | tail -20 || true
+          echo "=== render services logs (tail) ==="
+          render --api-key "$RENDER_API_KEY" services logs nutrifit-api 2>&1 | tail -40 || true
+          echo "=== render deployments logs (failed deploy) ==="
+          render --api-key "$RENDER_API_KEY" deployments logs dep-d9ttb7qd0e5s73a0j8ug 2>&1 | tail -60 || true
