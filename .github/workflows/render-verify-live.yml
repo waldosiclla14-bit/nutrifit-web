@@ -1,0 +1,36 @@
+name: "Diagnóstico: estado vivo + rate-limit"
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chequear rate-limit + estado de servicio
+        run: |
+          echo "=== HEADERS (api.render.com/v1/services/{id}) ==="
+          curl -s -D - -o /dev/null --max-time 15 \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Accept: application/json" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}"
+          echo "=== END HEADERS ==="
+      - name: Polling del endpoint en vivo (cuota cero)
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 https://nutrifit-api.onrender.com/api/health 2>/dev/null || echo "000")
+            echo "[$(date -u +%H:%M:%S)] attempt=$i http=$code"
+            if [ "$code" = "200" ]; then echo "LIVE_OK"; break; fi
+            sleep 12
+          done
+      - name: Último deploy conocido vía API (si no rate-limit)
+        run: |
+          curl -s --max-time 15 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=3" 2>&1 | head -c 1500
+          echo
