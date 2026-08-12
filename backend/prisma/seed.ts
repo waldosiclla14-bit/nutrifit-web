@@ -4,8 +4,8 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminPasswordValue = process.env.ADMIN_PASSWORD;
-  const sellerPasswordValue = process.env.SELLER_PASSWORD;
+  const adminPasswordValue = process.env.ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD;
+  const sellerPasswordValue = process.env.SELLER_PASSWORD || process.env.SEED_SELLER_PASSWORD;
   if (!adminPasswordValue || !sellerPasswordValue) {
     throw new Error('ADMIN_PASSWORD y SELLER_PASSWORD son obligatorios para ejecutar el seed');
   }

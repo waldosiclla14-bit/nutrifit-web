@@ -88,22 +88,22 @@ jobs:
 
       - name: VERIFICAR - health + rutas del build nuevo
         run: |
+          code=000
           for i in $(seq 1 25); do
-            h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$BASE/api/health" 2>/dev/null || echo 000)
-            if [ "$h" = "200" ]; then
-              echo "[t=$i] /api/health=200 -> BUILD_NUEVO_LIVE"
-              curl -s --max-time 15 "$BASE/api/docs-json" -o /tmp/docs.json
-              python3 - <<'PY'
-              import json
-              p=json.load(open('/tmp/docs.json')).get('paths',{})
-              has_health='/api/health' in p
-              print("health_en_swagger:", has_health)
-              print("total_paths:", len(p))
-              PY
-              exit 0
-            fi
-            echo "[t=$i] health=$h"
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$BASE/api/health" 2>/dev/null || echo 000)
+            echo "[t=$i] health=$code"
+            if [ "$code" = "200" ]; then break; fi
             sleep 12
           done
-          echo "::error::health no llego a 200"
-          exit 1
+          if [ "$code" != "200" ]; then
+            echo "::error::health no llego a 200"
+            exit 1
+          fi
+          echo "BUILD_NUEVO_LIVE health=200"
+          curl -s --max-time 15 "$BASE/api/docs-json" -o /tmp/docs.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/docs.json')).get('paths',{})
+          print("health_en_swagger:", '/api/health' in p)
+          print("total_paths:", len(p))
+          PY
