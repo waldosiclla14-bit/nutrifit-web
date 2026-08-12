@@ -51,7 +51,26 @@ export class CustomersService {
   }
 
   async update(id: string, data: any) {
-    return this.prisma.customer.update({ where: { id }, data, include: { addresses: true } });
+    const clean: Record<string, unknown> = {};
+    if (data?.name !== undefined) {
+      const name = String(data.name).trim();
+      if (name.length < 2 || name.length > 120) throw new BadRequestException('Nombre inválido');
+      clean.name = name;
+    }
+    if (data?.phone !== undefined) {
+      const phone = String(data.phone).trim();
+      if (phone.length < 6 || phone.length > 30) throw new BadRequestException('Teléfono inválido');
+      clean.phone = phone;
+    }
+    if (data?.email !== undefined) {
+      const email = String(data.email).trim().toLowerCase();
+      if (email && (email.length > 160 || !/^\S+@\S+\.\S+$/.test(email))) {
+        throw new BadRequestException('Email inválido');
+      }
+      clean.email = email || null;
+    }
+    if (Object.keys(clean).length === 0) throw new BadRequestException('Sin campos para actualizar');
+    return this.prisma.customer.update({ where: { id }, data: clean, include: { addresses: true } });
   }
 
   async delete(id: string) {

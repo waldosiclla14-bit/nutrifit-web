@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageCircle,
   Pencil,
+  Plus,
   RefreshCw,
   ShoppingBag,
   Trash2,
@@ -1445,6 +1446,10 @@ function Clientes({
   const [segFilter, setSegFilter] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [generatingCoupon, setGeneratingCoupon] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<ApiCustomer | null>(null);
+  const [form, setForm] = useState({ name: '', phone: '', email: '' });
+  const [saving, setSaving] = useState(false);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
@@ -1456,6 +1461,43 @@ function Clientes({
   }, [customers, query, segFilter]);
 
   const segOptions = ['VIP', 'Recurrente', 'Activo', 'Nuevo', 'Dormido'];
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ name: '', phone: '', email: '' });
+    setShowForm(true);
+  };
+
+  const openEdit = (c: ApiCustomer) => {
+    setEditing(c);
+    setForm({ name: c.name, phone: c.phone, email: c.email || '' });
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    const name = form.name.trim();
+    const phone = form.phone.trim();
+    if (name.length < 2 || phone.length < 6) {
+      alert('Ingresa nombre y teléfono válidos.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = { name, phone, email: form.email.trim() || null };
+      if (editing) {
+        await apiFetch(`/customers/${editing.id}`, { method: 'PATCH', token, body });
+      } else {
+        await apiFetch('/customers', { method: 'POST', token, body });
+      }
+      setShowForm(false);
+      setEditing(null);
+      await onChanged();
+    } catch (err: any) {
+      alert(err?.message || 'No se pudo guardar el cliente.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const remove = async (customer: ApiCustomer) => {
     if (!window.confirm(`¿Eliminar permanentemente al cliente ${customer.name}?`)) return;
@@ -1512,6 +1554,13 @@ function Clientes({
     <div>
       <div className="flex flex-wrap items-center gap-2">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" className="input max-w-md" />
+        <button
+          type="button"
+          onClick={openAdd}
+          className="inline-flex items-center gap-1 rounded-full bg-ink px-4 py-2 text-xs font-bold text-paper transition hover:opacity-90"
+        >
+          <Plus size={14} /> Agregar cliente
+        </button>
         {segOptions.map((s) => (
           <button
             key={s}
@@ -1552,7 +1601,14 @@ function Clientes({
                     {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
                   </td>
                    <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
-                   <td className="px-4 py-3">
+                       <td className="px-4 py-3">
+                       <button
+                         type="button"
+                         onClick={() => openEdit(c)}
+                         className="mr-2 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted transition hover:border-ink hover:text-ink"
+                       >
+                         <Pencil size={12} /> Editar
+                       </button>
                       <button
                         type="button"
                         onClick={() => generateCoupon(c)}
@@ -1583,6 +1639,54 @@ function Clientes({
           </tbody>
         </table>
       </div>
+
+      {showForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-line bg-paper p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="font-display text-xl uppercase">
+              {editing ? 'Editar cliente' : 'Agregar cliente'}
+            </p>
+            <div className="mt-4 space-y-3">
+              <input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Nombre *"
+                className="input"
+              />
+              <input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="Teléfono * (ej: 9 1234 5678)"
+                className="input"
+              />
+              <input
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="Email (opcional)"
+                className="input"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setShowForm(false)} className="btn-outline px-4 py-2 text-xs">
+                Cancelar
+              </button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="btn-accent px-4 py-2 text-xs disabled:opacity-50"
+              >
+                {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cliente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
