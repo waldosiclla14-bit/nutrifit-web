@@ -1,4 +1,4 @@
-name: "Reproducción exacta: imagen Docker de Render (node:20-slim) + NODE_ENV=production"
+name: "Reproducción: imagen Docker + 512MiB (plan free) + NODE_ENV=production"
 
 on:
   workflow_dispatch:
@@ -21,35 +21,39 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v4
-      - name: Build de la imagen Docker EXACTA (node:20-slim)
+      - name: Build imagen Docker exacta
         run: |
-          docker build -f backend/Dockerfile -t nutrifit-render-repro backend/ 2>&1 | tail -40
-      - name: Arrancar contenedor con env de Render (production) y capturar logs
+          docker build -f backend/Dockerfile -t nutrifit-render-repro backend/ 2>&1 | tail -15
+      - name: Arrancar con límite 512MiB (simula plan free)
         env:
           DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
         run: |
-          set -e
+          # db push en background antes (no afecta al test de arranque)
           docker run --rm -d \
             --name nr \
-            -e DATABASE_URL="postgresql://postgres:nutrifit@postgres:5432/nutrifit?schema=public" \
+            --memory=512m --memory-swap=512m --cpus=1 \
+            -e DATABASE_URL="postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public" \
             -e JWT_SECRET=test-secret-123456 \
             -e CORS_ORIGINS=http://localhost:3000 \
             -e PORT=3001 \
             -e NODE_ENV=production \
-            --network=host \
             nutrifit-render-repro
           echo "container arrancado"
-          for i in $(seq 1 30); do
-            sleep 2
+      - name: Esperar health (con TIMEOUT 120s)
+        run: |
+          up=0
+          for i in $(seq 1 24); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/docs || true)
             echo "poll $i /api/docs -> $code"
-            if [ "$code" = "200" ] || [ "$code" = "404" ]; then break; fi
+            if [ "$code" = "200" ]; then up=1; break; fi
+            sleep 5
           done
-          echo "=== /api/health ==="; curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3001/api/health || true
-          echo "=== /api/docs ==="; curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:3001/api/docs || true
-        - name: Capturar logs del contenedor (stdout/stderr)  # capture even on failure
+          echo "UP=$up"
+      - name: Capturar estado y logs del contenedor
         if: always()
         run: |
-          echo "=== CONTAINER LOG (docker logs nr) ==="
-          docker logs nr 2>&1 || true
-          docker stop nr 2>/dev/null || true
+          echo "=== docker inspect OOMKilled / exit ==="
+          docker inspect --format='OOMKilled={{.State.OOMKilled}} ExitCode={{.State.ExitCode}} Status={{.State.Status}}' nr 2>&1 || true
+          echo "=== docker logs nr ==="
+          docker logs nr 2>&1 | tail -60 || true
+          docker stop -t 1 nr 2>/dev/null || true
