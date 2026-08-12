@@ -1,0 +1,37 @@
+name: "Diagnóstico: logs vía Render CLI v2 (workspace)"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  cli-logs:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Render CLI v2
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh -o /tmp/r.sh && sh /tmp/r.sh 2>&1 | tail -4
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          render --help 2>&1 | head -30
+      - name: Set workspace + discover log commands
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          echo "=== set workspace ==="
+          render workspace set tea-d9qjtg142hec73efkgf0 --confirm 2>&1 | head -10
+          echo "=== render logs --help ==="
+          render logs --help 2>&1 | head -30
+          echo "=== render deploys logs --help ==="
+          render deploys logs --help 2>&1 | head -30
+          echo "=== services list ==="
+          render services --output json --confirm 2>&1 | head -c 1200
+      - name: Fetch logs (multiple intents, bounded)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          echo "=== render logs nutrifit-api (tail) ==="
+          timeout 50 render logs nutrifit-api --output text --tail 60 --confirm 2>&1 | tail -120 || true
+          echo "=== render deploys logs dep-d9tu4k29e6cs73aj80v0 ==="
+          timeout 50 render deploys logs dep-d9tu4k29e6cs73aj80v0 --output text --tail 80 --confirm 2>&1 | tail -120 || true
