@@ -1,0 +1,28 @@
+name: "Diagnóstico: logs finales vía Render CLI v2"
+
+on:
+  workflow_dispatch:
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  get-logs:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install Render CLI v2
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh -o /tmp/r.sh && sh /tmp/r.sh >/dev/null 2>&1
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          render --version
+      - name: Set workspace + fetch logs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          render workspace set tea-d9qjtg142hec73efkgf0 --confirm 2>&1 | head -3
+          echo "===== SERVICE LOGS (srv) ====="
+          timeout 75 render logs --resources srv-d9qk64s9v7es73f55970 --output text --limit 500 --direction backward --confirm 2>&1 | tail -200 || true
+          echo "===== DEPLOY LOGS (dep-d9tu4k29e6cs73aj80v0) ====="
+          timeout 75 render logs --resources dep-d9tu4k29e6cs73aj80v0 --output text --limit 500 --direction backward --confirm 2>&1 | tail -200 || true
+          echo "===== DEPLOY LOGS JSON (parse) ====="
+          timeout 75 render logs --resources dep-d9tu4k29e6cs73aj80v0 --output json --limit 200 --confirm 2>&1 | head -c 4000 || true
