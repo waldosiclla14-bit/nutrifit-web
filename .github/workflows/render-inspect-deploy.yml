@@ -1,0 +1,60 @@
+name: "Diagnóstico: inspección deploy fallido"
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_id:
+        description: "dep-xxxx (vacío = último fallido)"
+        required: false
+        default: ""
+
+env:
+  RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Detectar deploy fallido
+        id: d
+        run: |
+          if [ -z "${{ inputs.deploy_id }}" ]; then
+            d=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=5" \
+              | grep -oE '"id":"dep-[A-Za-z0-9_-]+"' | head -5)
+            echo "CANDIDATES: $d"
+          else
+            echo "USING: ${{ inputs.deploy_id }}"
+          fi
+      - name: Fetch deploy object + events + service + logs endpoints
+        run: |
+          for id in dep-d9tu4k29e6cs73aj80v0; do
+            echo "===== DEPLOY OBJECT $id ====="
+            curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/$id"
+            echo
+            echo "===== DEPLOY EVENTS $id ====="
+            curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/$id/events"
+            echo
+            echo "===== DEPLOY LOGS /deploys/$id/logs ====="
+            curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/$id/logs"
+            echo
+            echo "===== DEPLOY LOGS /deploys/$id/build/logs ====="
+            curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/$id/build/logs"
+            echo
+          done
+          echo "===== SERVICE OBJECT ====="
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}"
+          echo
+          echo "===== SERVICE LOGS /services/{id}/logs?limit=200 ====="
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/logs?limit=200"
+          echo
+          echo "===== HEADERS (status) ====="
+          curl -s -D - -o /dev/null -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=1"
