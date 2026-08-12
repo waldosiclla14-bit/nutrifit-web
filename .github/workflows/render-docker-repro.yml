@@ -31,6 +31,7 @@ jobs:
           for LIMIT in 512m 1024m; do
             echo "########## LIMIT=$LIMIT ##########"
             docker run -d --name nr \
+              --network=host \
               --memory=$LIMIT --memory-swap=$LIMIT --cpus=1 \
               -e DATABASE_URL="postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public" \
               -e JWT_SECRET=test-secret-123456 \
