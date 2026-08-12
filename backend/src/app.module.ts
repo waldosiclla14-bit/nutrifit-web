@@ -10,6 +10,7 @@ import { AuditModule } from './audit/audit.module';
 import { ConfigModule as AppConfigModule } from './config/config.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
     CashRegisterModule,
     AuditModule,
     AppConfigModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

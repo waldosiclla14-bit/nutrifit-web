@@ -1,12 +1,7 @@
-name: "Diagnostic: Probar endpoints de logs de Render"
+name: "Probe: seguir deploy más reciente"
 
 on:
   workflow_dispatch:
-    inputs:
-      deploy_id:
-        description: 'deploy id (dep-xxxx)'
-        required: false
-        default: 'dep-d9tr5pugekts73997c7g'
 
 env:
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -16,19 +11,29 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probar endpoints de logs
+      - name: Esperar y seguir deploy más reciente
         run: |
-          id="${{ inputs.deploy_id }}"
-          sid="${RENDER_SERVICE_ID}"
-          hdr=( -s -H "Authorization: Bearer ${RENDER_API_KEY}" -H "Accept: application/json" )
-          for ep in \
-            "/v1/services/${sid}/logs?limit=200" \
-            "/v1/services/${sid}/deploys/${id}/logs" \
-            "/v1/services/${sid}/deploys/${id}/build/logs" \
-            "/v1/services/${sid}/builds?limit=10" \
-            "/v1/services/${sid}/deploys/${id}" ; do
-            code=$(curl "${hdr[@]}" -o /tmp/body.txt -w "%{http_code}" "https://api.render.com${ep}")
-            echo "### GET $ep -> HTTP $code"
-            head -c 1200 /tmp/body.txt
+          SVC="$RENDER_SERVICE_ID"
+          hdr=(-s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json")
+          echo "## Servicio: $SVC"
+
+          for i in $(seq 1 20); do
+            LATEST=$(curl "${hdr[@]}" "https://api.render.com/v1/services/$SVC/deploys?limit=1")
+            echo "Deploys raw:"
+            echo "$LATEST" | head -c 2000
             echo ""
+            DONE=$(echo "$LATEST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const d=(Array.isArray(a)?a:[a]).map(x=>x.deploy||x).filter(Boolean)[0];process.stdout.write((d?d.status:"NONE"))}catch(e){process.stdout.write("PARSE_ERR")}})' 2>/dev/null)
+            echo "Intento $i -> status=$DONE"
+            if [ "$DONE" = "ready" ] || [ "$DONE" = "update_failed" ] || [ "$DONE" = "build_failed" ]; then
+              echo "=== Deploy finalizado, JSON completo ==="
+              DEPLOY_ID=$(echo "$LATEST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const d=(Array.isArray(a)?a:[a]).map(x=>x.deploy||x).filter(Boolean)[0];process.stdout.write(d.id||"NONE")}catch(e){process.stdout.write("NONE")}})' 2>/dev/null)
+              echo "DEPLOY_ID=$DEPLOY_ID"
+              curl "${hdr[@]}" "https://api.render.com/v1/services/$SVC/deploys/$DEPLOY_ID"
+              echo ""
+              echo "=== Probar /api/health del dominio ==="
+              curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://nutrifit-api-635n.onrender.com/api/health" || true
+              break
+            fi
+            echo "sleep 20..."
+            sleep 20
           done
