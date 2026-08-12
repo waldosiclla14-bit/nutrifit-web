@@ -1,0 +1,56 @@
+name: "Diagnóstico: 512 MiB CON postgres + db push (leal Render)"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repro512db:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_DB: nutrifit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
+      JWT_SECRET: test-secret-123456
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build imagen
+        working-directory: backend
+        run: |
+          docker build -t nutrifit-api-db . 2>&1 | tail -4
+      - name: db push (esquema en postgres local) dentro del contenedor
+        run: |
+          docker run --rm --network=host \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e JWT_SECRET=1 nutrifit-api-db \
+            npx prisma db push --accept-data-loss 2>&1 | tail -8
+      - name: Arrancar app a 512 MiB con DB real
+        run: |
+          docker run -d --name app512db --network=host --memory=512m --memory-swap=512m \
+            -e NODE_ENV=production -e DATABASE_URL="$DATABASE_URL" -e JWT_SECRET=test-secret-123456 -e PORT=3001 \
+            nutrifit-api-db 2>&1
+          for i in $(seq 1 25); do
+            sleep 2
+            h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:3001/api/health 2>/dev/null || echo "000")
+            d=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:3001/api/docs 2>/dev/null || echo "000")
+            c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 -X POST http://localhost:3001/api/coupons/validate -H "Content-Type: application/json" -d '{"code":"NF-TEST","phone":"999999999","subtotal":10000}' 2>/dev/null || echo "000")
+            echo "[t=${i}] health=$h docs=$d coupons/validate=$c"
+            if [ "$d" = "200" ]; then break; fi
+          done
+          echo "=== oom killed? ==="
+          docker inspect app512db --format '{{json .State}}' 2>/dev/null || true
+          echo "=== DOCKER LOGS (stdout/stderr) ==="
+          docker logs app512db 2>&1 | tail -80
+      - name: Cleanup
+        if: always()
+        run: docker rm -f app512db 2>/dev/null || true
