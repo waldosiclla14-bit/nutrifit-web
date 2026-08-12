@@ -1,0 +1,70 @@
+name: "Diagnostic: Build + Start en Linux (repro Render)"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repro:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_DB: nutrifit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
+      JWT_SECRET: test-secret-123456
+      CORS_ORIGINS: http://localhost:3000
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Instalar dependencias del backend
+        working-directory: backend
+        run: npm install
+      - name: Prisma generate
+        working-directory: backend
+        run: npx prisma generate
+      - name: Build del backend
+        working-directory: backend
+        run: npm run build
+      - name: Verificar dist
+        working-directory: backend
+        run: ls -la dist/main.js && echo "main.js OK" || (echo "main.js FALTA"; exit 1)
+      - name: db push
+        working-directory: backend
+        run: npx prisma db push --accept-data-loss
+      - name: Arrancar app (foreground) y probar
+        working-directory: backend
+        timeout-minutes: 3
+        env:
+          DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
+          JWT_SECRET: test-secret-123456
+          CORS_ORIGINS: http://localhost:3000
+          PORT: 4001
+        run: |
+          node dist/main > /tmp/app.log 2>&1 &
+          APP_PID=$!
+          echo "app pid=$APP_PID"
+          for i in $(seq 1 30); do
+            sleep 2
+            curl -s -o /dev/null -w "health:%{http_code}\n" http://localhost:4001/api/products && break
+          done
+          echo "=== /api/coupons/validate ==="
+          curl -s -X POST http://localhost:4001/api/coupons/validate -H "Content-Type: application/json" -d '{"code":"NF-TEST","phone":"999999999","subtotal":10000}'
+          echo ""
+          echo "=== APP LOG (stdout/stderr) ==="
+          cat /tmp/app.log
+          kill $APP_PID 2>/dev/null || true
