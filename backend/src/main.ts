@@ -1,5 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger, ExceptionFilter } from '@nestjs/common';
+import {
+  ValidationPipe,
+  Logger,
+  ExceptionFilter,
+} from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cors from 'cors';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -56,6 +61,15 @@ async function bootstrap() {
     );
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     app.setGlobalPrefix('api');
+
+    const config = new DocumentBuilder()
+      .setTitle('NutriFit ERP API')
+      .setDescription('API completa para NutriFit — ERP + POS + Ecommerce')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
 
     const port = process.env.PORT || 3001;
     await app.listen(port);
