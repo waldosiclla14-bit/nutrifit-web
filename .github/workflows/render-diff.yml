@@ -14,33 +14,50 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Escribir parser
+        run: |
+          cat > /tmp/parser.mjs <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const data = readFileSync(0, 'utf8');
+          const a = JSON.parse(data);
+          const arr = Array.isArray(a) ? a : [a];
+          for (const x of arr) {
+            const d = x.deploy || x;
+            if (d && d.status) {
+              console.log(`${d.status} | ${(d.commit && d.commit.id) ? d.commit.id.slice(0,10) : '?'} | ${(d.commit && d.commit.message) ? d.commit.message.slice(0,70) : ''} | ${d.id}`);
+            }
+          }
+          NODE
+          echo "PARSER_OK"
       - name: Hallar último deploy READY y diff
         run: |
           SVC="$RENDER_SERVICE_ID"
           hdr=(-s -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json")
-          echo "=== Últimos 20 deploys (status + commit) ==="
+          echo "=== Últimos deploys (status | commit | msg | deploy_id) ==="
+          ALL=""
           PAGE=""
-          for i in 1 2 3; do
+          for i in 1 2 3 4; do
             DATA=$(curl "${hdr[@]}" "https://api.render.com/v1/services/$SVC/deploys?limit=20${PAGE}")
-            echo "$DATA" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);(Array.isArray(a)?a:[a]).forEach(x=>{const d=x.deploy||x; if(d){console.log(d.status+" | "+(d.commit&&d.commit.id?d.commit.id.slice(0,10):"?")+" | "+(d.commit&&d.commit.message||"").slice(0,70)+" | "+d.id)})}catch(e){console.log("parse err",e.message)}})'
-            CUR=$(echo "$DATA" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const arr=(Array.isArray(a)?a:[a]); const last=arr[arr.length-1]||{}; process.stdout.write(last.cursor||"")}catch(e){process.stdout.write("")}})' 2>/dev/null)
+            echo "$DATA" | node /tmp/parser.mjs
+            CUR=$(echo "$DATA" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const arr=Array.isArray(a)?a:[a];const last=arr[arr.length-1];process.stdout.write((last&&last.cursor)||"")})' 2>/dev/null)
             PAGE="?cursor=${CUR}"
             [ -z "$CUR" ] && break
             sleep 1
           done
-
           echo ""
           echo "=== Último deploy READY ==="
           LATEST=$(curl "${hdr[@]}" "https://api.render.com/v1/services/$SVC/deploys?limit=20")
-          GOOD=$(echo "$LATEST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const arr=(Array.isArray(a)?a:[a]);const d=arr.find(x=>((x.deploy||x).status==="ready")); const dd=d?d.deploy:d; process.stdout.write(dd.commit&&dd.commit.id||"NONE")}catch(e){process.stdout.write("NONE")}})' 2>/dev/null)
+          GOOD=$(echo "$LATEST" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const a=JSON.parse(s);const arr=Array.isArray(a)?a:[a];const d=arr.find(x=>(x.deploy||x).status==="ready");const dd=d?d.deploy:d;process.stdout.write(dd.commit&&dd.commit.id||"NONE")})' 2>/dev/null)
           echo "GOOD_COMMIT=$GOOD"
-          echo ""
-          echo "=== git log good..HEAD ==="
           if [ "$GOOD" != "NONE" ]; then
+            echo "=== git log good..HEAD ==="
             git log --oneline "$GOOD"..HEAD 2>&1 | head -40
             echo ""
             echo "=== git diff good..HEAD -- backend/Dockerfile ==="
-            git diff "$GOOD"..HEAD -- backend/Dockerfile 2>&1 | head -80
+            git diff "$GOOD"..HEAD -- backend/Dockerfile 2>&1 | head -100
+            echo ""
+            echo "=== git diff good..HEAD --stat ==="
+            git diff --stat "$GOOD"..HEAD 2>&1 | head -30
           else
             echo "No se encontro deploy READY"
           fi
