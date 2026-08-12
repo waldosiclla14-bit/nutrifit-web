@@ -1,0 +1,42 @@
+name: "Diagnóstico: build + run a 512 MiB (plan free) sin DB"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repro512:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build de la imagen Docker (misma Dockerfile de Render)
+        working-directory: backend
+        run: |
+          docker build -t nutrifit-api . 2>&1 | tail -5
+          docker images nutrifit-api
+      - name: Arrancar a 512 MiB (free plan) sin DATABASE_URL (lazy connect)
+        run: |
+          set -m
+          docker run -d --name app512 --memory=512m --memory-swap=512m \
+            -e NODE_ENV=production -e JWT_SECRET=test-secret-123456 -e PORT=3001 \
+            -p 3001:3001 nutrifit-api 2>&1
+          echo "container started"
+          for i in $(seq 1 25); do
+            sleep 2
+            h=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:3001/api/health 2>/dev/null || echo "000")
+            d=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 http://localhost:3001/api/docs 2>/dev/null || echo "000")
+            echo "[t=${i}] health=$h docs=$d"
+            if [ "$d" = "200" ]; then break; fi
+          done
+          echo "=== oom killed? ==="
+          docker inspect app512 --format '{{json .State}}' 2>/dev/null || true
+          echo "=== body /api/docs (primeros 400 chars) ==="
+          curl -s --max-time 8 http://localhost:3001/api/docs 2>/dev/null | head -c 400
+          echo
+          echo "=== body /api/health ==="
+          curl -s --max-time 8 http://localhost:3001/api/health 2>/dev/null
+          echo
+          echo "=== DOCKER LOGS (stdout/stderr incl. bootstrap + OOM) ==="
+          docker logs app512 2>&1 | tail -80
+      - name: Cleanup
+        if: always()
+        run: docker rm -f app512 2>/dev/null || true
