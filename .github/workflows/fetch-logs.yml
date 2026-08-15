@@ -1,0 +1,16 @@
+name: Fetch Render logs
+on:
+  workflow_dispatch:
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Render service logs
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/logs?numLines=300&logType=stdout" | head -c 12000
+          echo
+          echo "===== STDERR ====="
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/logs?numLines=300&logType=stderr" | head -c 12000
