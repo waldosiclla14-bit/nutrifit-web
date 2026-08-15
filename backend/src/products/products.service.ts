@@ -106,17 +106,23 @@ export class ProductsService {
     }
 
     const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
-    return this.prisma.$transaction(async (tx) => {
-      for (const v of variants) {
-        const vSku = String(v.sku || '').trim().toUpperCase();
-        const vPrice = Number(v.price);
-        const vCost = Number(v.costPrice);
-        if (v.id) {
-          await tx.productVariant.update({
+
+    // Non-interactive transaction (pgbouncer/transaction-mode compatible):
+    // collect all writes as Prisma promises, then commit them together. SKU
+    // uniqueness uses sequential reads + the ProductVariant.sku @unique
+    // constraint as the hard backstop.
+    const writes: any[] = [];
+    for (const v of variants) {
+      const vSku = String(v.sku || '').trim().toUpperCase();
+      const vPrice = Number(v.price);
+      const vCost = Number(v.costPrice);
+      if (v.id) {
+        writes.push(
+          this.prisma.productVariant.update({
             where: { id: v.id },
             data: {
               variantName: String(v.variantName || '').trim() || undefined,
-              sku: vSku ? await this.uniqueSkuForTx(tx, vSku, v.id) : undefined,
+              sku: vSku ? await this.uniqueSku(vSku, 'variant', v.id) : undefined,
               attributes: v.attributes || undefined,
               price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
               costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
@@ -124,33 +130,39 @@ export class ProductsService {
               lowStockAlert: v.lowStockAlert !== undefined ? Math.max(0, Number(v.lowStockAlert) || 5) : undefined,
               isActive: v.isActive !== undefined ? !!v.isActive : undefined,
             },
-          });
-        } else {
-          await tx.productVariant.create({
+          }),
+        );
+      } else {
+        writes.push(
+          this.prisma.productVariant.create({
             data: {
               productId: id,
-              sku: await this.uniqueSkuForTx(tx, vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, undefined),
+              sku: await this.uniqueSku(vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, 'variant'),
               variantName: String(v.variantName || '').trim() || 'Única',
-              attributes: v.attributes || {},
+              attributes: {},
               price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
               costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
               stock: Math.max(0, Number(v.stock) || 0),
               lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
             },
-          });
-        }
+          }),
+        );
       }
+    }
 
-      if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
-        productData.costPrice = productData.costPrice ?? 0;
-      }
+    if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
+      productData.costPrice = productData.costPrice ?? 0;
+    }
 
-      return tx.product.update({
+    writes.push(
+      this.prisma.product.update({
         where: { id },
         data: productData,
         include: { category: true, brand: true, variants: true },
-      });
-    });
+      }),
+    );
+    const results = await this.prisma.$transaction(writes);
+    return results[results.length - 1];
   }
 
   async delete(id: string, userId?: string) {
@@ -266,49 +278,44 @@ export class ProductsService {
     const comparePrice = Number(data.comparePrice);
     const finalComparePrice = !Number.isNaN(comparePrice) && comparePrice > 0 ? comparePrice : null;
 
-    return this.prisma.$transaction(async (tx) => {
-      const product = await tx.product.create({
-        data: {
-          name,
-          slug,
-          sku,
-          basePrice: finalBasePrice,
-          costPrice: finalCostPrice,
-          comparePrice: finalComparePrice,
-          description: data.description ? String(data.description) : null,
-          registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
-          categoryId,
-          brandId,
-        },
+    // Non-interactive: SKU uniqueness is computed with sequential reads (and the
+    // DB @unique constraint on ProductVariant.sku is the hard backstop). A single
+    // nested product.create() with variants.create is atomic and pgbouncer-safe.
+    const variantCreates: any[] = [];
+    for (const v of variants) {
+      const vName = String(v.variantName || '').trim() || 'Única';
+      const vSku = await this.uniqueSku(
+        String(v.sku || '').trim().toUpperCase() || `${sku}-${this.slugify(v.variantName || 'var')}`,
+        'variant',
+      );
+      const vPrice = Number(v.price);
+      const vCost = Number(v.costPrice);
+      variantCreates.push({
+        sku: vSku,
+        variantName: vName,
+        attributes: {},
+        price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
+        costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
+        stock: Math.max(0, Number(v.stock) || 0),
+        lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
       });
+    }
 
-      for (const v of variants) {
-        const vName = String(v.variantName || '').trim() || 'Única';
-        const vSku = await this.uniqueSkuForTx(
-          tx,
-          String(v.sku || '').trim().toUpperCase() || `${sku}-${this.slugify(vName).toUpperCase()}`,
-          undefined,
-        );
-        const vPrice = Number(v.price);
-        const vCost = Number(v.costPrice);
-        await tx.productVariant.create({
-          data: {
-            productId: product.id,
-            sku: vSku,
-            variantName: vName,
-            attributes: {},
-            price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
-            costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
-            stock: Math.max(0, Number(v.stock) || 0),
-            lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
-          },
-        });
-      }
-
-      return tx.product.findUnique({
-        where: { id: product.id },
-        include: { category: true, brand: true, variants: true },
-      });
+    return this.prisma.product.create({
+      data: {
+        name,
+        slug,
+        sku,
+        basePrice: finalBasePrice,
+        costPrice: finalCostPrice,
+        comparePrice: finalComparePrice,
+        description: data.description ? String(data.description) : null,
+        registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
+        categoryId,
+        brandId,
+        variants: { create: variantCreates },
+      },
+      include: { category: true, brand: true, variants: true },
     });
   }
 
@@ -332,7 +339,7 @@ export class ProductsService {
     return slug;
   }
 
-  private async uniqueSku(sku: string, kind: 'product' | 'variant') {
+  private async uniqueSku(sku: string, kind: 'product' | 'variant', excludeId?: string) {
     let base = sku;
     let candidate = sku;
     let n = 2;
@@ -341,20 +348,11 @@ export class ProductsService {
         candidate = `${base}-${n++}`;
       }
     } else {
-      while (await this.prisma.productVariant.findUnique({ where: { sku: candidate } })) {
+      while (true) {
+        const existing = await this.prisma.productVariant.findUnique({ where: { sku: candidate } });
+        if (!existing || existing.id === excludeId) break;
         candidate = `${base}-${n++}`;
       }
-    }
-    return candidate;
-  }
-
-  private async uniqueSkuForTx(tx: any, sku: string, excludeId?: string) {
-    let candidate = sku;
-    let n = 2;
-    for (;;) {
-      const existing = await tx.productVariant.findUnique({ where: { sku: candidate } });
-      if (!existing || existing.id === excludeId) break;
-      candidate = `${sku}-${n++}`;
     }
     return candidate;
   }
@@ -402,16 +400,20 @@ export class ProductsService {
   }
 
   async reserveStock(variantId: string, quantity: number) {
-    return this.prisma.$transaction(async (tx) => {
-      const variant = await tx.productVariant.findUnique({ where: { id: variantId } });
-      if (!variant || variant.stock - variant.reservedStock < quantity) {
-        throw new Error('Stock insuficiente');
-      }
-      return tx.productVariant.update({
-        where: { id: variantId },
-        data: { reservedStock: { increment: quantity } },
-      });
-    });
+    // Single atomic statement: increment reservedStock only if enough
+    // available stock exists. This is a standalone SQL command (no session
+    // transaction), so it is compatible with Neon's pgbouncer transaction
+    // mode. The DB @unique / column types handle types; count==0 means the
+    // availability guard was not satisfied.
+    const res: any = await this.prisma.$executeRaw`
+      UPDATE "ProductVariant"
+      SET "reservedStock" = "reservedStock" + ${quantity}
+      WHERE "id" = ${variantId}
+        AND ("stock" - "reservedStock") >= ${quantity}
+    `;
+    const affected = Number(res?.count ?? res ?? 0);
+    if (affected === 0) throw new Error('Stock insuficiente');
+    return this.prisma.productVariant.findUnique({ where: { id: variantId } });
   }
 
   async releaseStock(variantId: string, quantity: number) {
