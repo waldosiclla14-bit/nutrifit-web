@@ -12,6 +12,12 @@ export class PingController {
     return { ok: true, db: db?.[0]?.ok ?? null, time: new Date().toISOString() };
   }
 
+  @Get('hdrs')
+  async hdrs() {
+    const { capturedReqs } = require('../main');
+    return capturedReqs;
+  }
+
   @Get('diag')
   async diag() {
     const out: any = { time: new Date().toISOString() };
