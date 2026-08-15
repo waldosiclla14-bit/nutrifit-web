@@ -9,9 +9,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { urlencoded } from 'express';
 import { AppModule } from './app.module';
-
-const capturedReqs: any[] = [];
-export { capturedReqs };
+import { capturedReqs } from './reqcapture';
 
 class FatalFilter implements ExceptionFilter {
   catch(exception: unknown) {

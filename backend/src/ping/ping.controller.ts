@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { capturedReqs } from '../reqcapture';
 
 @Controller('ping')
 export class PingController {
@@ -14,7 +15,6 @@ export class PingController {
 
   @Get('hdrs')
   async hdrs() {
-    const { capturedReqs } = require('../main');
     return capturedReqs;
   }
 
