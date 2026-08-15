@@ -18,9 +18,14 @@ function parseLimit(limit: string): number {
 export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
   const limitBytes = parseLimit(limit);
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (value: any) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
     const chunks: Buffer[] = [];
     let size = 0;
-    const finish = (value: any) => resolve(value);
     req.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
       size += chunk.length;
@@ -39,5 +44,14 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       }
     });
     req.on('error', () => finish({}));
+    // Force the stream into flowing mode. In some proxy/runtimes (Cloudflare ->
+    // Render -> Node) the 'data' auto-resume does not fire reliably, so we
+    // explicitly resume to guarantee the buffered body is delivered.
+    req.resume();
+    // Hard safety net: never let a stuck body stream hang the handler forever
+    // (a hang surfaces to the proxy as a 502 Bad Gateway). If 'end' never fires
+    // we resolve with an empty body so the handler proceeds and returns a real
+    // response instead of stalling.
+    setTimeout(() => finish({}), 5000);
   });
 }
