@@ -44,14 +44,12 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       }
     });
     req.on('error', () => finish({}));
-    // Force the stream into flowing mode. In some proxy/runtimes (Cloudflare ->
-    // Render -> Node) the 'data' auto-resume does not fire reliably, so we
-    // explicitly resume to guarantee the buffered body is delivered.
-    req.resume();
-    // Hard safety net: never let a stuck body stream hang the handler forever
-    // (a hang surfaces to the proxy as a 502 Bad Gateway). If 'end' never fires
-    // we resolve with an empty body so the handler proceeds and returns a real
-    // response instead of stalling.
+    // NOTE: do NOT call req.resume() here. On a Node http.IncomingMessage the
+    // 'data' listener auto-resumes the stream; calling req.resume() explicitly
+    // can synchronously flush a buffered body in a tight loop, blocking the
+    // event loop so no timer (incl. the safety timeout below) can fire and the
+    // request hangs until the proxy 502s. The 5s hard timeout is the safety net
+    // for the rare case the body never delivers 'end'.
     setTimeout(() => finish({}), 5000);
   });
 }
