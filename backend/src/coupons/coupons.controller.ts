@@ -10,27 +10,8 @@ export class CouponsController {
   constructor(private couponsService: CouponsService) {}
 
   @Post('validate')
-  async validate(@Body() body: any) {
-    const t0 = Date.now();
-    try {
-      const r = await Promise.race([
-        this.couponsService.validateCoupon(body),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT_5s')), 5000)),
-      ]);
-      return { _probe: 'ok', ms: Date.now() - t0, data: r };
-    } catch (e: any) {
-      return { _probe: 'err', ms: Date.now() - t0, message: String(e?.message || e) };
-    }
-  }
-
-  @Post('ping-post')
-  pingPost() {
-    return { ok: true, note: 'post-no-body' };
-  }
-
-  @Post('ping-body')
-  pingBody(@Body() body: any) {
-    return { ok: true, body };
+  validate(@Body() body: { code: string; phone: string; subtotal?: number }) {
+    return this.couponsService.validateCoupon(body);
   }
 
   @Post()

@@ -9,7 +9,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { urlencoded } from 'express';
 import { AppModule } from './app.module';
-import { capturedReqs } from './reqcapture';
 
 class FatalFilter implements ExceptionFilter {
   catch(exception: unknown) {
@@ -36,16 +35,6 @@ function safeJsonBodyParser(req: any, _res: any, next: any) {
   const done = (err?: unknown) => {
     if (finished) return;
     finished = true;
-    capturedReqs.push({
-      ts: new Date().toISOString(),
-      method: req.method,
-      url: req.url,
-      ct: ct,
-      headers: req.headers,
-      receivedLen: data.length,
-      receivedHead: data.slice(0, 200),
-    });
-    if (capturedReqs.length > 15) capturedReqs.shift();
     if (err) {
       req.body = req.body || {};
       return next();

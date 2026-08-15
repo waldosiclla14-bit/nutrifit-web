@@ -7,21 +7,16 @@ function resolveDatabaseUrl(): string {
   try {
     const u = new URL(raw);
     const p = u.searchParams;
-    // Enrutar siempre por el endpoint POOLED de Neon (host con "-pooler").
-    // El endpoint directo cierra conexiones inactivas y las conexiones de
-    // Prisma quedan "muertas" -> timeouts de ~30s intermitentes en queries.
-    // El pooler mantiene las conexiones vivas y soporta pgbouncer.
-    if (!u.hostname.includes('-pooler')) {
-      const dot = u.hostname.indexOf('.');
-      if (dot > 0) {
-        u.hostname = `${u.hostname.slice(0, dot)}-pooler${u.hostname.slice(dot)}`;
-      }
+    // Conexión DIRECTA a Neon (host sin "-pooler") y SIN pgbouncer: las
+    // transacciones interactivas de Prisma ($transaction usadas en
+    // orders/create, generación/consumo de cupones, etc.) no son compatibles
+    // con el modo transaction-pooling de pgbouncer y colgaban la request.
+    // El keep-alive en /api/ping mantiene la DB activa y evita la pausa.
+    if (u.hostname.includes('-pooler')) {
+      u.hostname = u.hostname.replace('-pooler', '');
     }
-    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
-    if (!p.has('connection_limit')) p.set('connection_limit', '1');
-    if (!p.has('pool_timeout')) p.set('pool_timeout', '10');
-    if (!p.has('connect_timeout')) p.set('connect_timeout', '10');
     if (!p.has('sslmode')) p.set('sslmode', 'require');
+    if (!p.has('connection_limit')) p.set('connection_limit', '10');
     return u.toString();
   } catch {
     return raw;
