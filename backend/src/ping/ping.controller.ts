@@ -1,9 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CouponsService } from '../coupons/coupons.service';
 
 @Controller('ping')
 export class PingController {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private coupons: CouponsService) {}
 
   @Get()
   async ping() {
@@ -42,6 +43,9 @@ export class PingController {
       this.prisma.coupon.findUnique({ where: { code: 'NF-TEST-0000-XXXX' } }),
     );
     await run('coupon.findMany', () => this.prisma.coupon.findMany({ take: 1 }));
+    await run('couponValidateSvc', () =>
+      this.coupons.validateCoupon({ code: 'NF-TEST-0000-XXXX', phone: '9999999999', subtotal: 10000 }),
+    );
     await run('txCount', () => this.prisma.$transaction(async (tx) => tx.customer.count()));
     await run('url', async () => (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@'));
     return out;
