@@ -7,18 +7,22 @@ function resolveDatabaseUrl(): string {
   try {
     const u = new URL(raw);
     const p = u.searchParams;
-    // Conexión DIRECTA (sin "-pooler") en modo sesión: necesario para las
-    // transacciones interactivas de Prisma ($transaction en orders/create,
-    // generación/consumo de cupones). connection_limit=1 evita conexiones
-    // idle muertas (Neon free mata las inactivas -> hangs de ~30s): el
-    // keep-alive en /api/ping mantiene la única conexión caliente.
-    if (u.hostname.includes('-pooler')) {
-      u.hostname = u.hostname.replace('-pooler', '');
+    // Enrutar por el endpoint POOLED de Neon (-pooler) con pgbouncer: la
+    // conexión directa se cuelga en este entorno (compute free pausado /
+    // conexiones idle muertas) -> queries lentas/colgadas. El pooler mantiene
+    // las conexiones vivas y rápidas. Las transacciones interactivas no son
+    // compatibles con pgbouncer (se abordan aparte).
+    if (!u.hostname.includes('-pooler')) {
+      const dot = u.hostname.indexOf('.');
+      if (dot > 0) {
+        u.hostname = `${u.hostname.slice(0, dot)}-pooler${u.hostname.slice(dot)}`;
+      }
     }
-    if (!p.has('sslmode')) p.set('sslmode', 'require');
-    if (!p.has('connection_limit')) p.set('connection_limit', '1');
+    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
+    if (!p.has('connection_limit')) p.set('connection_limit', '5');
     if (!p.has('connect_timeout')) p.set('connect_timeout', '10');
     if (!p.has('pool_timeout')) p.set('pool_timeout', '10');
+    if (!p.has('sslmode')) p.set('sslmode', 'require');
     return u.toString();
   } catch {
     return raw;
