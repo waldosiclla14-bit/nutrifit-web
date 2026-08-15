@@ -23,42 +23,48 @@ class FatalFilter implements ExceptionFilter {
 // (content-length / transfer-encoding mismatch upstream causes it to wait for
 // bytes that never arrive). This reader consumes the raw stream with
 // Buffer.concat and parses on 'end', ignoring content-length. Proven working.
-function rawJsonBodyParser(req: any, _res: any, next: any) {
+async function rawJsonBodyParser(req: any, _res: any, next: any) {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next();
   }
   const ct = String(req.headers['content-type'] || '').toLowerCase();
   if (!ct.includes('application/json')) return next();
 
-  let finished = false;
-  const finish = (body: any) => {
-    if (finished) return;
-    finished = true;
-    req.body = body;
-    next();
-  };
-
   const chunks: Buffer[] = [];
   let size = 0;
   const limit = 5 * 1024 * 1024;
-  req.on('data', (chunk: Buffer) => {
-    if (finished) return;
-    chunks.push(chunk);
-    size += chunk.length;
-    if (size > limit) {
-      req.destroy();
-      finish({});
-    }
+
+  const body = await new Promise<string>((resolve) => {
+    let settled = false;
+    const done = (value: string) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    req.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+      size += chunk.length;
+      if (size > limit) {
+        req.destroy();
+        done('');
+      }
+    });
+    req.on('end', () => {
+      try {
+        done(Buffer.concat(chunks).toString('utf8'));
+      } catch {
+        done('');
+      }
+    });
+    req.on('error', () => done(''));
   });
-  req.on('end', () => {
-    try {
-      const raw = Buffer.concat(chunks).toString('utf8');
-      finish(raw ? JSON.parse(raw) : {});
-    } catch {
-      finish({});
-    }
-  });
-  req.on('error', () => finish(req.body || {}));
+
+  try {
+    req.body = body ? JSON.parse(body) : {};
+  } catch {
+    req.body = {};
+  }
+  next();
 }
 
 async function bootstrap() {
