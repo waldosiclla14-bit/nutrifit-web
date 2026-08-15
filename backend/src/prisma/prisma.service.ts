@@ -19,9 +19,7 @@ function resolveDatabaseUrl(): string {
       }
     }
     if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
-    if (!p.has('connection_limit')) p.set('connection_limit', '5');
-    if (!p.has('connect_timeout')) p.set('connect_timeout', '10');
-    if (!p.has('pool_timeout')) p.set('pool_timeout', '10');
+    if (!p.has('connection_limit')) p.set('connection_limit', '1');
     if (!p.has('sslmode')) p.set('sslmode', 'require');
     return u.toString();
   } catch {
