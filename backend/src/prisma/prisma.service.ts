@@ -7,13 +7,21 @@ function resolveDatabaseUrl(): string {
   try {
     const u = new URL(raw);
     const p = u.searchParams;
-    // Una sola conexión en el pool: el keep-alive (/api/ping cada 5 min) la
-    // mantiene cálida y así no quedan conexiones "muertas" en el pool que
-    // causaban timeouts de ~30s en queries generadas de Prisma contra Neon.
+    // Enrutar siempre por el endpoint POOLED de Neon (host con "-pooler").
+    // El endpoint directo cierra conexiones inactivas y las conexiones de
+    // Prisma quedan "muertas" -> timeouts de ~30s intermitentes en queries.
+    // El pooler mantiene las conexiones vivas y soporta pgbouncer.
+    if (!u.hostname.includes('-pooler')) {
+      const dot = u.hostname.indexOf('.');
+      if (dot > 0) {
+        u.hostname = `${u.hostname.slice(0, dot)}-pooler${u.hostname.slice(dot)}`;
+      }
+    }
+    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
     if (!p.has('connection_limit')) p.set('connection_limit', '1');
     if (!p.has('pool_timeout')) p.set('pool_timeout', '10');
     if (!p.has('connect_timeout')) p.set('connect_timeout', '10');
-    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
+    if (!p.has('sslmode')) p.set('sslmode', 'require');
     return u.toString();
   } catch {
     return raw;
