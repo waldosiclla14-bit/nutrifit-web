@@ -222,6 +222,12 @@ function marginOf(price: number, cost: number) {
   return Math.round(((price - cost) / price) * 100);
 }
 
+function marginCls(margin: number) {
+  if (margin >= 35) return 'border-emerald-300 text-emerald-700';
+  if (margin >= 15) return 'border-accent/60 text-accent';
+  return 'border-red-300 text-red-600';
+}
+
 function stockLevel(stock: number, alert: number | null) {
   if (stock <= 0) return { label: 'agotado', cls: 'border-red-300 text-red-600' };
   if (stock <= (alert ?? 0)) return { label: 'bajo', cls: 'border-amber-300 text-amber-700' };
@@ -350,7 +356,7 @@ function Dashboard({
         setProducts(
           (p || []).map((x) => ({
             id: x.id,
-            name: x.name,
+            name: x.name || x.sku || 'Producto sin nombre',
             sku: x.sku,
             brand: x.brand ? x.brand.name : undefined,
             brandName: x.brand ? x.brand.name : undefined,
@@ -1330,106 +1336,107 @@ function Productos({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-3xl border border-line bg-paper">
-        <table className="w-full min-w-[960px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
-              <th className="px-4 py-3">Producto</th>
-              <th className="px-4 py-3">Marca</th>
-              <th className="px-4 py-3">Variante</th>
-              <th className="px-4 py-3">SKU</th>
-              <th className="px-4 py-3">Precio</th>
-              <th className="px-4 py-3">Costo</th>
-              <th className="px-4 py-3">Margen</th>
-              <th className="px-4 py-3">Stock</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => {
-              const variants = p.variants && p.variants.length > 0 ? p.variants : [];
-              const rows = variants.length > 0 ? variants : [p];
-              return rows.map((v: any, i: number) => (
-                <tr key={v.id} className="border-b border-line/60 last:border-0">
-                  <td className="px-4 py-3">
-                    <p className="font-semibold">{i === 0 ? p.name : ''}</p>
-                    {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
-                    {i === 0 && (
-                      <div className="mt-1 flex gap-1.5">
-                        <button
-                          onClick={() => openEdit(p)}
-                          className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[10px] font-bold text-ink hover:border-accent"
-                        >
-                          <Pencil size={10} /> Editar
-                        </button>
-                        <button
-                          onClick={() => remove(p)}
-                          disabled={deleting === p.id}
-                          className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2 py-0.5 text-[10px] font-bold text-red-700 disabled:opacity-50"
-                        >
-                          <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
-                        </button>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {products.map((p) => {
+          const variants = p.variants && p.variants.length > 0 ? p.variants : [];
+          return (
+            <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold leading-snug">{p.name || p.sku || 'Producto sin nombre'}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {[p.brandName, p.category?.name].filter(Boolean).join(' · ') || '—'}
+                  </p>
+                  {!p.active && (
+                    <span className="mt-1 inline-block text-[11px] font-bold text-red-500">INACTIVO</span>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <button
+                    onClick={() => openEdit(p)}
+                    className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-1 text-[10px] font-bold text-ink hover:border-accent"
+                  >
+                    <Pencil size={10} /> Editar
+                  </button>
+                  <button
+                    onClick={() => remove(p)}
+                    disabled={deleting === p.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
+                  >
+                    <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 space-y-3">
+                {variants.map((v) => (
+                  <div key={v.id} className="rounded-2xl border border-line bg-soft/50 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{v.name}</p>
+                        <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex rounded-full border border-line bg-soft px-2 py-0.5 text-[11px] font-bold text-muted">
-                      {p.brandName || '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{v.name || '—'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted">{v.sku || '—'}</td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="number"
-                      defaultValue={v.price}
-                      onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                      className="input w-28 py-1.5"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <input
-                      type="number"
-                      defaultValue={v.costPrice}
-                      onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                      className="input w-28 py-1.5"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`font-bold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
-                      {marginOf(v.price, v.costPrice)}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        defaultValue={v.stock}
-                        onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                        className={`input w-24 py-1.5 ${stockLevel(v.stock, v.lowStockAlert).cls}`}
-                      />
-                      <span className={`text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
-                        {stockLevel(v.stock, v.lowStockAlert).label}
+                      <span className={`shrink-0 rounded-full border bg-paper px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
+                        margen {marginOf(v.price, v.costPrice)}%
                       </span>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button disabled={saving === v.id} onClick={() => save(p, v, v.stock)} className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50">
-                      Guardar
-                    </button>
-                  </td>
-                </tr>
-              ));
-            })}
-            {products.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-muted">
-                  Sin productos.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Precio</span>
+                        <input
+                          type="number"
+                          defaultValue={v.price}
+                          onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                          className="input mt-1 w-full py-1.5 text-sm"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Costo</span>
+                        <input
+                          type="number"
+                          defaultValue={v.costPrice}
+                          onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                          className="input mt-1 w-full py-1.5 text-sm"
+                        />
+                      </label>
+                      <label className="col-span-2 block sm:col-span-1">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Stock</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          <input
+                            type="number"
+                            defaultValue={v.stock}
+                            onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                            className={`input w-full py-1.5 text-sm ${stockLevel(v.stock, v.lowStockAlert).cls}`}
+                          />
+                          <span className={`shrink-0 text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
+                            {stockLevel(v.stock, v.lowStockAlert).label}
+                          </span>
+                        </div>
+                      </label>
+                      <div className="col-span-2 flex items-end justify-end sm:col-span-1 sm:justify-start">
+                        <button
+                          disabled={saving === v.id}
+                          onClick={() => save(p, v, v.stock)}
+                          className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
+                        >
+                          {saving === v.id ? 'Guardando…' : 'Guardar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {variants.length === 0 && (
+                  <p className="rounded-2xl border border-dashed border-line px-3 py-4 text-center text-xs text-muted">
+                    Sin variantes registradas.
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {products.length === 0 && (
+          <p className="col-span-full py-10 text-center text-sm text-muted">Sin productos.</p>
+        )}
       </div>
 
       {editing && editForm && (
