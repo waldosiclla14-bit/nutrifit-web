@@ -41,6 +41,20 @@ export class PingController {
     return { body, ms: Date.now() - t0 };
   }
 
+  @Post('probe3')
+  async probe3(@Req() req: Request) {
+    const out: Record<string, ProbeResult> = {};
+    out.readBody = await withTimeout(readJsonBody(req), 6000);
+    const body = (out.readBody.result as any) || {};
+    out.code = body.code;
+    out.couponCount = await withTimeout(this.prisma.coupon.count(), 6000);
+    out.couponFindUnique = await withTimeout(
+      this.prisma.coupon.findUnique({ where: { code: body.code || 'NF-TEST' } }),
+      6000,
+    );
+    return out;
+  }
+
   @Get('db')
   async db() {
     const out: Record<string, ProbeResult> = {};
