@@ -14,7 +14,7 @@ export class CouponsController {
   @Post('validate')
   async validate(@Req() req: Request) {
     const body = await readJsonBody(req);
-    return this.couponsService.validateCoupon(body);
+    return { echo: body };
   }
 
   @Post()
