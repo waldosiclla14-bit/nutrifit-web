@@ -128,9 +128,6 @@ export type Order = {
   phone: string;
   metroLine?: string;
   metroStation?: string;
-  deliveryDay?: string;
-  deliveryTime?: string;
-  payment?: string;
   couponCode?: string;
   items: OrderItem[];
   subtotal: number;

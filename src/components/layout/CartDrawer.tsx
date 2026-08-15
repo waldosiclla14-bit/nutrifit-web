@@ -27,23 +27,6 @@ import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
-const DELIVERY_DAY_OPTIONS = [
-  'Lunes',
-  'Martes',
-  'Miércoles',
-  'Jueves',
-  'Viernes',
-  'Sábado',
-  'Domingo',
-];
-
-const DELIVERY_TIME_OPTIONS = Array.from({ length: 23 }, (_, i) => {
-  const minutes = 10 * 60 + i * 30;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-});
-
 export default function CartDrawer() {
   const {
     items,
@@ -73,9 +56,6 @@ export default function CartDrawer() {
   const [phone, setPhone] = useState('');
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
-  const [deliveryDay, setDeliveryDay] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('');
-  const [payment, setPayment] = useState('');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
@@ -167,18 +147,6 @@ export default function CartDrawer() {
       setError('Elige tu línea y estación de metro.');
       return;
     }
-    if (!deliveryDay) {
-      setError('Elige el día de entrega.');
-      return;
-    }
-    if (!deliveryTime) {
-      setError('Elige la hora de entrega.');
-      return;
-    }
-    if (!payment) {
-      setError('Elige tu método de pago.');
-      return;
-    }
 
     const order: Order = {
       id: uid('NF'),
@@ -186,9 +154,6 @@ export default function CartDrawer() {
       phone: phone.trim(),
       metroLine,
       metroStation: metroStation.trim(),
-      deliveryDay,
-      deliveryTime,
-      payment,
       couponCode: couponCode || undefined,
       items: toOrderItems(),
       subtotal,
@@ -687,42 +652,6 @@ export default function CartDrawer() {
                     ))}
                   </select>
                 </div>
-                <select
-                  value={deliveryDay}
-                  onChange={(e) => setDeliveryDay(e.target.value)}
-                  aria-label="Día de entrega"
-                  className="input"
-                >
-                  <option value="">Día de entrega...</option>
-                  {DELIVERY_DAY_OPTIONS.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(e.target.value)}
-                  aria-label="Hora de entrega"
-                  className="input"
-                >
-                  <option value="">Hora de entrega...</option>
-                  {DELIVERY_TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={payment}
-                  onChange={(e) => setPayment(e.target.value)}
-                  aria-label="Método de pago"
-                  className="input"
-                >
-                  <option value="">Método de pago...</option>
-                  <option value="Transferencia">Transferencia</option>
-                  <option value="Efectivo">Efectivo</option>
-                </select>
                 <div className="rounded-2xl border border-line bg-soft/50 p-3">
                   <div className="flex gap-2">
                     <input
