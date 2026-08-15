@@ -77,6 +77,63 @@ export function buildComboMessage(combo: {
   return lines.join('\n');
 }
 
+export type DeliverySaleMessage = {
+  name: string;
+  phone: string;
+  orderNumber: string;
+  items: { productName: string; variantName?: string; quantity: number; total: number }[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  paymentLabel: string;
+  paymentReceived: boolean;
+  metroLine: string;
+  metroStation: string;
+  deliveryDay: string;
+  deliveryTime: string;
+};
+
+export function formatDeliveryDay(iso: string) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  const s = new Intl.DateTimeFormat('es-CL', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(d);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
+  const lines: string[] = [];
+  lines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
+  lines.push('─'.repeat(24));
+  lines.push('');
+  lines.push(`Hola ${m.name} 👋`);
+  lines.push(`Tu pedido ${m.orderNumber} quedó registrado con entrega agendada.`);
+  lines.push('');
+  lines.push('*PRODUCTOS:*');
+  m.items.forEach((item, index) => {
+    lines.push(
+      `${index + 1}. ${item.productName}${item.variantName ? ` (${item.variantName})` : ''} ×${item.quantity}`,
+    );
+    lines.push(`   ${formatPrice(item.total)}`);
+  });
+  lines.push('');
+  lines.push('─'.repeat(24));
+  lines.push(`*Total:* ${formatPrice(m.total)}`);
+  lines.push(`*Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ' · CONTRA ENTREGA'}`);
+  lines.push('');
+  lines.push('*ENTREGA AGENDADA:*');
+  lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
+  lines.push(`⏰ ${m.deliveryTime} hrs`);
+  lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
+  lines.push('');
+  lines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
+  return lines.join('\n');
+}
+
 export function openWhatsApp(phone: string, message: string) {
   const clean = phone.replace(/[^\d]/g, '');
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;

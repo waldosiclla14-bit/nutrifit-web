@@ -14,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   ShoppingBag,
+  ShoppingCart,
   Trash2,
   Users,
   Wallet,
@@ -278,6 +279,7 @@ export default function AdminPage() {
       token={token}
       tab={tab}
       setTab={setTab}
+      onSell={() => router.push('/pos')}
       onLogout={() => {
         clearToken();
         clearSessionCookie();
@@ -291,11 +293,13 @@ function Dashboard({
   token,
   tab,
   setTab,
+  onSell,
   onLogout,
 }: {
   token: string;
   tab: string;
   setTab: (t: any) => void;
+  onSell: () => void;
   onLogout: () => void;
 }) {
   const [loading, setLoading] = useState(true);
@@ -453,6 +457,13 @@ function Dashboard({
           <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">Gestión de la tienda</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={onSell}
+            className="btn-accent px-4 py-2 text-xs"
+            title="Vender con entrega o en local"
+          >
+            <ShoppingCart size={14} /> Vender
+          </button>
           <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
             <RefreshCw size={14} /> Actualizar
           </button>

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Copy, MessageCircle, Minus, Plus, Search, ShoppingCart, Store, Trash2 } from 'lucide-react';
 import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { METRO_LINES } from '@/data/metro';
+import { buildDeliveryOrderMessage, openWhatsApp } from '@/lib/whatsapp';
 
 type ApiProduct = {
   id: string;
@@ -34,6 +36,7 @@ function marginOf(price: number, cost: number) {
 }
 
 type CartLine = {
+  productId: string;
   variantId: string | null;
   productName: string;
   variantName: string;
@@ -49,6 +52,33 @@ type CashRegister = {
   initialAmount: number;
   openedAt: string;
 };
+
+const PAYMENT_LABELS: Record<string, string> = {
+  EFECTIVO: 'Efectivo',
+  TRANSFERENCIA: 'Transferencia',
+  TARJETA_MANUAL: 'Tarjeta',
+  MIXTO: 'Mixto',
+  FLOW_MANUAL: 'Flow',
+  MERCADOPAGO_MANUAL: 'Mercado Pago',
+};
+
+const TIME_SLOTS = Array.from({ length: 21 }, (_, i) => {
+  const h = 10 + Math.floor(i / 2);
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${String(h).padStart(2, '0')}:${m}`;
+});
+
+const lineKey = (l: CartLine) => l.variantId ?? l.productId;
+
+function tomorrowISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
 
 export default function PosPage() {
   const router = useRouter();
@@ -85,10 +115,19 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [payment, setPayment] = useState('EFECTIVO');
+  const [mode, setMode] = useState<'LOCAL' | 'METRO'>('LOCAL');
+  const [metroLine, setMetroLine] = useState('');
+  const [metroStation, setMetroStation] = useState('');
+  const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
+  const [deliveryTime, setDeliveryTime] = useState('11:00');
+  const [paymentReceived, setPaymentReceived] = useState(false);
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [saleMsg, setSaleMsg] = useState<string | null>(null);
+  const [salePhone, setSalePhone] = useState('');
+  const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -166,24 +205,35 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
     const unitPrice = v?.price ?? p.price;
     const stock = v?.stock ?? 0;
+    const key = variantId ?? p.id;
     setCart((cart) => {
-      const existing = cart.find((l) => l.variantId === variantId);
+      const existing = cart.find((l) => lineKey(l) === key);
       if (existing) {
         if (existing.quantity >= stock) return cart;
-        return cart.map((l) => (l.variantId === variantId ? { ...l, quantity: l.quantity + 1 } : l));
+        return cart.map((l) => (lineKey(l) === key ? { ...l, quantity: l.quantity + 1 } : l));
       }
       return [
         ...cart,
-        { variantId, productName: p.name, variantName: v?.name || '', sku: v?.sku || '', unitPrice, quantity: 1, stock },
+        {
+          productId: p.id,
+          variantId,
+          productName: p.name,
+          variantName: v?.name || '',
+          sku: v?.sku || '',
+          unitPrice,
+          quantity: 1,
+          stock,
+        },
       ];
     });
     setDone(null);
+    setSaleMsg(null);
   };
 
-  const setQty = (variantId: string | null, quantity: number) => {
+  const setQty = (key: string, quantity: number) => {
     setCart((cart) =>
       cart
-        .map((l) => (l.variantId === variantId ? { ...l, quantity: Math.max(0, Math.min(l.stock, quantity)) } : l))
+        .map((l) => (lineKey(l) === key ? { ...l, quantity: Math.max(0, Math.min(l.stock, quantity)) } : l))
         .filter((l) => l.quantity > 0),
     );
   };
@@ -207,6 +257,10 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       alert('Ingresa nombre y teléfono del cliente.');
       return;
     }
+    if (mode === 'METRO' && (!metroLine || !metroStation || !deliveryDay || !deliveryTime)) {
+      alert('Completa línea, estación, día y hora de entrega.');
+      return;
+    }
     setSaving(true);
     try {
       const customer = await apiFetch<{ id: string }>('/customers', {
@@ -219,14 +273,18 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           customerId: customer.id,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
-          deliveryType: 'RETIRO_TIENDA',
+          deliveryType: mode === 'METRO' ? 'METRO' : 'RETIRO_TIENDA',
+          metroLine: mode === 'METRO' ? metroLine : undefined,
+          metroStation: mode === 'METRO' ? metroStation : undefined,
+          deliveryDay: mode === 'METRO' ? deliveryDay : undefined,
+          deliveryTime: mode === 'METRO' ? deliveryTime : undefined,
           subtotal,
           discount: discountAmount,
           shippingCost: 0,
           total,
           paymentMethod: payment,
           items: cart.map((l) => ({
-            productId: null,
+            productId: l.productId,
             variantId: l.variantId,
             productName: l.productName,
             variantName: l.variantName,
@@ -237,16 +295,44 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           })),
         },
       });
-      await apiFetch(`/orders/${order.id}/payment`, {
-        method: 'PATCH',
-        token,
-        body: { paymentMethod: payment, paymentNotes: 'Pago en local (POS)' },
-      });
+      if (mode === 'LOCAL' || paymentReceived) {
+        await apiFetch(`/orders/${order.id}/payment`, {
+          method: 'PATCH',
+          token,
+          body: { paymentMethod: payment, paymentNotes: 'Pago registrado en POS' },
+        });
+      }
       setDone(order.orderNumber);
+      if (mode === 'METRO') {
+        setSalePhone(customerPhone.trim());
+        setSaleMsg(
+          buildDeliveryOrderMessage({
+            name: customerName.trim(),
+            phone: customerPhone.trim(),
+            orderNumber: order.orderNumber,
+            items: cart.map((l) => ({
+              productName: l.productName,
+              variantName: l.variantName || undefined,
+              quantity: l.quantity,
+              total: l.unitPrice * l.quantity,
+            })),
+            subtotal,
+            discount: discountAmount,
+            total,
+            paymentLabel: PAYMENT_LABELS[payment] ?? payment,
+            paymentReceived,
+            metroLine,
+            metroStation,
+            deliveryDay,
+            deliveryTime,
+          }),
+        );
+      }
       setCart([]);
       setCustomerName('');
       setCustomerPhone('');
       setDiscountPct(0);
+      setPaymentReceived(false);
       await load();
     } catch (err: any) {
       alert(err?.message || 'Error al cobrar.');
@@ -255,14 +341,41 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     }
   };
 
+  const copyMessage = async () => {
+    if (!saleMsg) return;
+    try {
+      await navigator.clipboard.writeText(saleMsg);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('No se pudo copiar. Copia el mensaje manualmente.');
+    }
+  };
+
   return (
     <div className="container-px py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="section-label">PUNTO DE VENTA</p>
-          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">Cobrar en local</h1>
+          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">
+            {mode === 'LOCAL' ? 'Cobrar en local' : 'Venta con entrega en metro'}
+          </h1>
         </div>
         <div className="flex items-center gap-3 text-xs">
+          <div className="flex overflow-hidden rounded-full border border-line bg-paper">
+            <button
+              onClick={() => setMode('LOCAL')}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              <Store size={14} /> Local
+            </button>
+            <button
+              onClick={() => setMode('METRO')}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              <CalendarDays size={14} /> Entrega en metro
+            </button>
+          </div>
           {cash?.status === 'OPEN' ? (
             <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800">Caja abierta</span>
           ) : (
@@ -278,7 +391,35 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
 
       {done && (
         <div className="mt-4 flex items-center gap-3 rounded-3xl border border-emerald-300 bg-emerald-100 px-5 py-4 text-sm font-bold text-emerald-800">
-          <CheckCircle2 size={20} /> Venta {done} registrada y pagada.
+          <CheckCircle2 size={20} />
+          {mode === 'METRO' && !paymentReceived
+            ? `Venta ${done} registrada con entrega agendada. Pago pendiente (contra entrega).`
+            : `Venta ${done} registrada y pagada.`}
+        </div>
+      )}
+
+      {saleMsg && salePhone && (
+        <div className="mt-4 rounded-3xl border border-accent/30 bg-paper p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-ink">
+              <MessageCircle size={18} className="text-emerald-600" />
+              Mensaje para el cliente (WhatsApp)
+            </p>
+            <div className="flex gap-2">
+              <button onClick={copyMessage} className="btn-outline px-4 py-2 text-xs">
+                <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
+              </button>
+              <button
+                onClick={() => openWhatsApp(salePhone, saleMsg)}
+                className="btn-accent px-4 py-2 text-xs"
+              >
+                <MessageCircle size={13} /> Enviar por WhatsApp
+              </button>
+            </div>
+          </div>
+          <pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-line bg-soft/50 p-4 font-mono text-xs leading-relaxed text-ink">
+            {saleMsg}
+          </pre>
         </div>
       )}
 
@@ -359,20 +500,20 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           </p>
           <div className="mt-4 max-h-[40vh] space-y-2 overflow-y-auto">
             {cart.map((l) => (
-              <div key={l.variantId ?? l.sku} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
+              <div key={lineKey(l)} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-bold">{l.productName}</p>
                   {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
                   <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
                 </div>
-                <button onClick={() => setQty(l.variantId, l.quantity - 1)} className="rounded-full border border-line p-1">
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="rounded-full border border-line p-1">
                   <Minus size={12} />
                 </button>
                 <span className="w-6 text-center text-sm font-bold">{l.quantity}</span>
-                <button onClick={() => setQty(l.variantId, l.quantity + 1)} className="rounded-full border border-line p-1">
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} className="rounded-full border border-line p-1">
                   <Plus size={12} />
                 </button>
-                <button onClick={() => setQty(l.variantId, 0)} className="rounded-full p-1 text-red-500">
+                <button onClick={() => setQty(lineKey(l), 0)} className="rounded-full p-1 text-red-500">
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -390,6 +531,65 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
               <option value="MIXTO">Mixto</option>
             </select>
           </div>
+
+          {mode === 'METRO' && (
+            <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Agendar entrega</p>
+              <div className="mt-3 space-y-2">
+                <select
+                  value={metroLine}
+                  onChange={(e) => {
+                    setMetroLine(e.target.value);
+                    setMetroStation('');
+                  }}
+                  className="input"
+                >
+                  <option value="">Línea de metro…</option>
+                  {METRO_LINES.map((l) => (
+                    <option key={l.line} value={l.line}>
+                      Línea {l.line}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={metroStation}
+                  onChange={(e) => setMetroStation(e.target.value)}
+                  disabled={!metroLine}
+                  className="input"
+                >
+                  <option value="">Estación…</option>
+                  {(METRO_LINES.find((l) => l.line === metroLine)?.stations || []).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={deliveryDay}
+                  min={todayISO()}
+                  onChange={(e) => setDeliveryDay(e.target.value)}
+                  className="input"
+                />
+                <select value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} className="input">
+                  {TIME_SLOTS.map((t) => (
+                    <option key={t} value={t}>
+                      {t} hrs
+                    </option>
+                  ))}
+                </select>
+                <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={paymentReceived}
+                    onChange={(e) => setPaymentReceived(e.target.checked)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  Ya recibí el pago ({PAYMENT_LABELS[payment] ?? payment})
+                </label>
+              </div>
+            </div>
+          )}
 
           {cart.length > 0 && (
             <div className="mt-4">
@@ -425,7 +625,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
             </div>
           </div>
           <button onClick={checkout} disabled={saving || cart.length === 0} className="btn-accent mt-3 w-full">
-            {saving ? 'Cobrando…' : 'Cobrar'}
+            {saving ? 'Procesando…' : mode === 'METRO' ? 'Registrar venta con entrega' : 'Cobrar'}
           </button>
         </div>
       </div>
