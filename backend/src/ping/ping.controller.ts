@@ -7,7 +7,20 @@ export class PingController {
 
   @Get()
   async ping() {
-    const db = await this.prisma.$queryRaw<{ ok: number }[]>`SELECT 1 as ok`;
-    return { ok: true, db: db?.[0]?.ok ?? null, time: new Date().toISOString() };
+    const out: any = { ok: true, time: new Date().toISOString() };
+    try {
+      const db = await this.prisma.$queryRaw<{ ok: number }[]>`SELECT 1 as ok`;
+      out.rawOk = db?.[0]?.ok ?? null;
+    } catch (e: any) {
+      out.rawErr = String(e?.message || e);
+    }
+    try {
+      const c = await this.prisma.customer.findFirst({ select: { id: true } });
+      out.genOk = c ? 'row' : 'null';
+    } catch (e: any) {
+      out.genErr = String(e?.message || e);
+    }
+    out.url = (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@');
+    return out;
   }
 }
