@@ -7,6 +7,26 @@ interface ProbeResult {
   err?: string;
 }
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<ProbeResult> {
+  const t0 = Date.now();
+  let settled = false;
+  const r = Promise.race([
+    p.then((v): ProbeResult => ({ result: v, ms: Date.now() - t0 })),
+    new Promise<ProbeResult>((resolve) =>
+      setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve({ err: 'timeout', ms: Date.now() - t0 });
+      }, ms),
+    ),
+  ]);
+  // mark settled when p resolves
+  p.then(() => {
+    settled = true;
+  });
+  return r;
+}
+
 @Controller('ping')
 export class PingController {
   constructor(private prisma: PrismaService) {}
@@ -21,29 +41,27 @@ export class PingController {
   async db() {
     const out: Record<string, ProbeResult> = {};
 
-    const t0 = Date.now();
-    try {
-      const r = await this.prisma.coupon.findUnique({ where: { code: 'NF-TEST' } });
-      out.couponFindUnique = { result: r ? 'found' : 'not-found', ms: Date.now() - t0 };
-    } catch (e) {
-      out.couponFindUnique = { err: (e as Error).message, ms: Date.now() - t0 };
-    }
+    out.pingRaw = await withTimeout(
+      this.prisma.$queryRaw<{ ok: number }[]>`SELECT 1 as ok`,
+      6000,
+    ).catch((e) => ({ err: (e as Error).message }));
 
-    const t1 = Date.now();
-    try {
-      const r = await this.prisma.coupon.count();
-      out.couponCount = { result: r, ms: Date.now() - t1 };
-    } catch (e) {
-      out.couponCount = { err: (e as Error).message, ms: Date.now() - t1 };
-    }
+    out.productsCount = await withTimeout(this.prisma.product.count(), 6000).catch((e) => ({
+      err: (e as Error).message,
+    }));
 
-    const t2 = Date.now();
-    try {
-      const r = await this.prisma.order.count();
-      out.orderCount = { result: r, ms: Date.now() - t2 };
-    } catch (e) {
-      out.orderCount = { err: (e as Error).message, ms: Date.now() - t2 };
-    }
+    out.orderCount = await withTimeout(this.prisma.order.count(), 6000).catch((e) => ({
+      err: (e as Error).message,
+    }));
+
+    out.couponFindUnique = await withTimeout(
+      this.prisma.coupon.findUnique({ where: { code: 'NF-TEST' } }),
+      6000,
+    ).catch((e) => ({ err: (e as Error).message }));
+
+    out.couponCount = await withTimeout(this.prisma.coupon.count(), 6000).catch((e) => ({
+      err: (e as Error).message,
+    }));
 
     return out;
   }
