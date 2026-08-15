@@ -7,16 +7,11 @@ function resolveDatabaseUrl(): string {
   try {
     const u = new URL(raw);
     const p = u.searchParams;
-    // Conexión DIRECTA a Neon (host sin "-pooler") y SIN pgbouncer: las
-    // transacciones interactivas de Prisma ($transaction usadas en
-    // orders/create, generación/consumo de cupones, etc.) no son compatibles
-    // con el modo transaction-pooling de pgbouncer y colgaban la request.
-    // El keep-alive en /api/ping mantiene la DB activa y evita la pausa.
-    if (u.hostname.includes('-pooler')) {
-      u.hostname = u.hostname.replace('-pooler', '');
-    }
+    // Usar la URL de Neon tal cual (conexión directa, pool por defecto de
+    // Prisma). Las transacciones interactivas ($transaction) requieren
+    // conexión de sesión, por eso NO se usa pgbouncer/connection_limit bajos.
+    // El keep-alive en /api/ping evita la pausa del compute free de Neon.
     if (!p.has('sslmode')) p.set('sslmode', 'require');
-    if (!p.has('connection_limit')) p.set('connection_limit', '10');
     return u.toString();
   } catch {
     return raw;
