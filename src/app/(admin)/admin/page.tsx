@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
   Boxes,
   CalendarDays,
+  Download,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -16,9 +17,11 @@ import {
   ShoppingBag,
   ShoppingCart,
   Trash2,
+  Upload,
   Users,
   Wallet,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
@@ -210,7 +213,7 @@ const CHART_COLORS = ['#16a34a', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ec4899', '#6
 function waLink(order: ApiOrder) {
   const phone = (order.customer?.phone || '').replace(/\D/g, '');
   const msg = encodeURIComponent(
-    `Hola ${order.customer?.name || ''}! Tu pedido ${order.orderNumber} está ${
+    `Hola ${order.customer?.name || ''}! Tu pedido ${order.orderNumber} estÃ¡ ${
       STATUS_LABEL[order.status] || order.status
     }. Respondeme para coordinar la entrega.`,
   );
@@ -241,7 +244,7 @@ function progressPct(actual: number, goal: number) {
 
 function exportCSV(orders: Report['orders']) {
   const rows = [
-    ['Pedido', 'Cliente', 'Fecha', 'Método', 'Subtotal', 'Descuento', 'Envío', 'Total', 'Utilidad', 'Margen%'],
+    ['Pedido', 'Cliente', 'Fecha', 'MÃ©todo', 'Subtotal', 'Descuento', 'EnvÃ­o', 'Total', 'Utilidad', 'Margen%'],
     ...orders.map((o) => [
       o.orderNumber,
       o.customerName,
@@ -439,7 +442,7 @@ function Dashboard({
       await fn();
       await load();
     } catch (err: any) {
-      alert(err?.message || 'Error en la operación.');
+      alert(err?.message || 'Error en la operaciÃ³n.');
     } finally {
       setBusyId(null);
     }
@@ -447,7 +450,7 @@ function Dashboard({
 
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
-    { key: 'ordenes', label: 'Órdenes', icon: ShoppingBag },
+    { key: 'ordenes', label: 'Ã“rdenes', icon: ShoppingBag },
     { key: 'productos', label: 'Productos', icon: Boxes },
     { key: 'clientes', label: 'Clientes', icon: Users },
     { key: 'agenda', label: 'Agenda', icon: CalendarDays },
@@ -460,7 +463,7 @@ function Dashboard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="section-label">NUTRIFIT ADMIN</p>
-          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">Gestión de la tienda</h1>
+          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">GestiÃ³n de la tienda</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -473,8 +476,8 @@ function Dashboard({
           <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
             <RefreshCw size={14} /> Actualizar
           </button>
-          <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs" title="Cambiar contraseña">
-            <KeyRound size={14} /> Contraseña
+          <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs" title="Cambiar contraseÃ±a">
+            <KeyRound size={14} /> ContraseÃ±a
           </button>
           <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
             <LogOut size={14} /> Salir
@@ -501,7 +504,7 @@ function Dashboard({
       </div>
 
       <div className="mt-6">
-        {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
+        {loading && <p className="py-10 text-center text-sm text-muted">Cargandoâ€¦</p>}
         {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
         {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
         {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={load} />}
@@ -538,11 +541,11 @@ function PasswordModal({
     setError('');
     setOk(false);
     if (newPassword.length < 6) {
-      setError('La nueva contraseña debe tener al menos 6 caracteres.');
+      setError('La nueva contraseÃ±a debe tener al menos 6 caracteres.');
       return;
     }
     if (newPassword !== confirm) {
-      setError('Las contraseñas no coinciden.');
+      setError('Las contraseÃ±as no coinciden.');
       return;
     }
     setSaving(true);
@@ -558,7 +561,7 @@ function PasswordModal({
       setConfirm('');
       onChanged();
     } catch (err: any) {
-      setError(err?.message || 'Error al cambiar la contraseña.');
+      setError(err?.message || 'Error al cambiar la contraseÃ±a.');
     } finally {
       setSaving(false);
     }
@@ -567,11 +570,11 @@ function PasswordModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-3xl border border-line bg-paper p-6" onClick={(e) => e.stopPropagation()}>
-        <p className="font-display text-xl uppercase">Cambiar contraseña</p>
-        <p className="mt-1 text-sm text-muted">Actualiza la contraseña de tu cuenta.</p>
+        <p className="font-display text-xl uppercase">Cambiar contraseÃ±a</p>
+        <p className="mt-1 text-sm text-muted">Actualiza la contraseÃ±a de tu cuenta.</p>
         <div className="mt-4 space-y-3">
           <label className="block">
-            <span className="text-xs font-semibold text-muted">Contraseña actual</span>
+            <span className="text-xs font-semibold text-muted">ContraseÃ±a actual</span>
             <input
               type="password"
               value={currentPassword}
@@ -581,7 +584,7 @@ function PasswordModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-muted">Nueva contraseña</span>
+            <span className="text-xs font-semibold text-muted">Nueva contraseÃ±a</span>
             <input
               type="password"
               value={newPassword}
@@ -591,7 +594,7 @@ function PasswordModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-muted">Confirmar nueva contraseña</span>
+            <span className="text-xs font-semibold text-muted">Confirmar nueva contraseÃ±a</span>
             <input
               type="password"
               value={confirm}
@@ -602,13 +605,13 @@ function PasswordModal({
           </label>
         </div>
         {error && <p className="mt-3 text-xs font-semibold text-red-500">{error}</p>}
-        {ok && <p className="mt-3 text-xs font-semibold text-emerald-600">Contraseña actualizada correctamente.</p>}
+        {ok && <p className="mt-3 text-xs font-semibold text-emerald-600">ContraseÃ±a actualizada correctamente.</p>}
         <div className="mt-6 flex justify-end gap-2">
           <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
             Cerrar
           </button>
           <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
-            {saving ? 'Guardando…' : 'Guardar contraseña'}
+            {saving ? 'Guardandoâ€¦' : 'Guardar contraseÃ±a'}
           </button>
         </div>
       </div>
@@ -635,24 +638,24 @@ function Resumen({
   const growth = stats.salesGrowth;
   const growthTxt =
     stats.todaySales === 0 && stats.salesGrowth === 0
-      ? 'sin ventas aún'
-      : `${growth > 0 ? '▲' : growth < 0 ? '▼' : '•'} ${Math.abs(growth)}% vs ayer`;
+      ? 'sin ventas aÃºn'
+      : `${growth > 0 ? 'â–²' : growth < 0 ? 'â–¼' : 'â€¢'} ${Math.abs(growth)}% vs ayer`;
 
   const cards = [
     {
       label: 'Ventas hoy',
       value: formatPrice(stats.todaySales),
-      sub: `${stats.todayOrders} órdenes · ticket ${formatPrice(stats.avgTicket)}`,
+      sub: `${stats.todayOrders} Ã³rdenes Â· ticket ${formatPrice(stats.avgTicket)}`,
       extra: growthTxt,
     },
     {
       label: 'Ventas del mes',
       value: formatPrice(stats.monthSales),
-      sub: `${stats.monthOrders} órdenes · ticket ${formatPrice(stats.monthAvgTicket)}`,
-      extra: `Utilidad ${formatPrice(stats.monthProfit)} · margen ${stats.monthMargin}%`,
+      sub: `${stats.monthOrders} Ã³rdenes Â· ticket ${formatPrice(stats.monthAvgTicket)}`,
+      extra: `Utilidad ${formatPrice(stats.monthProfit)} Â· margen ${stats.monthMargin}%`,
     },
     {
-      label: 'Órdenes pendientes',
+      label: 'Ã“rdenes pendientes',
       value: String(stats.pendingOrders),
       sub: `${stats.totalOrders} totales`,
       extra: `Utilidad hoy ${formatPrice(stats.todayProfit)}`,
@@ -733,7 +736,7 @@ function Resumen({
                     <span className="text-muted">
                       {g.fmt ? formatPrice(g.actual) : g.actual}
                       {g.suffix || ''} / {g.fmt ? formatPrice(g.goal) : g.goal}
-                      {g.suffix || ''} · <b className={done ? 'text-emerald-600' : ''}>{pct}%</b>
+                      {g.suffix || ''} Â· <b className={done ? 'text-emerald-600' : ''}>{pct}%</b>
                     </span>
                   </div>
                   <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft">
@@ -749,13 +752,13 @@ function Resumen({
         </div>
 
         <div className="rounded-3xl border border-line bg-paper p-6">
-          <p className="font-display text-lg uppercase">Últimos 7 días</p>
+          <p className="font-display text-lg uppercase">Ãšltimos 7 dÃ­as</p>
           {stats.salesByDay.length > 0 ? (
             <div className="mt-4">
               <Bars7 data={stats.salesByDay} />
             </div>
           ) : (
-            <p className="mt-4 text-sm text-muted">Sin ventas en los últimos 7 días.</p>
+            <p className="mt-4 text-sm text-muted">Sin ventas en los Ãºltimos 7 dÃ­as.</p>
           )}
           <p className="mt-4 font-display text-sm uppercase">Top 5 productos</p>
           {stats.topProducts.length > 0 ? (
@@ -764,13 +767,13 @@ function Resumen({
                 <div key={p.name} className="flex items-center justify-between text-sm">
                   <span className="text-muted">{i + 1}. {p.name}</span>
                   <span className="font-semibold">
-                    {p.quantity} uds · {formatPrice(p.revenue)}
+                    {p.quantity} uds Â· {formatPrice(p.revenue)}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-muted">Sin datos aún.</p>
+            <p className="mt-2 text-sm text-muted">Sin datos aÃºn.</p>
           )}
         </div>
       </div>
@@ -856,7 +859,7 @@ function GoalEditor({
             Cancelar
           </button>
           <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
-            {saving ? 'Guardando…' : 'Guardar metas'}
+            {saving ? 'Guardandoâ€¦' : 'Guardar metas'}
           </button>
         </div>
       </div>
@@ -902,7 +905,7 @@ function Ordenes({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nº de pedido, cliente, teléfono o estación…"
+          placeholder="Buscar por nÂº de pedido, cliente, telÃ©fono o estaciÃ³nâ€¦"
           className="input max-w-md"
         />
         <button
@@ -917,7 +920,7 @@ function Ordenes({
             onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
             className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${statusFilter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
           >
-            {STATUS_LABEL[s]} · {statusCounts[s] || 0}
+            {STATUS_LABEL[s]} Â· {statusCounts[s] || 0}
           </button>
         ))}
       </div>
@@ -942,7 +945,7 @@ function Ordenes({
                   <p className="text-[11px] text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <p className="font-semibold">{o.customer?.name || '—'}</p>
+                  <p className="font-semibold">{o.customer?.name || 'â€”'}</p>
                   <p className="text-[11px] text-muted">{o.customer?.phone || ''}</p>
                 </td>
                 <td className="px-4 py-3 text-xs">
@@ -950,7 +953,7 @@ function Ordenes({
                     <>
                       <p>Metro {o.metroLine}</p>
                       <p className="text-muted">{o.metroStation}</p>
-                      {o.deliveryDay && <p className="text-muted">Día: {o.deliveryDay}</p>}
+                      {o.deliveryDay && <p className="text-muted">DÃ­a: {o.deliveryDay}</p>}
                       {o.deliveryTime && <p className="text-muted">Hora: {o.deliveryTime}</p>}
                     </>
                   ) : (
@@ -959,7 +962,7 @@ function Ordenes({
                 </td>
                 <td className="px-4 py-3 font-bold">{formatPrice(o.total)}</td>
                 <td className="px-4 py-3 text-xs">
-                  <p>{PAYMENT_LABEL[o.paymentMethod || ''] || '—'}</p>
+                  <p>{PAYMENT_LABEL[o.paymentMethod || ''] || 'â€”'}</p>
                   <p className="text-muted">{o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}</p>
                 </td>
                 <td className="px-4 py-3">
@@ -1011,7 +1014,7 @@ function Ordenes({
                       <button
                         disabled={busyId === o.id}
                         onClick={() => {
-                          if (!window.confirm(`¿Eliminar permanentemente la orden ${o.orderNumber}?`)) return;
+                          if (!window.confirm(`Â¿Eliminar permanentemente la orden ${o.orderNumber}?`)) return;
                           act(() => apiFetch(`/orders/${o.id}`, { method: 'DELETE', token }), o.id);
                         }}
                         className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
@@ -1036,7 +1039,7 @@ function Ordenes({
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-muted">
-                  Sin órdenes.
+                  Sin Ã³rdenes.
                 </td>
               </tr>
             )}
@@ -1087,6 +1090,9 @@ function Productos({
   const [editing, setEditing] = useState<ApiProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '' });
   const [formVariants, setFormVariants] = useState([
     { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
@@ -1267,7 +1273,7 @@ function Productos({
   };
 
   const remove = async (p: ApiProduct) => {
-    if (!window.confirm(`¿Desactivar el producto "${p.name}"? No se eliminará del historial de ventas.`)) return;
+    if (!window.confirm(`Â¿Desactivar el producto "${p.name}"? No se eliminarÃ¡ del historial de ventas.`)) return;
     setDeleting(p.id);
     try {
       await apiFetch(`/products/${p.id}`, { method: 'DELETE', token });
@@ -1279,14 +1285,217 @@ function Productos({
     }
   };
 
+  const exportExcel = () => {
+    const rows: any[] = [];
+    for (const p of products) {
+      const variants = p.variants && p.variants.length > 0 ? p.variants : [];
+      if (variants.length === 0) {
+        rows.push({
+          producto: p.name,
+          sku_producto: p.sku || '',
+          categoria: p.category?.name || '',
+          marca: p.brandName || p.brand || '',
+          precio_base: p.price ?? '',
+          costo_base: p.costPrice ?? 0,
+          precio_tachado: p.comparePrice ?? '',
+          descripcion: p.description || '',
+          variante: '',
+          sku_variante: '',
+          precio_variante: '',
+          costo_variante: '',
+          stock: '',
+          alerta_stock: '',
+        });
+      }
+      for (const v of variants) {
+        rows.push({
+          producto: p.name,
+          sku_producto: p.sku || '',
+          categoria: p.category?.name || '',
+          marca: p.brandName || p.brand || '',
+          precio_base: p.price ?? '',
+          costo_base: p.costPrice ?? 0,
+          precio_tachado: p.comparePrice ?? '',
+          descripcion: p.description || '',
+          variante: v.name,
+          sku_variante: v.sku,
+          precio_variante: v.price,
+          costo_variante: v.costPrice,
+          stock: v.stock,
+          alerta_stock: v.lowStockAlert ?? 5,
+        });
+      }
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 30 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 },
+      { wch: 14 }, { wch: 40 }, { wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 10 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+    XLSX.writeFile(wb, `nutrifit-productos-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImportResult(null);
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+      if (!raw.length) {
+        alert('El archivo está vacío.');
+        return;
+      }
+      const normalize = (s: string) =>
+        s
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/_+/g, '_');
+      const header = new Map<string, string>();
+      for (const key of Object.keys(raw[0])) header.set(normalize(key), key);
+      const col = (row: Record<string, any>, name: string) => {
+        const k = header.get(name);
+        return k !== undefined ? row[k] : '';
+      };
+      const num = (row: Record<string, any>, name: string) => {
+        const n = Number(col(row, name));
+        return Number.isNaN(n) || col(row, name) === '' ? undefined : n;
+      };
+
+      const groups = new Map<string, Record<string, any>[]>();
+      for (const row of raw) {
+        const skuP = String(col(row, 'sku_producto')).trim();
+        const key = skuP || String(col(row, 'producto')).trim().toLowerCase();
+        if (!key) continue;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(row);
+      }
+
+      let created = 0;
+      let updated = 0;
+      let errors = 0;
+      for (const rows of groups.values()) {
+        const first = rows[0];
+        const name = String(col(first, 'producto')).trim();
+        const skuP = String(col(first, 'sku_producto')).trim();
+        const variants = rows
+          .filter((r) => String(col(r, 'sku_variante')).trim() || String(col(r, 'variante')).trim())
+          .map((r) => ({
+            variantName: String(col(r, 'variante')).trim(),
+            sku: String(col(r, 'sku_variante')).trim(),
+            price: num(r, 'precio_variante'),
+            costPrice: num(r, 'costo_variante'),
+            stock: num(r, 'stock'),
+            lowStockAlert: num(r, 'alerta_stock'),
+          }));
+        const existing =
+          (skuP && products.find((p) => p.sku && p.sku.toLowerCase() === skuP.toLowerCase())) ||
+          (!skuP && products.find((p) => p.name.toLowerCase() === name.toLowerCase()));
+        try {
+          if (existing) {
+            const variantPayload = variants.map((v) => {
+              const match = (existing.variants || []).find(
+                (ev) => v.sku && ev.sku && ev.sku.toLowerCase() === v.sku.toLowerCase(),
+              );
+              return { ...v, id: match?.id ?? undefined };
+            });
+            await apiFetch(`/products/${existing.id}`, {
+              method: 'PATCH',
+              token,
+              body: {
+                name,
+                category: String(col(first, 'categoria')).trim(),
+                brand: String(col(first, 'marca')).trim(),
+                basePrice: num(first, 'precio_base'),
+                costPrice: num(first, 'costo_base'),
+                comparePrice: num(first, 'precio_tachado'),
+                description: String(col(first, 'descripcion')).trim() || undefined,
+                variants: variantPayload,
+              },
+            });
+            updated++;
+          } else {
+            if (!name) {
+              errors++;
+              continue;
+            }
+            await apiFetch('/products', {
+              method: 'POST',
+              token,
+              body: {
+                name,
+                sku: skuP || undefined,
+                category: String(col(first, 'categoria')).trim(),
+                brand: String(col(first, 'marca')).trim(),
+                basePrice: num(first, 'precio_base'),
+                costPrice: num(first, 'costo_base'),
+                comparePrice: num(first, 'precio_tachado'),
+                description: String(col(first, 'descripcion')).trim() || undefined,
+                variants: variants.map(({ sku, ...rest }) => ({ ...rest, sku: sku || undefined })),
+              },
+            });
+            created++;
+          }
+        } catch (err) {
+          errors++;
+          console.error(`Error importando "${name}":`, err);
+        }
+      }
+      setImportResult(
+        `Importación lista: ${created} creado(s), ${updated} actualizado(s), ${errors} con error.`,
+      );
+      await onChanged();
+    } catch (err: any) {
+      alert('No se pudo leer el archivo. Exporta primero un Excel para usar como plantilla.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">{products.length} producto(s)</p>
-        <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
-          {showForm ? 'Cancelar' : '+ Nuevo producto'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                handleImportFile(f);
+                e.target.value = '';
+              }
+            }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={importing}
+            className="btn-outline px-4 py-2 text-xs disabled:opacity-50"
+            title="Importar productos desde un archivo Excel (exporta primero para usar como plantilla)"
+          >
+            <Upload size={13} /> {importing ? 'Importandoâ€¦' : 'Importar Excel'}
+          </button>
+          <button onClick={exportExcel} className="btn-outline px-4 py-2 text-xs" title="Descargar listado de productos en Excel">
+            <Download size={13} /> Exportar Excel
+          </button>
+          <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
+            {showForm ? 'Cancelar' : '+ Nuevo producto'}
+          </button>
+        </div>
       </div>
+
+      {importResult && (
+        <div className="mb-4 rounded-2xl border border-emerald-300 bg-emerald-100 px-4 py-3 text-sm font-bold text-emerald-800">
+          {importResult}
+        </div>
+      )}
 
       {showForm && (
         <div className="mb-6 rounded-3xl border border-line bg-paper p-6">
@@ -1294,13 +1503,13 @@ function Productos({
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
-            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría (ej: Whey Protein)" className="input" />
+            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="CategorÃ­a (ej: Whey Protein)" className="input" />
             <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
             <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />
             <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descripción (opcional)" className="input md:col-span-2" rows={2} />
-            <input value={form.registroIsp} onChange={(e) => setForm((f) => ({ ...f, registroIsp: e.target.value }))} placeholder="Registro ISP N° (opcional)" className="input" />
+            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="DescripciÃ³n (opcional)" className="input md:col-span-2" rows={2} />
+            <input value={form.registroIsp} onChange={(e) => setForm((f) => ({ ...f, registroIsp: e.target.value }))} placeholder="Registro ISP NÂ° (opcional)" className="input" />
           </div>
 
           <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
@@ -1315,7 +1524,7 @@ function Productos({
                 <div className="flex items-center gap-2">
                   <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input" />
                   <button onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))} disabled={formVariants.length === 1} className="text-red-500 disabled:opacity-30" title="Quitar variante">
-                    ✕
+                    âœ•
                   </button>
                 </div>
               </div>
@@ -1330,7 +1539,7 @@ function Productos({
               Cancelar
             </button>
             <button onClick={create} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
-              {submitting ? 'Guardando…' : 'Guardar producto'}
+              {submitting ? 'Guardandoâ€¦' : 'Guardar producto'}
             </button>
           </div>
         </div>
@@ -1345,7 +1554,7 @@ function Productos({
                 <div className="min-w-0">
                   <p className="font-bold leading-snug">{p.name || p.sku || 'Producto sin nombre'}</p>
                   <p className="mt-0.5 text-xs text-muted">
-                    {[p.brandName, p.category?.name].filter(Boolean).join(' · ') || '—'}
+                    {[p.brandName, p.category?.name].filter(Boolean).join(' Â· ') || 'â€”'}
                   </p>
                   {!p.active && (
                     <span className="mt-1 inline-block text-[11px] font-bold text-red-500">INACTIVO</span>
@@ -1363,7 +1572,7 @@ function Productos({
                     disabled={deleting === p.id}
                     className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
                   >
-                    <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
+                    <Trash2 size={10} /> {deleting === p.id ? 'â€¦' : 'Desactivar'}
                   </button>
                 </div>
               </div>
@@ -1374,7 +1583,7 @@ function Productos({
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{v.name}</p>
-                        <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
+                        <p className="truncate font-mono text-[11px] text-muted">{v.sku || 'â€”'}</p>
                       </div>
                       <span className={`shrink-0 rounded-full border bg-paper px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
                         margen {marginOf(v.price, v.costPrice)}%
@@ -1419,7 +1628,7 @@ function Productos({
                           onClick={() => save(p, v, v.stock)}
                           className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
                         >
-                          {saving === v.id ? 'Guardando…' : 'Guardar'}
+                          {saving === v.id ? 'Guardandoâ€¦' : 'Guardar'}
                         </button>
                       </div>
                     </div>
@@ -1446,14 +1655,14 @@ function Productos({
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
               <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
-              <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />
+              <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="CategorÃ­a" className="input" />
               <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" />
               <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" className="input" />
               <input value={editForm.costPrice} onChange={(e) => setEditForm((f) => (f ? { ...f, costPrice: e.target.value } : f))} placeholder="Costo" type="number" className="input" />
               <input value={editForm.comparePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, comparePrice: e.target.value } : f))} placeholder="Precio tachado" type="number" className="input" />
               <input value={editForm.reason} onChange={(e) => setEditForm((f) => (f ? { ...f, reason: e.target.value } : f))} placeholder="Motivo de ajuste de stock (si cambias stock)" className="input md:col-span-2" />
-              <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="Descripción" className="input md:col-span-2" rows={2} />
-              <input value={editForm.registroIsp} onChange={(e) => setEditForm((f) => (f ? { ...f, registroIsp: e.target.value } : f))} placeholder="Registro ISP N°" className="input" />
+              <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="DescripciÃ³n" className="input md:col-span-2" rows={2} />
+              <input value={editForm.registroIsp} onChange={(e) => setEditForm((f) => (f ? { ...f, registroIsp: e.target.value } : f))} placeholder="Registro ISP NÂ°" className="input" />
             </div>
 
             <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
@@ -1473,7 +1682,7 @@ function Productos({
                       className="text-red-500 disabled:opacity-30"
                       title="Quitar variante"
                     >
-                      ✕
+                      âœ•
                     </button>
                   </div>
                 </div>
@@ -1493,7 +1702,7 @@ function Productos({
                 Cancelar
               </button>
               <button onClick={saveEdit} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
-                {submitting ? 'Guardando…' : 'Guardar cambios'}
+                {submitting ? 'Guardandoâ€¦' : 'Guardar cambios'}
               </button>
             </div>
           </div>
@@ -1557,7 +1766,7 @@ function Clientes({
     const name = form.name.trim();
     const phone = form.phone.trim();
     if (name.length < 2 || phone.length < 6) {
-      alert('Ingresa nombre y teléfono válidos.');
+      alert('Ingresa nombre y telÃ©fono vÃ¡lidos.');
       return;
     }
     setSaving(true);
@@ -1579,7 +1788,7 @@ function Clientes({
   };
 
   const remove = async (customer: ApiCustomer) => {
-    if (!window.confirm(`¿Eliminar permanentemente al cliente ${customer.name}?`)) return;
+    if (!window.confirm(`Â¿Eliminar permanentemente al cliente ${customer.name}?`)) return;
     setDeleting(customer.id);
     try {
       await apiFetch(`/customers/${customer.id}`, { method: 'DELETE', token });
@@ -1592,7 +1801,7 @@ function Clientes({
   };
 
   const generateCoupon = async (customer: ApiCustomer) => {
-    if (!window.confirm(`¿Generar cupón de 10% para ${customer.name}?`)) return;
+    if (!window.confirm(`Â¿Generar cupÃ³n de 10% para ${customer.name}?`)) return;
     setGeneratingCoupon(customer.id);
     try {
       const coupon = await apiFetch<{ code: string; discountPercent: number; expiresAt: string | null }>(
@@ -1610,20 +1819,20 @@ function Clientes({
         },
       );
       const phone = customer.phone.replace(/\D/g, '');
-      const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 días';
+      const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 dÃ­as';
       const message = [
         `Hola ${customer.name}, gracias por tu compra en NutriFit.`,
         '',
-        `Te dejamos un cupón único para tu próxima compra: *${coupon.code}*`,
+        `Te dejamos un cupÃ³n Ãºnico para tu prÃ³xima compra: *${coupon.code}*`,
         `Descuento: ${coupon.discountPercent}%`,
-        `Válido hasta: ${expiry}`,
+        `VÃ¡lido hasta: ${expiry}`,
         '',
-        'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
+        'Ãšsalo en tu prÃ³xima compra por WhatsApp o en el carrito.',
       ].join('\n');
       window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo generar el cupón.');
+      alert(err?.message || 'No se pudo generar el cupÃ³n.');
     } finally {
       setGeneratingCoupon(null);
     }
@@ -1632,7 +1841,7 @@ function Clientes({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" className="input max-w-md" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar clienteâ€¦" className="input max-w-md" />
         <button
           type="button"
           onClick={openAdd}
@@ -1655,11 +1864,11 @@ function Clientes({
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
               <th className="px-4 py-3">Cliente</th>
-              <th className="px-4 py-3">Teléfono</th>
+              <th className="px-4 py-3">TelÃ©fono</th>
               <th className="px-4 py-3">Segmento</th>
-              <th className="px-4 py-3">Órdenes</th>
+              <th className="px-4 py-3">Ã“rdenes</th>
               <th className="px-4 py-3">Gasto total</th>
-              <th className="px-4 py-3">Última compra</th>
+              <th className="px-4 py-3">Ãšltima compra</th>
                <th className="px-4 py-3">Registro</th>
                <th className="px-4 py-3">Acciones</th>
             </tr>
@@ -1677,7 +1886,7 @@ function Clientes({
                   <td className="px-4 py-3">{c.totalOrders}</td>
                   <td className="px-4 py-3 font-bold">{formatPrice(c.totalSpent)}</td>
                   <td className="px-4 py-3 text-xs text-muted">
-                    {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
+                    {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : 'â€”'}
                   </td>
                    <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
                        <td className="px-4 py-3">
@@ -1694,7 +1903,7 @@ function Clientes({
                         disabled={generatingCoupon === c.id}
                         className="mr-2 inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 disabled:opacity-50"
                       >
-                        <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón 10%'}
+                        <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'CupÃ³n 10%'}
                       </button>
                       <button
                         type="button"
@@ -1702,7 +1911,7 @@ function Clientes({
                         disabled={deleting === c.id}
                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
                      >
-                       <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
+                       <Trash2 size={12} /> {deleting === c.id ? 'â€¦' : 'Eliminar'}
                      </button>
                    </td>
                 </tr>
@@ -1741,7 +1950,7 @@ function Clientes({
               <input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="Teléfono * (ej: 9 1234 5678)"
+                placeholder="TelÃ©fono * (ej: 9 1234 5678)"
                 className="input"
               />
               <input
@@ -1760,7 +1969,7 @@ function Clientes({
                 disabled={saving}
                 className="btn-accent px-4 py-2 text-xs disabled:opacity-50"
               >
-                {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cliente'}
+                {saving ? 'Guardandoâ€¦' : editing ? 'Guardar cambios' : 'Crear cliente'}
               </button>
             </div>
           </div>
@@ -1823,7 +2032,7 @@ function Agenda({
 
   const save = async () => {
     if (!form.customerId || form.title.trim().length < 1 || form.message.trim().length < 1 || !form.dueDate) {
-      alert('Completa cliente, título, mensaje y fecha.');
+      alert('Completa cliente, tÃ­tulo, mensaje y fecha.');
       return;
     }
     const dueAt = new Date(`${form.dueDate}T${form.dueTime || '10:00'}:00`).toISOString();
@@ -1846,7 +2055,7 @@ function Agenda({
   };
 
   const remove = async (r: ApiReminder) => {
-    if (!window.confirm(`¿Eliminar el recordatorio "${r.title}"?`)) return;
+    if (!window.confirm(`Â¿Eliminar el recordatorio "${r.title}"?`)) return;
     setBusy(r.id);
     try {
       await apiFetch(`/reminders/${r.id}`, { method: 'DELETE', token });
@@ -1873,11 +2082,11 @@ function Agenda({
   const sendWhatsApp = (r: ApiReminder) => {
     const phone = r.customerPhone.replace(/\D/g, '');
     if (!phone) {
-      alert('Este cliente no tiene teléfono válido.');
+      alert('Este cliente no tiene telÃ©fono vÃ¡lido.');
       return;
     }
     const when = new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'long', timeStyle: 'short' });
-    const message = `${r.title}\n\n${r.message}\n\n📅 Recordatorio agendado para: ${when}`;
+    const message = `${r.title}\n\n${r.message}\n\nðŸ“… Recordatorio agendado para: ${when}`;
     window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -2002,23 +2211,23 @@ function Agenda({
                 onChange={(e) => setForm({ ...form, customerId: e.target.value })}
                 className="input"
               >
-                <option value="">Selecciona cliente…</option>
+                <option value="">Selecciona clienteâ€¦</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} — {c.phone}
+                    {c.name} â€” {c.phone}
                   </option>
                 ))}
               </select>
               <input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Título (ej: Recordatorio de reposición)"
+                placeholder="TÃ­tulo (ej: Recordatorio de reposiciÃ³n)"
                 className="input"
               />
               <textarea
                 value={form.message}
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
-                placeholder="Mensaje que se enviará por WhatsApp…"
+                placeholder="Mensaje que se enviarÃ¡ por WhatsAppâ€¦"
                 className="input"
                 rows={4}
               />
@@ -2042,7 +2251,7 @@ function Agenda({
                 Cancelar
               </button>
               <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
-                {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear recordatorio'}
+                {saving ? 'Guardandoâ€¦' : editing ? 'Guardar cambios' : 'Crear recordatorio'}
               </button>
             </div>
           </div>
@@ -2091,7 +2300,7 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
           <div className="mt-4 space-y-3">
             <input type="number" value={initial} onChange={(e) => setInitial(e.target.value)} className="input" placeholder="Fondo inicial" />
             <button onClick={open} disabled={saving} className="btn-accent w-full">
-              {saving ? 'Abriendo…' : 'Abrir caja'}
+              {saving ? 'Abriendoâ€¦' : 'Abrir caja'}
             </button>
           </div>
         </>
@@ -2124,7 +2333,7 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
             <div className="mt-4 space-y-3">
               <input type="number" value={final} onChange={(e) => setFinal(e.target.value)} className="input" placeholder="Total contado al cierre" />
               <button onClick={close} disabled={saving} className="btn-primary w-full">
-                {saving ? 'Cerrando…' : 'Cerrar caja'}
+                {saving ? 'Cerrandoâ€¦' : 'Cerrar caja'}
               </button>
             </div>
           )}
@@ -2184,8 +2393,8 @@ function Reportes({ token }: { token: string }) {
       <div className="flex flex-wrap items-center gap-2">
         {(
           [
-            ['7d', '7 días'],
-            ['30d', '30 días'],
+            ['7d', '7 dÃ­as'],
+            ['30d', '30 dÃ­as'],
             ['mes', 'Este mes'],
           ] as const
         ).map(([k, label]) => (
@@ -2206,7 +2415,7 @@ function Reportes({ token }: { token: string }) {
       </div>
 
       {loading ? (
-        <p className="py-10 text-center text-sm text-muted">Cargando reportes…</p>
+        <p className="py-10 text-center text-sm text-muted">Cargando reportesâ€¦</p>
       ) : !report ? (
         <p className="py-10 text-center text-sm text-muted">Sin datos.</p>
       ) : (
@@ -2216,7 +2425,7 @@ function Reportes({ token }: { token: string }) {
               { label: 'Ventas', value: formatPrice(report.totalSales) },
               { label: 'Utilidad', value: formatPrice(report.totalProfit) },
               { label: 'Margen', value: `${report.margin}%` },
-              { label: 'Órdenes', value: String(report.orderCount) },
+              { label: 'Ã“rdenes', value: String(report.orderCount) },
               { label: 'Ticket promedio', value: formatPrice(report.avgTicket) },
             ].map((c) => (
               <div key={c.label} className="rounded-3xl border border-line bg-paper p-5">
@@ -2242,15 +2451,15 @@ function Reportes({ token }: { token: string }) {
                       );
                     })}
                   </div>
-                  <p className="mt-2 text-[11px] text-muted">Barras verdes = ventas por día. Pasa el cursor para ver utilidad.</p>
+                  <p className="mt-2 text-[11px] text-muted">Barras verdes = ventas por dÃ­a. Pasa el cursor para ver utilidad.</p>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
+                <p className="mt-4 text-sm text-muted">Sin ventas en el perÃ­odo.</p>
               )}
             </div>
 
             <div className="rounded-3xl border border-line bg-paper p-6">
-              <p className="font-display text-lg uppercase">Por método de pago</p>
+              <p className="font-display text-lg uppercase">Por mÃ©todo de pago</p>
               {report.methods.length > 0 ? (
                 <div className="mt-4 flex items-center gap-6">
                   <Donut data={report.methods} />
@@ -2265,7 +2474,7 @@ function Reportes({ token }: { token: string }) {
                   </div>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
+                <p className="mt-4 text-sm text-muted">Sin ventas en el perÃ­odo.</p>
               )}
             </div>
           </div>
@@ -2281,7 +2490,7 @@ function Reportes({ token }: { token: string }) {
                       <div key={c.product}>
                         <div className="flex justify-between text-xs">
                           <span className="font-semibold">{c.product}</span>
-                          <span className="text-muted">{c.quantity} uds · {formatPrice(c.total)}</span>
+                          <span className="text-muted">{c.quantity} uds Â· {formatPrice(c.total)}</span>
                         </div>
                         <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft">
                           <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max((c.total / max) * 100, 2)}%` }} />
@@ -2323,7 +2532,7 @@ function Reportes({ token }: { token: string }) {
 
           <div className="rounded-3xl border border-line bg-paper">
             <div className="flex items-center justify-between px-6 pt-6">
-              <p className="font-display text-lg uppercase">Detalle de órdenes</p>
+              <p className="font-display text-lg uppercase">Detalle de Ã³rdenes</p>
             </div>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
@@ -2332,7 +2541,7 @@ function Reportes({ token }: { token: string }) {
                     <th className="px-4 py-3">Pedido</th>
                     <th className="px-4 py-3">Cliente</th>
                     <th className="px-4 py-3">Fecha</th>
-                    <th className="px-4 py-3">Método</th>
+                    <th className="px-4 py-3">MÃ©todo</th>
                     <th className="px-4 py-3">Total</th>
                     <th className="px-4 py-3">Utilidad</th>
                     <th className="px-4 py-3">Margen</th>
@@ -2344,7 +2553,7 @@ function Reportes({ token }: { token: string }) {
                       <td className="px-4 py-3 font-bold">{o.orderNumber}</td>
                       <td className="px-4 py-3">{o.customerName}</td>
                       <td className="px-4 py-3 text-xs text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</td>
-                      <td className="px-4 py-3 text-xs">{PAYMENT_LABEL[o.paymentMethod || ''] || '—'}</td>
+                      <td className="px-4 py-3 text-xs">{PAYMENT_LABEL[o.paymentMethod || ''] || 'â€”'}</td>
                       <td className="px-4 py-3 font-bold">{formatPrice(o.total)}</td>
                       <td className="px-4 py-3 text-emerald-600">{formatPrice(o.profit)}</td>
                       <td className="px-4 py-3">{o.margin}%</td>
@@ -2353,7 +2562,7 @@ function Reportes({ token }: { token: string }) {
                   {report.orders.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-10 text-center text-muted">
-                        Sin órdenes en el período.
+                        Sin Ã³rdenes en el perÃ­odo.
                       </td>
                     </tr>
                   )}
