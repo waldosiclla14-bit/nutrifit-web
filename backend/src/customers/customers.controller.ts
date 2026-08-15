@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { JsonBody } from '../common/decorators/raw-body.decorator';
 import { CustomersService } from './customers.service';
 
 @Controller('customers')
@@ -31,7 +32,7 @@ export class CustomersController {
   }
 
   @Post()
-  create(@Body() data: any) {
+  create(@JsonBody() data: any) {
     return this.customersService.create({
       name: data?.name,
       phone: data?.phone,
@@ -42,7 +43,7 @@ export class CustomersController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  update(@Param('id') id: string, @Body() data: any) {
+  update(@Param('id') id: string, @JsonBody() data: any) {
     return this.customersService.update(id, data);
   }
 

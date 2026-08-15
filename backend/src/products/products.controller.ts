@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { JsonBody } from '../common/decorators/raw-body.decorator';
 import { ProductsService } from './products.service';
 
 @Controller('products')
@@ -46,14 +47,14 @@ export class ProductsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  create(@Body() data: any) {
+  create(@JsonBody() data: any) {
     return this.productsService.create(data);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() data: any) {
+  update(@Param('id') id: string, @JsonBody() data: any) {
     return this.productsService.update(id, data);
   }
 
@@ -67,21 +68,21 @@ export class ProductsController {
   @Patch(':id/stock')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  updateStock(@Param('id') id: string, @Body() body: { quantity: number }) {
+  updateStock(@Param('id') id: string, @JsonBody() body: { quantity: number }) {
     return this.productsService.updateStock(id, body.quantity);
   }
 
   @Patch(':id/price')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  updatePrice(@Param('id') id: string, @Body() body: { price: number }) {
+  updatePrice(@Param('id') id: string, @JsonBody() body: { price: number }) {
     return this.productsService.updatePrice(id, body.price);
   }
 
   @Patch(':id/adjust-stock')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  adjustStock(@Param('id') id: string, @Body() body: { newStock: number; reason: string }, @Request() req: any) {
+  adjustStock(@Param('id') id: string, @JsonBody() body: { newStock: number; reason: string }, @Request() req: any) {
     return this.productsService.adjustStock(id, body.newStock, body.reason, req.user?.id);
   }
 }

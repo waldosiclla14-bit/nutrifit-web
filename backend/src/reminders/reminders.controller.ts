@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { JsonBody } from '../common/decorators/raw-body.decorator';
 import { RemindersService } from './reminders.service';
 
 @Controller('reminders')
@@ -17,12 +18,12 @@ export class RemindersController {
   }
 
   @Post()
-  create(@Body() data: any) {
+  create(@JsonBody() data: any) {
     return this.remindersService.create(data);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() data: any) {
+  update(@Param('id') id: string, @JsonBody() data: any) {
     return this.remindersService.update(id, data);
   }
 

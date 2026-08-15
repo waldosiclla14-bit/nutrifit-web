@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { JsonBody } from '../common/decorators/raw-body.decorator';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
@@ -45,21 +46,21 @@ export class OrdersController {
   }
 
   @Post()
-  create(@Body() data: any, @Request() req: any) {
+  create(@JsonBody() data: any, @Request() req: any) {
     return this.ordersService.create({ ...data, createdById: req.user?.id });
   }
 
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  updateStatus(@Param('id') id: string, @Body() body: { status: string }, @Request() req: any) {
+  updateStatus(@Param('id') id: string, @JsonBody() body: { status: string }, @Request() req: any) {
     return this.ordersService.updateStatus(id, body.status as any, req.user?.id);
   }
 
   @Patch(':id/payment')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  confirmPayment(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  confirmPayment(@Param('id') id: string, @JsonBody() body: any, @Request() req: any) {
     return this.ordersService.confirmPayment(id, body, req.user?.id);
   }
 }

@@ -1,8 +1,9 @@
-import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { JsonBody } from '../common/decorators/raw-body.decorator';
 import { ConfigService } from './config.service';
 
 @Controller('config')
@@ -17,7 +18,7 @@ export class ConfigController {
   }
 
   @Put('goals')
-  setGoals(@Body() body: any) {
+  setGoals(@JsonBody() body: any) {
     return this.configService.setGoals(body);
   }
 }

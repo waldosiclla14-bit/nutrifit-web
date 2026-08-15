@@ -19,12 +19,9 @@ class FatalFilter implements ExceptionFilter {
   }
 }
 
-// TEMP: no-op body parser (never blocks). Controllers read the body
-// themselves via the raw stream (proven working pattern in this runtime).
-function rawJsonBodyParser(req: any, _res: any, next: any) {
-  next();
-}
-
+// Body parsing is handled per-handler via the @JsonBody() decorator, which
+// reads the raw request stream (the built-in express.json() hangs on JSON
+// POSTs in this runtime). bodyParser:false keeps the stream readable.
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log(
@@ -50,7 +47,6 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bodyParser: false });
     app.useGlobalFilters(new FatalFilter());
 
-    app.use(rawJsonBodyParser);
     app.use(urlencoded({ extended: true, limit: '5mb' }));
     app.use(helmet());
     app.use(cors({ origin: true, credentials: true }));
