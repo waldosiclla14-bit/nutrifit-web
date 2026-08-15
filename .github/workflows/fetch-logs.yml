@@ -5,12 +5,12 @@ jobs:
   logs:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch Render service logs
+      - name: Verify service + fetch logs
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/logs?numLines=300&logType=stdout" | head -c 12000
-          echo
-          echo "===== STDERR ====="
-          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/logs?numLines=300&logType=stderr" | head -c 12000
+          echo "=== service check ==="
+          curl -s -o /dev/null -w "service HTTP %{http_code}\n" -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID"
+          echo "=== web logs ==="
+          curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/logs?logType=web&numLines=250" | head -c 14000
