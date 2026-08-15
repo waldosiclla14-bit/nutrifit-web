@@ -19,51 +19,9 @@ class FatalFilter implements ExceptionFilter {
   }
 }
 
-// The built-in express.json() body parser HANGS on JSON POSTs in this runtime
-// (content-length / transfer-encoding mismatch upstream causes it to wait for
-// bytes that never arrive). This reader consumes the raw stream with
-// Buffer.concat and parses on 'end', ignoring content-length. Proven working.
-async function rawJsonBodyParser(req: any, _res: any, next: any) {
-  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
-    return next();
-  }
-  const ct = String(req.headers['content-type'] || '').toLowerCase();
-  if (!ct.includes('application/json')) return next();
-
-  const chunks: Buffer[] = [];
-  let size = 0;
-  const limit = 5 * 1024 * 1024;
-
-  const body = await new Promise<string>((resolve) => {
-    let settled = false;
-    const done = (value: string) => {
-      if (settled) return;
-      settled = true;
-      resolve(value);
-    };
-    req.on('data', (chunk: Buffer) => {
-      chunks.push(chunk);
-      size += chunk.length;
-      if (size > limit) {
-        req.destroy();
-        done('');
-      }
-    });
-    req.on('end', () => {
-      try {
-        done(Buffer.concat(chunks).toString('utf8'));
-      } catch {
-        done('');
-      }
-    });
-    req.on('error', () => done(''));
-  });
-
-  try {
-    req.body = body ? JSON.parse(body) : {};
-  } catch {
-    req.body = {};
-  }
+// TEMP: no-op body parser (never blocks). Controllers read the body
+// themselves via the raw stream (proven working pattern in this runtime).
+function rawJsonBodyParser(req: any, _res: any, next: any) {
   next();
 }
 
