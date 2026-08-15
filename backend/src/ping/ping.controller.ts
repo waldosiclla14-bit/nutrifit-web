@@ -38,6 +38,10 @@ export class PingController {
     await run('config.findUnique', () =>
       this.prisma.config.findUnique({ where: { key: 'sales_goals' } }),
     );
+    await run('coupon.findUnique', () =>
+      this.prisma.coupon.findUnique({ where: { code: 'NF-TEST-0000-XXXX' } }),
+    );
+    await run('coupon.findMany', () => this.prisma.coupon.findMany({ take: 1 }));
     await run('txCount', () => this.prisma.$transaction(async (tx) => tx.customer.count()));
     await run('url', async () => (process.env.DATABASE_URL || '').replace(/:[^:@]+@/, ':***@'));
     return out;
