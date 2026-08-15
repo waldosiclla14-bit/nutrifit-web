@@ -1,6 +1,7 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { Role } from '@prisma/client';
-import { JsonBody } from '../common/decorators/raw-body.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,14 +12,16 @@ export class CouponsController {
   constructor(private couponsService: CouponsService) {}
 
   @Post('validate')
-  validate(@JsonBody() body: { code: string; phone: string; subtotal?: number }) {
+  async validate(@Req() req: Request) {
+    const body = await readJsonBody(req);
     return this.couponsService.validateCoupon(body);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  generate(@JsonBody() body: any) {
+  async generate(@Req() req: Request) {
+    const body = await readJsonBody(req);
     return this.couponsService.generateForCustomer(body);
   }
 

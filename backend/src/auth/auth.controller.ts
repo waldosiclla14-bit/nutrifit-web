@@ -1,6 +1,6 @@
 import { Controller, Post, Req, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
-import { JsonBody } from '../common/decorators/raw-body.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -48,9 +48,10 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  async login(@JsonBody() dto: LoginDto, @Req() req: any) {
+  async login(@Req() req: any) {
+    const dto: LoginDto = await readJsonBody(req);
     const ip =
-      req.ip || req.headers?.['x-forwarded-for']?.toString().split(',')[0]?.trim() || 'unknown';
+      req.ip || (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
     trackAttempt(ip);
     const result = await this.authService.login(dto.email, dto.password);
     attempts.delete(ip);
@@ -59,7 +60,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
-  async changePassword(@JsonBody() dto: ChangePasswordDto, @Req() req: any) {
+  async changePassword(@Req() req: any) {
+    const dto: ChangePasswordDto = await readJsonBody(req);
     return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
 }

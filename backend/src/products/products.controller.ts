@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards, Request } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
-import { JsonBody } from '../common/decorators/raw-body.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { ProductsService } from './products.service';
 
 @Controller('products')
@@ -47,14 +48,16 @@ export class ProductsController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  create(@JsonBody() data: any) {
+  async create(@Req() req: ExpressRequest) {
+    const data = await readJsonBody(req);
     return this.productsService.create(data);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @JsonBody() data: any) {
+  async update(@Param('id') id: string, @Req() req: ExpressRequest) {
+    const data = await readJsonBody(req);
     return this.productsService.update(id, data);
   }
 
@@ -68,21 +71,24 @@ export class ProductsController {
   @Patch(':id/stock')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  updateStock(@Param('id') id: string, @JsonBody() body: { quantity: number }) {
+  async updateStock(@Param('id') id: string, @Req() req: ExpressRequest) {
+    const body = await readJsonBody(req);
     return this.productsService.updateStock(id, body.quantity);
   }
 
   @Patch(':id/price')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  updatePrice(@Param('id') id: string, @JsonBody() body: { price: number }) {
+  async updatePrice(@Param('id') id: string, @Req() req: ExpressRequest) {
+    const body = await readJsonBody(req);
     return this.productsService.updatePrice(id, body.price);
   }
 
   @Patch(':id/adjust-stock')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
-  adjustStock(@Param('id') id: string, @JsonBody() body: { newStock: number; reason: string }, @Request() req: any) {
+  async adjustStock(@Param('id') id: string, @Request() req: any) {
+    const body = await readJsonBody(req);
     return this.productsService.adjustStock(id, body.newStock, body.reason, req.user?.id);
   }
 }

@@ -3,7 +3,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
-import { JsonBody } from '../common/decorators/raw-body.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { CashRegisterService } from './cash-register.service';
 
 @Controller('cash-register')
@@ -23,17 +23,20 @@ export class CashRegisterController {
   }
 
   @Post('open')
-  open(@JsonBody() body: { initialAmount: number }, @Request() req: any) {
+  async open(@Request() req: any) {
+    const body = await readJsonBody(req);
     return this.cashService.open({ openedById: req.user.id, initialAmount: body.initialAmount });
   }
 
   @Patch(':id/close')
-  close(@Param('id') id: string, @JsonBody() body: { finalAmount: number }, @Request() req: any) {
+  async close(@Param('id') id: string, @Request() req: any) {
+    const body = await readJsonBody(req);
     return this.cashService.close(id, { finalAmount: body.finalAmount, closedById: req.user.id });
   }
 
   @Post('movement')
-  addMovement(@JsonBody() body: any, @Request() req: any) {
+  async addMovement(@Request() req: any) {
+    const body = await readJsonBody(req);
     return this.cashService.addMovement({ ...body, createdById: req.user.id });
   }
 }

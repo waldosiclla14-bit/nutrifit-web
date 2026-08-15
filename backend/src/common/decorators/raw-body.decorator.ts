@@ -1,10 +1,6 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
-// The built-in express.json() body parser HANGS on JSON POSTs in this runtime
-// (upstream proxy buffers/holds the body so the stream 'end' does not fire for
-// a global middleware). Reading the raw stream inside the handler (this
-// decorator) is the only pattern that reliably receives the body here.
 function parseLimit(limit: string): number {
   const m = /^(\d+)\s*(kb|mb)?$/i.exec((limit || '1mb').trim());
   if (!m) return 1024 * 1024;
@@ -14,42 +10,34 @@ function parseLimit(limit: string): number {
   return n;
 }
 
-function readRawBody(req: Request, limit = '5mb'): Promise<string> {
+// Reads the raw request stream. The built-in express.json() HANGS on JSON
+// POSTs in this runtime (upstream proxy buffers/holds the body so the stream
+// 'end' does not fire for a global middleware). Reading the stream INSIDE the
+// handler method (not in a param decorator) is the only pattern that reliably
+// receives the body here.
+export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
   const limitBytes = parseLimit(limit);
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const chunks: Buffer[] = [];
     let size = 0;
+    const finish = (value: any) => resolve(value);
     req.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
       size += chunk.length;
       if (size > limitBytes) {
-        reject(new Error('request body too large'));
         req.destroy();
+        finish({});
       }
     });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (!raw) return finish({});
+      try {
+        finish(JSON.parse(raw));
+      } catch {
+        finish({});
+      }
+    });
+    req.on('error', () => finish({}));
   });
 }
-
-export const JsonBody = createParamDecorator(
-  async (field: string | undefined, ctx: ExecutionContext) => {
-    const req = ctx.switchToHttp().getRequest<Request>();
-    let raw = '';
-    try {
-      raw = await readRawBody(req, '5mb');
-    } catch {
-      raw = '';
-    }
-    let parsed: any = {};
-    if (raw) {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        parsed = {};
-      }
-    }
-    if (field) return parsed ? parsed[field] : undefined;
-    return parsed;
-  },
-);
