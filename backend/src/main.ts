@@ -19,15 +19,10 @@ class FatalFilter implements ExceptionFilter {
   }
 }
 
-// Body parsing is handled per-handler via the @JsonBody() decorator, which
-// reads the raw request stream (the built-in express.json() hangs on JSON
-// POSTs in this runtime). Registering this no-op middleware is REQUIRED so the
-// request stream becomes readable for the decorator (without it JSON POSTs
-// stall). bodyParser:false keeps the stream from being consumed by express.
-function primeRequestStream(_req: any, _res: any, next: any) {
-  next();
-}
-
+// JSON bodies are read inside each handler via readJsonBody() from the raw
+// request stream. The built-in express.json() body parser HANGS on JSON POSTs
+// in this runtime, so bodyParser is disabled (false) and no global JSON
+// middleware is registered; handlers read the stream themselves.
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log(
@@ -53,7 +48,6 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bodyParser: false });
     app.useGlobalFilters(new FatalFilter());
 
-    app.use(primeRequestStream);
     app.use(urlencoded({ extended: true, limit: '5mb' }));
     app.use(helmet());
     app.use(cors({ origin: true, credentials: true }));

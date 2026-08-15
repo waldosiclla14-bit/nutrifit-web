@@ -120,33 +120,57 @@ export class CouponsService {
     const daysValid = this.clampDays(payload.daysValid, 30);
     const expiresAt = new Date(Date.now() + daysValid * 24 * 60 * 60 * 1000);
 
-    return this.prisma.$transaction(async (tx) => {
-      if (customerId) {
-        await tx.coupon.updateMany({
-          where: { customerId, usedAt: null, isActive: true },
-          data: { isActive: false },
-        });
-      } else {
-        await tx.coupon.updateMany({
-          where: { customerPhone, usedAt: null, isActive: true },
-          data: { isActive: false },
-        });
-      }
+    const code = await this.generateUniqueCode(this.prisma, customerName, customerPhone);
 
-      const code = await this.generateUniqueCode(tx, customerName, customerPhone);
+    const deactivate =
+      customerId !== undefined
+        ? this.prisma.coupon.updateMany({
+            where: { customerId, usedAt: null, isActive: true },
+            data: { isActive: false },
+          })
+        : this.prisma.coupon.updateMany({
+            where: { customerPhone, usedAt: null, isActive: true },
+            data: { isActive: false },
+          });
 
-      return tx.coupon.create({
-        data: {
-          code,
-          customerId: customer?.id ?? null,
-          customerName,
-          customerPhone,
-          discountPercent,
-          expiresAt,
-          isActive: true,
-        },
-      });
+    const create = this.prisma.coupon.create({
+      data: {
+        code,
+        customerId: customer?.id ?? null,
+        customerName,
+        customerPhone,
+        discountPercent,
+        expiresAt,
+        isActive: true,
+      },
     });
+
+    // Non-interactive transaction (compatible with Neon pgbouncer/transaction mode)
+    const results = await this.prisma.$transaction([deactivate, create]);
+    return results[1];
+  }
+
+  async consumeCoupon(body: { code: string; phone: string; orderId?: string; subtotal: number }) {
+    const coupon = await this.getValidCoupon(this.prisma, body.code, body.phone);
+    const subtotal = Math.max(0, Math.round(Number(body.subtotal) || 0));
+    const discountAmount = Math.min(
+      subtotal,
+      Math.round((subtotal * coupon.discountPercent) / 100),
+    );
+
+    const updated = await this.prisma.coupon.updateMany({
+      where: { id: coupon.id, usedAt: null, isActive: true },
+      data: {
+        usedAt: new Date(),
+        usedOrderId: body.orderId ?? null,
+      },
+    });
+
+    if (!updated.count) {
+      throw new BadRequestException('Este cupón ya fue usado');
+    }
+
+    return { coupon, discountAmount };
   }
 
   async validateCoupon(body: { code: string; phone: string; subtotal?: number }) {

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma, PrismaPromise, OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { CouponsService } from '../coupons/coupons.service';
 
 @Injectable()
@@ -45,59 +45,70 @@ export class OrdersService {
     this.validateOrderPayload(data);
     const orderNumber = await this.generateOrderNumber();
 
-    return this.prisma.$transaction(async (tx) => {
-      // Validar stock, calcular costos unitarios y reservar (solo items con variante en la DB)
-      const itemsWithCost: any[] = [];
-      let totalCost = 0;
+    // Pre-fetch variants in a single query (pgbouncer-compatible: no
+    // interactive transaction). Stock is validated here; reservation happens
+    // atomically inside the non-interactive transaction below.
+    const variantIds = [...new Set(data.items.filter((i: any) => i.variantId).map((i: any) => i.variantId))] as string[];
+    const variants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds } },
+          include: { product: true },
+        })
+      : [];
+    const variantMap = new Map(variants.map((v: any) => [v.id, v]));
 
-      for (const item of data.items) {
-        let unitCost = 0;
-        if (item.variantId) {
-          const variant = await tx.productVariant.findUnique({
-            where: { id: item.variantId },
-            include: { product: true },
-          });
-          if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-          if (variant.stock - variant.reservedStock < item.quantity) {
-            throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
-          }
-          unitCost = variant.costPrice || variant.product.costPrice || 0;
+    const itemsWithCost: any[] = [];
+    let totalCost = 0;
+    for (const item of data.items) {
+      let unitCost = 0;
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId);
+        if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
+        if (variant.stock - variant.reservedStock < item.quantity) {
+          throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }
-
-        itemsWithCost.push({ ...item, unitCost });
-        totalCost += unitCost * item.quantity;
+        unitCost = variant.costPrice || variant.product.costPrice || 0;
       }
+      itemsWithCost.push({ ...item, unitCost });
+      totalCost += unitCost * item.quantity;
+    }
 
-      // Reservar stock
-      for (const item of data.items) {
-        if (!item.variantId) continue;
-        await tx.productVariant.update({
+    const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
+    const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
+    const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
+    let appliedDiscount = Math.max(0, Math.round(Number(data.discount) || 0));
+
+    if (couponCode) {
+      const preview = await this.couponsService.validateCoupon({
+        code: couponCode,
+        phone: data.customerPhone,
+        subtotal,
+      });
+      appliedDiscount = Math.min(
+        subtotal,
+        Math.round((subtotal * preview.discountPercent) / 100),
+      );
+    }
+
+    const total = Math.max(0, subtotal - appliedDiscount + shippingCost);
+    const profit = total - totalCost;
+    const profitMargin = total > 0 ? (profit / total) * 100 : 0;
+
+    // Non-interactive transaction: an array of Prisma promises (compatible
+    // with Neon's transaction-mode pooler / pgbouncer).
+    const writes: PrismaPromise<any>[] = [];
+    for (const item of data.items) {
+      if (!item.variantId) continue;
+      writes.push(
+        this.prisma.productVariant.update({
           where: { id: item.variantId },
           data: { reservedStock: { increment: item.quantity } },
-        });
-      }
+        }),
+      );
+    }
 
-      const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
-      const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
-      const couponCode = String(data.couponCode || '').trim().toUpperCase();
-      let appliedDiscount = Math.max(0, Math.round(Number(data.discount) || 0));
-
-      if (couponCode) {
-        const preview = await this.couponsService.peekCouponInTx(tx, {
-          code: couponCode,
-          phone: data.customerPhone,
-        });
-        appliedDiscount = Math.min(
-          subtotal,
-          Math.round((subtotal * preview.discountPercent) / 100),
-        );
-      }
-
-      const total = Math.max(0, subtotal - appliedDiscount + shippingCost);
-      const profit = total - totalCost;
-      const profitMargin = total > 0 ? (profit / total) * 100 : 0;
-
-      const order = await tx.order.create({
+    writes.push(
+      this.prisma.order.create({
         data: {
           orderNumber,
           customerId: data.customerId,
@@ -141,19 +152,22 @@ export class OrdersService {
           customer: true,
           items: { include: { product: true, variant: true } },
         },
+      }),
+    );
+
+    const results = await this.prisma.$transaction(writes);
+    const order = results[results.length - 1];
+
+    if (couponCode) {
+      await this.couponsService.consumeCoupon({
+        code: couponCode,
+        phone: data.customerPhone,
+        orderId: order.id,
+        subtotal,
       });
+    }
 
-      if (couponCode) {
-        await this.couponsService.consumeCouponInTx(tx, {
-          code: couponCode,
-          phone: data.customerPhone,
-          subtotal,
-          orderId: order.id,
-        });
-      }
-
-      return order;
-    });
+    return order;
   }
 
   async deleteOrder(id: string) {
@@ -163,20 +177,22 @@ export class OrdersService {
       throw new BadRequestException('No se pueden eliminar órdenes pagadas o entregadas');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      if (order.status !== OrderStatus.CANCELLED) {
-        for (const item of order.items) {
-          if (item.variantId && item.quantity > 0) {
-            await tx.productVariant.update({
+    const writes: PrismaPromise<any>[] = [];
+    if (order.status !== OrderStatus.CANCELLED) {
+      for (const item of order.items) {
+        if (item.variantId && item.quantity > 0) {
+          writes.push(
+            this.prisma.productVariant.update({
               where: { id: item.variantId },
               data: { reservedStock: { decrement: item.quantity } },
-            });
-          }
+            }),
+          );
         }
       }
-      await tx.order.delete({ where: { id } });
-      return { id, deleted: true };
-    });
+    }
+    writes.push(this.prisma.order.delete({ where: { id } }));
+    await this.prisma.$transaction(writes);
+    return { id, deleted: true };
   }
 
   async updateStatus(id: string, status: OrderStatus, userId?: string) {
