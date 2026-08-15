@@ -23,6 +23,16 @@ export class CouponsController {
     }
   }
 
+  @Post('ping-post')
+  pingPost() {
+    return { ok: true, note: 'post-no-body' };
+  }
+
+  @Post('ping-body')
+  pingBody(@Body() body: any) {
+    return { ok: true, body };
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
