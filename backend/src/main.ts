@@ -7,7 +7,7 @@ import {
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cors from 'cors';
 import helmet from 'helmet';
-import { json, urlencoded } from 'express';
+import { urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 class FatalFilter implements ExceptionFilter {
@@ -17,6 +17,48 @@ class FatalFilter implements ExceptionFilter {
       'Bootstrap',
     );
   }
+}
+
+// The built-in express.json() body parser HANGS on JSON POSTs in this runtime
+// (content-length / transfer-encoding mismatch upstream causes it to wait for
+// bytes that never arrive). This reader consumes the raw stream with
+// Buffer.concat and parses on 'end', ignoring content-length. Proven working.
+function rawJsonBodyParser(req: any, _res: any, next: any) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+  if (!ct.includes('application/json')) return next();
+
+  let finished = false;
+  const finish = (body: any) => {
+    if (finished) return;
+    finished = true;
+    req.body = body;
+    next();
+  };
+
+  const chunks: Buffer[] = [];
+  let size = 0;
+  const limit = 5 * 1024 * 1024;
+  req.on('data', (chunk: Buffer) => {
+    if (finished) return;
+    chunks.push(chunk);
+    size += chunk.length;
+    if (size > limit) {
+      req.destroy();
+      finish({});
+    }
+  });
+  req.on('end', () => {
+    try {
+      const raw = Buffer.concat(chunks).toString('utf8');
+      finish(raw ? JSON.parse(raw) : {});
+    } catch {
+      finish({});
+    }
+  });
+  req.on('error', () => finish(req.body || {}));
 }
 
 async function bootstrap() {
@@ -41,10 +83,10 @@ async function bootstrap() {
   });
 
   try {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { bodyParser: false });
     app.useGlobalFilters(new FatalFilter());
 
-    app.use(json({ limit: '5mb' }));
+    app.use(rawJsonBodyParser);
     app.use(urlencoded({ extended: true, limit: '5mb' }));
     app.use(helmet());
     app.use(cors({ origin: true, credentials: true }));
