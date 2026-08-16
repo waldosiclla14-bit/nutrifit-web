@@ -1537,106 +1537,109 @@ function Productos({
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="flex flex-col gap-4">
         {filteredProducts.map((p) => {
           const variants = p.variants && p.variants.length > 0 ? p.variants : [];
           return (
-            <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
-              <div className="flex items-start justify-between gap-2">
+            <div key={p.id} className="overflow-hidden rounded-3xl border border-line bg-paper">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-soft/50 px-4 py-3">
                 <div className="min-w-0">
                   <p className="font-bold leading-snug">{p.name || p.sku || 'Producto sin nombre'}</p>
                   <p className="mt-0.5 text-xs text-muted">
-                    {[p.brandName, p.category?.name].filter(Boolean).join(' · ') || '—'}
+                    {[p.sku, p.brandName, p.category?.name].filter(Boolean).join(' · ') || '—'}
                   </p>
-                  {!p.active && (
-                    <span className="mt-1 inline-block text-[11px] font-bold text-red-500">INACTIVO</span>
-                  )}
                 </div>
-                <div className="flex shrink-0 gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
                   <button
                     onClick={() => openEdit(p)}
-                    className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-1 text-[10px] font-bold text-ink hover:border-accent"
+                    className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[10px] font-bold text-ink hover:border-accent"
                   >
                     <Pencil size={10} /> Editar
                   </button>
                   <button
                     onClick={() => remove(p)}
                     disabled={deleting === p.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2.5 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
                   >
                     <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
                   </button>
                 </div>
               </div>
 
-              <div className="mt-3 space-y-3">
-                {variants.map((v) => (
-                  <div key={v.id} className="rounded-2xl border border-line bg-soft/50 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">{v.name}</p>
-                        <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
-                      </div>
-                      <span className={`shrink-0 rounded-full border bg-paper px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
-                        margen {marginOf(v.price, v.costPrice)}%
-                      </span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <label className="block">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Precio</span>
-                        <input
-                          type="number"
-                          defaultValue={v.price}
-                          onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                          className="input mt-1 w-full py-1.5 text-sm"
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Costo</span>
-                        <input
-                          type="number"
-                          defaultValue={v.costPrice}
-                          onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                          className="input mt-1 w-full py-1.5 text-sm"
-                        />
-                      </label>
-                      <label className="col-span-2 block sm:col-span-1">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">Stock</span>
-                        <div className="mt-1 flex items-center gap-2">
+              {variants.length > 0 ? (
+                <div className="px-4 py-3">
+                  <div className="hidden md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] md:items-end md:gap-3">
+                    <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Variante</div>
+                    <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Precio</div>
+                    <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Costo</div>
+                    <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Stock</div>
+                    <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Margen</div>
+                    <div className="border-b border-line pb-2 text-right text-[10px] font-bold uppercase tracking-widest text-muted">Acciones</div>
+                  </div>
+                  <div className="divide-y divide-line/60">
+                    {variants.map((v) => (
+                      <div key={v.id} className="flex flex-col gap-2 py-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] md:items-end md:gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{v.name}</p>
+                          <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
+                        </div>
+                        <label className="block">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Precio</span>
                           <input
                             type="number"
-                            defaultValue={v.stock}
-                            onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                            className={`input w-full py-1.5 text-sm ${stockLevel(v.stock, v.lowStockAlert).cls}`}
+                            defaultValue={v.price}
+                            onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                            className="input w-full py-1.5 text-sm"
                           />
-                          <span className={`shrink-0 text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
-                            {stockLevel(v.stock, v.lowStockAlert).label}
-                          </span>
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Costo</span>
+                          <input
+                            type="number"
+                            defaultValue={v.costPrice}
+                            onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                            className="input w-full py-1.5 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Stock</span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              defaultValue={v.stock}
+                              onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                              className={`input w-full py-1.5 text-sm ${stockLevel(v.stock, v.lowStockAlert).cls}`}
+                            />
+                            <span className={`shrink-0 text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
+                              {stockLevel(v.stock, v.lowStockAlert).label}
+                            </span>
+                          </div>
+                        </label>
+                        <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
+                          margen {marginOf(v.price, v.costPrice)}%
+                        </span>
+                        <div className="flex justify-end">
+                          <button
+                            disabled={saving === v.id}
+                            onClick={() => save(p, v, v.stock)}
+                            className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
+                          >
+                            {saving === v.id ? 'Guardando…' : 'Guardar'}
+                          </button>
                         </div>
-                      </label>
-                      <div className="col-span-2 flex items-end justify-end sm:col-span-1 sm:justify-start">
-                        <button
-                          disabled={saving === v.id}
-                          onClick={() => save(p, v, v.stock)}
-                          className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
-                        >
-                          {saving === v.id ? 'Guardando…' : 'Guardar'}
-                        </button>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-                {variants.length === 0 && (
-                  <p className="rounded-2xl border border-dashed border-line px-3 py-4 text-center text-xs text-muted">
-                    Sin variantes registradas.
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <p className="px-4 py-4 text-center text-xs text-muted">Sin variantes registradas.</p>
+              )}
             </div>
           );
         })}
         {filteredProducts.length === 0 && (
-          <p className="col-span-full py-10 text-center text-sm text-muted">
+          <p className="py-10 text-center text-sm text-muted">
             {products.length === 0 ? 'Sin productos.' : 'No hay resultados para tu búsqueda.'}
           </p>
         )}
