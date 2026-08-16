@@ -1095,6 +1095,16 @@ function Productos({
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.category?.name || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [products, search]);
 
   const save = async (p: ApiProduct, v: Variant, current: number) => {
     setSaving(v.id);
@@ -1438,8 +1448,16 @@ function Productos({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted">{products.length} producto(s)</p>
+        <p className="text-sm text-muted">
+          {search ? `${filteredProducts.length} de ${products.length} producto(s)` : `${products.length} producto(s)`}
+        </p>
         <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar producto, SKU, marca o categoría…"
+            className="input max-w-xs py-2 text-sm"
+          />
           <input
             ref={fileRef}
             type="file"
@@ -1520,7 +1538,7 @@ function Productos({
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {products.map((p) => {
+        {filteredProducts.map((p) => {
           const variants = p.variants && p.variants.length > 0 ? p.variants : [];
           return (
             <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
@@ -1617,8 +1635,10 @@ function Productos({
             </div>
           );
         })}
-        {products.length === 0 && (
-          <p className="col-span-full py-10 text-center text-sm text-muted">Sin productos.</p>
+        {filteredProducts.length === 0 && (
+          <p className="col-span-full py-10 text-center text-sm text-muted">
+            {products.length === 0 ? 'Sin productos.' : 'No hay resultados para tu búsqueda.'}
+          </p>
         )}
       </div>
 
