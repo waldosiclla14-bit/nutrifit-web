@@ -12,13 +12,22 @@ export class ProductsController {
   constructor(private productsService: ProductsService) {}
 
   @Get()
-  findAll(@Query() query: any) {
+  async findAll(@Query() query: any) {
+    return this.productsService.toPublicProducts(await this.productsService.findAll(query));
+  }
+
+  @Get('internal')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  findAllInternal(@Query() query: any) {
     return this.productsService.findAll(query);
   }
 
   @Get('featured')
-  findFeatured() {
-    return this.productsService.findAll({ featured: true });
+  async findFeatured() {
+    return this.productsService.toPublicProducts(
+      await this.productsService.findAll({ featured: true }),
+    );
   }
 
   @Get('low-stock')
@@ -36,13 +45,13 @@ export class ProductsController {
   }
 
   @Get('sku/:sku')
-  findBySku(@Param('sku') sku: string) {
-    return this.productsService.findBySku(sku);
+  async findBySku(@Param('sku') sku: string) {
+    return this.productsService.toPublicVariant(await this.productsService.findBySku(sku));
   }
 
   @Get(':idOrSlug')
-  findOne(@Param('idOrSlug') idOrSlug: string) {
-    return this.productsService.findOne(idOrSlug);
+  async findOne(@Param('idOrSlug') idOrSlug: string) {
+    return this.productsService.toPublicProduct(await this.productsService.findOne(idOrSlug));
   }
 
   @Post()

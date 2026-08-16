@@ -353,7 +353,7 @@ function Dashboard({
         const o = await apiFetch<ApiOrder[]>('/orders', { token });
         setOrders(o || []);
       } else if (t === 'productos') {
-        const p = await apiFetch<any[]>('/products', { token });
+        const p = await apiFetch<any[]>('/products/internal', { token });
         setProducts(
           (p || []).map((x) => ({
             id: x.id,

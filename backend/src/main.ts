@@ -38,7 +38,17 @@ async function bootstrap() {
 
     app.use(urlencoded({ extended: true, limit: '5mb' }));
     app.use(helmet());
-    app.use(cors({ origin: true, credentials: true }));
+    (app as any).set('trust proxy', 1);
+    const corsOrigins = (process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean);
+    app.use(
+      cors({
+        origin: corsOrigins.length > 0 ? corsOrigins : true,
+        credentials: true,
+      }),
+    );
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     app.setGlobalPrefix('api');
 

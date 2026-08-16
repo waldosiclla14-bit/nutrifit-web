@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -53,10 +53,14 @@ export class ProductsService {
 
   async updateStock(variantId: string, quantity: number) {
     if (!Number.isSafeInteger(quantity)) throw new BadRequestException('Cantidad de stock inválida');
-    return this.prisma.productVariant.update({
-      where: { id: variantId },
-      data: { stock: { increment: quantity } },
-    });
+    const res: any = await this.prisma.$executeRaw`
+      UPDATE "ProductVariant"
+      SET "stock" = "stock" + ${quantity}
+      WHERE "id" = ${variantId} AND ("stock" + ${quantity}) >= 0
+    `;
+    const affected = Number(res?.count ?? res ?? 0);
+    if (affected === 0) throw new BadRequestException('Stock insuficiente');
+    return this.prisma.productVariant.findUnique({ where: { id: variantId } });
   }
 
   async updatePrice(id: string, price: number) {
@@ -70,12 +74,12 @@ export class ProductsService {
 
   async update(id: string, data: any) {
     const existing = await this.prisma.product.findUnique({ where: { id } });
-    if (!existing) throw new Error('Producto no encontrado');
+    if (!existing) throw new NotFoundException('Producto no encontrado');
 
     const productData: any = {};
     if (data.name !== undefined) {
       const name = String(data.name).trim();
-      if (!name) throw new Error('El nombre del producto no puede quedar vacío');
+      if (!name) throw new BadRequestException('El nombre del producto no puede quedar vacío');
       productData.name = name;
       if (data.name !== existing.name) productData.slug = await this.uniqueSlug(name);
     }
@@ -167,7 +171,7 @@ export class ProductsService {
 
   async delete(id: string, userId?: string) {
     const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) throw new Error('Producto no encontrado');
+    if (!product) throw new NotFoundException('Producto no encontrado');
 
     await this.prisma.productVariant.updateMany({
       where: { productId: id },
@@ -194,10 +198,13 @@ export class ProductsService {
 
   async adjustStock(variantId: string, newStock: number, reason: string, userId?: string) {
     const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
-    if (!variant) throw new Error('Variante no encontrada');
+    if (!variant) throw new NotFoundException('Variante no encontrada');
 
     if (!Number.isSafeInteger(newStock) || newStock < 0) {
       throw new BadRequestException('Stock inválido');
+    }
+    if (newStock < variant.reservedStock) {
+      throw new BadRequestException('El nuevo stock no puede ser menor que el stock reservado');
     }
     const stock = newStock;
     const updated = await this.prisma.productVariant.update({
@@ -251,7 +258,7 @@ export class ProductsService {
 
   async create(data: any) {
     const name = String(data.name || '').trim();
-    if (!name) throw new Error('El nombre del producto es obligatorio');
+    if (!name) throw new BadRequestException('El nombre del producto es obligatorio');
 
     const slug = await this.uniqueSlug(name);
     const sku = await this.uniqueSku(
@@ -260,7 +267,7 @@ export class ProductsService {
     );
 
     const categoryId = await this.resolveCategory(data.categoryId, data.category);
-    if (!categoryId) throw new Error('Selecciona o escribe una categoría');
+    if (!categoryId) throw new BadRequestException('Selecciona o escribe una categoría');
 
     const brandId = await this.resolveBrand(data.brandId, data.brand);
 
@@ -417,20 +424,47 @@ export class ProductsService {
   }
 
   async releaseStock(variantId: string, quantity: number) {
-    return this.prisma.productVariant.update({
-      where: { id: variantId },
+    const res = await this.prisma.productVariant.updateMany({
+      where: { id: variantId, reservedStock: { gte: quantity } },
       data: { reservedStock: { decrement: quantity } },
     });
+    if (res.count === 0) throw new BadRequestException('Stock reservado insuficiente');
+    return this.prisma.productVariant.findUnique({ where: { id: variantId } });
   }
 
   async confirmStock(variantId: string, quantity: number) {
-    return this.prisma.productVariant.update({
-      where: { id: variantId },
+    const res = await this.prisma.productVariant.updateMany({
+      where: { id: variantId, stock: { gte: quantity }, reservedStock: { gte: quantity } },
       data: {
         stock: { decrement: quantity },
         reservedStock: { decrement: quantity },
       },
     });
+    if (res.count === 0) throw new BadRequestException('Stock insuficiente');
+    return this.prisma.productVariant.findUnique({ where: { id: variantId } });
+  }
+
+  // ── Sanitización para consumo público (storefront) ─────────────────────
+  // Oculta datos internos: costPrice, stock, reservedStock, lowStockAlert y
+  // batches (lotes/FEFO). El panel admin usa GET /products/internal.
+  toPublicVariant(v: any) {
+    if (!v) return v;
+    const { stock, reservedStock, costPrice, lowStockAlert, batches, ...rest } = v;
+    if (rest.product) rest.product = this.toPublicProduct(rest.product);
+    return rest;
+  }
+
+  toPublicProduct(p: any) {
+    if (!p) return p;
+    const { costPrice, variants, ...rest } = p;
+    return {
+      ...rest,
+      variants: Array.isArray(variants) ? variants.map((v: any) => this.toPublicVariant(v)) : variants,
+    };
+  }
+
+  toPublicProducts(list: any[]) {
+    return (list || []).map((p) => this.toPublicProduct(p));
   }
 
   async getLowStock() {

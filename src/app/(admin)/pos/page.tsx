@@ -145,7 +145,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     setLoading(true);
     try {
       const [p, cr] = await Promise.all([
-        apiFetch<any[]>('/products', { token }),
+        apiFetch<any[]>('/products/internal', { token }),
         apiFetch<any | null>('/cash-register/current', { token }),
       ]);
       setProducts(

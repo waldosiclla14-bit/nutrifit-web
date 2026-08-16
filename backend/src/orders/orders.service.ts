@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { Prisma, PrismaPromise, OrderStatus, PaymentStatus } from '@prisma/client';
+import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, DeliveryType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 
@@ -9,13 +9,31 @@ export class OrdersService {
 
   async findAll(query: any = {}) {
     const where: any = {};
-    if (query.status) where.status = query.status;
-    if (query.paymentStatus) where.paymentStatus = query.paymentStatus;
+    if (query.status) {
+      if (!Object.values(OrderStatus).includes(query.status)) {
+        throw new BadRequestException(`Estado inválido: ${query.status}`);
+      }
+      where.status = query.status;
+    }
+    if (query.paymentStatus) {
+      if (!Object.values(PaymentStatus).includes(query.paymentStatus)) {
+        throw new BadRequestException(`Estado de pago inválido: ${query.paymentStatus}`);
+      }
+      where.paymentStatus = query.paymentStatus;
+    }
     if (query.customerId) where.customerId = query.customerId;
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
-      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
+      if (query.dateFrom) {
+        const d = new Date(query.dateFrom);
+        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
+        where.createdAt.gte = d;
+      }
+      if (query.dateTo) {
+        const d = new Date(query.dateTo);
+        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
+        where.createdAt.lte = d;
+      }
     }
 
     return this.prisma.order.findMany({
@@ -43,7 +61,12 @@ export class OrdersService {
 
   async create(data: any) {
     this.validateOrderPayload(data);
-    const orderNumber = await this.generateOrderNumber();
+    const deliveryType = this.validateDeliveryType(data.deliveryType);
+    const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
+
+    const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
+    const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
+    const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
 
     // Pre-fetch variants in a single query (pgbouncer-compatible: no
     // interactive transaction). Stock is validated here; reservation happens
@@ -67,15 +90,16 @@ export class OrdersService {
         if (variant.stock - variant.reservedStock < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }
+        const realPrice = variant.price ?? variant.product.basePrice ?? 0;
+        if (realPrice > 0 && Number(item.unitPrice) !== Number(realPrice)) {
+          throw new BadRequestException(`Precio inválido para ${item.variantName || variant.variantName}`);
+        }
         unitCost = variant.costPrice || variant.product.costPrice || 0;
       }
       itemsWithCost.push({ ...item, unitCost });
       totalCost += unitCost * item.quantity;
     }
 
-    const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
-    const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
-    const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
     let appliedDiscount = Math.max(0, Math.round(Number(data.discount) || 0));
 
     if (couponCode) {
@@ -94,80 +118,110 @@ export class OrdersService {
     const profit = total - totalCost;
     const profitMargin = total > 0 ? (profit / total) * 100 : 0;
 
-    // Non-interactive transaction: an array of Prisma promises (compatible
-    // with Neon's transaction-mode pooler / pgbouncer).
-    const writes: PrismaPromise<any>[] = [];
-    for (const item of data.items) {
-      if (!item.variantId) continue;
-      writes.push(
-        this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: { reservedStock: { increment: item.quantity } },
-        }),
-      );
-    }
-
-    writes.push(
-      this.prisma.order.create({
-        data: {
-          orderNumber,
-          customerId: data.customerId,
-          customerName: data.customerName,
-          customerPhone: data.customerPhone,
-          customerRut: data.customerRut,
-          deliveryType: data.deliveryType || 'METRO',
-          metroLine: data.metroLine,
-          metroStation: data.metroStation,
-          deliveryDay: data.deliveryDay,
-          deliveryTime: data.deliveryTime,
-          deliveryDetails: data.deliveryDetails,
-          subtotal,
-          discount: appliedDiscount,
-          couponCode: couponCode || null,
-          shippingCost,
-          total,
-          totalCost,
-          profit,
-          profitMargin,
-          status: OrderStatus.PENDING,
-          paymentStatus: PaymentStatus.PENDING,
-          needsInvoice: data.needsInvoice || false,
-          createdById: data.createdById,
-          items: {
-            create: itemsWithCost.map((item: any) => ({
-              productId: item.productId,
-              variantId: item.variantId,
-              productName: item.productName,
-              variantName: item.variantName,
-              sku: item.sku,
-              unitPrice: item.unitPrice,
-              unitCost: item.unitCost,
-              quantity: item.quantity,
-              total: item.total,
-              profit: item.total - item.unitCost * item.quantity,
-            })),
-          },
-        },
-        include: {
-          customer: true,
-          items: { include: { product: true, variant: true } },
-        },
-      }),
-    );
-
-    const results = await this.prisma.$transaction(writes);
-    const order = results[results.length - 1];
-
+    // Claim the coupon atomically BEFORE creating the order. The atomic
+    // `updateMany WHERE usedAt IS NULL` guarantees only one concurrent order
+    // can consume a given coupon; the loser throws here and never creates an
+    // order (no orphan orders on coupon races).
+    let couponClaimed = false;
     if (couponCode) {
       await this.couponsService.consumeCoupon({
         code: couponCode,
         phone: data.customerPhone,
-        orderId: order.id,
+        orderId: null,
         subtotal,
       });
+      couponClaimed = true;
     }
 
-    return order;
+    const buildWrites = (orderNumber: string): PrismaPromise<any>[] => {
+      const writes: PrismaPromise<any>[] = [];
+      for (const item of data.items) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: { reservedStock: { increment: item.quantity } },
+          }),
+        );
+      }
+
+      writes.push(
+        this.prisma.order.create({
+          data: {
+            orderNumber,
+            customerId: data.customerId,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            customerRut: data.customerRut,
+            deliveryType,
+            metroLine: data.metroLine,
+            metroStation: data.metroStation,
+            deliveryDay: data.deliveryDay,
+            deliveryTime: data.deliveryTime,
+            deliveryDetails: data.deliveryDetails,
+            subtotal,
+            discount: appliedDiscount,
+            couponCode: couponCode || null,
+            shippingCost,
+            total,
+            totalCost,
+            profit,
+            profitMargin,
+            paymentMethod,
+            status: OrderStatus.PENDING,
+            paymentStatus: PaymentStatus.PENDING,
+            needsInvoice: data.needsInvoice || false,
+            createdById: data.createdById,
+            items: {
+              create: itemsWithCost.map((item: any) => ({
+                productId: item.productId,
+                variantId: item.variantId,
+                productName: item.productName,
+                variantName: item.variantName,
+                sku: item.sku,
+                unitPrice: item.unitPrice,
+                unitCost: item.unitCost,
+                quantity: item.quantity,
+                total: item.total,
+                profit: item.total - item.unitCost * item.quantity,
+              })),
+            },
+          },
+          include: {
+            customer: true,
+            items: { include: { product: true, variant: true } },
+          },
+        }),
+      );
+      return writes;
+    };
+
+    // orderNumber is `count + 1`, so concurrent creates can collide. Retry on
+    // the @unique violation; the coupon claim is only released on final failure.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const orderNumber = await this.generateOrderNumber();
+      try {
+        const results = await this.prisma.$transaction(buildWrites(orderNumber));
+        const order = results[results.length - 1];
+        if (couponClaimed && couponCode) {
+          await this.prisma.coupon
+            .updateMany({ where: { code: couponCode }, data: { usedOrderId: order.id } })
+            .catch(() => undefined);
+        }
+        return order;
+      } catch (err: any) {
+        const isOrderNumberCollision = err?.code === 'P2002';
+        if (!isOrderNumberCollision || attempt === 2) {
+          if (couponClaimed && couponCode) {
+            await this.prisma.coupon
+              .updateMany({ where: { code: couponCode }, data: { usedAt: null, usedOrderId: null } })
+              .catch(() => undefined);
+          }
+          throw err;
+        }
+      }
+    }
+    throw new BadRequestException('No se pudo crear la orden');
   }
 
   async deleteOrder(id: string) {
@@ -196,43 +250,75 @@ export class OrdersService {
   }
 
   async updateStatus(id: string, status: OrderStatus, userId?: string) {
+    if (!Object.values(OrderStatus).includes(status)) {
+      throw new BadRequestException(`Estado inválido: ${status}`);
+    }
     const order = await this.findOne(id);
     const oldStatus = order.status;
-
-    // Lógica de transición de estados
-    if (status === OrderStatus.PAID && oldStatus === OrderStatus.CONFIRMED) {
-      // Confirmar stock: descontar físicamente
-      for (const item of order.items) {
-        if (!item.variantId) continue;
-        await this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: {
-            stock: { decrement: item.quantity },
-            reservedStock: { decrement: item.quantity },
-          },
-        });
-      }
+    if (oldStatus === status) {
+      throw new BadRequestException(`La orden ya tiene estado ${status}`);
     }
 
+    const writes: PrismaPromise<any>[] = [];
+    let markPaid = false;
+    let refunded = false;
+
+    // PAID: descontar stock físicamente UNA sola vez. Solo cuando la orden
+    // estaba CONFIRMADA y el pago aún no estaba confirmado (para evitar el
+    // doble descuento si luego se llama a confirmPayment).
+    if (status === OrderStatus.PAID && oldStatus === OrderStatus.CONFIRMED && order.paymentStatus !== PaymentStatus.CONFIRMED) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: {
+              stock: { decrement: item.quantity },
+              reservedStock: { decrement: item.quantity },
+            },
+          }),
+        );
+      }
+      markPaid = true;
+    }
+
+    // CANCELLED: liberar la reserva o, si ya estaba pagada/entregada/devuelta,
+    // reponer el stock físico (la reserva ya fue descontada).
     if (status === OrderStatus.CANCELLED) {
-      // Liberar stock reservado
+      const paidStates: OrderStatus[] = [OrderStatus.PAID, OrderStatus.DELIVERED, OrderStatus.RETURNED];
+      const wasPaid = paidStates.includes(oldStatus);
+      if (wasPaid) refunded = true;
       for (const item of order.items) {
         if (!item.variantId) continue;
-        await this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: { reservedStock: { decrement: item.quantity } },
-        });
+        writes.push(
+          this.prisma.productVariant.update({
+            where: { id: item.variantId },
+            data: wasPaid
+              ? { stock: { increment: item.quantity } }
+              : { reservedStock: { decrement: item.quantity } },
+          }),
+        );
       }
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: { status, updatedAt: new Date() },
-      include: {
-        customer: true,
-        items: { include: { product: true, variant: true } },
-      },
-    });
+    writes.push(
+      this.prisma.order.update({
+        where: { id },
+        data: {
+          status,
+          ...(markPaid ? { paymentStatus: PaymentStatus.CONFIRMED, paidAt: new Date() } : {}),
+          ...(refunded ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
+          updatedAt: new Date(),
+        },
+        include: {
+          customer: true,
+          items: { include: { product: true, variant: true } },
+        },
+      }),
+    );
+
+    const results = await this.prisma.$transaction(writes);
+    const updated = results[results.length - 1];
 
     // Audit log
     await this.prisma.auditLog.create({
@@ -255,52 +341,73 @@ export class OrdersService {
     if (existing.paymentStatus === PaymentStatus.CONFIRMED) {
       throw new BadRequestException('El pago de esta orden ya está confirmado');
     }
-    const order = await this.prisma.order.update({
-      where: { id },
-      data: {
-        paymentStatus: PaymentStatus.CONFIRMED,
-        paymentMethod: data.paymentMethod as any,
-        paymentNotes: data.paymentNotes,
-        paymentProofUrl: data.paymentProofUrl,
-        paidAt: new Date(),
-        status: OrderStatus.PAID,
-      },
-      include: { items: true },
-    });
+    if (existing.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('No se puede confirmar el pago de una orden cancelada');
+    }
+    if (existing.status === OrderStatus.RETURNED || existing.paymentStatus === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Esta orden ya fue reembolsada');
+    }
+    const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
 
-    // Descontar stock físicamente
-    for (const item of order.items) {
+    const writes: PrismaPromise<any>[] = [];
+
+    // Descontar stock físicamente UNA sola vez. Al llegar aquí el pago nunca
+    // fue confirmado (guardia de arriba) y el descuento físico solo ocurre
+    // junto con paymentStatus=CONFIRMED, por lo que el stock aún está intacto.
+    for (const item of existing.items) {
       if (!item.variantId) continue;
-      await this.prisma.productVariant.update({
-        where: { id: item.variantId },
-        data: {
-          stock: { decrement: item.quantity },
-          reservedStock: { decrement: item.quantity },
-        },
-      });
+      writes.push(
+        this.prisma.productVariant.update({
+          where: { id: item.variantId },
+          data: {
+            stock: { decrement: item.quantity },
+            reservedStock: { decrement: item.quantity },
+          },
+        }),
+      );
     }
 
+    writes.push(
+      this.prisma.order.update({
+        where: { id },
+        data: {
+          paymentStatus: PaymentStatus.CONFIRMED,
+          paymentMethod,
+          paymentNotes: data.paymentNotes,
+          paymentProofUrl: data.paymentProofUrl,
+          paidAt: new Date(),
+          status: OrderStatus.PAID,
+          updatedAt: new Date(),
+        },
+      }),
+    );
+
     // Actualizar totales del cliente
-    await this.prisma.customer.update({
-      where: { id: order.customerId },
-      data: {
-        totalSpent: { increment: order.total },
-        totalOrders: { increment: 1 },
-        lastOrderAt: new Date(),
-      },
-    });
+    writes.push(
+      this.prisma.customer.update({
+        where: { id: existing.customerId },
+        data: {
+          totalSpent: { increment: existing.total },
+          totalOrders: { increment: 1 },
+          lastOrderAt: new Date(),
+        },
+      }),
+    );
 
     // Audit log
-    await this.prisma.auditLog.create({
-      data: {
-        userId,
-        action: 'PAYMENT_CONFIRMED',
-        entity: 'Order',
-        entityId: id,
-        newValue: { paymentStatus: PaymentStatus.CONFIRMED, paymentMethod: data.paymentMethod },
-      },
-    });
+    writes.push(
+      this.prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'PAYMENT_CONFIRMED',
+          entity: 'Order',
+          entityId: id,
+          newValue: { paymentStatus: PaymentStatus.CONFIRMED, paymentMethod },
+        },
+      }),
+    );
 
+    await this.prisma.$transaction(writes);
     return this.findOne(id);
   }
 
@@ -506,6 +613,12 @@ export class OrdersService {
         throw new BadRequestException(`Campo inválido: ${field}`);
       }
     }
+    if (data.deliveryDay != null && data.deliveryDay !== '') {
+      const deliveryDay = new Date(data.deliveryDay);
+      if (Number.isNaN(deliveryDay.getTime())) {
+        throw new BadRequestException('Fecha de entrega inválida');
+      }
+    }
 
     const subtotal = this.integer(data.subtotal, 'subtotal');
     const discount = this.integer(data.discount ?? 0, 'descuento');
@@ -535,5 +648,22 @@ export class OrdersService {
       throw new BadRequestException(`Valor inválido: ${field}`);
     }
     return number;
+  }
+
+  private validatePaymentMethod(value: unknown): PaymentMethod | null {
+    if (value === undefined || value === null || value === '') return null;
+    const v = String(value).toUpperCase();
+    if (!Object.values(PaymentMethod).includes(v as PaymentMethod)) {
+      throw new BadRequestException(`Método de pago inválido: ${value}`);
+    }
+    return v as PaymentMethod;
+  }
+
+  private validateDeliveryType(value: unknown): DeliveryType {
+    const v = String(value || 'METRO').toUpperCase();
+    if (!Object.values(DeliveryType).includes(v as DeliveryType)) {
+      throw new BadRequestException(`Tipo de entrega inválido: ${value}`);
+    }
+    return v as DeliveryType;
   }
 }

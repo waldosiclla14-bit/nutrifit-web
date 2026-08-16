@@ -27,11 +27,15 @@ const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 10 * 60 * 1000;
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
-function trackAttempt(ip: string) {
+function attemptKey(email: string, ip: string) {
+  return `${String(email).trim().toLowerCase()}:${ip}`;
+}
+
+function trackAttempt(key: string) {
   const now = Date.now();
-  const entry = attempts.get(ip);
+  const entry = attempts.get(key);
   if (!entry || entry.resetAt < now) {
-    attempts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
     return;
   }
   entry.count += 1;
@@ -43,6 +47,19 @@ function trackAttempt(ip: string) {
   }
 }
 
+// Limpieza periódica de entradas vencidas (evita que el Map crezca sin límite)
+// y acotación del tamaño del Map.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of attempts) {
+    if (entry.resetAt < now) attempts.delete(key);
+  }
+  if (attempts.size > 10000) {
+    const keys = [...attempts.keys()];
+    for (const key of keys.slice(0, 5000)) attempts.delete(key);
+  }
+}, WINDOW_MS);
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -50,11 +67,11 @@ export class AuthController {
   @Post('login')
   async login(@Req() req: any) {
     const dto: LoginDto = await readJsonBody(req);
-    const ip =
-      req.ip || (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
-    trackAttempt(ip);
+    const ip = req.ip || 'unknown';
+    const key = attemptKey(dto.email, ip);
+    trackAttempt(key);
     const result = await this.authService.login(dto.email, dto.password);
-    attempts.delete(ip);
+    attempts.delete(key);
     return result;
   }
 
