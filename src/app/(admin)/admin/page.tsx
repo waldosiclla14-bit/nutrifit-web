@@ -1326,11 +1326,24 @@ function Productos({
     setImporting(true);
     setImportResult(null);
     try {
-      let rows: Record<string, unknown>[];
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
+      let wb: XLSX.WorkBook;
+      if (/\.csv$/i.test(file.name)) {
+        const head = new TextDecoder().decode(new Uint8Array(buffer).slice(0, 16384)).split(/\r?\n/)[0] || '';
+        const semi = (head.match(/;/g) || []).length;
+        const comma = (head.match(/,/g) || []).length;
+        const tab = (head.match(/\t/g) || []).length;
+        const FS = semi > comma && semi >= tab ? ';' : tab > comma && tab >= semi ? '\t' : ',';
+        wb = XLSX.read(buffer, { type: 'array', FS, raw: true });
+      } else {
+        wb = XLSX.read(buffer, { type: 'array', raw: true });
+      }
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+      if (!sheet || !sheet['!ref']) {
+        setImportResult({ ok: false, msg: 'El archivo está vacío o no tiene datos.' });
+        return;
+      }
+      let rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
       if (rows.length === 0) {
         setImportResult({ ok: false, msg: 'El archivo está vacío o no tiene datos.' });
         return;
