@@ -1002,7 +1002,10 @@ function Ordenes({
                     {!['CANCELLED', 'DELIVERED', 'RETURNED'].includes(o.status) && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CANCELLED' } }), o.id)}
+                        onClick={() => {
+                          if (!window.confirm(`¿Cancelar la orden ${o.orderNumber}?`)) return;
+                          act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CANCELLED' } }), o.id);
+                        }}
                         className="rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
                       >
                         Cancelar
@@ -1495,7 +1498,7 @@ function Productos({
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
-            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría (ej: Whey Protein)" className="input" />
+            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría * (ej: Whey Protein)" className="input" />
             <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
             <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />

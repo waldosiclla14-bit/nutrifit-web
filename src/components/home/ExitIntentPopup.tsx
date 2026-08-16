@@ -87,6 +87,7 @@ export default function ExitIntentPopup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@email.com"
+            aria-label="Tu correo electrónico"
             className="w-full rounded-full border border-line bg-white px-5 py-3.5 text-sm outline-none transition-colors focus:border-accentDeep"
           />
           <button type="submit" className="btn-accent w-full">

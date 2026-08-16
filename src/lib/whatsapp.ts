@@ -135,7 +135,8 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
 }
 
 export function openWhatsApp(phone: string, message: string) {
-  const clean = phone.replace(/[^\d]/g, '');
+  let clean = phone.replace(/[^\d]/g, '').replace(/^0+/, '');
+  if (/^9\d{8}$/.test(clean)) clean = `56${clean}`;
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
   const link = document.createElement('a');
   link.href = url;

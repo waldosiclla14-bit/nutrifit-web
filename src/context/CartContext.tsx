@@ -131,14 +131,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
-  const addItem = useCallback((item: Omit<CartItem, 'key'>) => {
+  const addItem = useCallback((item: Omit<CartItem, 'key'>, opts?: { merge?: boolean }) => {
     setItems((prev) => {
-      const existing = prev.find(
-        (i) =>
-          i.productId === item.productId &&
-          (i.variant ?? '') === (item.variant ?? '') &&
-          i.isGift === item.isGift,
-      );
+      const existing =
+        opts?.merge === false
+          ? undefined
+          : prev.find(
+              (i) =>
+                i.productId === item.productId &&
+                (i.variant ?? '') === (item.variant ?? '') &&
+                i.isGift === item.isGift,
+            );
       if (existing) {
         return prev.map((i) =>
           i.key === existing.key ? { ...i, quantity: i.quantity + item.quantity } : i,
@@ -193,17 +196,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const unitPrice = Math.round(actualLine / quantity);
         const unitDiscount = Math.round(lineDiscount / quantity);
 
-        addItem({
-          productId: entry.product.id,
-          slug: entry.product.slug,
-          name: entry.variant ? `${entry.product.name} (${entry.variant.name})` : entry.product.name,
-          price: unitPrice,
-          oldPrice: entry.product.oldPrice,
-          discount: unitDiscount,
-          image: entry.variant?.image ?? entry.product.image,
-          quantity,
-          variant: entry.variant?.name,
-        });
+        addItem(
+          {
+            productId: entry.product.id,
+            slug: entry.product.slug,
+            name: entry.variant ? `${entry.product.name} (${entry.variant.name})` : entry.product.name,
+            price: unitPrice,
+            oldPrice: entry.product.oldPrice,
+            discount: unitDiscount,
+            image: entry.variant?.image ?? entry.product.image,
+            quantity,
+            variant: entry.variant?.name,
+          },
+          { merge: false },
+        );
       });
     },
     [addItem],

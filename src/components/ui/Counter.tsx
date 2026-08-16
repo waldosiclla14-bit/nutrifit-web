@@ -14,8 +14,8 @@ export default function Counter({
   duration?: number;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  // Render the real value before hydration; animate only after the counter enters view.
-  const [value, setValue] = useState(end);
+  // Arranca en 0 y cuenta hacia arriba al entrar en viewport (evita el flash valor→0).
+  const [value, setValue] = useState(0);
   const started = useRef(false);
 
   useEffect(() => {
@@ -26,7 +26,6 @@ export default function Counter({
         entries.forEach((entry) => {
           if (entry.isIntersecting && !started.current) {
             started.current = true;
-            setValue(0);
             const startTime = performance.now();
             const tick = (now: number) => {
               const progress = Math.min((now - startTime) / duration, 1);

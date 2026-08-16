@@ -15,7 +15,7 @@ export default function WhatsAppFloat() {
           'Hola NutriFit! Quiero hacer un pedido. ¿Me ayudas?',
         );
       }}
-      className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110"
+      className="fixed bottom-5 right-5 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110 lg:flex"
       aria-label={`Contactar por WhatsApp (${BRAND.hours})`}
       title={`Atención: ${BRAND.hours}`}
     >

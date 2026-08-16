@@ -1,6 +1,6 @@
 import type { Order } from '@/types';
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://nutrifit-api-635n.onrender.com').replace(/\/$/, '');
 
 const TOKEN_KEY = 'nutrifit:admin:token';
 

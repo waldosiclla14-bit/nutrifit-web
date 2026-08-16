@@ -7,24 +7,39 @@ const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
 declare global {
   interface Window {
-    fbq?: (...args: unknown[]) => void;
+    fbq?: FbqFn;
     _fbq?: unknown;
   }
 }
 
+type FbqFn = {
+  (...args: unknown[]): void;
+  callMethod?: (...args: unknown[]) => void;
+  push?: FbqFn;
+  loaded?: boolean;
+  version?: string;
+  queue?: unknown[][];
+};
+
 function initPixel() {
   if (typeof window === 'undefined' || window.fbq || !PIXEL_ID) return;
-  // Carga manual del script de Meta Pixel
+  const w = window as unknown as { fbq?: FbqFn; _fbq?: unknown };
+  if (w.fbq) return;
+  const n = (function (...args: unknown[]) {
+    if (n.callMethod) n.callMethod.apply(n, args);
+    else n.queue!.push(Array.from(args));
+  }) as FbqFn;
+  w.fbq = n;
+  if (!w._fbq) w._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = '2.0';
+  n.queue = [];
+  // Snippet oficial de Meta: encola eventos hasta que cargue fbevents.js
   const script = document.createElement('script');
   script.async = true;
   script.src = 'https://connect.facebook.net/en_US/fbevents.js';
   document.head.appendChild(script);
-  const q = (window as unknown as { fbq: (...a: unknown[]) => void }).fbq;
-  if (typeof q === 'function') return;
-  const fbq = ((...args: unknown[]) => {
-    if (typeof window.fbq === 'function') window.fbq(...args);
-  }) as unknown as (...a: unknown[]) => void;
-  window.fbq = fbq;
 }
 
 export function trackEvent(name: string, params: Record<string, unknown> = {}) {

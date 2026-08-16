@@ -213,7 +213,7 @@ export default function ProductDetail({
               <span className="w-10 text-center font-bold">{qty}</span>
               <button
                 type="button"
-                onClick={() => setQty((v) => v + 1)}
+                onClick={() => setQty((v) => (stock > 0 ? Math.min(stock, v + 1) : v))}
                 aria-label="Aumentar cantidad"
                 className="flex h-12 w-12 items-center justify-center rounded-r-full transition-colors hover:bg-soft"
               >

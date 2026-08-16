@@ -204,7 +204,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const addToCart = (p: ApiProduct, variantId: string | null) => {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
     const unitPrice = v?.price ?? p.price;
-    const stock = v?.stock ?? 0;
+    const stock = v?.stock ?? p.stock ?? 0;
     const key = variantId ?? p.id;
     setCart((cart) => {
       const existing = cart.find((l) => lineKey(l) === key);

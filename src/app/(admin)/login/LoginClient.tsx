@@ -14,7 +14,8 @@ export default function LoginClient() {
 
   useEffect(() => {
     try {
-      setNext(new URLSearchParams(window.location.search).get('next') || '/admin');
+      const n = new URLSearchParams(window.location.search).get('next');
+      setNext(n && n.startsWith('/') && !n.startsWith('//') ? n : '/admin');
     } catch {
       // ignore
     }
