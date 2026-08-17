@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
 import type { Product } from '@/types';
 import { formatPrice, getDiscount } from '@/lib/utils';
-import { openWhatsApp } from '@/lib/whatsapp';
+import { openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
 import Stars from '@/components/ui/Stars';
 import StockUrgency from '@/components/product/StockUrgency';
@@ -24,6 +24,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
       `*Precio:* ${formatPrice(product.price)}`,
       '',
       '¿Está disponible? Quiero coordinar mi entrega en metro.',
+      webFooter(),
     ].join('\n');
     openWhatsApp(getSettings().whatsapp, message);
   };

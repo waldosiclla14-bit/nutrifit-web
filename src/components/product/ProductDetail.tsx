@@ -8,7 +8,7 @@ import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount, cx } from '@/lib/utils';
-import { openWhatsApp } from '@/lib/whatsapp';
+import { openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
 import RatingSummary from '@/components/ui/RatingSummary';
 import ProductCard from '@/components/product/ProductCard';
@@ -71,6 +71,7 @@ export default function ProductDetail({
       `*Precio:* ${formatPrice(product.price * qty)}`,
       '',
       '¿Está disponible? Quiero coordinar mi entrega en metro.',
+      webFooter(),
     ].join('\n');
     openWhatsApp(getSettings().whatsapp, message);
   };

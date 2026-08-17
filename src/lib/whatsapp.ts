@@ -1,6 +1,18 @@
 import type { OrderItem } from '@/types';
 import { formatPrice } from '@/lib/utils';
 
+const SITE_URL = 'https://nutrifit-web-nu.vercel.app';
+
+export function webFooter() {
+  return [
+    '',
+    '─'.repeat(24),
+    '🌐 *Compra online con envío a todo Chile:*',
+    SITE_URL,
+    '🎁 *¡Tienes promociones exclusivas al comprar por nuestra página web!*',
+  ].join('\n');
+}
+
 type OrderPayload = {
   name: string;
   phone: string;
@@ -48,6 +60,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   lines.push(`*TOTAL:* ${formatPrice(order.total)}`);
   lines.push('');
   lines.push('¡Gracias por entrenar con confianza! 💪');
+  lines.push(webFooter());
   return lines.join('\n');
 }
 
@@ -74,6 +87,7 @@ export function buildComboMessage(combo: {
   lines.push(`*Precio combo:* ${formatPrice(combo.price)}`);
   lines.push('');
   lines.push('¿Está disponible? Quiero coordinar mi entrega en metro.');
+  lines.push(webFooter());
   return lines.join('\n');
 }
 
@@ -131,6 +145,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
   lines.push('');
   lines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
+  lines.push(webFooter());
   return lines.join('\n');
 }
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { webFooter } from '@/lib/whatsapp';
 import * as XLSX from 'xlsx';
 
 type ApiOrder = {
@@ -213,7 +214,7 @@ function waLink(order: ApiOrder) {
   const msg = encodeURIComponent(
     `Hola ${order.customer?.name || ''}! Tu pedido ${order.orderNumber} está ${
       STATUS_LABEL[order.status] || order.status
-    }. Respondeme para coordinar la entrega.`,
+    }. Respondeme para coordinar la entrega.${webFooter()}`,
   );
   return `https://wa.me/56${phone}?text=${msg}`;
 }
@@ -1828,6 +1829,7 @@ function Clientes({
         `Válido hasta: ${expiry}`,
         '',
         'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
+        webFooter(),
       ].join('\n');
       window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       await onChanged();
@@ -2086,7 +2088,7 @@ function Agenda({
       return;
     }
     const when = new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'long', timeStyle: 'short' });
-    const message = `${r.title}\n\n${r.message}\n\n📅 Recordatorio agendado para: ${when}`;
+    const message = `${r.title}\n\n${r.message}\n\n📅 Recordatorio agendado para: ${when}${webFooter()}`;
     window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
