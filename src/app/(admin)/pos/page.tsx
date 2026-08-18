@@ -111,6 +111,8 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [discountPct, setDiscountPct] = useState(0);
+  const [discountMode, setDiscountMode] = useState<'percent' | 'amount'>('percent');
+  const [discountAmountInput, setDiscountAmountInput] = useState(0);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -239,7 +241,10 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   };
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), [cart]);
-  const discountAmount = useMemo(() => Math.round((subtotal * discountPct) / 100), [subtotal, discountPct]);
+  const discountAmount = useMemo(() => {
+    if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
+    return Math.round((subtotal * discountPct) / 100);
+  }, [subtotal, discountPct, discountMode, discountAmountInput]);
   const total = Math.max(0, subtotal - discountAmount);
 
   const openRegister = async () => {
@@ -593,18 +598,56 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
 
           {cart.length > 0 && (
             <div className="mt-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Descuento</p>
-              <div className="mt-2 grid grid-cols-5 gap-1.5">
-                {[0, 5, 10, 15, 20].map((pct) => (
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Descuento</p>
+                <div className="flex rounded-full border border-line">
                   <button
-                    key={pct}
-                    onClick={() => setDiscountPct(pct)}
-                    className={`rounded-full border px-1 py-1.5 text-[11px] font-bold transition ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted'}`}
+                    onClick={() => { setDiscountMode('percent'); setDiscountAmountInput(0); }}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${discountMode === 'percent' ? 'bg-ink text-white' : 'text-muted'}`}
                   >
-                    {pct === 0 ? '0%' : `-${pct}%`}
+                    %
                   </button>
-                ))}
+                  <button
+                    onClick={() => { setDiscountMode('amount'); setDiscountPct(0); }}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition ${discountMode === 'amount' ? 'bg-ink text-white' : 'text-muted'}`}
+                  >
+                    $
+                  </button>
+                </div>
               </div>
+              {discountMode === 'percent' ? (
+                <div className="mt-2 grid grid-cols-5 gap-1.5">
+                  {[0, 5, 10, 15, 20].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setDiscountPct(pct)}
+                      className={`rounded-full border px-1 py-1.5 text-[11px] font-bold transition ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted'}`}
+                    >
+                      {pct === 0 ? '0%' : `-${pct}%`}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-sm font-bold text-muted">$</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={subtotal}
+                    step={100}
+                    value={discountAmountInput || ''}
+                    onChange={(e) => setDiscountAmountInput(Math.min(subtotal, Math.max(0, Number(e.target.value) || 0)))}
+                    placeholder="0"
+                    className="input w-full text-sm"
+                  />
+                  <button
+                    onClick={() => setDiscountAmountInput(0)}
+                    className="shrink-0 rounded-full border border-line px-2 py-1 text-[10px] font-bold text-muted hover:border-ink hover:text-ink"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -615,7 +658,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
             </div>
             {discountAmount > 0 && (
               <div className="flex justify-between text-red-500">
-                <span>Descuento (-{discountPct}%)</span>
+                <span>Descuento ({discountMode === 'percent' ? `-${discountPct}%` : `-${formatPrice(discountAmount)}`})</span>
                 <span>-{formatPrice(discountAmount)}</span>
               </div>
             )}
