@@ -386,3 +386,20 @@ model Config {
 
   @@map("config")
 }
+
+// ───────────────────────────────────────────────
+// RESEÑAS
+// ───────────────────────────────────────────────
+
+model Review {
+  id          String   @id @default(uuid())
+  productSlug String
+  name        String
+  rating      Int
+  text        String
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([productSlug])
+  @@map("reviews")
+}

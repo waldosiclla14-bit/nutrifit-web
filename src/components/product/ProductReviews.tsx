@@ -8,11 +8,11 @@ import { formatDate } from '@/lib/utils';
 import Stars from '@/components/ui/Stars';
 
 export default function ProductReviews({
-  productId,
+  productSlug,
   initialRating,
   reviewCount,
 }: {
-  productId: number;
+  productSlug: string;
   initialRating: number;
   reviewCount: number;
 }) {
@@ -24,18 +24,22 @@ export default function ProductReviews({
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setReviews(getProductReviews(productId));
-    setLoaded(true);
-  }, [productId]);
+    let active = true;
+    getProductReviews(productSlug).then((r) => {
+      if (active) { setReviews(r); setLoaded(true); }
+    });
+    return () => { active = false; };
+  }, [productSlug]);
 
   const average =
     reviews.length > 0
       ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
       : initialRating;
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !text.trim()) {
       setError('Completa tu nombre y tu reseña.');
@@ -45,13 +49,21 @@ export default function ProductReviews({
       setError('Escribe al menos 5 caracteres.');
       return;
     }
-    setReviews(saveReview(productId, name, rating, text.trim(), verified));
+    setSubmitting(true);
     setError('');
-    setDone(true);
-    setName('');
-    setRating(5);
-    setText('');
-    setVerified(false);
+    try {
+      const review = await saveReview(productSlug, name, rating, text.trim(), verified);
+      setReviews((prev) => [review, ...prev]);
+      setDone(true);
+      setName('');
+      setRating(5);
+      setText('');
+      setVerified(false);
+    } catch (err: any) {
+      setError(err?.message || 'Error al guardar la reseña.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -146,8 +158,8 @@ export default function ProductReviews({
             />
             Compré este producto (compra verificada)
           </label>
-          <button type="submit" className="btn-accent">
-            <Star size={16} /> Publicar reseña
+          <button type="submit" disabled={submitting} className="btn-accent">
+            <Star size={16} /> {submitting ? 'Publicando…' : 'Publicar reseña'}
           </button>
         </form>
       </div>

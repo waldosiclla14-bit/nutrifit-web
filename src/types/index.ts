@@ -67,7 +67,7 @@ export type Review = {
 
 export type UserReview = {
   id: string;
-  productId: number;
+  productSlug: string;
   name: string;
   rating: number;
   text: string;

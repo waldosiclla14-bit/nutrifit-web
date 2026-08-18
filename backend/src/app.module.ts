@@ -12,6 +12,7 @@ import { CouponsModule } from './coupons/coupons.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { PingModule } from './ping/ping.module';
     AppConfigModule,
     HealthModule,
     RemindersModule,
+    ReviewsModule,
     PingModule,
   ],
 })

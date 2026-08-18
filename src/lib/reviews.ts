@@ -1,45 +1,49 @@
 import type { UserReview } from '@/types';
-import { uid } from '@/lib/utils';
+import { API_BASE } from '@/lib/api';
 
-const KEY = 'nutrifit:reviews';
-
-export function loadReviews(): UserReview[] {
-  if (typeof window === 'undefined') return [];
+export async function getProductReviews(productSlug: string): Promise<UserReview[]> {
   try {
-    const raw = window.localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as UserReview[]) : [];
+    const res = await fetch(`${API_BASE}/reviews/product/${productSlug}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      productSlug: r.productSlug,
+      name: r.name,
+      rating: r.rating,
+      text: r.text,
+      createdAt: new Date(r.createdAt).getTime(),
+      verified: r.verified,
+    }));
   } catch {
     return [];
   }
 }
 
-export function getProductReviews(productId: number): UserReview[] {
-  return loadReviews()
-    .filter((r) => r.productId === productId)
-    .sort((a, b) => b.createdAt - a.createdAt);
-}
-
-export function saveReview(
-  productId: number,
+export async function saveReview(
+  productSlug: string,
   name: string,
   rating: number,
   text: string,
   verified?: boolean,
-): UserReview[] {
-  const review: UserReview = {
-    id: uid('RV'),
-    productId,
-    name: name.trim(),
-    rating,
-    text: text.trim(),
-    createdAt: Date.now(),
-    verified: !!verified,
-  };
-  const reviews = [review, ...loadReviews()];
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(reviews));
-  } catch {
-    // storage may be unavailable — ignore
+): Promise<UserReview> {
+  const res = await fetch(`${API_BASE}/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ productSlug, name: name.trim(), rating, text: text.trim(), verified: !!verified }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Error al guardar la reseña');
   }
-  return reviews.filter((r) => r.productId === productId);
+  const r = await res.json();
+  return {
+    id: r.id,
+    productSlug: r.productSlug,
+    name: r.name,
+    rating: r.rating,
+    text: r.text,
+    createdAt: new Date(r.createdAt).getTime(),
+    verified: r.verified,
+  };
 }

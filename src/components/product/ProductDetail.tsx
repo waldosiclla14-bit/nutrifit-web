@@ -293,7 +293,7 @@ export default function ProductDetail({
       </div>
 
       <ProductReviews
-        productId={product.id}
+        productSlug={product.slug}
         initialRating={product.rating}
         reviewCount={product.reviews}
       />

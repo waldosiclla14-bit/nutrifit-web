@@ -1,7 +1,7 @@
 import { BadgeCheck, Rocket, Train, Truck } from 'lucide-react';
 
 const PROMISES = [
-  { icon: Truck, title: 'Entrega mismo día', text: 'Pidiendo antes de las 14:00 hrs' },
+  { icon: Truck, title: 'Entrega 24–48 hrs', text: 'Coordinada por WhatsApp' },
   { icon: Train, title: 'Todas las líneas de Metro', text: '+140 estaciones en Santiago' },
   { icon: Rocket, title: 'Envío gratis', text: 'En Metro por compras sobre $30.000' },
   { icon: BadgeCheck, title: '100% originales', text: 'Sello de garantía NutriFit' },
