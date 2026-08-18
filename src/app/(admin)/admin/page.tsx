@@ -232,7 +232,8 @@ function marginCls(margin: number) {
 
 function stockLevel(stock: number, alert: number | null) {
   if (stock <= 0) return { label: 'agotado', cls: 'border-red-300 text-red-600' };
-  if (stock <= (alert ?? 0)) return { label: 'bajo', cls: 'border-amber-300 text-amber-700' };
+  if (alert === null) return { label: '—', cls: 'border-line text-muted' };
+  if (stock <= alert) return { label: 'bajo', cls: 'border-amber-300 text-amber-700' };
   return { label: 'ok', cls: 'border-emerald-300 text-emerald-700' };
 }
 
@@ -435,17 +436,20 @@ function Dashboard({
     loadTab(tab);
   }, [loadTab, tab]);
 
-  const act = async (fn: () => Promise<any>, id: string) => {
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
+  const act = useCallback(async (fn: () => Promise<any>, id: string) => {
     setBusyId(id);
     try {
       await fn();
-      await load();
+      await loadTab(tabRef.current);
     } catch (err: any) {
       alert(err?.message || 'Error en la operación.');
     } finally {
       setBusyId(null);
     }
-  };
+  }, [loadTab]);
 
   const tabs = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
@@ -514,7 +518,7 @@ function Dashboard({
       </div>
 
       {showPassword && (
-        <PasswordModal token={token} onClose={() => setShowPassword(false)} onChanged={() => {}} />
+        <PasswordModal token={token} onClose={() => setShowPassword(false)} onChanged={load} />
       )}
     </div>
   );
@@ -1134,10 +1138,13 @@ function Productos({
           await apiFetch(`/products/${p.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } });
         }
       }
-      await onChanged();
     } catch (err: any) {
       alert(err?.message || 'Error al actualizar.');
     } finally {
+      setEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
+      setPriceEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
+      setCostEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
+      try { await onChanged(); } catch {}
       setSaving(null);
     }
   };
@@ -1233,6 +1240,11 @@ function Productos({
       .map((v) => ({ id: v.id, old: (editing.variants || []).find((x) => x.id === v.id)?.stock ?? 0, next: Number(v.stock) || 0 }))
       .filter((s) => s.id && s.next !== s.old);
 
+    if (stockChanges.length > 0 && !editForm.reason.trim()) {
+      alert('Los cambios de stock necesitan un motivo (campo "Motivo de ajuste de stock").');
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiFetch(`/products/${editing.id}`, {
@@ -1259,19 +1271,12 @@ function Productos({
         },
       });
 
-      if (stockChanges.length > 0) {
-        if (!editForm.reason.trim()) {
-          alert('Los cambios de stock necesitan un motivo (campo "Motivo de ajuste de stock").');
-          setSubmitting(false);
-          return;
-        }
-        for (const sc of stockChanges) {
-          await apiFetch(`/products/${sc.id}/adjust-stock`, {
-            method: 'PATCH',
-            token,
-            body: { newStock: sc.next, reason: editForm.reason },
-          });
-        }
+      for (const sc of stockChanges) {
+        await apiFetch(`/products/${sc.id}/adjust-stock`, {
+          method: 'PATCH',
+          token,
+          body: { newStock: sc.next, reason: editForm.reason },
+        });
       }
 
       setEditing(null);
