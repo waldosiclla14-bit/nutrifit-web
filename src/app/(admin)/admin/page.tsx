@@ -323,8 +323,8 @@ function Dashboard({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const loadTab = useCallback(async (t: string) => {
-    setLoading(true);
+  const loadTab = useCallback(async (t: string, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       if (t === 'resumen') {
         const [s, cr, g, iv] = await Promise.all([
@@ -424,13 +424,14 @@ function Dashboard({
         );
       }
     } catch (err: any) {
-      alert(err?.message || 'Error al cargar datos.');
+      if (!silent) alert(err?.message || 'Error al cargar datos.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [token]);
 
   const load = useCallback(() => loadTab(tab), [loadTab, tab]);
+  const refreshTab = useCallback(() => loadTab(tab, true), [loadTab, tab]);
 
   useEffect(() => {
     loadTab(tab);
@@ -510,10 +511,10 @@ function Dashboard({
         {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
         {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
         {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
-        {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={load} />}
-        {!loading && tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={load} />}
-        {!loading && tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={load} />}
-        {!loading && tab === 'caja' && <Caja cash={cash} token={token} onChanged={load} />}
+        {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
+        {!loading && tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
+        {!loading && tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
+        {!loading && tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
         {!loading && tab === 'reportes' && <Reportes token={token} />}
       </div>
 
@@ -1078,6 +1079,16 @@ type EditProductForm = {
   }[];
 };
 
+function normalizeHeader(h: string) {
+  return h.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function parseNum(v: unknown) {
+  if (v === undefined || v === null || v === '') return undefined;
+  const n = Number(String(v).replace(/\./g, '').replace(',', '.'));
+  return Number.isNaN(n) ? undefined : n;
+}
+
 function Productos({
   products,
   token,
@@ -1115,12 +1126,19 @@ function Productos({
   }, [products, search]);
 
   const save = async (p: ApiProduct, v: Variant, current: number) => {
+    const stockRaw = edits[v.id];
+    if (stockRaw !== undefined) {
+      const next = Number(stockRaw);
+      if (Number.isNaN(next) || next < 0) {
+        alert('El valor de stock no es válido (debe ser un número ≥ 0).');
+        return;
+      }
+    }
     setSaving(v.id);
     try {
-      const stockRaw = edits[v.id];
       if (stockRaw !== undefined) {
         const next = Number(stockRaw);
-        if (!Number.isNaN(next) && next >= 0 && next !== current) {
+        if (next !== current) {
           await apiFetch(`/products/${v.id}/stock`, { method: 'PATCH', token, body: { quantity: next - current } });
         }
       }
@@ -1302,15 +1320,6 @@ function Productos({
     }
   };
 
-  const normalizeHeader = (h: string) =>
-    h.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-
-  const num = (v: unknown) => {
-    if (v === undefined || v === null || v === '') return undefined;
-    const n = Number(String(v).replace(/\./g, '').replace(',', '.'));
-    return Number.isNaN(n) ? undefined : n;
-  };
-
   const exportExcel = () => {
     const rows: Record<string, unknown>[] = [];
     for (const p of products) {
@@ -1394,10 +1403,10 @@ function Productos({
           .map((r) => ({
             variantName: String(get(r, 'variante') || '').trim(),
             sku: String(get(r, 'sku_variante') || '').trim(),
-            price: num(get(r, 'precio_variante')),
-            costPrice: num(get(r, 'costo_variante')),
-            stock: num(get(r, 'stock')),
-            lowStockAlert: num(get(r, 'alerta_stock')),
+            price: parseNum(get(r, 'precio_variante')),
+            costPrice: parseNum(get(r, 'costo_variante')),
+            stock: parseNum(get(r, 'stock')),
+            lowStockAlert: parseNum(get(r, 'alerta_stock')),
           }));
         try {
           if (existing) {
@@ -1414,9 +1423,9 @@ function Productos({
                 sku: skuP || undefined,
                 category: String(get(first, 'categoria') || '').trim() || undefined,
                 brand: String(get(first, 'marca') || '').trim() || undefined,
-                basePrice: num(get(first, 'precio_base')),
-                costPrice: num(get(first, 'costo_base')),
-                comparePrice: num(get(first, 'precio_tachado')),
+                basePrice: parseNum(get(first, 'precio_base')),
+                costPrice: parseNum(get(first, 'costo_base')),
+                comparePrice: parseNum(get(first, 'precio_tachado')),
                 description: String(get(first, 'descripcion') || '').trim() || undefined,
                 variants: variantPayload,
               },
@@ -1431,9 +1440,9 @@ function Productos({
                 sku: skuP || undefined,
                 category: String(get(first, 'categoria') || 'Otros').trim(),
                 brand: String(get(first, 'marca') || '').trim() || undefined,
-                basePrice: num(get(first, 'precio_base')),
-                costPrice: num(get(first, 'costo_base')),
-                comparePrice: num(get(first, 'precio_tachado')),
+                basePrice: parseNum(get(first, 'precio_base')),
+                costPrice: parseNum(get(first, 'costo_base')),
+                comparePrice: parseNum(get(first, 'precio_tachado')),
                 description: String(get(first, 'descripcion') || '').trim() || undefined,
                 variants,
               },
@@ -1598,6 +1607,7 @@ function Productos({
                           <input
                             type="number"
                             defaultValue={v.price}
+                            disabled={saving === v.id}
                             onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
                             className="input w-full py-1.5 text-sm"
                           />
@@ -1607,6 +1617,7 @@ function Productos({
                           <input
                             type="number"
                             defaultValue={v.costPrice}
+                            disabled={saving === v.id}
                             onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
                             className="input w-full py-1.5 text-sm"
                           />
@@ -1614,15 +1625,26 @@ function Productos({
                         <label className="block">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Stock</span>
                           <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              defaultValue={v.stock}
-                              onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                              className={`input w-full py-1.5 text-sm ${stockLevel(v.stock, v.lowStockAlert).cls}`}
-                            />
-                            <span className={`shrink-0 text-[11px] font-bold ${stockLevel(v.stock, v.lowStockAlert).cls}`}>
-                              {stockLevel(v.stock, v.lowStockAlert).label}
-                            </span>
+                            {(() => {
+                              const raw = edits[v.id];
+                              const displayStock = raw !== undefined ? (Number(raw) || 0) : v.stock;
+                              const isInvalid = raw !== undefined && (Number.isNaN(Number(raw)) || Number(raw) < 0);
+                              const lvl = stockLevel(displayStock, v.lowStockAlert);
+                              return (
+                                <>
+                                  <input
+                                    type="number"
+                                    defaultValue={v.stock}
+                                    disabled={saving === v.id}
+                                    onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                                    className={`input w-full py-1.5 text-sm ${isInvalid ? 'border-red-400 text-red-600' : lvl.cls}`}
+                                  />
+                                  <span className={`shrink-0 text-[11px] font-bold ${isInvalid ? 'text-red-600' : lvl.cls}`}>
+                                    {isInvalid ? 'inválido' : lvl.label}
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                         </label>
                         <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
