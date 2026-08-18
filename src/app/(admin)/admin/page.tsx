@@ -1735,6 +1735,7 @@ function Clientes({
   const [segFilter, setSegFilter] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [generatingCoupon, setGeneratingCoupon] = useState<string | null>(null);
+  const [couponDiscounts, setCouponDiscounts] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ApiCustomer | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
@@ -1802,7 +1803,8 @@ function Clientes({
   };
 
   const generateCoupon = async (customer: ApiCustomer) => {
-    if (!window.confirm(`¿Generar cupón de 10% para ${customer.name}?`)) return;
+    const discountPercent = couponDiscounts[customer.id] ?? 10;
+    if (!window.confirm(`¿Generar cupón de ${discountPercent}% para ${customer.name}?`)) return;
     setGeneratingCoupon(customer.id);
     try {
       const coupon = await apiFetch<{ code: string; discountPercent: number; expiresAt: string | null }>(
@@ -1814,18 +1816,20 @@ function Clientes({
             customerId: customer.id,
             customerName: customer.name,
             customerPhone: customer.phone,
-            discountPercent: 10,
+            discountPercent,
             daysValid: 30,
           },
         },
       );
       const phone = customer.phone.replace(/\D/g, '');
       const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 días';
+      const discountExample = Math.round(30000 * (discountPercent / 100));
       const message = [
         `Hola ${customer.name}, gracias por tu compra en NutriFit.`,
         '',
         `Te dejamos un cupón único para tu próxima compra: *${coupon.code}*`,
-        `Descuento: ${coupon.discountPercent}%`,
+        `Descuento: *${discountPercent}%* de tu compra`,
+        `Ejemplo: *$${discountExample.toLocaleString('es-CL')}* de ahorro en una compra de $30.000`,
         `Válido hasta: ${expiry}`,
         '',
         'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
@@ -1899,14 +1903,27 @@ function Clientes({
                        >
                          <Pencil size={12} /> Editar
                        </button>
-                      <button
-                        type="button"
-                        onClick={() => generateCoupon(c)}
-                        disabled={generatingCoupon === c.id}
-                        className="mr-2 inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 disabled:opacity-50"
-                      >
-                        <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón 10%'}
-                      </button>
+                       <div className="mr-2 inline-flex items-center gap-1">
+                         <input
+                           type="number"
+                           min={1}
+                           max={90}
+                           value={couponDiscounts[c.id] ?? 10}
+                           onChange={(e) => {
+                             const v = Math.min(90, Math.max(1, Number(e.target.value) || 10));
+                             setCouponDiscounts((prev) => ({ ...prev, [c.id]: v }));
+                           }}
+                           className="w-12 rounded-full border border-emerald-300 px-2 py-1.5 text-center text-[11px] font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+                         />
+                         <button
+                           type="button"
+                           onClick={() => generateCoupon(c)}
+                           disabled={generatingCoupon === c.id}
+                           className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 disabled:opacity-50"
+                         >
+                           <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón'}
+                         </button>
+                       </div>
                       <button
                         type="button"
                         onClick={() => remove(c)}
