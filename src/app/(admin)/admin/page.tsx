@@ -1605,6 +1605,7 @@ function Productos({
                         <label className="block">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Precio</span>
                           <input
+                            key={`price-${v.id}-${v.price}`}
                             type="number"
                             defaultValue={v.price}
                             disabled={saving === v.id}
@@ -1615,6 +1616,7 @@ function Productos({
                         <label className="block">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Costo</span>
                           <input
+                            key={`cost-${v.id}-${v.costPrice}`}
                             type="number"
                             defaultValue={v.costPrice}
                             disabled={saving === v.id}
@@ -1633,6 +1635,7 @@ function Productos({
                               return (
                                 <>
                                   <input
+                                    key={`stock-${v.id}-${v.stock}`}
                                     type="number"
                                     defaultValue={v.stock}
                                     disabled={saving === v.id}
