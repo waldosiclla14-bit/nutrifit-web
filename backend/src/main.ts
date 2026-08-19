@@ -5,6 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { urlencoded } from 'express';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 // JSON bodies are read inside each handler via readJsonBody() from the raw
 // request stream. The built-in express.json() body parser HANGS on JSON POSTs
@@ -50,6 +51,7 @@ async function bootstrap() {
       }),
     );
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalFilters(new AllExceptionsFilter());
     app.setGlobalPrefix('api');
 
     const config = new DocumentBuilder()

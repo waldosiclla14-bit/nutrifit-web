@@ -50,6 +50,6 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
     // event loop so no timer (incl. the safety timeout below) can fire and the
     // request hangs until the proxy 502s. The 5s hard timeout is the safety net
     // for the rare case the body never delivers 'end'.
-    setTimeout(() => finish({}), 5000);
+    setTimeout(() => finish({}), 15000);
   });
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards, Request, BadRequestException, Logger } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -9,6 +9,7 @@ import { ProductsService } from './products.service';
 
 @Controller('products')
 export class ProductsController {
+  private readonly logger = new Logger(ProductsController.name);
   constructor(private productsService: ProductsService) {}
 
   @Get()
@@ -59,6 +60,7 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   async create(@Req() req: ExpressRequest) {
     const data = await readJsonBody(req);
+    this.logger.log(`POST /products body keys: ${Object.keys(data || {}).join(', ')}`);
     return this.productsService.create(data);
   }
 
@@ -67,6 +69,7 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   async update(@Param('id') id: string, @Req() req: ExpressRequest) {
     const data = await readJsonBody(req);
+    this.logger.log(`PATCH /products/${id} body keys: ${Object.keys(data || {}).join(', ')} variants: ${Array.isArray(data?.variants) ? data.variants.length : 0}`);
     return this.productsService.update(id, data);
   }
 
