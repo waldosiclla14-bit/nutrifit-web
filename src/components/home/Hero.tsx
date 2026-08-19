@@ -72,11 +72,11 @@ export default function Hero() {
           </Reveal>
           <Reveal delay={280}>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/productos" className="btn-accent">
+              <Link href="/#sets" className="btn-accent">
                 Comprar ahora
               </Link>
-              <Link href="/#sets" className="btn-outline-dark">
-                Ver el pack
+              <Link href="/productos" className="btn-outline-dark">
+                Ver catálogo
               </Link>
             </div>
           </Reveal>

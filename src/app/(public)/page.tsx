@@ -3,7 +3,6 @@ import { BRAND } from '@/data/seed';
 import Hero from '@/components/home/Hero';
 import Marquee from '@/components/home/Marquee';
 import PromoStrip from '@/components/home/PromoStrip';
-import PromoBanner from '@/components/home/PromoBanner';
 import TrackOrderChip from '@/components/home/TrackOrderChip';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
@@ -78,12 +77,10 @@ export default function Home() {
       <Hero />
       <Marquee />
       <Testimonials />
-      <PromoStrip />
-      <PromoBanner />
-      <TrackOrderChip />
       <BundlesSection />
-      <Categories />
       <FeaturedCarousel />
+      <PromoStrip />
+      <Categories />
       <CategoryCarousel
         category="accesorios"
         eyebrow="COMPLEMENTOS"
@@ -94,6 +91,7 @@ export default function Home() {
       <Combos />
       <Benefits />
       <HowTo />
+      <TrackOrderChip />
       <MetroCoverage />
       <FAQ />
       <Storytelling />
