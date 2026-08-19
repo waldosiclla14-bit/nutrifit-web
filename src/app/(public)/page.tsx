@@ -77,6 +77,7 @@ export default function Home() {
       />
       <Hero />
       <Marquee />
+      <Testimonials />
       <PromoStrip />
       <PromoBanner />
       <TrackOrderChip />
@@ -93,7 +94,6 @@ export default function Home() {
       <Combos />
       <Benefits />
       <HowTo />
-      <Testimonials />
       <MetroCoverage />
       <FAQ />
       <Storytelling />
