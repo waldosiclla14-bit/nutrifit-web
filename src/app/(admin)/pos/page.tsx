@@ -123,6 +123,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [paymentReceived, setPaymentReceived] = useState(false);
+  const [shippingInput, setShippingInput] = useState(1000);
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -245,7 +246,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
     return Math.round((subtotal * discountPct) / 100);
   }, [subtotal, discountPct, discountMode, discountAmountInput]);
-  const shippingCost = mode === 'METRO' ? 1000 : 0;
+  const shippingCost = mode === 'METRO' ? Math.max(0, shippingInput) : 0;
   const total = Math.max(0, subtotal - discountAmount + shippingCost);
 
   const openRegister = async () => {
@@ -584,6 +585,17 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
                     </option>
                   ))}
                 </select>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted">Envío ($)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={shippingInput}
+                    onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))}
+                    className="input w-full text-sm"
+                  />
+                </div>
                 <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
                   <input
                     type="checkbox"
