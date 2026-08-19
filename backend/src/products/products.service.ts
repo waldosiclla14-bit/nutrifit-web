@@ -54,7 +54,7 @@ export class ProductsService {
   async updateStock(variantId: string, quantity: number) {
     if (!Number.isSafeInteger(quantity)) throw new BadRequestException('Cantidad de stock inválida');
     const res: any = await this.prisma.$executeRaw`
-      UPDATE "ProductVariant"
+      UPDATE "product_variants"
       SET "stock" = "stock" + ${quantity}
       WHERE "id" = ${variantId} AND ("stock" + ${quantity}) >= 0
     `;
@@ -404,7 +404,7 @@ export class ProductsService {
     // mode. The DB @unique / column types handle types; count==0 means the
     // availability guard was not satisfied.
     const res: any = await this.prisma.$executeRaw`
-      UPDATE "ProductVariant"
+      UPDATE "product_variants"
       SET "reservedStock" = "reservedStock" + ${quantity}
       WHERE "id" = ${variantId}
         AND ("stock" - "reservedStock") >= ${quantity}
