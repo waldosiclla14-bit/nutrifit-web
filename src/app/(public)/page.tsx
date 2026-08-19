@@ -93,9 +93,9 @@ export default function Home() {
       <Combos />
       <Benefits />
       <HowTo />
+      <Testimonials />
       <MetroCoverage />
       <FAQ />
-      <Testimonials />
       <Storytelling />
       <BlogPreview />
       <Newsletter />
