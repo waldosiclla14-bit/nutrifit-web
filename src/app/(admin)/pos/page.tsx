@@ -245,7 +245,8 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
     return Math.round((subtotal * discountPct) / 100);
   }, [subtotal, discountPct, discountMode, discountAmountInput]);
-  const total = Math.max(0, subtotal - discountAmount);
+  const shippingCost = mode === 'METRO' ? 1000 : 0;
+  const total = Math.max(0, subtotal - discountAmount + shippingCost);
 
   const openRegister = async () => {
     try {
@@ -285,7 +286,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           deliveryTime: mode === 'METRO' ? deliveryTime : undefined,
           subtotal,
           discount: discountAmount,
-          shippingCost: 0,
+          shippingCost,
           total,
           paymentMethod: payment,
           items: cart.map((l) => ({
@@ -660,6 +661,12 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
               <div className="flex justify-between text-red-500">
                 <span>Descuento ({discountMode === 'percent' ? `-${discountPct}%` : `-${formatPrice(discountAmount)}`})</span>
                 <span>-{formatPrice(discountAmount)}</span>
+              </div>
+            )}
+            {shippingCost > 0 && (
+              <div className="flex justify-between text-muted">
+                <span>Envío (metro)</span>
+                <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
             <div className="mt-1 flex items-center justify-between">
