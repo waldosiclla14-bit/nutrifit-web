@@ -111,62 +111,53 @@ export class ProductsService {
 
     const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
 
-    // Non-interactive transaction (pgbouncer/transaction-mode compatible):
-    // collect all writes as Prisma promises, then commit them together. SKU
-    // uniqueness uses sequential reads + the ProductVariant.sku @unique
-    // constraint as the hard backstop.
-    const writes: any[] = [];
+    if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
+      productData.costPrice = productData.costPrice ?? 0;
+    }
+
+    // Sequential writes (Neon pgbouncer transaction-mode compatible):
+    // Each variant is updated/created individually. SKU uniqueness uses
+    // sequential reads + the ProductVariant.sku @unique constraint as the
+    // hard backstop.
     for (const v of variants) {
       const vSku = String(v.sku || '').trim().toUpperCase();
       const vPrice = Number(v.price);
       const vCost = Number(v.costPrice);
       if (v.id) {
-        writes.push(
-          this.prisma.productVariant.update({
-            where: { id: v.id },
-            data: {
-              variantName: String(v.variantName || '').trim() || undefined,
-              sku: vSku ? await this.uniqueSku(vSku, 'variant', v.id) : undefined,
-              attributes: v.attributes || undefined,
-              price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
-              costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
-              stock: v.stock !== undefined ? Math.max(0, Number(v.stock) || 0) : undefined,
-              lowStockAlert: v.lowStockAlert !== undefined ? Math.max(0, Number(v.lowStockAlert) || 5) : undefined,
-              isActive: v.isActive !== undefined ? !!v.isActive : undefined,
-            },
-          }),
-        );
+        await this.prisma.productVariant.update({
+          where: { id: v.id },
+          data: {
+            variantName: String(v.variantName || '').trim() || undefined,
+            sku: vSku ? await this.uniqueSku(vSku, 'variant', v.id) : undefined,
+            attributes: v.attributes || undefined,
+            price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
+            costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
+            stock: v.stock !== undefined ? Math.max(0, Number(v.stock) || 0) : undefined,
+            lowStockAlert: v.lowStockAlert !== undefined ? Math.max(0, Number(v.lowStockAlert) || 5) : undefined,
+            isActive: v.isActive !== undefined ? !!v.isActive : undefined,
+          },
+        });
       } else {
-        writes.push(
-          this.prisma.productVariant.create({
-            data: {
-              productId: id,
-              sku: await this.uniqueSku(vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, 'variant'),
-              variantName: String(v.variantName || '').trim() || 'Única',
-              attributes: {},
-              price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
-              costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
-              stock: Math.max(0, Number(v.stock) || 0),
-              lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
-            },
-          }),
-        );
+        await this.prisma.productVariant.create({
+          data: {
+            productId: id,
+            sku: await this.uniqueSku(vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, 'variant'),
+            variantName: String(v.variantName || '').trim() || 'Única',
+            attributes: {},
+            price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
+            costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
+            stock: Math.max(0, Number(v.stock) || 0),
+            lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
+          },
+        });
       }
     }
 
-    if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
-      productData.costPrice = productData.costPrice ?? 0;
-    }
-
-    writes.push(
-      this.prisma.product.update({
-        where: { id },
-        data: productData,
-        include: { category: true, brand: true, variants: true },
-      }),
-    );
-    const results = await this.prisma.$transaction(writes);
-    return results[results.length - 1];
+    return this.prisma.product.update({
+      where: { id },
+      data: productData,
+      include: { category: true, brand: true, variants: true },
+    });
   }
 
   async delete(id: string, userId?: string) {

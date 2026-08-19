@@ -1391,6 +1391,7 @@ function Productos({
       let created = 0;
       let updated = 0;
       let errors = 0;
+      let lastError = '';
       for (const [, rs] of grouped) {
         const first = rs[0];
         const skuP = String(get(first, 'sku_producto') || '').trim();
@@ -1451,10 +1452,15 @@ function Productos({
           }
         } catch (err: any) {
           errors++;
-          console.error(err);
+          const detail = err?.message || err?.statusText || 'Error desconocido';
+          lastError = `${nameP || skuP || '?'}: ${detail}`;
+          console.error('Import error:', nameP, detail, err);
         }
       }
-      setImportResult({ ok: errors === 0, msg: `Importación lista: ${created} creado(s), ${updated} actualizado(s), ${errors} con error.` });
+      const summary = errors === 0
+        ? `Importación lista: ${created} creado(s), ${updated} actualizado(s).`
+        : `Importación: ${created} creado(s), ${updated} actualizado(s), ${errors} con error.${lastError ? '\n' + lastError : ''}`;
+      setImportResult({ ok: errors === 0, msg: summary });
       await onChanged();
     } catch (err: any) {
       setImportResult({ ok: false, msg: err?.message || 'No se pudo leer el archivo. Revisa que sea un .xlsx o .csv válido.' });
