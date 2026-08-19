@@ -29,10 +29,10 @@ export default function Categories() {
                   className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300" />
               <div className="absolute bottom-0 w-full p-4 text-white">
-                <h3 className="font-display text-lg uppercase tracking-wide">{cat.label}</h3>
-                <p className="text-xs text-white/0 transition-colors duration-300 group-hover:text-white/85">
+                <h3 className="font-display text-lg uppercase tracking-wide drop-shadow-md">{cat.label}</h3>
+                <p className="mt-1 text-xs text-white/70 transition-colors duration-300 group-hover:text-white/90">
                   {cat.blurb}
                 </p>
               </div>
