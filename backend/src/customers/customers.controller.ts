@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -33,6 +34,7 @@ export class CustomersController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async create(@Req() req: Request) {
     const data = await readJsonBody(req);
     return this.customersService.create({

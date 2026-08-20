@@ -46,7 +46,7 @@ async function bootstrap() {
       .filter(Boolean);
     app.use(
       cors({
-        origin: corsOrigins.length > 0 ? corsOrigins : true,
+        origin: corsOrigins.length > 0 ? corsOrigins : false,
         credentials: true,
       }),
     );
@@ -61,7 +61,9 @@ async function bootstrap() {
       .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document);
+    if (process.env.NODE_ENV !== 'production') {
+      SwaggerModule.setup('api/docs', app, document);
+    }
 
     const port = process.env.PORT || 3001;
     await app.listen(port);

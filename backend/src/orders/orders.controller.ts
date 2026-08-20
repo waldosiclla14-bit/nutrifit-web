@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -46,6 +47,7 @@ export class OrdersController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async create(@Request() req: any) {
     return this.ordersService.create({ ...(await readJsonBody(req)), createdById: req.user?.id });
   }

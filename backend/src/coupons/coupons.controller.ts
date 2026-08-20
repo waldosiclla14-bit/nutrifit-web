@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Role } from '@prisma/client';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
@@ -12,6 +13,7 @@ export class CouponsController {
   constructor(private couponsService: CouponsService) {}
 
   @Post('validate')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async validate(@Req() req: Request) {
     const body = await readJsonBody(req);
     return this.couponsService.validateCoupon(body);
