@@ -17,7 +17,7 @@ jobs:
         run: |
           set -m
           docker run -d --name app512 --memory=512m --memory-swap=512m \
-            -e NODE_ENV=production -e JWT_SECRET=test-secret-123456 -e PORT=3001 \
+            -e NODE_ENV=production -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e PORT=3001 \
             -p 3001:3001 nutrifit-api 2>&1
           echo "container started"
           for i in $(seq 1 25); do

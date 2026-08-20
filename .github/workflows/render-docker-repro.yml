@@ -10,7 +10,7 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: nutrifit
         ports:
           - 5432:5432
@@ -26,15 +26,15 @@ jobs:
           docker build -f backend/Dockerfile -t nutrifit-render-repro backend/ 2>&1 | tail -8
       - name: Probar múltiples topes de memoria
         env:
-          DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
+          DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public
         run: |
           for LIMIT in 512m 1024m; do
             echo "########## LIMIT=$LIMIT ##########"
             docker run -d --name nr \
               --network=host \
               --memory=$LIMIT --memory-swap=$LIMIT --cpus=1 \
-              -e DATABASE_URL="postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public" \
-              -e JWT_SECRET=test-secret-123456 \
+              -e DATABASE_URL="postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public" \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -e CORS_ORIGINS=http://localhost:3000 \
               -e PORT=3001 -e NODE_ENV=production \
               nutrifit-render-repro

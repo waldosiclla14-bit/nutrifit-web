@@ -10,7 +10,7 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: nutrifit
         ports: ["5432:5432"]
         options: >-
@@ -19,8 +19,8 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
-      JWT_SECRET: test-secret-123456
+      DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       PORT: 3001
     steps:
       - uses: actions/checkout@v4
@@ -31,13 +31,13 @@ jobs:
       - name: db push (esquema en postgres local) dentro del contenedor
         run: |
           docker run --rm --network=host \
-            -e DATABASE_URL="$DATABASE_URL" \
-            -e JWT_SECRET=1 nutrifit-api-db \
+            -e DATABASE_URL="postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public" \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} nutrifit-api-db \
             npx prisma db push --accept-data-loss 2>&1 | tail -8
       - name: Arrancar app a 512 MiB con DB real
         run: |
           docker run -d --name app512db --network=host --memory=512m --memory-swap=512m \
-            -e NODE_ENV=production -e DATABASE_URL="$DATABASE_URL" -e JWT_SECRET=test-secret-123456 -e PORT=3001 \
+            -e NODE_ENV=production -e DATABASE_URL="postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public" -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e PORT=3001 \
             nutrifit-api-db 2>&1
           for i in $(seq 1 25); do
             sleep 2

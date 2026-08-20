@@ -10,7 +10,7 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: nutrifit
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: nutrifit
         ports:
           - 5432:5432
@@ -20,8 +20,8 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
-      JWT_SECRET: test-secret-123456
+      DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       CORS_ORIGINS: http://localhost:3000
       PORT: 3001
     steps:
@@ -50,8 +50,8 @@ jobs:
         working-directory: backend
         timeout-minutes: 3
         env:
-          DATABASE_URL: postgresql://postgres:nutrifit@localhost:5432/nutrifit?schema=public
-          JWT_SECRET: test-secret-123456
+          DATABASE_URL: postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/nutrifit?schema=public
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CORS_ORIGINS: http://localhost:3000
           PORT: 4001
           NODE_ENV: production
