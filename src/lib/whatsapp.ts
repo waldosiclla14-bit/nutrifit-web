@@ -98,6 +98,7 @@ export type DeliverySaleMessage = {
   items: { productName: string; variantName?: string; quantity: number; total: number }[];
   subtotal: number;
   discount: number;
+  shippingCost: number;
   total: number;
   paymentLabel: string;
   paymentReceived: boolean;
@@ -136,7 +137,12 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   });
   lines.push('');
   lines.push('─'.repeat(24));
-  lines.push(`*Total:* ${formatPrice(m.total)}`);
+  lines.push(`*Subtotal:* ${formatPrice(m.subtotal)}`);
+  if (m.discount) {
+    lines.push(`*Descuento:* -${formatPrice(m.discount)}`);
+  }
+  lines.push(`*Envío:* ${m.shippingCost > 0 ? formatPrice(m.shippingCost) : 'GRATIS'}`);
+  lines.push(`*TOTAL:* ${formatPrice(m.total)}`);
   lines.push(`*Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ' · CONTRA ENTREGA'}`);
   lines.push('');
   lines.push('*ENTREGA AGENDADA:*');

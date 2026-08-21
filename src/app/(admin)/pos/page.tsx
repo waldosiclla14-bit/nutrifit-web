@@ -325,6 +325,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
             })),
             subtotal,
             discount: discountAmount,
+            shippingCost,
             total,
             paymentLabel: PAYMENT_LABELS[payment] ?? payment,
             paymentReceived,
