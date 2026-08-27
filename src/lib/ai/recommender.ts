@@ -348,6 +348,73 @@ function bestGoalPlan(q: string): GoalPlan | undefined {
   return GOAL_PLANS.find((plan) => plan.match(q));
 }
 
+const WHEY_EDU = `🥛 ¿QUÉ ES LA WHEY PROTEIN?
+
+Es la proteína que se extrae del suero de la leche (el subproducto líquido al hacer queso). Es considerada la proteína de MÁS ALTO valor biológico que existe: tiene un perfil completo de los 9 aminoácidos esenciales que tu cuerpo no puede fabricar solo, y se digiere y absorbe muy rápido.
+
+Por eso es la reina de la suplementación deportiva: en cuanto el cuerpo la recibe, los aminoácidos (especialmente los BCAAs: leucina, isoleucina y valina) entran al torrente y tu músculo los usa para repararse y crecer.
+
+✨ Beneficios clave:
+- 💪 Recuperación muscular: repara la fibra dañada tras el entreno y reduce el catabolismo.
+- 📈 Crecimiento e hipertrofia: aporta los ladrillos (aminoácidos) para construir masa magra.
+- ⏱️ Absorción rápida: ideal justo después de entrenar.
+- 🍽️ Saciedad: ayuda a controlar el apetito, por eso también se usa en dietas de pérdida de peso.
+- 💊 Extra (según la presentación): muchas vienen con BCAAs, glutamina, biotina, colágeno o coenzima Q10 (como la Whey Woman).
+
+⏰ CUÁNDO TOMARLA
+- Justo después de entrenar (ventana de recuperación): 1 porción en 200–250 ml de agua fría o leche descremada.
+- Como refuerzo entre comidas (media mañana / media tarde) si no llegas a tu proteína diaria con la comida.
+
+📐 CUÁNTA TOMAR
+- La recomendación general es de 1,6–2,2 g de proteína por kilo de peso al día para objetivos de músculo.
+- Ejemplo: si pesas 70 kg, apunta a ~112–154 g de proteína al día entre todo (comida + suplemento).
+- Una porción típica rinde 21–28 g de proteína, según el producto.
+
+🔄 CÓMO TOMARLA
+- Mezclar 1 medida en agua fría o leche descremada (nunca agua caliente: desatura la proteína).
+- Agitar bien en shaker para que no queden grumos.
+- Se puede combinar con creatina en el mismo batido sin problema.
+
+💡 MOTIVACIÓN: la whey es un complemento, no un sustituto. La base siempre debe ser una buena alimentación y entrenamiento constante.
+
+📦 NUESTRAS OPCIONES DE WHEY
+
+`;
+
+function wheyCatalog(products: Product[]): string {
+  const wheys = products
+    .filter((p) => p.category === 'proteinas' && p.tags?.some((t) => t.toLowerCase().includes('whey')))
+    .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating);
+
+  const lines = wheys.map((p) => {
+    let line = `• ${p.name}`;
+    line += `\n  💰 ${p.oldPrice && p.oldPrice > p.price ? `${formatPrice(p.oldPrice)} → ${formatPrice(p.price)}` : formatPrice(p.price)} · ${p.rating}★ (${p.reviews} reseñas)`;
+    if (p.variants?.length) {
+      line += `\n  🎨 Sabores: ${p.variants.map((v) => v.name).join(', ')}`;
+    }
+    const protInfo = p.nutrientes?.find(([k]) => k.toLowerCase().includes('prote'));
+    if (protInfo) line += `\n  🥩 ${protInfo[0]}: ${protInfo[1]}`;
+    line += `\n   /productos/${p.slug}`;
+    return line;
+  });
+
+  return lines.length ? lines.join('\n\n') : '';
+}
+
+function buildWheyGuide(products: Product[], shippingLine: string): string {
+  const catalog = wheyCatalog(products);
+  return `${WHEY_EDU}${catalog}\n\nTodos 100% originales con sello. ${shippingLine}\n\n¿Quieres que te recomiende cuál elegir según tu objetivo, o te ayudo con otra cosa? 💪`;
+}
+
+function isWheyQuery(q: string): boolean {
+  return (
+    (q.includes('whey') || q.includes('proteina') || q.includes('suero') || q.includes('bcaa')) &&
+    !q.includes('vegan') &&
+    !q.includes('vegetal') &&
+    !q.includes('guisante')
+  );
+}
+
 function trimSlug(name: string): string {
   return name
     .toLowerCase()
@@ -463,6 +530,12 @@ Dime, por ejemplo:
       const plan = bestGoalPlan(q);
       if (plan) {
         return buildPlan(plan.heading, plan.explanation, plan.select(products), plan.closing);
+      }
+
+      // Deep dive educativo sobre whey/proteína (sin objetivo claro definido)
+      const goalTerms = ['musculo', 'masa', 'fuerza', 'potencia', 'adelgazar', 'bajar', 'peso', 'dormir', 'vegano', 'energia', 'bienestar', 'recuper'];
+      if (isWheyQuery(q) && !goalTerms.some((t) => q.includes(t))) {
+        return buildWheyGuide(products, shippingLine);
       }
 
       const strategy = hitStrategy(q, products);
