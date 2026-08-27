@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
+import AiChatbot from '@/components/layout/AiChatbot';
 import RecentSalesToast from '@/components/ui/RecentSalesToast';
 import StickyCTAMobile from '@/components/home/StickyCTAMobile';
 import ExitIntentPopup from '@/components/home/ExitIntentPopup';
@@ -103,6 +104,7 @@ export default function PublicLayout({
           <Footer />
           <CartDrawer />
           <WhatsAppFloat />
+          <AiChatbot />
           <RecentSalesToast />
           <StickyCTAMobile />
           <ExitIntentPopup />
