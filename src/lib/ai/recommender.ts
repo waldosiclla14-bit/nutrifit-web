@@ -54,10 +54,30 @@ const INTENT_RULES: Array<{ intent: Intent; words: string[] }> = [
   },
 ];
 
+function norm(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeWord(w: string): string {
+  return w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function hasTerm(queryNorm: string, term: string): boolean {
+  const t = normalizeWord(term).trim();
+  if (!t) return false;
+  if (t.includes(' ')) return queryNorm.includes(t);
+  return new RegExp(`(^|[^a-z0-9])${t}([^a-z0-9]|$)`).test(queryNorm);
+}
+
 function detectIntent(query: string): Intent {
-  const q = query.toLowerCase();
+  const q = norm(query);
   for (const rule of INTENT_RULES) {
-    if (rule.words.some((w) => q.includes(w))) {
+    if (rule.words.some((w) => hasTerm(q, w))) {
       return rule.intent;
     }
   }
@@ -77,15 +97,16 @@ const CATEGORY_KEYWORDS: Array<{ cat: string; words: string[] }> = [
 
 function scoreProduct(p: Product, clean: string): number {
   let score = 0;
-  const name = p.name.toLowerCase();
-  const tags = (p.tags || []).join(' ').toLowerCase();
-  const desc = (p.desc || '').toLowerCase();
-  const benefits = (p.benefits || []).join(' ').toLowerCase();
+  const name = norm(p.name);
+  const tags = norm((p.tags || []).join(' '));
+  const desc = norm(p.desc || '');
+  const benefits = norm((p.benefits || []).join(' '));
   const blob = `${name} ${tags} ${desc} ${benefits}`;
+  const nclean = norm(clean);
 
   for (const rule of CATEGORY_KEYWORDS) {
     for (const w of rule.words) {
-      const term = w.trim();
+      const term = norm(w);
       if (!term) continue;
       if (blob.includes(term)) {
         score += 4;
@@ -96,23 +117,23 @@ function scoreProduct(p: Product, clean: string): number {
 
   for (const goal of p.goal || []) {
     const g = goal.toLowerCase();
-    if (clean.includes('musculo') && (g === 'ganancia-muscular' || g === 'fuerza')) score += 3;
-    if (clean.includes('fuerza') && g === 'fuerza') score += 4;
-    if (clean.includes('energia') && (g === 'energia' || g === 'rendimiento')) score += 3;
-    if (clean.includes('recuper') && (g === 'rendimiento' || g === 'bienestar')) score += 3;
-    if (clean.includes('adelgazar') || clean.includes('bajar de peso')) if (g === 'control-peso') score += 5;
-    if (clean.includes('vegano') || clean.includes('vegan')) if (g === 'vegano') score += 4;
-    if (clean.includes('salud') && (g === 'salud' || g === 'bienestar')) score += 3;
+    if (nclean.includes('musculo') && (g === 'ganancia-muscular' || g === 'fuerza')) score += 3;
+    if (nclean.includes('fuerza') && g === 'fuerza') score += 4;
+    if (nclean.includes('energia') && (g === 'energia' || g === 'rendimiento')) score += 3;
+    if (nclean.includes('recuper') && (g === 'rendimiento' || g === 'bienestar')) score += 3;
+    if (nclean.includes('adelgazar') || nclean.includes('bajar de peso')) if (g === 'control-peso') score += 5;
+    if (nclean.includes('vegano') || nclean.includes('vegan')) if (g === 'vegano') score += 4;
+    if (nclean.includes('salud') && (g === 'salud' || g === 'bienestar')) score += 3;
   }
 
   if (p.bestseller) score += 1;
-  if (clean.includes('barat') || clean.includes('oferta') || clean.includes('descuento')) score += Math.max(0, 4 - Math.round(p.price / 10000));
+  if (nclean.includes('barat') || nclean.includes('oferta') || nclean.includes('descuento')) score += Math.max(0, 4 - Math.round(p.price / 10000));
 
   return score;
 }
 
 export function findProductMatches(products: Product[], rawQuery: string, limit = 3) {
-  const clean = rawQuery.toLowerCase();
+  const clean = norm(rawQuery);
   const scored = products
     .map((p) => ({ p, score: scoreProduct(p, clean) }))
     .filter((x) => x.score > 0)
@@ -129,14 +150,233 @@ export function findProductMatches(products: Product[], rawQuery: string, limit 
   return scored.slice(0, limit);
 }
 
-function formatMatchList(matches: Array<{ p: Product; score: number }>): string {
-  return matches
-    .map(({ p, score }) => {
-      const price = p.oldPrice && p.oldPrice > p.price ? `~~${formatPrice(p.oldPrice)}~~ ${formatPrice(p.price)}` : formatPrice(p.price);
-      const star = score >= 0 ? `${p.rating}★ (${p.reviews} reseñas)` : '';
-      return `• ${p.name} — ${price} ${star}\n   /productos/${p.slug}`;
-    })
-    .join('\n');
+function firstBenefit(p: Product): string {
+  const b = p.benefits?.[0];
+  if (!b) return '';
+  return b.length > 110 ? `${b.slice(0, 110).trim()}...` : b;
+}
+
+function formatPriceLine(p: Product): string {
+  return p.oldPrice && p.oldPrice > p.price
+    ? `${formatPrice(p.oldPrice)} → ${formatPrice(p.price)}`
+    : formatPrice(p.price);
+}
+
+function productBlock(p: Product, note?: string): string {
+  const lines: string[] = [];
+  lines.push(`• ${p.name}`);
+  lines.push(`  💰 ${formatPriceLine(p)} · ${p.rating}★ (${p.reviews} reseñas)`);
+  if (note) lines.push(`  🎯 ${note}`);
+  const benefit = firstBenefit(p);
+  if (benefit) lines.push(`  ✅ ${benefit}`);
+  const uso =
+    p.modoUso && p.modoUso.length > 120 ? `${p.modoUso.slice(0, 120).trim()}...` : p.modoUso;
+  if (uso) lines.push(`  📘 Cómo usarlo: ${uso}`);
+  lines.push(`   /productos/${p.slug}`);
+  return lines.join('\n');
+}
+
+function buildPlan(
+  heading: string,
+  explanation: string,
+  picks: Array<{ p: Product; note: string }>,
+  closing: string,
+): string {
+  const blocks = picks.map(({ p, note }) => productBlock(p, note)).join('\n\n');
+  return `${heading}\n\n${explanation}\n\n${blocks}\n\n${closing}`;
+}
+
+interface GoalPlan {
+  match: (q: string) => boolean;
+  heading: string;
+  explanation: string;
+  select: (products: Product[]) => Array<{ p: Product; note: string }>;
+  closing: string;
+}
+
+const GOAL_PLANS: GoalPlan[] = [
+  {
+    match: (q) =>
+      q.includes('musculo') ||
+      q.includes('masa') ||
+      q.includes('volumen') ||
+      q.includes('crecer') ||
+      q.includes('aumentar'),
+    heading: '💪 Plan para GANAR MÚSCULO',
+    explanation:
+      'Para ganar masa muscular se combinan dos claves: suficiente proteína diaria (para reparar y construir fibra) y creatina (para más fuerza y volumen de entrenamiento). Este es el kit básico que recomendamos:',
+    select: (products) => {
+      const whey = [...products]
+        .filter((p) => p.category === 'proteinas' && p.tags?.some((t) => t.includes('whey')))
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating)[0];
+      const prot = whey || products.find((p) => p.id === 4)!;
+      const creat =
+        findProductMatches(products, 'creatina', 6).find(({ p }) => p.category === 'creatinas')?.p ||
+        products.find((p) => p.id === 31)!;
+      return [
+        { p: prot, note: 'Tu fuente de proteína de calidad, ideal después de entrenar.' },
+        { p: creat, note: 'El complemento de fuerza para progresar en cada serie.' },
+      ];
+    },
+    closing:
+      '💡 Tip: hay un Pack Proteína + Creatina en oferta que junta ambas y te ahorra dinero. ¿Te lo muestro?',
+  },
+  {
+    match: (q) => q.includes('fuerza') || q.includes('potencia') || q.includes('power'),
+    heading: '🏋️ Plan para FUERZA Y POTENCIA',
+    explanation:
+      'Para levantar más peso y tener más potencia, la creatina es el suplemento con mayor respaldo científico. Es monohidrato puro, se acumula en el músculo y te da fuerza en las últimas repeticiones:',
+    select: (products) => {
+      const creat =
+        findProductMatches(products, 'creatina', 6).find(({ p }) => p.category === 'creatinas')?.p ||
+        products.find((p) => p.id === 31)!;
+      const pump = products
+        .filter(
+          (p) =>
+            p.tags?.some((t) => t.includes('oxido') || t.includes('citrulina') || t.includes('pump') || t.includes('arginina')),
+        )
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating)[0];
+      const picks = [{ p: creat, note: 'El estándar de oro para fuerza y rendimiento.' }];
+      if (pump) picks.push({ p: pump, note: 'Mejora el pump y la circulación durante el entreno.' });
+      return picks;
+    },
+    closing:
+      '💡 Tip: si tu meta es el mejor pump del entrenamiento, sumar un óxido nítrico antes de entrenar te ayuda mucho.',
+  },
+  {
+    match: (q) => q.includes('energia') || q.includes('pre entreno') || q.includes('pre-entreno') || q.includes('preentreno') || q.includes('rendimiento'),
+    heading: '⚡ Plan para ENERGÍA Y PRE-ENTRENO',
+    explanation:
+      'Para llegar con energía, enfoque y un buen pump al gimnasio, el óxido nítrico y los aminoácidos son la vía clásica. Estimulan la circulación y la resistencia sin los bajones del café:',
+    select: (products) => {
+      const rend = products
+        .filter(
+          (p) =>
+            p.category === 'rendimiento' &&
+            p.tags?.some((t) => t.includes('oxido') || t.includes('citrulina') || t.includes('arginina') || t.includes('pump')),
+        )
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating)[0];
+      const picks: Array<{ p: Product; note: string }> = [];
+      if (rend) picks.push({ p: rend, note: 'Energía, enfoque y pump antes de entrenar.' });
+      const creat = products
+        .filter((p) => p.category === 'creatinas')
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating)[0];
+      if (creat) picks.push({ p: creat, note: 'Resistencia y fuerza sostenidas sesión a sesión.' });
+      return picks;
+    },
+    closing: '💡 ¿A qué hora entrenas? Te ajusto la recomendación al momento del día.',
+  },
+  {
+    match: (q) => q.includes('dormir') || q.includes('sueno') || q.includes('estres') || q.includes('cansa') || q.includes('recuper') || q.includes('descans') || q.includes('relaj'),
+    heading: '😴 Plan para RECUPERACIÓN Y DESCANSO',
+    explanation:
+      'El músculo crece cuando descansas. Para dormir profundo, bajar el estrés y acelerar la recuperación, estos son tus aliados de noche. Hay incluso un Combo Noche de Recuperación listo:',
+    select: (products) => {
+      const picks: Array<{ p: Product; note: string }> = [];
+      const zma = products.find((p) => p.tags?.includes('zma'));
+      if (zma) picks.push({ p: zma, note: 'Magnesio + zinc para dormir y recuperar el músculo.' });
+      const melena = products.find((p) => p.tags?.some((t) => t.includes('melena')));
+      if (melena) picks.push({ p: melena, note: 'Apoyo natural para calmar la mente y dormir mejor.' });
+      if (picks.length === 0) {
+        const mag = findProductMatches(products, 'magnesio', 6).find(({ p }) => p.category === 'minerales');
+        if (mag) picks.push({ p: mag.p, note: 'El mineral clave para relajación y sueño.' });
+      }
+      return picks;
+    },
+    closing:
+      '💡 Tenemos el "Combo Noche de Recuperación" (ZMA + Melena de León) a $25.000. ¿Te lo armo?',
+  },
+  {
+    match: (q) => q.includes('adelgazar') || q.includes('bajar') || q.includes('peso') || q.includes('grasa') || q.includes('defin') || q.includes('slim') || q.includes('quema') || q.includes('control de peso'),
+    heading: '🔥 Plan para CONTROL DE PESO Y DEFINICIÓN',
+    explanation:
+      'Ningún suplemento sustituye la dieta, pero sí puede apoyar el metabolismo, dar saciedad y ayudar a usar la grasa como energía. Esto recomiendo como apoyo:',
+    select: (products) => {
+      const picks: Array<{ p: Product; note: string }> = [];
+      const quema = findProductMatches(products, 'quemador carnitina', 6).find(
+        ({ p }) => p.category === 'control-peso',
+      )?.p;
+      if (quema) picks.push({ p: quema, note: 'Apoya el metabolismo y el uso de grasa como energía.' });
+      const prot = findProductMatches(products, 'whey protein', 6).find(
+        ({ p }) => p.category === 'proteinas',
+      )?.p;
+      if (prot) picks.push({ p: prot, note: 'Saciedad y proteína para no perder músculo en déficit.' });
+      return picks;
+    },
+    closing: '💡 La proteína es super útil en definición: evita que bajes músculo junto con grasa.',
+  },
+  {
+    match: (q) => q.includes('vegano') || q.includes('vegan') || q.includes('vegetar') || q.includes('planta') || q.includes('sin lactosa'),
+    heading: '🌱 Plan PARA VEGANOS / VEGETARIANOS',
+    explanation:
+      'Perfecto, tenemos opciones 100% vegetales para que no sacrifiques ni ética ni resultados. La proteína vegana de guisante rinde igual que la whey para tu recuperación:',
+    select: (products) => {
+      const veg = findProductMatches(products, 'proteina vegana', 6).find(
+        ({ p }) => p.goal?.includes('vegano'),
+      )?.p;
+      const picks: Array<{ p: Product; note: string }> = [];
+      if (veg) picks.push({ p: veg, note: '24 g de proteína vegetal por porción, sin lácteos ni soya.' });
+      const creat = products.find((p) => p.category === 'creatinas');
+      if (creat) picks.push({ p: creat, note: 'La creatina es 100% apta vegana y no viene de animales.' });
+      return picks;
+    },
+    closing: '💡 La creatina en polvo es vegana al 100%. La proteína de guisante es nuestra top recomendada.',
+  },
+  {
+    match: (q) => q.includes('bienestar') || q.includes('salud') || q.includes('omega') || q.includes('vitamina') || q.includes('corazon') || q.includes('colesterol') || q.includes('defensa'),
+    heading: '🌿 Plan para SALUD Y BIENESTAR',
+    explanation:
+      'Para el día a día, la base es un buen omega 3 y vitaminas que te cubran lo que la dieta no puede. Esto apoya corazón, colesterol e inmunidad:',
+    select: (products) => {
+      const picks: Array<{ p: Product; note: string }> = [];
+      const omega = products
+        .filter((p) => p.tags?.some((t) => t.includes('omega')))
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating)[0];
+      if (omega) picks.push({ p: omega, note: 'Corazón, inflamación y salud general.' });
+      const vit = [...products]
+        .filter((p) => p.category === 'vitaminas' || p.tags?.some((t) => t.includes('multivitam') || t.includes('vitamina c')))
+        .sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating);
+      const multivit = vit[0];
+      if (multivit) picks.push({ p: multivit, note: 'Cobertura completa de micronutrientes a diario.' });
+      return picks;
+    },
+    closing: '💡 ¿Buscas algo puntual como omega, vitamina C o colágeno? Pregúntame y lo afinamos.',
+  },
+];
+
+function bestGoalPlan(q: string): GoalPlan | undefined {
+  return GOAL_PLANS.find((plan) => plan.match(q));
+}
+
+function trimSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function hitStrategy(q: string, products: Product[]): string {
+  const dir = {
+    proteinas: ['proteina', 'whey', 'suero'],
+    creatinas: ['creatina', 'monohidrato'],
+    rendimiento: ['pre entreno', 'pre-entreno', 'preentreno', 'oxido nitrico', 'citrulina', 'arginina', 'bcaa', 'amino', 'pump'],
+    vitaminas: ['vitamina', 'multivitam', 'vitamin'],
+    minerales: ['magnesio', 'zinc', 'mineral'],
+    bienestar: ['omega', 'ashwagandha', 'colageno', 'melena', 'zma', 'berberina', 'shilajit', 'melatonina'],
+    'control-peso': ['quemador', 'carnitina', 'slim', 'keto'],
+  } as const;
+
+  for (const [cat, words] of Object.entries(dir)) {
+    if (words.some((w) => hasTerm(q, w))) {      const list = products.filter((p) => p.category === cat).sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0) || b.rating - a.rating);
+      if (list.length) {
+        const top = list.slice(0, 2).map((p) => productBlock(p));
+        return `¡Claro! En **${cat === 'proteinas' ? 'Proteínas' : cat === 'creatinas' ? 'Creatinas' : cat === 'rendimiento' ? 'Rendimiento' : cat === 'vitaminas' ? 'Vitaminas' : cat === 'minerales' ? 'Minerales' : cat === 'bienestar' ? 'Bienestar' : 'Control de Peso'}** estos son los más elegidos:\n\n${top.join('\n\n')}\n\n¿Quieres que te recomiende el mejor según tu objetivo exacto?`;
+      }
+    }
+  }
+  return '';
 }
 
 export function generateRecommendation(
@@ -145,10 +385,25 @@ export function generateRecommendation(
   ctx: RecommendContext,
 ): string {
   const intent = detectIntent(rawQuery);
-  const q = rawQuery.toLowerCase();
+  const q = norm(rawQuery);
   const shippingLine = ctx.freeShippingFrom > 0
     ? `Envío gratis en compras sobre ${formatPrice(ctx.freeShippingFrom)}.`
     : 'Tenemos envío coordinado.';
+
+  // Explicit product name/link matching
+  const slug = rawQuery.match(/\/productos\/([a-z0-9-]+)/i)?.[1];
+  if (slug) {
+    const p = products.find((x) => x.slug === slug);
+    if (p) {
+      return `Este es el detalle de **${p.name}**\n\n💰 ${formatPriceLine(p)} · ${p.rating}★ (${p.reviews} reseñas)\n\n${p.desc}\n\n📘 Modo de uso: ${p.modoUso}\n\nValoración: ${p.rating}★ de 5 con ${p.reviews} reseñas. 100% original. ${shippingLine}\n\n¿Te lo agrego al carrito o te ayudo con otra cosa? 💪`;
+    }
+  }
+
+  // Direct product name search (e.g. "creatina eco naturales")
+  const direct = products.find((p) => p.slug === trimSlug(rawQuery));
+  if (direct) {
+    return `Este es el detalle de **${direct.name}**\n\n💰 ${formatPriceLine(direct)} · ${direct.rating}★ (${direct.reviews} reseñas)\n\n${direct.desc}\n\n📘 Modo de uso: ${direct.modoUso}\n\n100% original. ${shippingLine}\n\n¿Te lo agrego al carrito? 💪`;
+  }
 
   switch (intent) {
     case 'shipping': {
@@ -186,34 +441,53 @@ No manejamos tarjetas ni pago online por ahora, pero es súper simple. ¿En qué
 Atendemos de lunes a sábado, 10:00 a 20:00 hrs. ¡Te respondemos al tiro!`;
     }
     case 'greeting': {
-      return `¡Hola! 👋 Soy el asistente virtual de NutriFit. Te ayudo a elegir el suplemento ideal según tu objetivo, o a resolver dudas de envío y pago. ¿En qué te ayudo hoy?`;
+      return `¡Hola! 👋 Soy el asistente virtual de NutriFit. Te ayudo a elegir el suplemento ideal según tu objetivo (músculo, fuerza, energía, bienestar o control de peso) y resuelvo dudas de envío y pago.
+
+Dime, por ejemplo:
+- "Quiero ganar músculo"
+- "Creatina para fuerza"
+- "Algo para dormir mejor"
+
+¿En qué te ayudo hoy?`;
     }
     case 'product_question': {
       const matches = findProductMatches(products, rawQuery, 3);
       if (matches.length > 0) {
-        return `Te dejo las mejores opciones según lo que buscas:\n\n${formatMatchList(matches)}\n\nPuedes ver el detalle completo tocando el enlace, y agregarlo al carrito. ¿Te ayudo con otro? 😊`;
+        const blocks = matches.map(({ p }) => productBlock(p));
+        return `Estas son las mejores opciones según lo que buscas, con su detalle:\n\n${blocks.join('\n\n')}\n\nTodas 100% originales. ¿Te ayudo a decidir o eliges alguna? 😊`;
       }
       return 'Hmm, no encontré un producto exacto con esa descripción, pero puedo recomendarte según tu objetivo. ¿Qué buscas: músculo, fuerza, energía o bienestar?';
     }
     case 'recommend':
     default: {
+      const plan = bestGoalPlan(q);
+      if (plan) {
+        return buildPlan(plan.heading, plan.explanation, plan.select(products), plan.closing);
+      }
+
+      const strategy = hitStrategy(q, products);
+      if (strategy) return strategy;
+
       const matches = findProductMatches(products, rawQuery, 3);
       if (matches.length === 0) {
         return `Podemos orientarte mejor: dime tu objetivo y te sugiero el mejor suplemento de nuestro catálogo.
-- Ganar músculo (proteína + creatina)
-- Fuerza (creatina)
-- Energía / pre-entreno
-- Salud y bienestar (omega, vitaminas)
-- Control de peso`;
+- 🥩 Ganar músculo (proteína + creatina)
+- 🏋️ Fuerza (creatina)
+- ⚡ Energía / pre-entreno
+- 🌿 Salud y bienestar (omega, vitaminas)
+- 🔥 Control de peso
+
+O pregúntame por un producto puntual y te paso su detalle completo.`;
       }
-      return `Te recomiendo estos según tu objetivo:\n\n${formatMatchList(matches)}\n\nTodos son 100% originales. ${shippingLine} ¿Quieres que ordene algo por ti o te ayudo con otra cosa? 💪`;
+      const blocks = matches.map(({ p }) => productBlock(p));
+      return `Aquí tienes mis recomendaciones con su detalle:\n\n${blocks.join('\n\n')}\n\nTodos 100% originales. ${shippingLine} ¿Quieres que ordene algo por ti o te ayudo con otra cosa? 💪`;
     }
   }
 }
 
 export function quickChips(): string[] {
   return [
-    'Recomiéndame una proteína',
+    'Quiero ganar músculo',
     'Creatina para fuerza',
     'Energía pre-entreno',
     '¿Tienen envío gratis?',
