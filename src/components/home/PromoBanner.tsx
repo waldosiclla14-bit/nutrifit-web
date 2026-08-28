@@ -12,7 +12,7 @@ export default function PromoBanner() {
   if (banners.length === 0) return null;
 
   return (
-    <section className="bg-paper py-14">
+    <section className="bg-paper py-14 lg:py-[100px]">
       <div className="container-px">
         <div className={cx('grid gap-6', banners.length > 1 && 'lg:grid-cols-2')}>
           {banners.map((banner, i) => (

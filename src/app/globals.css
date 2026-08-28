@@ -104,11 +104,11 @@
   }
 
   .section-title {
-    @apply mt-2 font-display text-3xl uppercase leading-tight tracking-wide sm:text-4xl lg:text-5xl;
+    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight lg:text-[36px];
   }
 
   .section-title-dark {
-    @apply mt-2 font-display text-3xl uppercase leading-tight tracking-wide text-white sm:text-4xl lg:text-5xl;
+    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight text-white lg:text-[36px];
   }
 
   .reveal {

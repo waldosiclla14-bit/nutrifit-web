@@ -56,7 +56,7 @@ function ComboCard({ combo, index }: { combo: Combo; index: number }) {
 
 export default function Combos() {
   return (
-    <section className="bg-ink py-16" id="combos">
+    <section className="bg-ink py-16 lg:py-[100px]" id="combos">
       <div className="container-px">
         <Reveal className="mb-10 flex flex-col items-center gap-4 text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-ink">

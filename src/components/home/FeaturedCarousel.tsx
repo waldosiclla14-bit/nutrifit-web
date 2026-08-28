@@ -36,7 +36,7 @@ export default function FeaturedCarousel() {
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (
-    <section className="bg-soft py-14" id="destacados">
+    <section className="bg-soft py-14 lg:py-[100px]" id="destacados">
       <div className="container-px">
         <Reveal className="mb-8">
           <p className="section-label">DESTACADOS</p>

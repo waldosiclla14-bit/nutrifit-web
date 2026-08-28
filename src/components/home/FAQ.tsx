@@ -29,7 +29,7 @@ const FAQS = [
 
 export default function FAQ() {
   return (
-    <section className="bg-soft py-14" id="faq">
+    <section className="bg-soft py-14 lg:py-[100px]" id="faq">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="section-label">PREGUNTAS FRECUENTES</p>

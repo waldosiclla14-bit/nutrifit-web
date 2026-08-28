@@ -32,7 +32,7 @@ export default function CategoryCarousel({
   };
 
   return (
-    <section className="bg-soft py-14" id={`cat-${category}`}>
+    <section className="bg-soft py-14 lg:py-[100px]" id={`cat-${category}`}>
       <div className="container-px">
         <Reveal className="mb-8 flex items-end justify-between gap-4">
           <div>

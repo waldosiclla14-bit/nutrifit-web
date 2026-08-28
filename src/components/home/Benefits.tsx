@@ -36,7 +36,7 @@ const ITEMS = [
 
 export default function Benefits() {
   return (
-    <section className="bg-dark py-14 text-white" id="beneficios">
+    <section className="bg-dark py-14 text-white lg:py-[100px]" id="beneficios">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="section-label text-accent">BENEFICIOS</p>

@@ -15,7 +15,7 @@ const MAX = 30;
 
 export default function MetroCoverage() {
   return (
-    <section className="bg-soft py-14" id="cobertura">
+    <section className="bg-soft py-14 lg:py-[100px]" id="cobertura">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="section-label">COBERTURA</p>

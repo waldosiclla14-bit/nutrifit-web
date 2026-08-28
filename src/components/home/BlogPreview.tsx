@@ -6,7 +6,7 @@ import Reveal from '@/components/ui/Reveal';
 
 export default function BlogPreview() {
   return (
-    <section className="container-px py-14">
+    <section className="container-px py-14 lg:py-[100px]">
       <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-label">BLOG</p>

@@ -34,7 +34,7 @@ export default function Storytelling() {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <section className="container-px py-14" id="nosotros">
+    <section className="container-px py-14 lg:py-[100px]" id="nosotros">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
         <Reveal>
           <div className="relative">

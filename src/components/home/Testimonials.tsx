@@ -6,7 +6,7 @@ import Stars from '@/components/ui/Stars';
 
 export default function Testimonials() {
   return (
-    <section className="bg-dark py-16 text-white sm:py-20" id="opiniones">
+    <section className="bg-dark py-14 text-white lg:py-[100px]" id="opiniones">
       <div className="container-px">
         <Reveal className="mb-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div>

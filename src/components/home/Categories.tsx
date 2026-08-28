@@ -5,7 +5,7 @@ import Reveal from '@/components/ui/Reveal';
 
 export default function Categories() {
   return (
-    <section className="container-px py-14" id="categorias">
+    <section className="container-px py-14 lg:py-[100px]" id="categorias">
       <Reveal className="mb-10 text-center">
         <p className="section-label">CATEGORÍAS</p>
         <h2 className="section-title">

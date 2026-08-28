@@ -6,7 +6,7 @@ import { getSettings } from '@/lib/store';
 
 export default function Newsletter() {
   return (
-    <section className="container-px py-14" id="newsletter">
+    <section className="container-px py-14 lg:py-[100px]" id="newsletter">
       <Reveal>
         <div className="relative overflow-hidden rounded-[2.5rem] bg-dark px-6 py-12 text-white sm:px-12">
           <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-accent/20 blur-[100px]" />
