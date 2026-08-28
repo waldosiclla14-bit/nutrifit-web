@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
-import { BRAND } from '@/data/seed';
-import { cx } from '@/lib/utils';
+import Image from 'next/image';
+import { ShoppingBag } from 'lucide-react';
+import { BUNDLES } from '@/data/seed';
+import { useCart } from '@/context/CartContext';
+import { cx, formatPrice } from '@/lib/utils';
 
 export default function StickyCTAMobile() {
   const [show, setShow] = useState(false);
+  const { addBundle } = useCart();
+  const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
   useEffect(() => {
     const handleScroll = () => setShow(window.scrollY > 500);
@@ -15,6 +19,8 @@ export default function StickyCTAMobile() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  if (!pack) return null;
+
   return (
     <div
       className={cx(
@@ -22,17 +28,32 @@ export default function StickyCTAMobile() {
         show ? 'translate-y-0' : 'translate-y-full',
       )}
     >
-      <a
-        href={`https://wa.me/${BRAND.whatsappDigits}?text=${encodeURIComponent(
-          'Hola NUTRIFIT, quiero comprar suplementos. ¿Me ayudan?',
-        )}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] py-3.5 text-sm font-bold text-white transition-transform active:scale-[0.98]"
-      >
-        <MessageCircle size={18} />
-        Comprar por WhatsApp
-      </a>
+      <div className="flex items-center gap-3">
+        <Image
+          src={pack.image ?? '/img/producto1.webp'}
+          alt={pack.title}
+          width={56}
+          height={56}
+          className="h-14 w-14 shrink-0 rounded-xl bg-white object-contain ring-1 ring-line"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-bold leading-tight text-ink">{pack.title}</p>
+          <p className="truncate text-[11px] text-muted">
+            Whey FullEnergic 1kg + Creatina 300g
+          </p>
+          <p className="font-display text-sm leading-none tracking-wide text-accentDeep">
+            {formatPrice(pack.fixedPrice ?? 27500)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => addBundle(pack, { 4: 'Vainilla' })}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-3 text-xs font-extrabold text-paper transition-transform active:scale-[0.98]"
+        >
+          <ShoppingBag size={15} />
+          Agregar
+        </button>
+      </div>
     </div>
   );
 }
