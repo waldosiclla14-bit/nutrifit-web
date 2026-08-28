@@ -12,7 +12,7 @@ export default function WhatsAppFloat() {
         e.preventDefault();
         openWhatsApp(
           getSettings().whatsapp,
-          'Hola! Vi el Pack Proteína + Creatina de $27.500, ¿qué sabor te queda para mañana?',
+          'Hola! Vi el Pack Inicio de $27.500, ¿qué sabor te queda para mañana?',
         );
       }}
       className="fixed bottom-5 right-5 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110 lg:flex"

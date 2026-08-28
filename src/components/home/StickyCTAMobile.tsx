@@ -2,18 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { ShoppingBag } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { BUNDLES } from '@/data/seed';
-import { useCart } from '@/context/CartContext';
 import { cx, formatPrice } from '@/lib/utils';
+
+const WHATSAPP_LINK =
+  'https://wa.me/56923883826?text=Hola!%20Vi%20el%20Pack%20Inicio%20de%20%2427.500%2C%20%C2%BFqu%C3%A9%20sabor%20te%20queda%20para%20ma%C3%B1ana%3F';
 
 export default function StickyCTAMobile() {
   const [show, setShow] = useState(false);
-  const { addBundle } = useCart();
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
   useEffect(() => {
-    const handleScroll = () => setShow(window.scrollY > 500);
+    const handleScroll = () => setShow(window.scrollY > 300);
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -38,21 +39,19 @@ export default function StickyCTAMobile() {
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-bold leading-tight text-ink">{pack.title}</p>
-          <p className="truncate text-[11px] text-muted">
-            Whey FullEnergic 1kg + Creatina 300g
-          </p>
           <p className="font-display text-sm leading-none tracking-wide text-accentDeep">
             {formatPrice(pack.fixedPrice ?? 27500)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => addBundle(pack, { 4: 'Vainilla' })}
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-3 text-xs font-extrabold text-paper transition-transform active:scale-[0.98]"
+        <a
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-3 text-xs font-extrabold text-white transition-transform active:scale-[0.98]"
         >
-          <ShoppingBag size={15} />
-          Agregar
-        </button>
+          <MessageCircle size={15} />
+          Pedir por WhatsApp
+        </a>
       </div>
     </div>
   );
