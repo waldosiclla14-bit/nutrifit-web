@@ -40,10 +40,10 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-line bg-paper transition-all duration-300 hover:-translate-y-1 hover:shadow-soft">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-soft">
       <Link
         href={`/productos/${product.slug}`}
-        className="relative block aspect-square overflow-hidden bg-soft"
+        className="relative block aspect-[4/5] overflow-hidden bg-soft"
       >
         {!loaded && <div className="skeleton absolute inset-0" aria-hidden="true" />}
         <Image
@@ -107,11 +107,11 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
             {product.oldPrice && (
-              <span className="text-xs text-muted line-through">
+              <span className="text-sm text-muted line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
-            <span className="font-display text-lg leading-none tracking-wide text-ink">
+            <span className="text-[18px] font-bold leading-none text-ink">
               {formatPrice(product.price)}
             </span>
           </div>
