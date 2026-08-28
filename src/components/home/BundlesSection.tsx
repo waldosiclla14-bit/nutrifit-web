@@ -10,7 +10,7 @@ export default function BundlesSection() {
   return (
     <section className="container-px py-14" id="sets">
       <Reveal className="mb-10 text-center">
-        <p className="section-label">SETS AL CARRITO</p>
+        <p className="section-label">AGREGAR AL CARRITO</p>
         <h2 className="section-title">
           Combina y <span className="text-accentDeep">ahorra</span>
         </h2>
