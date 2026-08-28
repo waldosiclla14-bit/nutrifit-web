@@ -76,9 +76,12 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="container-px flex flex-col items-center justify-between gap-2 py-6 text-xs text-white/50 sm:flex-row">
-          <p>© {new Date().getFullYear()} NutriFit. Todos los derechos reservados.</p>
-          <p>Suplementos deportivos · Santiago de Chile</p>
+        <div className="container-px flex flex-col items-center justify-between gap-3 py-6 text-xs text-white/60 sm:flex-row">
+          <p className="text-center sm:text-left">
+            NutriFit SpA - Productos 100% originales con sello - Emitimos boleta - Entregas en 140+
+            estaciones de Metro Santiago
+          </p>
+          <p className="shrink-0">© {new Date().getFullYear()} NutriFit. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

@@ -17,7 +17,7 @@ import GA4 from '@/components/analytics/GA4';
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
   title: {
-    default: 'NutriFit | Whey, creatina y packs',
+    default: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     template: '%s · NUTRIFIT',
   },
   description:
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
     locale: 'es_CL',
     url: BRAND.url,
     siteName: BRAND.name,
-    title: 'NutriFit | Whey, creatina y packs',
+    title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
       'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit whey, creatina y packs' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NutriFit | Whey, creatina y packs',
+    title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
       'Suplementos originales en Chile. Whey, creatina y vitaminas. Compra por WhatsApp y recibe en Metro de Santiago.',
     images: ['/opengraph-image'],
