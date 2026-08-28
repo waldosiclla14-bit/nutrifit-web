@@ -447,6 +447,166 @@ export class OrdersService {
     return updated;
   }
 
+  async updateOrder(id: string, data: any, userId?: string) {
+    this.validateOrderPayload(data);
+    const deliveryType = this.validateDeliveryType(data.deliveryType);
+    const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
+
+    const existing = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!existing) throw new NotFoundException('Orden no encontrada');
+    if (existing.status === OrderStatus.CANCELLED || existing.status === OrderStatus.RETURNED) {
+      throw new BadRequestException('No se puede editar una orden cancelada o devuelta');
+    }
+
+    const isPaid = existing.paymentStatus === PaymentStatus.CONFIRMED;
+    const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
+    const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
+    const discount = Math.max(0, Math.round(Number(data.discount) || 0));
+    const total = Math.max(0, subtotal - discount + shippingCost);
+
+    const variantIds = [...new Set(data.items.filter((i: any) => i.variantId).map((i: any) => i.variantId))] as string[];
+    const variants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds } },
+          include: { product: true },
+        })
+      : [];
+    const variantMap = new Map(variants.map((v: any) => [v.id, v]));
+
+    const oldByVariant = new Map<string, number>();
+    for (const item of existing.items) {
+      if (!item.variantId) continue;
+      oldByVariant.set(item.variantId, (oldByVariant.get(item.variantId) || 0) + item.quantity);
+    }
+
+    const itemsWithCost: any[] = [];
+    let totalCost = 0;
+    for (const item of data.items) {
+      let unitCost = 0;
+      if (item.variantId) {
+        const variant = variantMap.get(item.variantId);
+        if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
+        const released = oldByVariant.get(item.variantId) || 0;
+        const available = (variant.stock - variant.reservedStock) + released;
+        if (available < item.quantity) {
+          throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+        }
+        const realPrice = variant.price ?? variant.product.basePrice ?? 0;
+        if (realPrice > 0 && Number(item.unitPrice) !== Number(realPrice)) {
+          throw new BadRequestException(`Precio inválido para ${item.variantName || variant.variantName}`);
+        }
+        unitCost = variant.costPrice || variant.product.costPrice || 0;
+      }
+      itemsWithCost.push({ ...item, unitCost });
+      totalCost += unitCost * item.quantity;
+    }
+
+    const profit = total - totalCost;
+    const profitMargin = total > 0 ? (profit / total) * 100 : 0;
+
+    const writes: PrismaPromise<any>[] = [];
+
+    const oldVariantIds = [...oldByVariant.keys()];
+    const oldVariants = oldVariantIds.length
+      ? await this.prisma.productVariant.findMany({ where: { id: { in: oldVariantIds } } })
+      : [];
+    const oldVariantMap = new Map(oldVariants.map((v: any) => [v.id, v]));
+    for (const [vid, qty] of oldByVariant) {
+      const variant = oldVariantMap.get(vid);
+      if (!variant) continue;
+      writes.push(
+        this.prisma.productVariant.update({
+          where: { id: vid },
+          data: isPaid
+            ? { stock: { increment: qty }, reservedStock: { decrement: qty } }
+            : { reservedStock: { decrement: qty } },
+        }),
+      );
+    }
+
+    for (const item of data.items) {
+      if (!item.variantId) continue;
+      writes.push(
+        this.prisma.productVariant.update({
+          where: { id: item.variantId },
+          data: isPaid
+            ? { stock: { decrement: item.quantity }, reservedStock: { decrement: item.quantity } }
+            : { reservedStock: { increment: item.quantity } },
+        }),
+      );
+    }
+
+    writes.push(this.prisma.orderItem.deleteMany({ where: { orderId: id } }));
+    writes.push(
+      this.prisma.order.update({
+        where: { id },
+        data: {
+          deliveryType,
+          metroLine: data.metroLine,
+          metroStation: data.metroStation,
+          deliveryDay: data.deliveryDay,
+          deliveryTime: data.deliveryTime,
+          deliveryDetails: data.deliveryDetails,
+          subtotal,
+          discount,
+          shippingCost,
+          total,
+          totalCost,
+          profit,
+          profitMargin,
+          paymentMethod,
+          updatedAt: new Date(),
+          items: {
+            create: itemsWithCost.map((item: any) => ({
+              productId: item.productId,
+              variantId: item.variantId,
+              productName: item.productName,
+              variantName: item.variantName,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              unitCost: item.unitCost,
+              quantity: item.quantity,
+              total: item.total,
+              profit: item.total - item.unitCost * item.quantity,
+            })),
+          },
+        },
+        include: { customer: true, items: { include: { product: true, variant: true } } },
+      }),
+    );
+
+    const results = await this.prisma.$transaction(writes);
+    const updated = results[results.length - 1];
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'ORDER_UPDATED',
+        entity: 'Order',
+        entityId: id,
+        oldValue: {
+          total: existing.total,
+          itemCount: existing.items.length,
+          deliveryType: existing.deliveryType,
+          metroStation: existing.metroStation,
+          paymentMethod: existing.paymentMethod,
+        },
+        newValue: {
+          total,
+          itemCount: data.items.length,
+          deliveryType,
+          metroStation: data.metroStation,
+          paymentMethod,
+        },
+      },
+    });
+
+    return this.findOne(id);
+  }
+
   async getStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
