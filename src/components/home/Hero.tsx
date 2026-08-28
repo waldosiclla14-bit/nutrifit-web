@@ -46,15 +46,31 @@ export default function Hero() {
             <div className="relative mx-auto max-w-xs sm:max-w-md lg:max-w-lg">
               <div className="absolute inset-0 -z-10 rounded-full bg-accent/20 blur-[90px]" />
               <div className="relative rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
-                <Image
-                  key={flavor.name}
-                  src={flavor.image}
-                  alt={`Pack proteína + creatina, sabor ${flavor.name}`}
-                  width={720}
-                  height={720}
-                  priority
-                  className="mx-auto aspect-square w-full rounded-2xl object-cover"
-                />
+                <div className="relative flex items-center justify-center gap-1.5">
+                  <div className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-white/[0.04]">
+                    <Image
+                      key={flavor.name}
+                      src={flavor.image}
+                      alt={`FullEnergic Whey 1kg, sabor ${flavor.name}`}
+                      fill
+                      sizes="(max-width: 1024px) 40vw, 20vw"
+                      priority
+                      className="object-contain p-2"
+                    />
+                  </div>
+                  <span className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-dark text-lg font-extrabold text-accent shadow-soft">
+                    +
+                  </span>
+                  <div className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-white/[0.04]">
+                    <Image
+                      src="/img/producto34.jpg"
+                      alt="Eco Naturales Creatina Monohidratada 300g"
+                      fill
+                      sizes="(max-width: 1024px) 40vw, 20vw"
+                      className="object-contain p-2"
+                    />
+                  </div>
+                </div>
                 <span className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold text-ink shadow-glow">
                   <BadgeCheck size={14} /> 100% original
                 </span>
