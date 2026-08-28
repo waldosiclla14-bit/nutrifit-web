@@ -521,7 +521,7 @@ export class OrdersService {
         this.prisma.productVariant.update({
           where: { id: vid },
           data: isPaid
-            ? { stock: { increment: qty }, reservedStock: { decrement: qty } }
+            ? { stock: { increment: qty } }
             : { reservedStock: { decrement: qty } },
         }),
       );
@@ -533,7 +533,7 @@ export class OrdersService {
         this.prisma.productVariant.update({
           where: { id: item.variantId },
           data: isPaid
-            ? { stock: { decrement: item.quantity }, reservedStock: { decrement: item.quantity } }
+            ? { stock: { decrement: item.quantity } }
             : { reservedStock: { increment: item.quantity } },
         }),
       );
