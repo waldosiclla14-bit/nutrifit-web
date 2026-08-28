@@ -1,12 +1,20 @@
-name: Keep API alive
+name: Keep-alive API (Render)
+
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch:
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Warm up DB connection (prevent Neon free-tier pause)
+      - name: Ping a la API para mantener Render despierto
         run: |
-          curl -fsS --max-time 30 "https://nutrifit-api-635n.onrender.com/api/ping" || echo "ping failed"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "https://nutrifit-api-635n.onrender.com/api/products")
+          echo "HTTP $code"
+          # Cualquier respuesta (2xx/3xx/4xx) significa que el servicio respondió; 000 = no conecta.
+          if [ "$code" = "000" ]; then
+            echo "::warning::No se pudo conectar con la API de Render"
+            exit 0
+          fi
