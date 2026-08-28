@@ -18,21 +18,40 @@ export async function apiFetch<T = any>(
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
-  const timer = controller ? setTimeout(() => controller.abort(), 25000) : undefined;
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}/api${path}`, {
-      method: opts.method ?? 'GET',
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      signal: controller?.signal,
-    });
-  } catch (e: any) {
-    if (e?.name === 'AbortError') throw new ApiError(408, 'El servidor tardó demasiado en responder. Intenta de nuevo.');
+  const method = opts.method ?? 'GET';
+  const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
+  const maxAttempts = method === 'GET' ? 2 : 1;
+
+  async function attempt(): Promise<Response> {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), 25000) : undefined;
+    try {
+      return await fetch(`${API_BASE}/api${path}`, {
+        method,
+        headers,
+        body,
+        signal: controller?.signal,
+      });
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  let res: Response | undefined;
+  let lastError: any;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      res = await attempt();
+      break;
+    } catch (e: any) {
+      lastError = e;
+      if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, 1200));
+    }
+  }
+  if (!res) {
+    if (lastError?.name === 'AbortError')
+      throw new ApiError(408, 'El servidor tardó demasiado en responder. Intenta de nuevo.');
     throw new ApiError(0, 'No se pudo conectar con el servidor.');
-  } finally {
-    if (timer) clearTimeout(timer);
   }
   const text = await res.text();
   let data: any = null;
