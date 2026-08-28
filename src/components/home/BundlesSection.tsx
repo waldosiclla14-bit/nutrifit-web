@@ -8,7 +8,7 @@ export default function BundlesSection() {
   if (BUNDLES.length === 0) return null;
 
   return (
-    <section className="container-px py-14" id="sets">
+    <section className="container-px py-14 lg:py-[100px]" id="sets">
       <Reveal className="mb-10 text-center">
         <p className="section-label">AGREGAR AL CARRITO</p>
         <h2 className="section-title">
