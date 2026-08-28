@@ -64,6 +64,10 @@ export const METRO_LINES: MetroLine[] = [
       'Lo Ovalle',
       'El Parrón',
       'La Cisterna',
+      'El Bosque',
+      'Observatorio',
+      'Lo Martínez',
+      'Hospital El Pino',
     ],
   },
   {
