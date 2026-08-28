@@ -144,8 +144,8 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (initial = true) => {
+    if (initial) setLoading(true);
     try {
       const [p, cr] = await Promise.all([
         apiFetch<any[]>('/products/internal', { token }),
@@ -182,7 +182,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
     } catch (err: any) {
       alert(err?.message || 'Error al cargar datos.');
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
     }
   }, [token]);
 
@@ -252,7 +252,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
   const openRegister = async () => {
     try {
       await apiFetch('/cash-register/open', { method: 'POST', token, body: { initialAmount: 0 } });
-      await load();
+      await load(false);
     } catch (err: any) {
       alert(err?.message || 'Error al abrir caja.');
     }
@@ -341,7 +341,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       setCustomerPhone('');
       setDiscountPct(0);
       setPaymentReceived(false);
-      await load();
+      await load(false);
     } catch (err: any) {
       alert(err?.message || 'Error al cobrar.');
     } finally {

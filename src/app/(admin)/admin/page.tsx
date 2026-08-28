@@ -453,7 +453,7 @@ function Dashboard({
     setBusyId(id);
     try {
       await fn();
-      await loadTab(tabRef.current);
+      await loadTab(tabRef.current, true);
     } catch (err: any) {
       alert(err?.message || 'Error en la operación.');
     } finally {

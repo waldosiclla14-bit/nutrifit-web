@@ -18,15 +18,21 @@ export async function apiFetch<T = any>(
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+  const timer = controller ? setTimeout(() => controller.abort(), 25000) : undefined;
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/api${path}`, {
       method: opts.method ?? 'GET',
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: controller?.signal,
     });
-  } catch {
+  } catch (e: any) {
+    if (e?.name === 'AbortError') throw new ApiError(408, 'El servidor tardó demasiado en responder. Intenta de nuevo.');
     throw new ApiError(0, 'No se pudo conectar con el servidor.');
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   const text = await res.text();
   let data: any = null;
