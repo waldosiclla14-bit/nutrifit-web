@@ -411,6 +411,42 @@ export class OrdersService {
     return this.findOne(id);
   }
 
+  async updatePaymentMethod(id: string, data: { paymentMethod: string; paymentNotes?: string }, userId?: string) {
+    const existing = await this.prisma.order.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Orden no encontrada');
+
+    const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
+    if (!paymentMethod) {
+      throw new BadRequestException('Debes indicar un método de pago válido');
+    }
+
+    const updated = await this.prisma.order.update({
+      where: { id },
+      data: {
+        paymentMethod,
+        paymentNotes: data.paymentNotes ?? existing.paymentNotes,
+        updatedAt: new Date(),
+      },
+      include: {
+        customer: true,
+        items: { include: { product: true, variant: true } },
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'PAYMENT_METHOD_CHANGED',
+        entity: 'Order',
+        entityId: id,
+        oldValue: { paymentMethod: existing.paymentMethod },
+        newValue: { paymentMethod, paymentNotes: data.paymentNotes ?? existing.paymentNotes },
+      },
+    });
+
+    return updated;
+  }
+
   async getStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

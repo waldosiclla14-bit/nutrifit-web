@@ -67,4 +67,12 @@ export class OrdersController {
     const body = await readJsonBody(req);
     return this.ordersService.confirmPayment(id, body, req.user?.id);
   }
+
+  @Patch(':id/payment-method')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  async updatePaymentMethod(@Param('id') id: string, @Request() req: any) {
+    const body = await readJsonBody(req);
+    return this.ordersService.updatePaymentMethod(id, body, req.user?.id);
+  }
 }

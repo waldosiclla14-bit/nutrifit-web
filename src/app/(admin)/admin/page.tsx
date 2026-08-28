@@ -884,6 +884,7 @@ function Ordenes({
 }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [paymentOrder, setPaymentOrder] = useState<ApiOrder | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -988,9 +989,7 @@ function Ordenes({
                     {o.status === 'CONFIRMED' && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() =>
-                          act(() => apiFetch(`/orders/${o.id}/payment`, { method: 'PATCH', token, body: { paymentMethod: o.paymentMethod || 'TRANSFERENCIA' } }), o.id)
-                        }
+                        onClick={() => setPaymentOrder(o)}
                         className="rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold text-ink disabled:opacity-50"
                       >
                         Marcar pagado
@@ -1029,6 +1028,16 @@ function Ordenes({
                         <Trash2 size={12} /> Eliminar
                       </button>
                     )}
+                    {!['CANCELLED', 'RETURNED', 'DELIVERED'].includes(o.status) && (
+                      <button
+                        disabled={busyId === o.id}
+                        onClick={() => setPaymentOrder(o)}
+                        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-ink disabled:opacity-50"
+                        title="Cambiar método de pago de la orden"
+                      >
+                        <Pencil size={12} /> Editar pago
+                      </button>
+                    )}
                     {o.customer?.phone && (
                       <a
                         href={waLink(o)}
@@ -1052,6 +1061,90 @@ function Ordenes({
             )}
           </tbody>
         </table>
+      </div>
+      {paymentOrder && (
+        <PaymentModal
+          order={paymentOrder}
+          token={token}
+          busy={busyId === paymentOrder.id}
+          onClose={() => setPaymentOrder(null)}
+          onSave={async (method) => {
+            const confirmed = paymentOrder.paymentStatus !== 'CONFIRMED';
+            await act(
+              () =>
+                apiFetch(`/orders/${paymentOrder.id}/${confirmed ? 'payment' : 'payment-method'}`, {
+                  method: 'PATCH',
+                  token,
+                  body: { paymentMethod: method },
+                }),
+              paymentOrder.id,
+            );
+            setPaymentOrder(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PaymentModal({
+  order,
+  token,
+  busy,
+  onClose,
+  onSave,
+}: {
+  order: ApiOrder;
+  token: string;
+  busy: boolean;
+  onClose: () => void;
+  onSave: (method: string) => Promise<void> | void;
+}) {
+  const [method, setMethod] = useState(order.paymentMethod || 'TRANSFERENCIA');
+  const confirming = order.paymentStatus !== 'CONFIRMED';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-3xl border border-line bg-paper p-6" onClick={(e) => e.stopPropagation()}>
+        <p className="font-display text-xl uppercase">Editar pago</p>
+        <div className="mt-2 rounded-2xl border border-line bg-soft p-3 text-sm">
+          <p className="font-semibold">{order.orderNumber}</p>
+          <p className="text-muted">
+            Total <b className="text-ink">{formatPrice(order.total)}</b> · Actual:{' '}
+            {PAYMENT_LABEL[order.paymentMethod || ''] || '—'}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {confirming ? 'Este pedido está pendiente. Confirmar el pago lo marcará como pagado.' : 'La orden ya está pagada. Solo se cambiará el método de pago.'}
+          </p>
+        </div>
+        <div className="mt-4">
+          <span className="text-xs font-semibold text-muted">Método de pago</span>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {Object.keys(PAYMENT_LABEL).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMethod(m)}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                  method === m ? 'border-accent bg-accent/10 text-ink' : 'border-line bg-paper text-muted hover:text-ink'
+                }`}
+              >
+                {PAYMENT_LABEL[m]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onSave(method)}
+            disabled={busy}
+            className="btn-accent px-4 py-2 text-xs disabled:opacity-50"
+          >
+            {busy ? 'Guardando…' : confirming ? 'Confirmar pago' : 'Guardar método'}
+          </button>
+        </div>
       </div>
     </div>
   );
