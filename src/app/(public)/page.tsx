@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
 import Hero from '@/components/home/Hero';
-import Marquee from '@/components/home/Marquee';
 import PromoStrip from '@/components/home/PromoStrip';
 import TrackOrderChip from '@/components/home/TrackOrderChip';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
@@ -75,7 +74,6 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
       <Hero />
-      <Marquee />
       <Testimonials />
       <BundlesSection />
       <FeaturedCarousel />
