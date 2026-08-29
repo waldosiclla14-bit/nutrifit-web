@@ -7,6 +7,7 @@ import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { METRO_LINES } from '@/data/metro';
 import { buildDeliveryOrderMessage, openWhatsApp } from '@/lib/whatsapp';
+import { ConfirmProvider, toast } from '@/lib/feedback';
 
 type ApiProduct = {
   id: string;
@@ -95,14 +96,16 @@ export default function PosPage() {
 
   if (!token) return null;
   return (
-    <Pos
-      token={token}
-      onLogout={() => {
-        clearToken();
-        clearSessionCookie();
-        router.replace('/login?next=/pos');
-      }}
-    />
+    <ConfirmProvider>
+      <Pos
+        token={token}
+        onLogout={() => {
+          clearToken();
+          clearSessionCookie();
+          router.replace('/login?next=/pos');
+        }}
+      />
+    </ConfirmProvider>
   );
 }
 
@@ -180,7 +183,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
           : null,
       );
     } catch (err: any) {
-      alert(err?.message || 'Error al cargar datos.');
+      toast.error(err?.message || 'Error al cargar datos.');
     } finally {
       if (initial) setLoading(false);
     }
@@ -254,18 +257,18 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       await apiFetch('/cash-register/open', { method: 'POST', token, body: { initialAmount: 0 } });
       await load(false);
     } catch (err: any) {
-      alert(err?.message || 'Error al abrir caja.');
+      toast.error(err?.message || 'Error al abrir caja.');
     }
   };
 
   const checkout = async () => {
     if (cart.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim()) {
-      alert('Ingresa nombre y teléfono del cliente.');
+      toast.error('Ingresa nombre y teléfono del cliente.');
       return;
     }
     if (mode === 'METRO' && (!metroLine || !metroStation || !deliveryDay || !deliveryTime)) {
-      alert('Completa línea, estación, día y hora de entrega.');
+      toast.error('Completa línea, estación, día y hora de entrega.');
       return;
     }
     setSaving(true);
@@ -310,6 +313,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
         });
       }
       setDone(order.orderNumber);
+      toast.success(mode === 'LOCAL' || paymentReceived ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`);
       if (mode === 'METRO') {
         setSalePhone(customerPhone.trim());
         setSaleMsg(
@@ -343,7 +347,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       setPaymentReceived(false);
       await load(false);
     } catch (err: any) {
-      alert(err?.message || 'Error al cobrar.');
+      toast.error(err?.message || 'Error al cobrar.');
     } finally {
       setSaving(false);
     }
@@ -356,7 +360,7 @@ function Pos({ token, onLogout }: { token: string; onLogout: () => void }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      alert('No se pudo copiar. Copia el mensaje manualmente.');
+      toast.error('No se pudo copiar. Copia el mensaje manualmente.');
     }
   };
 

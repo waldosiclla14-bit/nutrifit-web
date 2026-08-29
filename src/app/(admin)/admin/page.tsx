@@ -26,6 +26,7 @@ import { formatPrice } from '@/lib/utils';
 import { webFooter } from '@/lib/whatsapp';
 import { METRO_LINES } from '@/data/metro';
 import * as XLSX from 'xlsx';
+import { ConfirmProvider, toast, useConfirm } from '@/lib/feedback';
 
 type ApiOrder = {
   id: string;
@@ -293,17 +294,19 @@ export default function AdminPage() {
 
   if (!token) return null;
   return (
-    <Dashboard
-      token={token}
-      tab={tab}
-      setTab={setTab}
-      onSell={() => router.push('/pos')}
-      onLogout={() => {
-        clearToken();
-        clearSessionCookie();
-        router.replace('/login?next=/admin');
-      }}
-    />
+    <ConfirmProvider>
+      <Dashboard
+        token={token}
+        tab={tab}
+        setTab={setTab}
+        onSell={() => router.push('/pos')}
+        onLogout={() => {
+          clearToken();
+          clearSessionCookie();
+          router.replace('/login?next=/admin');
+        }}
+      />
+    </ConfirmProvider>
   );
 }
 
@@ -433,7 +436,7 @@ function Dashboard({
         );
       }
     } catch (err: any) {
-      if (!silent) alert(err?.message || 'Error al cargar datos.');
+      if (!silent) toast.error(err?.message || 'Error al cargar datos.');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -449,13 +452,14 @@ function Dashboard({
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
-  const act = useCallback(async (fn: () => Promise<any>, id: string) => {
+  const act = useCallback(async (fn: () => Promise<any>, id: string, successMsg?: string) => {
     setBusyId(id);
     try {
       await fn();
+      if (successMsg) toast.success(successMsg);
       await loadTab(tabRef.current, true);
     } catch (err: any) {
-      alert(err?.message || 'Error en la operación.');
+      toast.error(err?.message || 'Error en la operación.');
     } finally {
       setBusyId(null);
     }
@@ -835,7 +839,7 @@ function GoalEditor({
       onSaved();
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Error al guardar metas.');
+      toast.error(err?.message || 'Error al guardar metas.');
     } finally {
       setSaving(false);
     }
@@ -889,12 +893,18 @@ function Ordenes({
   orders: ApiOrder[];
   token: string;
   busyId: string | null;
-  act: (fn: () => Promise<any>, id: string) => void;
+  act: (fn: () => Promise<any>, id: string, successMsg?: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentOrder, setPaymentOrder] = useState<ApiOrder | null>(null);
   const [editOrder, setEditOrder] = useState<ApiOrder | null>(null);
+  const [visibleCount, setVisibleCount] = useState(50);
+  const confirm = useConfirm();
+
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [query, statusFilter]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -953,7 +963,7 @@ function Ordenes({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((o) => (
+            {filtered.slice(0, visibleCount).map((o) => (
               <tr key={o.id} className="border-b border-line/60 last:border-0">
                 <td className="px-4 py-3">
                   <p className="font-bold text-ink">{o.orderNumber}</p>
@@ -990,7 +1000,7 @@ function Ordenes({
                     {o.status === 'PENDING' && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CONFIRMED' } }), o.id)}
+                        onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CONFIRMED' } }), o.id, 'Orden confirmada.')}
                         className="rounded-full bg-ink px-3 py-1.5 text-[11px] font-bold text-paper disabled:opacity-50"
                       >
                         Confirmar
@@ -1008,7 +1018,7 @@ function Ordenes({
                     {o.status === 'PAID' && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'DELIVERED' } }), o.id)}
+                        onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'DELIVERED' } }), o.id, 'Orden marcada como entregada.')}
                         className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
                       >
                         Entregado
@@ -1017,9 +1027,16 @@ function Ordenes({
                     {!['CANCELLED', 'DELIVERED', 'RETURNED'].includes(o.status) && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => {
-                          if (!window.confirm(`¿Cancelar la orden ${o.orderNumber}?`)) return;
-                          act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CANCELLED' } }), o.id);
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Cancelar orden',
+                            message: `¿Cancelar la orden ${o.orderNumber}?`,
+                            cancelLabel: 'No',
+                            confirmLabel: 'Sí, cancelar',
+                            danger: true,
+                          });
+                          if (!ok) return;
+                          act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CANCELLED' } }), o.id, 'Orden cancelada.');
                         }}
                         className="rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
                       >
@@ -1029,9 +1046,16 @@ function Ordenes({
                     {!['PAID', 'DELIVERED'].includes(o.status) && (
                       <button
                         disabled={busyId === o.id}
-                        onClick={() => {
-                          if (!window.confirm(`¿Eliminar permanentemente la orden ${o.orderNumber}?`)) return;
-                          act(() => apiFetch(`/orders/${o.id}`, { method: 'DELETE', token }), o.id);
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: 'Eliminar orden',
+                            message: `¿Eliminar permanentemente la orden ${o.orderNumber}? Esta acción no se puede deshacer.`,
+                            cancelLabel: 'No',
+                            confirmLabel: 'Sí, eliminar',
+                            danger: true,
+                          });
+                          if (!ok) return;
+                          act(() => apiFetch(`/orders/${o.id}`, { method: 'DELETE', token }), o.id, 'Orden eliminada.');
                         }}
                         className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
                       >
@@ -1071,6 +1095,16 @@ function Ordenes({
             )}
           </tbody>
         </table>
+        {visibleCount < filtered.length && (
+          <div className="border-t border-line p-3">
+            <button
+              onClick={() => setVisibleCount((c) => c + 50)}
+              className="w-full rounded-full border border-line bg-paper px-4 py-2.5 text-sm font-bold text-ink transition hover:bg-soft"
+            >
+              Cargar más ({filtered.length - visibleCount} restantes)
+            </button>
+          </div>
+        )}
       </div>
       {paymentOrder && (
         <PaymentModal
@@ -1088,6 +1122,7 @@ function Ordenes({
                   body: { paymentMethod: method },
                 }),
               paymentOrder.id,
+              confirmed ? 'Pago confirmado.' : 'Método de pago actualizado.',
             );
             setPaymentOrder(null);
           }}
@@ -1308,7 +1343,7 @@ function EditOrderModal({
   const save = async () => {
     const validLines = lines.filter((l) => l.quantity > 0);
     if (validLines.length === 0) {
-      alert('La orden debe tener al menos un producto.');
+      toast.error('La orden debe tener al menos un producto.');
       return;
     }
     const items = validLines.map((l) => ({
@@ -1573,6 +1608,7 @@ function Productos({
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
+  const confirm = useConfirm();
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1588,7 +1624,7 @@ function Productos({
     if (stockRaw !== undefined) {
       const next = Number(stockRaw);
       if (Number.isNaN(next) || next < 0) {
-        alert('El valor de stock no es válido (debe ser un número ≥ 0).');
+        toast.error('El valor de stock no es válido (debe ser un número ≥ 0).');
         return;
       }
     }
@@ -1615,7 +1651,7 @@ function Productos({
         }
       }
     } catch (err: any) {
-      alert(err?.message || 'Error al actualizar.');
+      toast.error(err?.message || 'Error al actualizar.');
     } finally {
       setEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
       setPriceEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
@@ -1630,7 +1666,7 @@ function Productos({
 
   const create = async () => {
     if (!form.name.trim()) {
-      alert('El nombre del producto es obligatorio.');
+      toast.error('El nombre del producto es obligatorio.');
       return;
     }
     setSubmitting(true);
@@ -1665,7 +1701,7 @@ function Productos({
       setFormVariants([{ variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al crear el producto.');
+      toast.error(err?.message || 'Error al crear el producto.');
     } finally {
       setSubmitting(false);
     }
@@ -1709,7 +1745,7 @@ function Productos({
   const saveEdit = async () => {
     if (!editing || !editForm) return;
     if (!editForm.name.trim()) {
-      alert('El nombre del producto es obligatorio.');
+      toast.error('El nombre del producto es obligatorio.');
       return;
     }
     const stockChanges = editForm.variants
@@ -1717,7 +1753,7 @@ function Productos({
       .filter((s) => s.id && s.next !== s.old);
 
     if (stockChanges.length > 0 && !editForm.reason.trim()) {
-      alert('Los cambios de stock necesitan un motivo (campo "Motivo de ajuste de stock").');
+      toast.error('Los cambios de stock necesitan un motivo (campo "Motivo de ajuste de stock").');
       return;
     }
 
@@ -1759,20 +1795,27 @@ function Productos({
       setEditForm(null);
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al guardar el producto.');
+      toast.error(err?.message || 'Error al guardar el producto.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const remove = async (p: ApiProduct) => {
-    if (!window.confirm(`¿Desactivar el producto "${p.name}"? No se eliminará del historial de ventas.`)) return;
+    const ok = await confirm({
+      title: 'Desactivar producto',
+      message: `¿Desactivar el producto "${p.name}"? No se eliminará del historial de ventas.`,
+      cancelLabel: 'No',
+      confirmLabel: 'Sí, desactivar',
+      danger: true,
+    });
+    if (!ok) return;
     setDeleting(p.id);
     try {
       await apiFetch(`/products/${p.id}`, { method: 'DELETE', token });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al eliminar el producto.');
+      toast.error(err?.message || 'Error al eliminar el producto.');
     } finally {
       setDeleting(null);
     }
@@ -2234,6 +2277,7 @@ function Clientes({
   const [editing, setEditing] = useState<ApiCustomer | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
@@ -2262,7 +2306,7 @@ function Clientes({
     const name = form.name.trim();
     const phone = form.phone.trim();
     if (name.length < 2 || phone.length < 6) {
-      alert('Ingresa nombre y teléfono válidos.');
+      toast.error('Ingresa nombre y teléfono válidos.');
       return;
     }
     setSaving(true);
@@ -2277,20 +2321,27 @@ function Clientes({
       setEditing(null);
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo guardar el cliente.');
+      toast.error(err?.message || 'No se pudo guardar el cliente.');
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (customer: ApiCustomer) => {
-    if (!window.confirm(`¿Eliminar permanentemente al cliente ${customer.name}?`)) return;
+    const ok = await confirm({
+      title: 'Eliminar cliente',
+      message: `¿Eliminar permanentemente al cliente ${customer.name}? Esta acción no se puede deshacer.`,
+      cancelLabel: 'No',
+      confirmLabel: 'Sí, eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     setDeleting(customer.id);
     try {
       await apiFetch(`/customers/${customer.id}`, { method: 'DELETE', token });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo eliminar el cliente.');
+      toast.error(err?.message || 'No se pudo eliminar el cliente.');
     } finally {
       setDeleting(null);
     }
@@ -2298,7 +2349,13 @@ function Clientes({
 
   const generateCoupon = async (customer: ApiCustomer) => {
     const discountPercent = couponDiscounts[customer.id] ?? 10;
-    if (!window.confirm(`¿Generar cupón de ${discountPercent}% para ${customer.name}?`)) return;
+    const ok = await confirm({
+      title: 'Generar cupón',
+      message: `¿Generar cupón de ${discountPercent}% para ${customer.name}?`,
+      cancelLabel: 'No',
+      confirmLabel: 'Sí, generar',
+    });
+    if (!ok) return;
     setGeneratingCoupon(customer.id);
     try {
       const coupon = await apiFetch<{ code: string; discountPercent: number; expiresAt: string | null }>(
@@ -2332,7 +2389,7 @@ function Clientes({
       window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo generar el cupón.');
+      toast.error(err?.message || 'No se pudo generar el cupón.');
     } finally {
       setGeneratingCoupon(null);
     }
@@ -2509,6 +2566,7 @@ function Agenda({
   const [form, setForm] = useState({ customerId: '', title: '', message: '', dueDate: '', dueTime: '' });
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const filtered = useMemo(() => {
     return [...reminders]
@@ -2545,7 +2603,7 @@ function Agenda({
 
   const save = async () => {
     if (!form.customerId || form.title.trim().length < 1 || form.message.trim().length < 1 || !form.dueDate) {
-      alert('Completa cliente, título, mensaje y fecha.');
+      toast.error('Completa cliente, título, mensaje y fecha.');
       return;
     }
     const dueAt = new Date(`${form.dueDate}T${form.dueTime || '10:00'}:00`).toISOString();
@@ -2561,20 +2619,27 @@ function Agenda({
       setEditing(null);
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo guardar el recordatorio.');
+      toast.error(err?.message || 'No se pudo guardar el recordatorio.');
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (r: ApiReminder) => {
-    if (!window.confirm(`¿Eliminar el recordatorio "${r.title}"?`)) return;
+    const ok = await confirm({
+      title: 'Eliminar recordatorio',
+      message: `¿Eliminar el recordatorio "${r.title}"?`,
+      cancelLabel: 'No',
+      confirmLabel: 'Sí, eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(r.id);
     try {
       await apiFetch(`/reminders/${r.id}`, { method: 'DELETE', token });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo eliminar el recordatorio.');
+      toast.error(err?.message || 'No se pudo eliminar el recordatorio.');
     } finally {
       setBusy(null);
     }
@@ -2586,7 +2651,7 @@ function Agenda({
       await apiFetch(`/reminders/${r.id}`, { method: 'PATCH', token, body: { status } });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'No se pudo actualizar el estado.');
+      toast.error(err?.message || 'No se pudo actualizar el estado.');
     } finally {
       setBusy(null);
     }
@@ -2595,7 +2660,7 @@ function Agenda({
   const sendWhatsApp = (r: ApiReminder) => {
     const phone = r.customerPhone.replace(/\D/g, '');
     if (!phone) {
-      alert('Este cliente no tiene teléfono válido.');
+      toast.error('Este cliente no tiene teléfono válido.');
       return;
     }
     const when = new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'long', timeStyle: 'short' });
@@ -2785,7 +2850,7 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
       await apiFetch('/cash-register/open', { method: 'POST', token, body: { initialAmount: Number(initial) || 0 } });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al abrir caja.');
+      toast.error(err?.message || 'Error al abrir caja.');
     } finally {
       setSaving(false);
     }
@@ -2798,7 +2863,7 @@ function Caja({ cash, token, onChanged }: { cash: CashRegister | null; token: st
       await apiFetch(`/cash-register/${cash.id}/close`, { method: 'PATCH', token, body: { finalAmount: Number(final) || 0 } });
       await onChanged();
     } catch (err: any) {
-      alert(err?.message || 'Error al cerrar caja.');
+      toast.error(err?.message || 'Error al cerrar caja.');
     } finally {
       setSaving(false);
     }
@@ -2873,7 +2938,7 @@ function Reportes({ token }: { token: string }) {
       const r = await apiFetch<Report>(`/orders/reports?${q}`, { token });
       setReport(r);
     } catch (err: any) {
-      alert(err?.message || 'Error al cargar reportes.');
+      toast.error(err?.message || 'Error al cargar reportes.');
     } finally {
       setLoading(false);
     }

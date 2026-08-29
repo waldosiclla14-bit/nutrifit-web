@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Anton, Inter } from 'next/font/google';
 import PWA from '@/components/layout/PWA';
+import { SonnerToaster } from '@/lib/feedback';
 import './globals.css';
 
 const anton = Anton({
@@ -48,6 +49,13 @@ export default function RootLayout({
       <body className={`${anton.variable} ${inter.variable}`}>
         <PWA />
         {children}
+        <SonnerToaster
+          position="top-center"
+          closeButton
+          toastOptions={{
+            style: { fontFamily: 'var(--font-inter), sans-serif' },
+          }}
+        />
       </body>
     </html>
   );
