@@ -24,7 +24,6 @@ export class ProductsService {
         brand: { select: { id: true, name: true, slug: true } },
         variants: {
           where: { isActive: true },
-          include: { batches: { orderBy: { expiryDate: 'asc' } } },
         },
       },
       orderBy: { createdAt: 'desc' },

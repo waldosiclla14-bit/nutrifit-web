@@ -7,7 +7,7 @@ export class CustomersService {
 
   async findAll() {
     return this.prisma.customer.findMany({
-      include: { addresses: true, _count: { select: { orders: true } } },
+      include: { _count: { select: { orders: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }
