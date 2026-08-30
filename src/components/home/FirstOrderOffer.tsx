@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
@@ -29,6 +29,7 @@ function wasShown() {
 
 export default function FirstOrderOffer() {
   const [show, setShow] = useState(false);
+  const showRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || wasShown()) return;
@@ -40,7 +41,8 @@ export default function FirstOrderOffer() {
     }, 6000);
 
     const maybeShow = () => {
-      if (!armed || wasShown() || show) return;
+      if (!armed || wasShown() || showRef.current) return;
+      showRef.current = true;
       setShow(true);
       markShown();
       trackEvent('FirstOrderOfferShown');
@@ -68,7 +70,8 @@ export default function FirstOrderOffer() {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('scroll', onScrollUp);
     };
-  }, [show]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleClaim = () => {
     trackEvent('FirstOrderOfferClaim');

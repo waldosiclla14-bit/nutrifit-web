@@ -442,10 +442,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     try {
       const customer = await apiFetch<{ id: string }>('/customers', {
         method: 'POST',
+        token,
         body: { name: customerName.trim(), phone: customerPhone.trim() },
       });
       const order = await apiFetch<{ id: string; orderNumber: string }>('/orders', {
         method: 'POST',
+        token,
         body: {
           customerId: customer.id,
           customerName: customerName.trim(),

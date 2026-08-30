@@ -36,10 +36,12 @@ import { Agenda } from '@/components/admin/Agenda';
 import { Caja } from '@/components/admin/Caja';
 import { Reportes } from '@/components/admin/Reportes';
 
+type TabKey = 'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes';
+
 export default function AdminPage() {
   const router = useRouter();
   const [token, setTokenState] = useState<string | null>(null);
-  const [tab, setTab] = useState<'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes'>('resumen');
+  const [tab, setTab] = useState<TabKey>('resumen');
 
   useEffect(() => {
     const t = getToken();
@@ -76,8 +78,8 @@ function Dashboard({
   onLogout,
 }: {
   token: string;
-  tab: string;
-  setTab: (t: any) => void;
+  tab: TabKey;
+  setTab: (t: TabKey) => void;
   onSell: () => void;
   onLogout: () => void;
 }) {
@@ -223,7 +225,7 @@ function Dashboard({
     }
   }, [loadTab]);
 
-  const tabs = [
+  const tabs: { key: TabKey; label: string; icon: any }[] = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
     { key: 'ordenes', label: 'Órdenes', icon: ShoppingBag },
     { key: 'productos', label: 'Productos', icon: Boxes },

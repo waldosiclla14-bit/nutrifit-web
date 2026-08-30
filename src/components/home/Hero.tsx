@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { ShieldCheck, Star, Truck, ShoppingBag, BadgeCheck, Lock } from 'lucide-react';
+import { ShieldCheck, Truck, ShoppingBag, BadgeCheck, Lock } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
