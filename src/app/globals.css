@@ -66,6 +66,11 @@
   }
 }
 
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @layer components {
   .container-px {
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
