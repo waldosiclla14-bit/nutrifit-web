@@ -50,7 +50,7 @@ export default function Hero() {
       <div className="container-px relative grid items-center gap-10 py-14 lg:min-h-screen lg:grid-cols-2 lg:gap-14 lg:py-24">
         {/* Imagen */}
         <div className="lg:order-2">
-          <Reveal delay={100} className="block">
+          <div className="block">
             <div className="relative mx-auto max-w-xs sm:max-w-md lg:max-w-lg">
               <div className="absolute inset-0 -z-10 rounded-full bg-accent/20 blur-[90px]" />
               <div className="relative rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
@@ -90,7 +90,7 @@ export default function Hero() {
                 <Truck size={13} className="text-accent" /> Entrega en Metro
               </span>
             </div>
-          </Reveal>
+          </div>
         </div>
 
         {/* Texto */}
