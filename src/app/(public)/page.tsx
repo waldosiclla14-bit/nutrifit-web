@@ -6,7 +6,6 @@ import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import CrossSell from '@/components/home/CrossSell';
 import Benefits from '@/components/home/Benefits';
-import WhyNutriFit from '@/components/home/WhyNutriFit';
 import HowTo from '@/components/home/HowTo';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
@@ -73,7 +72,6 @@ export default function Home() {
       <CrossSell />
       <Categories />
       <Benefits />
-      <WhyNutriFit />
       <HowTo />
       <MetroCoverage />
       <FAQ />
