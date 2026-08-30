@@ -10,11 +10,11 @@ type Filter = { key: string; label: string };
 
 const FILTERS: Filter[] = [
   { key: 'todos', label: 'Todos' },
-  { key: 'proteinas', label: '💪 Whey' },
-  { key: 'creatinas', label: '⚡ Creatina' },
-  { key: 'bienestar', label: '🧠 Bienestar' },
-  { key: 'vitaminas', label: '💊 Vitaminas' },
-  { key: 'accesorios', label: '🥤 Shakers' },
+  { key: 'proteinas', label: 'Whey Protein' },
+  { key: 'creatinas', label: 'Creatina' },
+  { key: 'bienestar', label: 'Bienestar' },
+  { key: 'vitaminas', label: 'Vitaminas' },
+  { key: 'accesorios', label: 'Shakers' },
 ];
 
 // Productos populares por categoría, para que cada filtro muestre resultados útiles.

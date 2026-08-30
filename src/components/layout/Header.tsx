@@ -96,7 +96,7 @@ export default function Header() {
             </button>
             <button
               type="button"
-              onClick={() => openWhatsApp(getSettings().whatsapp, 'Hola NutriFit! Quiero hacer un pedido.')}
+              onClick={() => openWhatsApp(getSettings().whatsapp, 'Hola NutriFit!')}
               aria-label="WhatsApp NutriFit"
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform hover:scale-105"
             >

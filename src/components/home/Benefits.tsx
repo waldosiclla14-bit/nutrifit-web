@@ -1,4 +1,4 @@
-import { BadgeCheck, MessageCircle, ShieldCheck, Sparkles, Truck, Wallet } from 'lucide-react';
+import { BadgeCheck, MessageCircle, ShieldCheck, Truck, Wallet } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
 
 const ITEMS = [
@@ -26,11 +26,6 @@ const ITEMS = [
     icon: Wallet,
     title: 'Pago simple',
     text: 'Transferencia o efectivo en el punto de entrega. Tú eliges.',
-  },
-  {
-    icon: Sparkles,
-    title: '+500 pedidos',
-    text: 'Más de 500 pedidos entregados con una valoración media de 4.9/5.',
   },
 ];
 
