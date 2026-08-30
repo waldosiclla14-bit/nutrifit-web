@@ -6,7 +6,6 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
-import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
 import AiChatbot from '@/components/layout/AiChatbot';
 import StickyCTAMobile from '@/components/home/StickyCTAMobile';
 import MetaPixel from '@/components/analytics/MetaPixel';
@@ -101,7 +100,6 @@ export default function PublicLayout({
           <main>{children}</main>
           <Footer />
           <CartDrawer />
-          <WhatsAppFloat />
           <AiChatbot />
           <StickyCTAMobile />
           <MetaPixel />

@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
 import Hero from '@/components/home/Hero';
-import PromoStrip from '@/components/home/PromoStrip';
-import TrackOrderChip from '@/components/home/TrackOrderChip';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
@@ -14,9 +12,6 @@ import HowTo from '@/components/home/HowTo';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 import Testimonials from '@/components/home/Testimonials';
-import Storytelling from '@/components/home/Storytelling';
-import BlogPreview from '@/components/home/BlogPreview';
-import Newsletter from '@/components/home/Newsletter';
 
 export const metadata: Metadata = {
   alternates: { canonical: '/' },
@@ -77,7 +72,6 @@ export default function Home() {
       <Testimonials />
       <BundlesSection />
       <FeaturedCarousel />
-      <PromoStrip />
       <Categories />
       <CategoryCarousel
         category="accesorios"
@@ -89,12 +83,8 @@ export default function Home() {
       <Combos />
       <Benefits />
       <HowTo />
-      <TrackOrderChip />
       <MetroCoverage />
       <FAQ />
-      <Storytelling />
-      <BlogPreview />
-      <Newsletter />
       <FirstOrderOffer />
     </>
   );

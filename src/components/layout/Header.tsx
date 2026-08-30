@@ -26,15 +26,6 @@ export default function Header() {
 
   return (
     <>
-      <div className="bg-dark text-white">
-        <div className="container-px flex items-center justify-center gap-2 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
-          <span className="text-accent">FLASH SALE:</span>
-          <span className="text-white/90">
-            Hasta 16% OFF en suplementos · Envío gratis en Metro sobre $30.000
-          </span>
-        </div>
-      </div>
-
       <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
         <div className="container-px flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label="NutriFit – Inicio">
