@@ -1,8 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { BRAND } from '@/data/seed';
 import { formatPrice } from '@/lib/utils';
@@ -13,14 +11,6 @@ export default function Footer() {
       <div className="container-px grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <Image
-              src="/img/logo.png"
-              alt="NUTRIFIT"
-              width={1536}
-              height={1024}
-              sizes="120px"
-              className="h-10 w-auto"
-            />
             <span className="font-display text-lg uppercase tracking-wide">
               Nutri<span className="text-accent">Fit</span>
             </span>

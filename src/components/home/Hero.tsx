@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
 import Reveal from '@/components/ui/Reveal';
 import Stars from '@/components/ui/Stars';
+import { BRAND } from '@/data/seed';
 
 type Flavor = { name: string; color: string; image: string };
 
@@ -24,7 +25,7 @@ const PACK_PRICE = 27500;
 const OFF = Math.round((1 - PACK_PRICE / PACK_OLD) * 100);
 
 export default function Hero() {
-  const { addBundle } = useCart();
+  const { addBundle, subtotal, freeShippingFrom } = useCart();
   const [flavor, setFlavor] = useState<Flavor>(FLAVORS[0]);
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
@@ -203,6 +204,32 @@ export default function Hero() {
                 <Truck size={14} className="text-accent" /> Envío gratis en Metro
               </span>
             </div>
+          </Reveal>
+
+          {/* Free shipping progress */}
+          <Reveal delay={320}>
+            {(() => {
+              const remaining = Math.max(0, freeShippingFrom - subtotal);
+              const pct = Math.min(100, Math.round((subtotal / freeShippingFrom) * 100));
+              return (
+                <div className="mt-4 max-w-md">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/60">
+                      {remaining > 0
+                        ? `Te faltan ${formatPrice(remaining)} para envío gratis`
+                        : '¡Tienes envío gratis!'}
+                    </span>
+                    <span className="font-bold text-accent">{pct}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
           </Reveal>
 
           {/* Payment logos */}

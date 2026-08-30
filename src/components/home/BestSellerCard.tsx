@@ -2,31 +2,31 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { MessageCircle } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import type { Product } from '@/types';
 import { formatPrice, getDiscount } from '@/lib/utils';
-import { openWhatsApp, webFooter } from '@/lib/whatsapp';
-import { getSettings } from '@/lib/store';
+import { useCart } from '@/context/CartContext';
 import Stars from '@/components/ui/Stars';
 import StockUrgency from '@/components/product/StockUrgency';
 
 export default function BestSellerCard({ product }: { product: Product }) {
   const discount = getDiscount(product);
+  const { addItem, openCart } = useCart();
 
-  const orderViaWhatsApp = () => {
-    const message = [
-      'HOLA NUTRIFIT',
-      'QUIERO ESTE PRODUCTO',
-      '─'.repeat(24),
-      '',
-      `*Producto:* ${product.name}`,
-      `*Cantidad:* 1`,
-      `*Precio:* ${formatPrice(product.price)}`,
-      '',
-      '¿Está disponible? Quiero coordinar mi entrega en metro.',
-      webFooter(),
-    ].join('\n');
-    openWhatsApp(getSettings().whatsapp, message);
+  const addToCart = () => {
+    const variant = product.variants?.[0];
+    addItem({
+      productId: product.id,
+      slug: product.slug,
+      name: variant ? `${product.name} (${variant.name})` : product.name,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      discount: 0,
+      image: variant?.image ?? product.image,
+      quantity: 1,
+      variant: variant?.name,
+    });
+    openCart();
   };
 
   return (
@@ -79,11 +79,11 @@ export default function BestSellerCard({ product }: { product: Product }) {
           </div>
           <button
             type="button"
-            onClick={orderViaWhatsApp}
-            aria-label={`Pedir ${product.name} por WhatsApp`}
+            onClick={addToCart}
+            aria-label={`Agregar ${product.name} al carrito`}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white transition-all duration-300 hover:bg-accent hover:text-ink group-hover:shadow-glow"
           >
-            <MessageCircle size={17} />
+            <ShoppingBag size={17} />
           </button>
         </div>
       </div>

@@ -4,8 +4,7 @@ import Hero from '@/components/home/Hero';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
-import Combos from '@/components/home/Combos';
-import BundlesSection from '@/components/home/BundlesSection';
+import CrossSell from '@/components/home/CrossSell';
 import Benefits from '@/components/home/Benefits';
 import WhyNutriFit from '@/components/home/WhyNutriFit';
 import HowTo from '@/components/home/HowTo';
@@ -70,10 +69,9 @@ export default function Home() {
       />
       <Hero />
       <Testimonials />
-      <BundlesSection />
       <FeaturedCarousel />
+      <CrossSell />
       <Categories />
-      <Combos />
       <Benefits />
       <WhyNutriFit />
       <HowTo />
