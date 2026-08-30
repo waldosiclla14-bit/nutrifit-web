@@ -8,6 +8,7 @@ import CategoryCarousel from '@/components/home/CategoryCarousel';
 import Combos from '@/components/home/Combos';
 import BundlesSection from '@/components/home/BundlesSection';
 import Benefits from '@/components/home/Benefits';
+import WhyNutriFit from '@/components/home/WhyNutriFit';
 import HowTo from '@/components/home/HowTo';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
@@ -82,6 +83,7 @@ export default function Home() {
       />
       <Combos />
       <Benefits />
+      <WhyNutriFit />
       <HowTo />
       <MetroCoverage />
       <FAQ />

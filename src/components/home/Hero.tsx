@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { ShieldCheck, Star, Truck, ShoppingBag, BadgeCheck } from 'lucide-react';
-import { BUNDLES } from '@/data/seed';
+import { ShieldCheck, Star, Truck, ShoppingBag, BadgeCheck, Lock, CreditCard } from 'lucide-react';
+import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
 import Reveal from '@/components/ui/Reveal';
+import Stars from '@/components/ui/Stars';
 
-// Sabores reales del catálogo FullEnergic Whey con su imagen.
 type Flavor = { name: string; color: string; image: string };
 
 const FLAVORS: Flavor[] = [
@@ -28,6 +28,12 @@ export default function Hero() {
   const [flavor, setFlavor] = useState<Flavor>(FLAVORS[0]);
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
+  const whey = PRODUCTS.find((p) => p.id === 4);
+  const creatina = PRODUCTS.find((p) => p.id === 7);
+  const totalReviews = (whey?.reviews ?? 0) + (creatina?.reviews ?? 0);
+  const avgRating = whey && creatina ? +((whey.rating + creatina.rating) / 2).toFixed(1) : 4.9;
+  const stockLeft = (whey?.stock ?? 0) + (creatina?.stock ?? 0);
+
   const addPack = () => {
     if (!pack) return;
     addBundle(pack, { 4: flavor.name });
@@ -40,7 +46,7 @@ export default function Hero() {
       <div className="hero-grid absolute inset-0 opacity-60" />
 
       <div className="container-px relative grid items-center gap-10 py-14 lg:min-h-screen lg:grid-cols-2 lg:gap-14 lg:py-24">
-        {/* Imagen: arriba en mobile, derecha en desktop */}
+        {/* Imagen */}
         <div className="lg:order-2">
           <Reveal delay={100} className="block">
             <div className="relative mx-auto max-w-xs sm:max-w-md lg:max-w-lg">
@@ -85,7 +91,7 @@ export default function Hero() {
           </Reveal>
         </div>
 
-        {/* Texto: abajo en mobile, izquierda en desktop */}
+        {/* Texto */}
         <div className="lg:order-1">
           <Reveal>
             <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-accent">
@@ -100,10 +106,20 @@ export default function Hero() {
             </h1>
           </Reveal>
 
+          {/* Rating bar */}
+          <Reveal delay={120}>
+            <div className="mt-4 flex items-center gap-3">
+              <Stars rating={avgRating} size={16} />
+              <span className="text-sm font-bold text-white">{avgRating}</span>
+              <span className="text-sm text-white/50">({totalReviews.toLocaleString('es-CL')} reseñas)</span>
+              <span className="hidden h-4 w-px bg-white/20 sm:block" />
+              <span className="hidden text-sm text-white/50 sm:block">+500 pedidos entregados</span>
+            </div>
+          </Reveal>
+
           <Reveal delay={140}>
             <p className="mt-4 max-w-md text-base leading-relaxed text-white/70 sm:text-lg">
-              +500 pedidos en Santiago. Sin envíos caros, sin esperar courier. Coordina por
-              WhatsApp en 2 min.
+              Sin envíos caros, sin esperar courier. Coordina por WhatsApp en 2 min.
             </p>
           </Reveal>
 
@@ -117,7 +133,7 @@ export default function Hero() {
             </div>
           </Reveal>
 
-          {/* Selector de sabor: 5 pills visuales */}
+          {/* Selector de sabor */}
           <Reveal delay={220}>
             <div className="mt-6">
               <p className="mb-2.5 text-sm font-bold text-white/85">Elige tu sabor</p>
@@ -149,32 +165,69 @@ export default function Hero() {
             </div>
           </Reveal>
 
+          {/* Stock urgency */}
+          <Reveal delay={240}>
+            <div className="mt-4 flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              </span>
+              <p className="text-sm font-semibold text-red-400">
+                ¡Quedan solo <span className="text-white">{stockLeft} unidades</span> en stock!
+              </p>
+            </div>
+          </Reveal>
+
           {/* CTA principal */}
           <Reveal delay={260}>
             <button
               type="button"
               onClick={addPack}
-              className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-base font-extrabold text-ink transition-transform active:scale-[0.98] lg:max-w-md"
+              className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-accent text-base font-extrabold text-ink transition-transform active:scale-[0.98] lg:max-w-md"
             >
               <ShoppingBag size={20} />
               Agregar al carrito · {formatPrice(PACK_PRICE)}
             </button>
-            <p className="mt-2 text-[13px] text-white/60">
-              Entrega mañana en Metro · Paga al recibir
-            </p>
+          </Reveal>
+
+          {/* Trust badges bajo CTA */}
+          <Reveal delay={300}>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
+                <ShieldCheck size={14} className="text-accent" /> Garantía 30 días
+              </span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
+                <Lock size={14} className="text-accent" /> Pago seguro
+              </span>
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
+                <Truck size={14} className="text-accent" /> Envío gratis en Metro
+              </span>
+            </div>
+          </Reveal>
+
+          {/* Payment logos */}
+          <Reveal delay={340}>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
+                <CreditCard size={13} /> Transferencia
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
+                <CreditCard size={13} /> Efectivo
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
+                <CreditCard size={13} /> Webpay
+              </div>
+            </div>
           </Reveal>
 
           {/* Micro-badges */}
-          <Reveal delay={300}>
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Reveal delay={380}>
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
               <span className="flex items-center gap-1.5 text-xs font-semibold text-white/75">
-                <ShieldCheck size={15} className="text-accent" /> Productos sellados
+                <BadgeCheck size={15} className="text-accent" /> Productos sellados
               </span>
               <span className="flex items-center gap-1.5 text-xs font-semibold text-white/75">
                 <Star size={15} className="fill-accent text-accent" /> 4.9/5 Google
-              </span>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/75">
-                <Truck size={15} className="text-accent" /> Entrega en 24-48h
               </span>
             </div>
           </Reveal>
