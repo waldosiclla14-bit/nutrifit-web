@@ -14,7 +14,6 @@ const FILTERS: Filter[] = [
   { key: 'creatinas', label: 'Creatina' },
   { key: 'bienestar', label: 'Bienestar' },
   { key: 'vitaminas', label: 'Vitaminas' },
-  { key: 'accesorios', label: 'Shakers' },
 ];
 
 // Productos populares por categoría, para que cada filtro muestre resultados útiles.

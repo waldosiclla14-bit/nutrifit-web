@@ -4,7 +4,6 @@ import Hero from '@/components/home/Hero';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
-import CategoryCarousel from '@/components/home/CategoryCarousel';
 import Combos from '@/components/home/Combos';
 import BundlesSection from '@/components/home/BundlesSection';
 import Benefits from '@/components/home/Benefits';
@@ -74,13 +73,6 @@ export default function Home() {
       <BundlesSection />
       <FeaturedCarousel />
       <Categories />
-      <CategoryCarousel
-        category="accesorios"
-        eyebrow="COMPLEMENTOS"
-        title="Accesorios y"
-        highlight="shakers"
-        linkLabel="Todos los accesorios"
-      />
       <Combos />
       <Benefits />
       <WhyNutriFit />
