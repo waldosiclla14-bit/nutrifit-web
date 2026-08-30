@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { MessageCircle } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { BUNDLES } from '@/data/seed';
+import { useCart } from '@/context/CartContext';
 import { cx, formatPrice } from '@/lib/utils';
-
-const WHATSAPP_LINK =
-  'https://wa.me/56923883826?text=Hola!%20Vi%20el%20Pack%20Inicio%20de%20%2427.500%2C%20%C2%BFqu%C3%A9%20sabor%20te%20queda%20para%20ma%C3%B1ana%3F';
 
 export default function StickyCTAMobile() {
   const [show, setShow] = useState(false);
+  const { addBundle, openCart } = useCart();
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
   useEffect(() => {
@@ -21,6 +20,11 @@ export default function StickyCTAMobile() {
   }, []);
 
   if (!pack) return null;
+
+  const addPack = () => {
+    addBundle(pack, { 4: 'Vainilla' });
+    openCart();
+  };
 
   return (
     <div
@@ -43,15 +47,13 @@ export default function StickyCTAMobile() {
             {formatPrice(pack.fixedPrice ?? 27500)}
           </p>
         </div>
-        <a
-          href={WHATSAPP_LINK}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-3 text-xs font-extrabold text-white transition-transform active:scale-[0.98]"
+        <button
+          onClick={addPack}
+          className="flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-3 text-xs font-extrabold text-ink transition-transform active:scale-[0.98]"
         >
-          <MessageCircle size={15} />
-          Pedir por WhatsApp
-        </a>
+          <ShoppingBag size={15} />
+          Agregar al carrito
+        </button>
       </div>
     </div>
   );

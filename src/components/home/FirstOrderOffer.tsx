@@ -32,12 +32,43 @@ export default function FirstOrderOffer() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || wasShown()) return;
-    const t = setTimeout(() => {
+    if (window.innerWidth < 1024) return;
+
+    let armed = false;
+    const armTimer = setTimeout(() => {
+      armed = true;
+    }, 6000);
+
+    const maybeShow = () => {
+      if (!armed || wasShown() || show) return;
       setShow(true);
+      markShown();
       trackEvent('FirstOrderOfferShown');
-    }, 4000);
-    return () => clearTimeout(t);
-  }, []);
+    };
+
+    const onLeave = (e: MouseEvent) => {
+      if (e.clientY <= 5 && armed) maybeShow();
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden' && armed) maybeShow();
+    };
+
+    const onScrollUp = () => {
+      if (window.scrollY < 40 && armed) maybeShow();
+    };
+
+    document.addEventListener('mouseleave', onLeave);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('scroll', onScrollUp, { passive: true });
+
+    return () => {
+      clearTimeout(armTimer);
+      document.removeEventListener('mouseleave', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('scroll', onScrollUp);
+    };
+  }, [show]);
 
   const handleClaim = () => {
     trackEvent('FirstOrderOfferClaim');

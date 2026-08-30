@@ -5,7 +5,6 @@ import { Check, MessageCircle, Zap } from 'lucide-react';
 import { COMBOS } from '@/data/seed';
 import type { Combo } from '@/types';
 import Reveal from '@/components/ui/Reveal';
-import FlashSaleCountdown from '@/components/home/FlashSaleCountdown';
 import { formatPrice } from '@/lib/utils';
 import { buildComboMessage, openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
@@ -64,9 +63,8 @@ export default function Combos() {
           </span>
           <h2 className="section-title text-paper">Descuentos de hoy</h2>
           <p className="max-w-xl text-sm text-white/60">
-            Combos por tiempo limitado. Pide directo por WhatsApp y coordina tu entrega en metro.
+            Combos con descuento. Pide directo por WhatsApp y coordina tu entrega en metro.
           </p>
-          <FlashSaleCountdown />
         </Reveal>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {COMBOS.map((combo, i) => (
