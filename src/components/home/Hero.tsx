@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { ShieldCheck, Star, Truck, ShoppingBag, BadgeCheck, Lock, CreditCard } from 'lucide-react';
+import { ShieldCheck, Star, Truck, ShoppingBag, BadgeCheck, Lock } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
 import Reveal from '@/components/ui/Reveal';
 import Stars from '@/components/ui/Stars';
+import FlashSaleCountdown from '@/components/home/FlashSaleCountdown';
 import { BRAND } from '@/data/seed';
 
 type Flavor = { name: string; color: string; image: string };
@@ -134,6 +135,12 @@ export default function Hero() {
             </div>
           </Reveal>
 
+          <Reveal delay={200}>
+            <div className="mt-3">
+              <FlashSaleCountdown />
+            </div>
+          </Reveal>
+
           {/* Selector de sabor */}
           <Reveal delay={220}>
             <div className="mt-6">
@@ -191,17 +198,19 @@ export default function Hero() {
             </button>
           </Reveal>
 
-          {/* Trust badges bajo CTA */}
+          {/* Trust + payment */}
           <Reveal delay={300}>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
-                <ShieldCheck size={14} className="text-accent" /> Garantía 30 días
+            <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/60">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck size={13} className="text-accent" /> Garantía 30 días
               </span>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
-                <Lock size={14} className="text-accent" /> Pago seguro
+              <span className="h-3 w-px bg-white/20" />
+              <span className="flex items-center gap-1.5">
+                <Lock size={13} className="text-accent" /> Pago seguro
               </span>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/70">
-                <Truck size={14} className="text-accent" /> Envío gratis en Metro
+              <span className="h-3 w-px bg-white/20" />
+              <span className="flex items-center gap-1.5">
+                <Truck size={13} className="text-accent" /> Envío gratis en Metro
               </span>
             </div>
           </Reveal>
@@ -230,33 +239,6 @@ export default function Hero() {
                 </div>
               );
             })()}
-          </Reveal>
-
-          {/* Payment logos */}
-          <Reveal delay={340}>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
-                <CreditCard size={13} /> Transferencia
-              </div>
-              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
-                <CreditCard size={13} /> Efectivo
-              </div>
-              <div className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80">
-                <CreditCard size={13} /> Webpay
-              </div>
-            </div>
-          </Reveal>
-
-          {/* Micro-badges */}
-          <Reveal delay={380}>
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/75">
-                <BadgeCheck size={15} className="text-accent" /> Productos sellados
-              </span>
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-white/75">
-                <Star size={15} className="fill-accent text-accent" /> 4.9/5 Google
-              </span>
-            </div>
           </Reveal>
         </div>
       </div>

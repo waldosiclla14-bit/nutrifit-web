@@ -6,7 +6,6 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
-import StickyCTAMobile from '@/components/home/StickyCTAMobile';
 import MetaPixel from '@/components/analytics/MetaPixel';
 import GA4 from '@/components/analytics/GA4';
 
@@ -99,7 +98,6 @@ export default function PublicLayout({
           <main>{children}</main>
           <Footer />
           <CartDrawer />
-          <StickyCTAMobile />
           <MetaPixel />
           <GA4 />
         </CartProvider>

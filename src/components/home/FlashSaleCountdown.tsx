@@ -1,53 +1,50 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Zap } from 'lucide-react';
 
-type Left = { h: number; m: number; s: number };
-
-function msToMidnight(): Left {
+function getTimeLeft() {
   const now = new Date();
   const end = new Date(now);
   end.setHours(23, 59, 59, 999);
-  let diff = Math.max(0, end.getTime() - now.getTime());
-  const h = Math.floor(diff / 3600000);
-  diff -= h * 3600000;
-  const m = Math.floor(diff / 60000);
-  diff -= m * 60000;
-  const s = Math.floor(diff / 1000);
-  return { h, m, s };
-}
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-function Unit({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="flex flex-col items-center px-1">
-      <span className="font-display text-lg leading-none text-accent" style={{ fontVariantNumeric: 'tabular-nums' }}>
-        {pad(value)}
-      </span>
-      <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-white/60">{label}</span>
-    </div>
-  );
+  const diff = end.getTime() - now.getTime();
+  return {
+    hours: Math.floor(diff / (1000 * 60 * 60)),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+  };
 }
 
 export default function FlashSaleCountdown() {
-  const [left, setLeft] = useState<Left | null>(null);
+  const [time, setTime] = useState(getTimeLeft);
 
   useEffect(() => {
-    setLeft(msToMidnight());
-    const id = setInterval(() => setLeft(msToMidnight()), 1000);
+    const id = setInterval(() => setTime(getTimeLeft()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  if (!left) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <div className="inline-flex items-center overflow-hidden rounded-full bg-ink px-3 py-1.5 shadow-card">
-      <Unit value={left.h} label="hrs" />
-      <span className="text-accent">:</span>
-      <Unit value={left.m} label="min" />
-      <span className="text-accent">:</span>
-      <Unit value={left.s} label="seg" />
+    <div className="flex items-center gap-3">
+      <span className="flex items-center gap-1.5 text-xs font-bold text-accentDeep">
+        <Zap size={13} /> Termina hoy
+      </span>
+      <div className="flex items-center gap-1.5">
+        {[
+          { value: time.hours, label: 'hr' },
+          { value: time.minutes, label: 'min' },
+          { value: time.seconds, label: 'seg' },
+        ].map((unit, i) => (
+          <span key={unit.label} className="flex items-center gap-1">
+            <span className="flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-ink px-1.5 text-sm font-bold text-paper tabular-nums">
+              {pad(unit.value)}
+            </span>
+            <span className="text-[10px] text-muted">{unit.label}</span>
+            {i < 2 && <span className="text-xs text-muted">:</span>}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

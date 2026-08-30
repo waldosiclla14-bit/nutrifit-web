@@ -7,6 +7,7 @@ import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import CrossSell from '@/components/home/CrossSell';
 import Benefits from '@/components/home/Benefits';
 import HowTo from '@/components/home/HowTo';
+import Guarantee from '@/components/home/Guarantee';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 import Testimonials from '@/components/home/Testimonials';
@@ -73,6 +74,7 @@ export default function Home() {
       <Categories />
       <Benefits />
       <HowTo />
+      <Guarantee />
       <MetroCoverage />
       <FAQ />
       <FirstOrderOffer />

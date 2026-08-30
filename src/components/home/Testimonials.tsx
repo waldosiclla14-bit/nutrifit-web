@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { ArrowUpRight, Quote, Camera } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, Quote, Camera } from 'lucide-react';
 import { BRAND, TESTIMONIALS } from '@/data/seed';
 import Reveal from '@/components/ui/Reveal';
 import Stars from '@/components/ui/Stars';
@@ -74,8 +74,11 @@ export default function Testimonials() {
               <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
                 <Avatar name={featured.name} avatar={featured.avatar} />
                 <div>
-                  <p className="text-base font-bold">{featured.name}</p>
-                  <p className="text-sm text-white/50">Voy al gym 4x semana</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-base font-bold">{featured.name}</p>
+                    <BadgeCheck size={14} className="text-accent" />
+                  </div>
+                  <p className="text-sm text-white/50">Compra verificada</p>
                 </div>
                 <div className="ml-auto">
                   <Stars rating={featured.rating} size={16} />
@@ -96,8 +99,11 @@ export default function Testimonials() {
                   <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-4">
                     <Avatar name={t.name} avatar={t.avatar} />
                     <div>
-                      <p className="text-sm font-bold">{t.name}</p>
-                      <p className="text-xs text-white/50">{t.role}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold">{t.name}</p>
+                        <BadgeCheck size={12} className="text-accent" />
+                      </div>
+                      <p className="text-xs text-white/50">Compra verificada</p>
                     </div>
                     <div className="ml-auto">
                       <Stars rating={t.rating} size={13} />
