@@ -211,11 +211,17 @@ function Dashboard({
         );
       }
     } catch (err: any) {
+      if (err?.status === 401) {
+        clearToken();
+        clearSessionCookie();
+        onLogout();
+        return;
+      }
       if (!silent) toast.error(err?.message || 'Error al cargar datos.');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [token]);
+  }, [token, onLogout]);
 
   const load = useCallback(() => loadTab(tab), [loadTab, tab]);
   const refreshTab = useCallback(() => loadTab(tab, true), [loadTab, tab]);
