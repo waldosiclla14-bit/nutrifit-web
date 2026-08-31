@@ -22,10 +22,15 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, cx, uid } from '@/lib/utils';
-import { METRO_LINES } from '@/data/metro';
 import { buildDeliveryOrderMessage, openWhatsApp } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import type { AdminReport } from '@/types/admin';
+
+let metroLinesCache: typeof import('@/data/metro').METRO_LINES | null = null;
+async function getMetroLines() {
+  if (!metroLinesCache) metroLinesCache = (await import('@/data/metro')).METRO_LINES;
+  return metroLinesCache;
+}
 import {
   ApiProduct,
   CartLine,
@@ -169,7 +174,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [showCash, setShowCash] = useState(false);
   const [report, setReport] = useState<AdminReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [metroLines, setMetroLines] = useState<{ line: string; stations: string[] }[]>([]);
   const searchRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (mode === 'METRO' && metroLines.length === 0) {
+      getMetroLines().then(setMetroLines);
+    }
+  }, [mode, metroLines.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -983,7 +995,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   className="input"
                 >
                   <option value="">Línea de metro…</option>
-                  {METRO_LINES.map((l) => (
+                  {metroLines.map((l) => (
                     <option key={l.line} value={l.line}>
                       Línea {l.line}
                     </option>
@@ -996,7 +1008,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   className="input"
                 >
                   <option value="">Estación…</option>
-                  {(METRO_LINES.find((l) => l.line === metroLine)?.stations || []).map((s) => (
+                  {(metroLines.find((l) => l.line === metroLine)?.stations || []).map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>

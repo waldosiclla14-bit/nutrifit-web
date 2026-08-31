@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
@@ -28,13 +28,28 @@ import type {
   AdminStats,
 } from '@/types/admin';
 import { PasswordModal } from '@/components/admin/PasswordModal';
-import { Resumen } from '@/components/admin/Resumen';
-import { Ordenes } from '@/components/admin/Ordenes';
-import { Productos } from '@/components/admin/Productos';
-import { Clientes } from '@/components/admin/Clientes';
-import { Agenda } from '@/components/admin/Agenda';
-import { Caja } from '@/components/admin/Caja';
-import { Reportes } from '@/components/admin/Reportes';
+
+const Resumen = lazy(() => import('@/components/admin/Resumen').then(m => ({ default: m.Resumen })));
+const Ordenes = lazy(() => import('@/components/admin/Ordenes').then(m => ({ default: m.Ordenes })));
+const Productos = lazy(() => import('@/components/admin/Productos').then(m => ({ default: m.Productos })));
+const Clientes = lazy(() => import('@/components/admin/Clientes').then(m => ({ default: m.Clientes })));
+const Agenda = lazy(() => import('@/components/admin/Agenda').then(m => ({ default: m.Agenda })));
+const Caja = lazy(() => import('@/components/admin/Caja').then(m => ({ default: m.Caja })));
+const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ default: m.Reportes })));
+
+function TabSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      <div className="h-8 w-48 animate-pulse rounded bg-line" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-24 animate-pulse rounded-2xl bg-line" />
+        ))}
+      </div>
+      <div className="h-64 animate-pulse rounded-2xl bg-line" />
+    </div>
+  );
+}
 
 type TabKey = 'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes';
 
@@ -282,13 +297,17 @@ function Dashboard({
 
       <div className="mt-6">
         {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
-        {!loading && tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
-        {!loading && tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
-        {!loading && tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
-        {!loading && tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
-        {!loading && tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
-        {!loading && tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
-        {!loading && tab === 'reportes' && <Reportes token={token} />}
+        {!loading && (
+          <Suspense fallback={<TabSkeleton />}>
+            {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
+            {tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
+            {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
+            {tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
+            {tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
+            {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
+            {tab === 'reportes' && <Reportes token={token} />}
+          </Suspense>
+        )}
       </div>
 
       {showPassword && (

@@ -7,7 +7,12 @@ import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import type { AdminProduct, AdminVariant } from '@/types/admin';
-import * as XLSX from 'xlsx';
+
+let xlsxModule: typeof import('xlsx') | null = null;
+async function getXlsx() {
+  if (!xlsxModule) xlsxModule = await import('xlsx');
+  return xlsxModule;
+}
 
 type EditProductForm = {
   name: string;
@@ -270,7 +275,7 @@ export function Productos({
     }
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
     const rows: Record<string, unknown>[] = [];
     for (const p of products) {
       const base = {
@@ -292,6 +297,7 @@ export function Productos({
         }
       }
     }
+    const XLSX = await getXlsx();
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 12 }];
@@ -304,8 +310,9 @@ export function Productos({
     setImporting(true);
     setImportResult(null);
     try {
+      const XLSX = await getXlsx();
       const buffer = await file.arrayBuffer();
-      let wb: XLSX.WorkBook;
+      let wb: import('xlsx').WorkBook;
       if (/\.csv$/i.test(file.name)) {
         const head = new TextDecoder().decode(new Uint8Array(buffer).slice(0, 16384)).split(/\r?\n/)[0] || '';
         const semi = (head.match(/;/g) || []).length;

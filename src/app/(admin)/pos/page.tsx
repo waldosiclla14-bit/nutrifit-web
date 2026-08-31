@@ -19,7 +19,16 @@ export default function PosPage() {
     setTokenState(t);
   }, [router]);
 
-  if (!token) return null;
+  if (!token) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-surface">
+        <div className="space-y-4 p-6 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-ink border-t-transparent" />
+          <p className="text-sm text-muted">Cargando POS…</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <ConfirmProvider>
       <Pos
