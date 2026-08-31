@@ -152,7 +152,7 @@ export function Clientes({
         <button
           type="button"
           onClick={openAdd}
-          className="inline-flex items-center gap-1 rounded-full bg-ink px-4 py-2 text-xs font-bold text-paper transition hover:opacity-90"
+          className="btn-primary px-4 py-2 text-xs min-h-[44px]"
         >
           <Plus size={14} /> Agregar cliente
         </button>
@@ -185,7 +185,7 @@ export function Clientes({
               const seg = customerSegment(c);
               return (
                 <tr key={c.id} className="border-b border-line/60 last:border-0">
-                  <td className="px-4 py-3 font-semibold">{c.name}</td>
+                  <td className="px-4 py-3 font-semibold truncate max-w-[200px]">{c.name}</td>
                   <td className="px-4 py-3 text-xs">{c.phone}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${seg.cls}`}>{seg.label}</span>
@@ -196,43 +196,43 @@ export function Clientes({
                     {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
                   </td>
                    <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
-                       <td className="px-4 py-3">
+                        <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(c)}
+                          className="mr-2 inline-flex items-center gap-1 btn-outline px-3 py-1.5 text-[11px] min-h-[44px]"
+                        >
+                          <Pencil size={12} /> Editar
+                        </button>
+                        <div className="mr-2 inline-flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={90}
+                            value={couponDiscounts[c.id] ?? 10}
+                            onChange={(e) => {
+                              const v = Math.min(90, Math.max(1, Number(e.target.value) || 10));
+                              setCouponDiscounts((prev) => ({ ...prev, [c.id]: v }));
+                            }}
+                            className="w-12 rounded-full border border-emerald-300 px-2 py-1.5 text-center text-[11px] font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => generateCoupon(c)}
+                            disabled={generatingCoupon === c.id}
+                            className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50 min-h-[44px]"
+                          >
+                            <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón'}
+                          </button>
+                        </div>
                        <button
                          type="button"
-                         onClick={() => openEdit(c)}
-                         className="mr-2 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted transition hover:border-ink hover:text-ink"
-                       >
-                         <Pencil size={12} /> Editar
-                       </button>
-                       <div className="mr-2 inline-flex items-center gap-1">
-                         <input
-                           type="number"
-                           min={1}
-                           max={90}
-                           value={couponDiscounts[c.id] ?? 10}
-                           onChange={(e) => {
-                             const v = Math.min(90, Math.max(1, Number(e.target.value) || 10));
-                             setCouponDiscounts((prev) => ({ ...prev, [c.id]: v }));
-                           }}
-                           className="w-12 rounded-full border border-emerald-300 px-2 py-1.5 text-center text-[11px] font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
-                         />
-                         <button
-                           type="button"
-                           onClick={() => generateCoupon(c)}
-                           disabled={generatingCoupon === c.id}
-                           className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 disabled:opacity-50"
-                         >
-                           <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón'}
-                         </button>
-                       </div>
-                      <button
-                        type="button"
-                        onClick={() => remove(c)}
-                        disabled={deleting === c.id}
-                       className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
-                    >
-                       <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
-                    </button>
+                         onClick={() => remove(c)}
+                         disabled={deleting === c.id}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
+                     >
+                        <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
+                     </button>
                   </td>
                 </tr>
               );

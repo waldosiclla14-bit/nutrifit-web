@@ -93,11 +93,11 @@ export function Ordenes({
             {filtered.slice(0, visibleCount).map((o) => (
               <tr key={o.id} className="border-b border-line/60 last:border-0">
                 <td className="px-4 py-3">
-                  <p className="font-bold text-ink">{o.orderNumber}</p>
+                  <p className="font-bold text-ink truncate">{o.orderNumber}</p>
                   <p className="text-[11px] text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <p className="font-semibold">{o.customer?.name || '—'}</p>
+                  <p className="font-semibold truncate">{o.customer?.name || '—'}</p>
                   <p className="text-[11px] text-muted">{o.customer?.phone || ''}</p>
                 </td>
                 <td className="px-4 py-3 text-xs">
@@ -128,7 +128,7 @@ export function Ordenes({
                       <button
                         disabled={busyId === o.id}
                         onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CONFIRMED' } }), o.id, 'Orden confirmada.')}
-                        className="rounded-full bg-ink px-3 py-1.5 text-[11px] font-bold text-paper disabled:opacity-50"
+                        className="btn-primary px-3 py-1.5 text-[11px] min-h-[44px]"
                       >
                         Confirmar
                       </button>
@@ -137,7 +137,7 @@ export function Ordenes({
                       <button
                         disabled={busyId === o.id}
                         onClick={() => setPaymentOrder(o)}
-                        className="rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold text-ink disabled:opacity-50"
+                        className="btn-accent px-3 py-1.5 text-[11px] min-h-[44px]"
                       >
                         Marcar pagado
                       </button>
@@ -146,7 +146,7 @@ export function Ordenes({
                       <button
                         disabled={busyId === o.id}
                         onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'DELIVERED' } }), o.id, 'Orden marcada como entregada.')}
-                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                        className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50 min-h-[44px]"
                       >
                         Entregado
                       </button>
@@ -165,7 +165,7 @@ export function Ordenes({
                           if (!ok) return;
                           act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CANCELLED' } }), o.id, 'Orden cancelada.');
                         }}
-                        className="rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
+                        className="rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
                       >
                         Cancelar
                       </button>
@@ -184,7 +184,7 @@ export function Ordenes({
                           if (!ok) return;
                           act(() => apiFetch(`/orders/${o.id}`, { method: 'DELETE', token }), o.id, 'Orden eliminada.');
                         }}
-                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
                       >
                         <Trash2 size={12} /> Eliminar
                       </button>
@@ -193,7 +193,7 @@ export function Ordenes({
                       <button
                         disabled={busyId === o.id}
                         onClick={() => setEditOrder(o)}
-                        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-ink disabled:opacity-50"
+                        className="inline-flex items-center gap-1 btn-outline px-3 py-1.5 text-[11px] min-h-[44px]"
                         title="Editar productos, entrega y pago de la orden"
                       >
                         <Pencil size={12} /> Editar
@@ -204,7 +204,7 @@ export function Ordenes({
                         href={waLink(o)}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-ink"
+                        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-ink transition hover:bg-soft min-h-[44px]"
                       >
                         <MessageCircle size={12} /> WhatsApp
                       </a>

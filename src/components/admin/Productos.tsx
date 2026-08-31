@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2 } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
@@ -572,8 +572,8 @@ export function Productos({
                 <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
                 <div className="flex items-center gap-2">
                   <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input" />
-                  <button onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))} disabled={formVariants.length === 1} className="text-red-500 disabled:opacity-30" title="Quitar variante">
-                    ✕
+                  <button onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))} disabled={formVariants.length === 1} className="inline-flex items-center justify-center rounded-full p-1 text-red-500 transition hover:bg-red-50 disabled:opacity-30" title="Quitar variante">
+                    <X size={14} />
                   </button>
                 </div>
               </div>
@@ -775,10 +775,10 @@ export function Productos({
                     <button
                       onClick={() => setEditForm((f) => (f ? { ...f, variants: f.variants.filter((_, idx) => idx !== i) } : f))}
                       disabled={editForm.variants.length === 1}
-                      className="text-red-500 disabled:opacity-30"
+                      className="inline-flex items-center justify-center rounded-full p-1 text-red-500 transition hover:bg-red-50 disabled:opacity-30"
                       title="Quitar variante"
                     >
-                      ✕
+                      <X size={14} />
                     </button>
                   </div>
                 </div>

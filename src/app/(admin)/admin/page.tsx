@@ -41,13 +41,13 @@ const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ d
 function TabSkeleton() {
   return (
     <div className="space-y-4 p-4">
-      <div className="h-8 w-48 animate-pulse rounded bg-line" />
+      <div className="skeleton h-8 w-48 rounded-xl" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-24 animate-pulse rounded-2xl bg-line" />
+          <div key={i} className="skeleton h-24 rounded-2xl" />
         ))}
       </div>
-      <div className="h-64 animate-pulse rounded-2xl bg-line" />
+      <div className="skeleton h-64 rounded-2xl" />
     </div>
   );
 }
@@ -241,18 +241,18 @@ function Dashboard({
         <div className="flex items-center gap-2">
           <button
             onClick={onSell}
-            className="btn-accent px-4 py-2 text-xs"
+            className="btn-accent px-4 py-2 text-xs min-h-[44px]"
             title="Vender con entrega o en local"
           >
             <ShoppingCart size={14} /> Vender
           </button>
-          <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
+          <button onClick={load} className="btn-outline px-4 py-2 text-xs min-h-[44px]" title="Actualizar">
             <RefreshCw size={14} /> Actualizar
           </button>
-          <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs" title="Cambiar contraseña">
+          <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs min-h-[44px]" title="Cambiar contraseña">
             <KeyRound size={14} /> Contraseña
           </button>
-          <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs min-h-[44px]">
             <LogOut size={14} /> Salir
           </button>
         </div>
@@ -277,7 +277,7 @@ function Dashboard({
       </div>
 
       <div className="mt-6">
-        {loading && <p className="py-10 text-center text-sm text-muted">Cargando…</p>}
+        {loading && <TabSkeleton />}
         {!loading && (
           <Suspense fallback={<TabSkeleton />}>
             {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}

@@ -77,7 +77,7 @@ export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | nul
           {cash.status === 'OPEN' && (
             <div className="mt-4 space-y-3">
               <input type="number" value={final} onChange={(e) => setFinal(e.target.value)} className="input" placeholder="Total contado al cierre" />
-              <button onClick={close} disabled={saving} className="btn-primary w-full">
+              <button onClick={close} disabled={saving} className="btn-accent w-full">
                 {saving ? 'Cerrando…' : 'Cerrar caja'}
               </button>
             </div>
