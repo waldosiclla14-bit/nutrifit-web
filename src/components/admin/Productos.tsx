@@ -385,7 +385,7 @@ export function Productos({
         const sku = String(get(r, 'sku_producto') || '').trim();
         const key = sku || `name:${String(get(r, 'producto') || '').trim().toLowerCase()}`;
         if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(r);
+        grouped.get(key)?.push(r);
       }
       let created = 0;
       let updated = 0;
@@ -453,7 +453,6 @@ export function Productos({
           errors++;
           const detail = err?.message || err?.statusText || 'Error desconocido';
           lastError = `${nameP || skuP || '?'}: ${detail}`;
-          console.error('Import error:', nameP, detail, err);
         }
       }
       const summary = errors === 0

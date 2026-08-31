@@ -24,6 +24,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice, cx, uid } from '@/lib/utils';
 import { buildDeliveryOrderMessage, openWhatsApp } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
+import { handleAuthError } from '@/lib/admin/helpers';
 import type { AdminReport } from '@/types/admin';
 
 let metroLinesCache: typeof import('@/data/metro').METRO_LINES | null = null;
@@ -179,7 +180,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   useEffect(() => {
     if (mode === 'METRO' && metroLines.length === 0) {
-      getMetroLines().then(setMetroLines);
+      getMetroLines().then(setMetroLines).catch(() => {});
     }
   }, [mode, metroLines.length]);
 
@@ -248,10 +249,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           : null,
       );
     } catch (err: any) {
-      if (err?.status === 401) {
-        onLogout();
-        return;
-      }
+      if (handleAuthError(err, onLogout)) return;
       toast.error(err?.message || 'Error al cargar datos.');
     } finally {
       if (initial) setLoading(false);
@@ -270,7 +268,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       const r = await apiFetch<AdminReport>(`/orders/reports?from=${today}&to=${today}`, { token });
       setReport(r);
     } catch (err: any) {
-      if (err?.status === 401) { onLogout(); return; }
+      if (handleAuthError(err, onLogout)) return;
       toast.error(err?.message || 'Error al cargar el resumen de caja.');
     } finally {
       setReportLoading(false);
@@ -421,7 +419,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       await apiFetch('/cash-register/open', { method: 'POST', token, body: { initialAmount: 0 } });
       await load(false);
     } catch (err: any) {
-      if (err?.status === 401) { onLogout(); return; }
+      if (handleAuthError(err, onLogout)) return;
       toast.error(err?.message || 'Error al abrir caja.');
     }
   };
@@ -551,7 +549,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       resetSaleForm();
       await load(false);
     } catch (err: any) {
-      if (err?.status === 401) { onLogout(); return; }
+      if (handleAuthError(err, onLogout)) return;
       toast.error(err?.message || 'Error al cobrar.');
     } finally {
       setSaving(false);

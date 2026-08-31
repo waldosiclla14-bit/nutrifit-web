@@ -27,7 +27,7 @@ function initPixel() {
   if (w.fbq) return;
   const n = (function (...args: unknown[]) {
     if (n.callMethod) n.callMethod.apply(n, args);
-    else n.queue!.push(Array.from(args));
+    else n.queue?.push(Array.from(args));
   }) as FbqFn;
   w.fbq = n;
   if (!w._fbq) w._fbq = n;

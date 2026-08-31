@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
 import { ConfirmProvider, toast } from '@/lib/feedback';
+import { mapApiProduct, handleAuthError } from '@/lib/admin/helpers';
 import type {
   AdminCashRegister,
   AdminCustomer,
@@ -143,32 +144,7 @@ function Dashboard({
         setOrders(o || []);
       } else if (t === 'productos') {
         const p = await apiFetch<any[]>('/products/internal', { token });
-        setProducts(
-          (p || []).map((x) => ({
-            id: x.id,
-            name: x.name || x.sku || 'Producto sin nombre',
-            sku: x.sku,
-            brand: x.brand ? x.brand.name : undefined,
-            brandName: x.brand ? x.brand.name : undefined,
-            price: x.basePrice ?? x.price,
-            costPrice: x.costPrice ?? 0,
-            active: x.isActive !== false,
-            comparePrice: x.comparePrice,
-            description: x.description,
-            registroIsp: x.registroIsp || null,
-            category: x.category ? { id: x.category.id, name: x.category.name } : null,
-            variants: (x.variants || []).map((v: any) => ({
-              id: v.id,
-              name: v.variantName || v.name || 'Sin variante',
-              sku: v.sku,
-              price: v.price,
-              costPrice: (v.costPrice || 0) || (x.costPrice || 0),
-              stock: v.stock,
-              lowStockAlert: v.lowStockAlert,
-              active: v.isActive !== false,
-            })),
-          })),
-        );
+        setProducts((p || []).map(mapApiProduct));
       } else if (t === 'clientes') {
         const c = await apiFetch<AdminCustomer[]>('/customers', { token });
         setCustomers(c || []);
@@ -211,10 +187,9 @@ function Dashboard({
         );
       }
     } catch (err: any) {
-      if (err?.status === 401) {
+      if (handleAuthError(err, onLogout)) {
         clearToken();
         clearSessionCookie();
-        onLogout();
         return;
       }
       if (!silent) toast.error(err?.message || 'Error al cargar datos.');

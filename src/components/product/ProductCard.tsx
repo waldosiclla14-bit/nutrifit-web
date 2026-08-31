@@ -70,7 +70,7 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
           {hasVariants && (
             <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-accentDeep shadow-sm">
-              {product.variants!.length} sabores
+              {(product.variants || []).length} sabores
             </span>
           )}
           <StockUrgency stock={product.stock} />

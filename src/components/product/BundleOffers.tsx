@@ -72,7 +72,7 @@ export default function BundleOffers({ productId }: { productId: number }) {
                     aria-label="Sabor de la proteína"
                     className="input !h-9 !py-1 text-xs font-semibold"
                   >
-                    {variantItem.product.variants!.map((v) => (
+                    {(variantItem.product.variants || []).map((v) => (
                       <option key={v.name} value={v.name}>
                         {v.name}
                       </option>
