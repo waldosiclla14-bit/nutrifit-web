@@ -45,9 +45,7 @@ export function Productos({
   token: string;
   onChanged: () => void;
 }) {
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const [priceEdits, setPriceEdits] = useState<Record<string, string>>({});
-  const [costEdits, setCostEdits] = useState<Record<string, string>>({});
+  const [edits, setEdits] = useState<Record<string, { stock?: string; price?: string; cost?: string }>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -66,7 +64,11 @@ export function Productos({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
   const confirm = useConfirm();
+
+  const resetPage = () => setPage(0);
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
@@ -102,8 +104,21 @@ export function Productos({
     return list;
   }, [products, search, categoryFilter, statusFilter, sortBy, sortDir]);
 
+  const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+  const pagedProducts = useMemo(() => {
+    return filteredProducts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  }, [filteredProducts, page]);
+
+  const setEdit = (variantId: string, field: 'stock' | 'price' | 'cost', value: string) => {
+    setEdits((d) => ({ ...d, [variantId]: { ...d[variantId], [field]: value } }));
+  };
+
   const save = async (p: AdminProduct, v: AdminVariant, current: number) => {
-    const stockRaw = edits[v.id];
+    const e = edits[v.id];
+    const stockRaw = e?.stock;
+    const priceRaw = e?.price;
+    const costRaw = e?.cost;
+
     if (stockRaw !== undefined) {
       const next = Number(stockRaw);
       if (Number.isNaN(next) || next < 0) {
@@ -113,32 +128,30 @@ export function Productos({
     }
     setSaving(v.id);
     try {
+      const apiCalls: Promise<any>[] = [];
       if (stockRaw !== undefined) {
         const next = Number(stockRaw);
         if (next !== current) {
-          await apiFetch(`/products/${v.id}/stock`, { method: 'PATCH', token, body: { quantity: next - current } });
+          apiCalls.push(apiFetch(`/products/${v.id}/stock`, { method: 'PATCH', token, body: { quantity: next - current } }));
         }
       }
-      const priceRaw = priceEdits[v.id];
       if (priceRaw !== undefined) {
         const next = Number(priceRaw);
         if (!Number.isNaN(next) && next >= 0 && next !== v.price) {
-          await apiFetch(`/products/${v.id}/price`, { method: 'PATCH', token, body: { price: next } });
+          apiCalls.push(apiFetch(`/products/${v.id}/price`, { method: 'PATCH', token, body: { price: next } }));
         }
       }
-      const costRaw = costEdits[v.id];
       if (costRaw !== undefined) {
         const next = Number(costRaw);
         if (!Number.isNaN(next) && next >= 0 && next !== v.costPrice) {
-          await apiFetch(`/products/${p.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } });
+          apiCalls.push(apiFetch(`/products/${p.id}`, { method: 'PATCH', token, body: { variants: [{ id: v.id, costPrice: next }] } }));
         }
       }
+      if (apiCalls.length > 0) await Promise.all(apiCalls);
     } catch (err: any) {
       toast.error(err?.message || 'Error al actualizar.');
     } finally {
       setEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
-      setPriceEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
-      setCostEdits((d) => { const n = { ...d }; delete n[v.id]; return n; });
       try { await onChanged(); } catch {}
       setSaving(null);
     }
@@ -468,7 +481,7 @@ export function Productos({
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); resetPage(); }}
               placeholder="Buscar…"
               className="input pl-8 py-2 text-sm max-w-[160px]"
             />
@@ -476,7 +489,7 @@ export function Productos({
           <div className="relative">
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) => { setCategoryFilter(e.target.value); resetPage(); }}
               className="input py-2 text-sm pr-6 appearance-none"
             >
               <option value="">Todas las categorías</option>
@@ -487,7 +500,7 @@ export function Productos({
           <div className="relative">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); resetPage(); }}
               className="input py-2 text-sm pr-6 appearance-none"
             >
               <option value="all">Todos</option>
@@ -583,7 +596,7 @@ export function Productos({
       )}
 
       <div className="flex flex-col gap-4">
-        {filteredProducts.map((p) => {
+        {pagedProducts.map((p) => {
           const variants = p.variants && p.variants.length > 0 ? p.variants : [];
           return (
             <div key={p.id} className="overflow-hidden rounded-3xl border border-line bg-paper">
@@ -598,14 +611,14 @@ export function Productos({
                   {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
                   <button
                     onClick={() => openEdit(p)}
-                    className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[10px] font-bold text-ink hover:border-accent"
+                    className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-2 text-[11px] font-bold text-ink hover:border-accent min-h-[44px]"
                   >
                     <Pencil size={10} /> Editar
                   </button>
                   <button
                     onClick={() => remove(p)}
                     disabled={deleting === p.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-2.5 py-1 text-[10px] font-bold text-red-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-2 text-[11px] font-bold text-red-700 disabled:opacity-50 min-h-[44px]"
                   >
                     <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
                   </button>
@@ -634,22 +647,20 @@ export function Productos({
                           <label className="block">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Precio</span>
                             <input
-                              key={`price-${v.id}-${v.price}`}
                               type="number"
-                              defaultValue={v.price}
+                              value={edits[v.id]?.price ?? v.price}
                               disabled={saving === v.id}
-                              onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                              onChange={(e) => setEdit(v.id, 'price', e.target.value)}
                               className="input w-full py-1.5 text-sm"
                             />
                           </label>
                           <label className="block">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Costo</span>
                             <input
-                              key={`cost-${v.id}-${v.costPrice}`}
                               type="number"
-                              defaultValue={v.costPrice}
+                              value={edits[v.id]?.cost ?? v.costPrice}
                               disabled={saving === v.id}
-                              onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                              onChange={(e) => setEdit(v.id, 'cost', e.target.value)}
                               className="input w-full py-1.5 text-sm"
                             />
                           </label>
@@ -657,18 +668,17 @@ export function Productos({
                             <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Stock</span>
                             <div className="flex items-center gap-2">
                               {(() => {
-                                const raw = edits[v.id];
+                                const raw = edits[v.id]?.stock;
                                 const displayStock = raw !== undefined ? (Number(raw) || 0) : v.stock;
                                 const isInvalid = raw !== undefined && (Number.isNaN(Number(raw)) || Number(raw) < 0);
                                 const lvlEdit = raw !== undefined ? stockLevel(displayStock, v.lowStockAlert) : lvl;
                                 return (
                                   <>
                                     <input
-                                      key={`stock-${v.id}-${v.stock}`}
                                       type="number"
-                                      defaultValue={v.stock}
+                                      value={raw ?? v.stock}
                                       disabled={saving === v.id}
-                                      onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                                      onChange={(e) => setEdit(v.id, 'stock', e.target.value)}
                                       className={`input w-full py-1.5 text-sm ${isInvalid ? 'border-red-400 text-red-600' : lvlEdit.cls}`}
                                     />
                                     <span className={`shrink-0 text-[11px] font-bold ${isInvalid ? 'text-red-600' : lvlEdit.cls}`}>
@@ -679,9 +689,14 @@ export function Productos({
                               })()}
                             </div>
                           </label>
-                          <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
-                            margen {marginOf(v.price, v.costPrice)}%
-                          </span>
+                          {(() => {
+                            const m = marginOf(v.price, v.costPrice);
+                            return (
+                              <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(m)}`}>
+                                margen {m}%
+                              </span>
+                            );
+                          })()}
                           <div className="flex justify-end">
                             <button
                               disabled={saving === v.id}
@@ -706,6 +721,27 @@ export function Productos({
           <p className="py-10 text-center text-sm text-muted">
             {products.length === 0 ? 'Sin productos.' : 'No hay resultados para tu búsqueda.'}
           </p>
+        )}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="btn-outline px-3 py-1.5 text-xs disabled:opacity-30"
+            >
+              ← Anterior
+            </button>
+            <span className="text-xs text-muted">
+              Página {page + 1} de {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="btn-outline px-3 py-1.5 text-xs disabled:opacity-30"
+            >
+              Siguiente →
+            </button>
+          </div>
         )}
       </div>
 
