@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
@@ -62,16 +62,45 @@ export function Productos({
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const confirm = useConfirm();
 
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    products.forEach((p) => { if (p.category?.name) cats.add(p.category.name); });
+    return Array.from(cats).sort();
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
+    let list = products;
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.category?.name || ''}`.toLowerCase();
-      return hay.includes(q);
+    if (q) {
+      list = list.filter((p) => {
+        const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.category?.name || ''}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    if (categoryFilter) {
+      list = list.filter((p) => p.category?.name === categoryFilter);
+    }
+    if (statusFilter === 'active') list = list.filter((p) => p.active !== false);
+    if (statusFilter === 'inactive') list = list.filter((p) => p.active === false);
+    list = [...list].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+      if (sortBy === 'price') cmp = (a.price ?? 0) - (b.price ?? 0);
+      if (sortBy === 'stock') {
+        const stockA = a.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) ?? 0;
+        const stockB = b.variants?.reduce((s, v) => s + (v.stock ?? 0), 0) ?? 0;
+        cmp = stockA - stockB;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [products, search]);
+    return list;
+  }, [products, search, categoryFilter, statusFilter, sortBy, sortDir]);
 
   const save = async (p: AdminProduct, v: AdminVariant, current: number) => {
     const stockRaw = edits[v.id];
@@ -277,7 +306,7 @@ export function Productos({
 
   const exportExcel = async () => {
     const rows: Record<string, unknown>[] = [];
-    for (const p of products) {
+    for (const p of filteredProducts) {
       const base = {
         producto: p.name,
         sku_producto: p.sku || '',
@@ -430,15 +459,50 @@ export function Productos({
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">
-          {search ? `${filteredProducts.length} de ${products.length} producto(s)` : `${products.length} producto(s)`}
+          {search || categoryFilter || statusFilter !== 'all'
+            ? `${filteredProducts.length} de ${products.length} producto(s)`
+            : `${products.length} producto(s)`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar producto, SKU, marca o categoría…"
-            className="input max-w-xs py-2 text-sm"
-          />
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar…"
+              className="input pl-8 py-2 text-sm max-w-[160px]"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="input py-2 text-sm pr-6 appearance-none"
+            >
+              <option value="">Todas las categorías</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted" />
+          </div>
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              className="input py-2 text-sm pr-6 appearance-none"
+            >
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+            <ChevronDown size={12} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted" />
+          </div>
+          <button
+            onClick={() => { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); }}
+            className="btn-outline px-2 py-2 text-xs"
+            title={`Ordenar por ${sortBy} ${sortDir === 'asc' ? 'descendente' : 'ascendente'}`}
+          >
+            {sortDir === 'asc' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
+          </button>
           <input
             ref={fileRef}
             type="file"
@@ -453,13 +517,13 @@ export function Productos({
             }}
           />
           <button onClick={() => fileRef.current?.click()} disabled={importing} className="btn-outline px-3 py-2 text-xs disabled:opacity-50">
-            {importing ? 'Importando…' : 'Importar Excel'}
+            {importing ? 'Importando…' : 'Importar'}
           </button>
           <button onClick={exportExcel} className="btn-outline px-3 py-2 text-xs">
-            Exportar Excel
+            Exportar {filteredProducts.length < products.length ? `(${filteredProducts.length})` : ''}
           </button>
           <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
-            {showForm ? 'Cancelar' : '+ Nuevo producto'}
+            {showForm ? 'Cancelar' : '+ Nuevo'}
           </button>
         </div>
       </div>
@@ -559,74 +623,77 @@ export function Productos({
                     <div className="border-b border-line pb-2 text-right text-[10px] font-bold uppercase tracking-widest text-muted">Acciones</div>
                   </div>
                   <div className="divide-y divide-line/60">
-                    {variants.map((v) => (
-                      <div key={v.id} className="flex flex-col gap-2 py-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] md:items-end md:gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{v.name}</p>
-                          <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
-                        </div>
-                        <label className="block">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Precio</span>
-                          <input
-                            key={`price-${v.id}-${v.price}`}
-                            type="number"
-                            defaultValue={v.price}
-                            disabled={saving === v.id}
-                            onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                            className="input w-full py-1.5 text-sm"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Costo</span>
-                          <input
-                            key={`cost-${v.id}-${v.costPrice}`}
-                            type="number"
-                            defaultValue={v.costPrice}
-                            disabled={saving === v.id}
-                            onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                            className="input w-full py-1.5 text-sm"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Stock</span>
-                          <div className="flex items-center gap-2">
-                            {(() => {
-                              const raw = edits[v.id];
-                              const displayStock = raw !== undefined ? (Number(raw) || 0) : v.stock;
-                              const isInvalid = raw !== undefined && (Number.isNaN(Number(raw)) || Number(raw) < 0);
-                              const lvl = stockLevel(displayStock, v.lowStockAlert);
-                              return (
-                                <>
-                                  <input
-                                    key={`stock-${v.id}-${v.stock}`}
-                                    type="number"
-                                    defaultValue={v.stock}
-                                    disabled={saving === v.id}
-                                    onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
-                                    className={`input w-full py-1.5 text-sm ${isInvalid ? 'border-red-400 text-red-600' : lvl.cls}`}
-                                  />
-                                  <span className={`shrink-0 text-[11px] font-bold ${isInvalid ? 'text-red-600' : lvl.cls}`}>
-                                    {isInvalid ? 'inválido' : lvl.label}
-                                  </span>
-                                </>
-                              );
-                            })()}
+                    {variants.map((v) => {
+                      const lvl = stockLevel(v.stock, v.lowStockAlert);
+                      return (
+                        <div key={v.id} className="flex flex-col gap-2 py-3 md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] md:items-end md:gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">{v.name}</p>
+                            <p className="truncate font-mono text-[11px] text-muted">{v.sku || '—'}</p>
                           </div>
-                        </label>
-                        <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
-                          margen {marginOf(v.price, v.costPrice)}%
-                        </span>
-                        <div className="flex justify-end">
-                          <button
-                            disabled={saving === v.id}
-                            onClick={() => save(p, v, v.stock)}
-                            className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
-                          >
-                            {saving === v.id ? 'Guardando…' : 'Guardar'}
-                          </button>
+                          <label className="block">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Precio</span>
+                            <input
+                              key={`price-${v.id}-${v.price}`}
+                              type="number"
+                              defaultValue={v.price}
+                              disabled={saving === v.id}
+                              onChange={(e) => setPriceEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                              className="input w-full py-1.5 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Costo</span>
+                            <input
+                              key={`cost-${v.id}-${v.costPrice}`}
+                              type="number"
+                              defaultValue={v.costPrice}
+                              disabled={saving === v.id}
+                              onChange={(e) => setCostEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                              className="input w-full py-1.5 text-sm"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted md:hidden">Stock</span>
+                            <div className="flex items-center gap-2">
+                              {(() => {
+                                const raw = edits[v.id];
+                                const displayStock = raw !== undefined ? (Number(raw) || 0) : v.stock;
+                                const isInvalid = raw !== undefined && (Number.isNaN(Number(raw)) || Number(raw) < 0);
+                                const lvlEdit = raw !== undefined ? stockLevel(displayStock, v.lowStockAlert) : lvl;
+                                return (
+                                  <>
+                                    <input
+                                      key={`stock-${v.id}-${v.stock}`}
+                                      type="number"
+                                      defaultValue={v.stock}
+                                      disabled={saving === v.id}
+                                      onChange={(e) => setEdits((d) => ({ ...d, [v.id]: e.target.value }))}
+                                      className={`input w-full py-1.5 text-sm ${isInvalid ? 'border-red-400 text-red-600' : lvlEdit.cls}`}
+                                    />
+                                    <span className={`shrink-0 text-[11px] font-bold ${isInvalid ? 'text-red-600' : lvlEdit.cls}`}>
+                                      {isInvalid ? 'inválido' : lvlEdit.label}
+                                    </span>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </label>
+                          <span className={`w-fit rounded-full border bg-soft px-2 py-0.5 text-[11px] font-bold ${marginCls(marginOf(v.price, v.costPrice))}`}>
+                            margen {marginOf(v.price, v.costPrice)}%
+                          </span>
+                          <div className="flex justify-end">
+                            <button
+                              disabled={saving === v.id}
+                              onClick={() => save(p, v, v.stock)}
+                              className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
+                            >
+                              {saving === v.id ? 'Guardando…' : 'Guardar'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
