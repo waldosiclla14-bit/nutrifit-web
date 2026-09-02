@@ -172,7 +172,10 @@ export default function CartDrawer() {
 
     submitStoreOrder(order)
       .then(() => setSyncStatus('ok'))
-      .catch(() => setSyncStatus('offline'));
+      .catch((err) => {
+        console.error('[store sync]', err?.prismaCode ? { prismaCode: err.prismaCode, meta: err.meta, message: err.message } : err);
+        setSyncStatus('offline');
+      });
   };
 
   const handleApplyCoupon = async () => {

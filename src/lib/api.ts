@@ -66,9 +66,13 @@ function invalidateAfterMutation(path: string): void {
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  prismaCode?: string;
+  meta?: Record<string, unknown>;
+  constructor(status: number, message: string, extra?: { prismaCode?: string; meta?: Record<string, unknown> }) {
     super(message);
     this.status = status;
+    if (extra?.prismaCode) this.prismaCode = extra.prismaCode;
+    if (extra?.meta) this.meta = extra.meta;
   }
 }
 
@@ -135,7 +139,10 @@ export async function apiFetch<T = any>(
           ? data.message.join(', ')
           : data.message
         : `Error ${res.status}`;
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, {
+      prismaCode: data?.prismaCode,
+      meta: data?.meta,
+    });
   }
 
   // ── Store in cache after successful GET ──────────────────────────────────

@@ -12,6 +12,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let status = 500;
     let message: string;
+    let extra: Record<string, unknown> | undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -20,19 +21,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (Array.isArray(message)) message = message.join(', ');
     } else if (exception instanceof Error) {
       message = exception.message;
+      const prisma = exception as any;
+      if (prisma.code) {
+        extra = { prismaCode: prisma.code, meta: prisma.meta };
+      }
       this.logger.error(
-        `[${request.method} ${request.url}] ${exception.message}\n${exception.stack || ''}`,
+        `[${request.method} ${request.url}] ${exception.message}\n${JSON.stringify(extra || '')}\n${exception.stack || ''}`,
       );
     } else {
       message = String(exception);
       this.logger.error(`[${request.method} ${request.url}] ${message}`);
     }
 
-    response.status(status).json({
+    const body: Record<string, unknown> = {
       statusCode: status,
       message: message || 'Error interno del servidor',
       timestamp: new Date().toISOString(),
       path: request.url,
-    });
+    };
+    if (extra) Object.assign(body, extra);
+
+    response.status(status).json(body);
   }
 }

@@ -550,6 +550,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       await load(false);
     } catch (err: any) {
       if (handleAuthError(err, onLogout)) return;
+      console.error('[POS checkout]', err?.prismaCode ? { prismaCode: err.prismaCode, meta: err.meta, message: err.message } : err);
       toast.error(err?.message || 'Error al cobrar.');
     } finally {
       setSaving(false);
