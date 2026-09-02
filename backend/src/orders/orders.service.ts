@@ -135,15 +135,6 @@ export class OrdersService {
 
     const buildWrites = (orderNumber: string): PrismaPromise<any>[] => {
       const writes: PrismaPromise<any>[] = [];
-      for (const item of data.items) {
-        if (!item.variantId) continue;
-        writes.push(
-          this.prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: { reservedStock: { increment: item.quantity } },
-          }),
-        );
-      }
 
       writes.push(
         this.prisma.order.create({
@@ -236,10 +227,11 @@ export class OrdersService {
       for (const item of order.items) {
         if (item.variantId && item.quantity > 0) {
           writes.push(
-            this.prisma.productVariant.update({
-              where: { id: item.variantId },
-              data: { reservedStock: { decrement: item.quantity } },
-            }),
+            this.prisma.$executeRaw`
+              UPDATE "product_variants"
+              SET "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+              WHERE "id" = ${item.variantId}
+            `,
           );
         }
       }
@@ -270,13 +262,12 @@ export class OrdersService {
       for (const item of order.items) {
         if (!item.variantId) continue;
         writes.push(
-          this.prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-              stock: { decrement: item.quantity },
-              reservedStock: { decrement: item.quantity },
-            },
-          }),
+          this.prisma.$executeRaw`
+            UPDATE "product_variants"
+            SET "stock" = "stock" - ${item.quantity},
+                "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+            WHERE "id" = ${item.variantId}
+          `,
         );
       }
       markPaid = true;
@@ -291,12 +282,17 @@ export class OrdersService {
       for (const item of order.items) {
         if (!item.variantId) continue;
         writes.push(
-          this.prisma.productVariant.update({
-            where: { id: item.variantId },
-            data: wasPaid
-              ? { stock: { increment: item.quantity } }
-              : { reservedStock: { decrement: item.quantity } },
-          }),
+          wasPaid
+            ? this.prisma.$executeRaw`
+                UPDATE "product_variants"
+                SET "stock" = "stock" + ${item.quantity}
+                WHERE "id" = ${item.variantId}
+              `
+            : this.prisma.$executeRaw`
+                UPDATE "product_variants"
+                SET "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+                WHERE "id" = ${item.variantId}
+              `,
         );
       }
     }
@@ -351,19 +347,16 @@ export class OrdersService {
 
     const writes: PrismaPromise<any>[] = [];
 
-    // Descontar stock físicamente UNA sola vez. Al llegar aquí el pago nunca
-    // fue confirmado (guardia de arriba) y el descuento físico solo ocurre
-    // junto con paymentStatus=CONFIRMED, por lo que el stock aún está intacto.
+    // Descontar stock físicamente UNA sola vez.
     for (const item of existing.items) {
       if (!item.variantId) continue;
       writes.push(
-        this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: {
-            stock: { decrement: item.quantity },
-            reservedStock: { decrement: item.quantity },
-          },
-        }),
+        this.prisma.$executeRaw`
+          UPDATE "product_variants"
+          SET "stock" = "stock" - ${item.quantity},
+              "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+          WHERE "id" = ${item.variantId}
+        `,
       );
     }
 
@@ -490,7 +483,7 @@ export class OrdersService {
         const variant = variantMap.get(item.variantId);
         if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
         const released = oldByVariant.get(item.variantId) || 0;
-        const available = (variant.stock - variant.reservedStock) + released;
+        const available = variant.stock + released;
         if (available < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }
@@ -518,24 +511,21 @@ export class OrdersService {
       const variant = oldVariantMap.get(vid);
       if (!variant) continue;
       writes.push(
-        this.prisma.productVariant.update({
-          where: { id: vid },
-          data: isPaid
-            ? { stock: { increment: qty } }
-            : { reservedStock: { decrement: qty } },
-        }),
+        isPaid
+          ? this.prisma.$executeRaw`UPDATE "product_variants" SET "stock" = "stock" + ${qty} WHERE "id" = ${vid}`
+          : this.prisma.$executeRaw`UPDATE "product_variants" SET "reservedStock" = GREATEST("reservedStock" - ${qty}, 0) WHERE "id" = ${vid}`,
       );
     }
 
     for (const item of data.items) {
       if (!item.variantId) continue;
       writes.push(
-        this.prisma.productVariant.update({
-          where: { id: item.variantId },
-          data: isPaid
-            ? { stock: { decrement: item.quantity } }
-            : { reservedStock: { increment: item.quantity } },
-        }),
+        isPaid
+          ? this.prisma.$executeRaw`UPDATE "product_variants" SET "stock" = "stock" - ${item.quantity} WHERE "id" = ${item.variantId}`
+          : this.prisma.productVariant.update({
+              where: { id: item.variantId },
+              data: { reservedStock: { increment: item.quantity } },
+            }),
       );
     }
 

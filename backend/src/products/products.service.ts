@@ -1,9 +1,19 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
+  private readonly logger = new Logger(ProductsService.name);
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      await this.prisma.$executeRaw`UPDATE "product_variants" SET "reservedStock" = 0 WHERE "reservedStock" > 0`;
+      this.logger.log('Reset stale reservedStock to 0');
+    } catch {
+      this.logger.warn('Could not reset reservedStock on startup');
+    }
+  }
 
   async findAll(query: any = {}) {
     const where: any = { isActive: true };
