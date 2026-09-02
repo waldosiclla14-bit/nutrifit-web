@@ -4,6 +4,66 @@ export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://nutrifit-ap
 
 const TOKEN_KEY = 'nutrifit:admin:token';
 
+// ── In-memory GET cache with TTL ──────────────────────────────────────────────
+const CACHE_TTL = 30_000; // 30 seconds
+const _cache = new Map<string, { data: any; expiry: number }>();
+
+// Endpoints that must always be fresh (state changes rapidly)
+const NO_CACHE_PATHS = ['/cash-register/current'];
+
+function cacheKey(method: string, path: string, token?: string): string {
+  return `${method}:${path}:${token || ''}`;
+}
+
+function isNoCache(path: string): boolean {
+  return NO_CACHE_PATHS.some((p) => path.startsWith(p));
+}
+
+function cacheGet(key: string): any | undefined {
+  const entry = _cache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiry) {
+    _cache.delete(key);
+    return undefined;
+  }
+  return entry.data;
+}
+
+function cacheSet(key: string, data: any): void {
+  _cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+}
+
+// Invalidate cache entries matching a path prefix
+export function clearCache(pathPrefix?: string): void {
+  if (!pathPrefix) {
+    _cache.clear();
+    return;
+  }
+  for (const key of _cache.keys()) {
+    // key format is "METHOD:/path:token"
+    const parts = key.split(':');
+    if (parts.length >= 2 && parts[1].startsWith(pathPrefix)) {
+      _cache.delete(key);
+    }
+  }
+}
+
+// After a mutation, invalidate related cache entries
+function invalidateAfterMutation(path: string): void {
+  if (path.startsWith('/orders')) {
+    clearCache('/orders');
+  } else if (path.startsWith('/products')) {
+    clearCache('/products');
+  } else if (path.startsWith('/customers')) {
+    clearCache('/customers');
+  } else if (path.startsWith('/cash-register')) {
+    clearCache('/cash-register');
+  } else if (path.startsWith('/reminders')) {
+    clearCache('/reminders');
+  }
+}
+// ───────────────────────────────────────────────────────────────────────────────
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -21,6 +81,14 @@ export async function apiFetch<T = any>(
   const method = opts.method ?? 'GET';
   const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
   const maxAttempts = method === 'GET' ? 2 : 1;
+
+  // ── Cache check for GET requests ──────────────────────────────────────────
+  if (method === 'GET' && !isNoCache(path)) {
+    const key = cacheKey(method, path, opts.token);
+    const cached = cacheGet(key);
+    if (cached !== undefined) return cached as T;
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   async function attempt(): Promise<Response> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
@@ -69,6 +137,17 @@ export async function apiFetch<T = any>(
         : `Error ${res.status}`;
     throw new ApiError(res.status, msg);
   }
+
+  // ── Store in cache after successful GET ──────────────────────────────────
+  if (method === 'GET' && !isNoCache(path)) {
+    cacheSet(cacheKey(method, path, opts.token), data);
+  }
+  // ── Invalidate related cache after mutations ─────────────────────────────
+  if (method !== 'GET') {
+    invalidateAfterMutation(path);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   return data as T;
 }
 
