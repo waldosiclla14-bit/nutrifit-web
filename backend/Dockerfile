@@ -13,4 +13,4 @@ RUN npm run build
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma migrate deploy && exec npm run start:prod"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && exec npm run start:prod"]
