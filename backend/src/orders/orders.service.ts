@@ -1,11 +1,39 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, DeliveryType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
+  private readonly logger = new Logger(OrdersService.name);
   constructor(private prisma: PrismaService, private couponsService: CouponsService) {}
+
+  async onModuleInit() {
+    await this.syncOrderCounter();
+  }
+
+  private async syncOrderCounter() {
+    try {
+      // Get the highest numeric suffix from existing NF-XXXXXX orderNumbers
+      const rows = await this.prisma.$queryRaw<{ max_num: bigint }[]>`
+        SELECT COALESCE(MAX(CAST(SUBSTRING("orderNumber" FROM 4) AS INTEGER)), 0) AS max_num
+        FROM "orders"
+        WHERE "orderNumber" ~ '^NF-[0-9]+$'
+      `;
+      const maxNum = Number(rows[0]?.max_num ?? 0);
+
+      // Upsert the counter to at least maxNum (idempotent on restart)
+      await this.prisma.$executeRaw`
+        INSERT INTO "order_counters" ("id", "current")
+        VALUES (1, ${maxNum})
+        ON CONFLICT ("id") DO UPDATE
+        SET "current" = GREATEST("order_counters"."current", ${maxNum})
+      `;
+      this.logger.log(`OrderCounter synced to ${maxNum}`);
+    } catch (err) {
+      this.logger.warn(`Could not sync OrderCounter: ${err}`);
+    }
+  }
 
   async findAll(query: any = {}) {
     const where: any = {};
@@ -187,8 +215,8 @@ export class OrdersService {
       return writes;
     };
 
-    // orderNumber is `count + 1`, so concurrent creates can collide. Retry on
-    // the @unique violation; the coupon claim is only released on final failure.
+    // Atomic counter generates unique orderNumbers. Retry as safety net for
+    // any residual P2002 race; coupon claim is only released on final failure.
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const orderNumber = await this.generateOrderNumber();
       try {
@@ -783,8 +811,25 @@ export class OrdersService {
   }
 
   private async generateOrderNumber(): Promise<string> {
-    const count = await this.prisma.order.count();
-    return `NF-${String(count + 1).padStart(6, '0')}`;
+    // Atomic increment — two concurrent callers will NEVER get the same number.
+    const rows = await this.prisma.$queryRaw<{ next: number }[]>`
+      UPDATE "order_counters"
+      SET "current" = "current" + 1
+      WHERE "id" = 1
+      RETURNING "current" AS "next"
+    `;
+    if (!rows.length) {
+      // Counter row missing (should never happen). Insert and retry.
+      await this.prisma.$executeRaw`INSERT INTO "order_counters" ("id", "current") VALUES (1, 1) ON CONFLICT DO NOTHING`;
+      const retry = await this.prisma.$queryRaw<{ next: number }[]>`
+        UPDATE "order_counters"
+        SET "current" = "current" + 1
+        WHERE "id" = 1
+        RETURNING "current" AS "next"
+      `;
+      return `NF-${String(retry[0].next).padStart(6, '0')}`;
+    }
+    return `NF-${String(rows[0].next).padStart(6, '0')}`;
   }
 
   private validateOrderPayload(data: any) {

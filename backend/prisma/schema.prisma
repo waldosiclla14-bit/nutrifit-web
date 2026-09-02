@@ -403,3 +403,14 @@ model Review {
   @@index([productSlug])
   @@map("reviews")
 }
+
+// ───────────────────────────────────────────────
+// CONTADOR ATÓMICO PARA orderNumber
+// ───────────────────────────────────────────────
+
+model OrderCounter {
+  id      Int @id @default(1)
+  current Int @default(0)
+
+  @@map("order_counters")
+}
