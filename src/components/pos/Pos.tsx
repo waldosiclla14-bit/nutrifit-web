@@ -491,11 +491,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         },
       });
       if (mode === 'LOCAL' || paymentReceived) {
-        await apiFetch(`/orders/${order.id}/payment`, {
-          method: 'PATCH',
-          token,
-          body: { paymentMethod: payment, paymentNotes: 'Pago registrado en POS' },
-        });
+        try {
+          await apiFetch(`/orders/${order.id}/payment`, {
+            method: 'PATCH',
+            token,
+            body: { paymentMethod: payment, paymentNotes: 'Pago registrado en POS' },
+          });
+        } catch {
+          await apiFetch(`/orders/${order.id}`, { method: 'DELETE', token }).catch(() => {});
+          throw new Error('Error al registrar el pago. La venta fue cancelada.');
+        }
       }
       const paidNow = mode === 'LOCAL' || paymentReceived;
       setReceipt({

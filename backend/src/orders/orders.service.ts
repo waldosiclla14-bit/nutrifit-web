@@ -87,7 +87,7 @@ export class OrdersService {
       if (item.variantId) {
         const variant = variantMap.get(item.variantId);
         if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-        if (variant.stock - variant.reservedStock < item.quantity) {
+        if (variant.stock < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }
         const realPrice = variant.price ?? variant.product.basePrice ?? 0;
