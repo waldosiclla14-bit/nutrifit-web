@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
@@ -10,6 +10,7 @@ export default function ExitIntentPopup() {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState('');
   const [dismissed, setDismissed] = useState(false);
+  const showRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -17,7 +18,8 @@ export default function ExitIntentPopup() {
     if (sessionStorage.getItem('exit-intent-shown')) return;
 
     const handleMouseLeave = (e: MouseEvent) => {
-      if (e.clientY <= 5 && !show && !sessionStorage.getItem('exit-intent-shown')) {
+      if (e.clientY <= 5 && !showRef.current && !sessionStorage.getItem('exit-intent-shown')) {
+        showRef.current = true;
         setShow(true);
         sessionStorage.setItem('exit-intent-shown', '1');
         trackEvent('ExitIntentPopupShown');
@@ -26,6 +28,7 @@ export default function ExitIntentPopup() {
 
     const handleTouchLeave = () => {
       if (document.visibilityState === 'hidden' && !sessionStorage.getItem('exit-intent-shown')) {
+        showRef.current = true;
         setShow(true);
         sessionStorage.setItem('exit-intent-shown', '1');
       }
@@ -37,7 +40,7 @@ export default function ExitIntentPopup() {
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('visibilitychange', handleTouchLeave);
     };
-  }, [show]);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

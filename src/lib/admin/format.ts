@@ -14,7 +14,7 @@ export function waLink(order: AdminOrder) {
 
 export function marginOf(price: number, cost: number) {
   if (!price || price <= 0) return 0;
-  return Math.round(((price - cost) / price) * 100);
+  return Math.round(((price - (cost || 0)) / price) * 100);
 }
 
 export function marginCls(margin: number) {
@@ -32,5 +32,5 @@ export function stockLevel(stock: number, alert: number | null) {
 
 export function progressPct(actual: number, goal: number) {
   if (!goal || goal <= 0) return 0;
-  return Math.min(100, Math.round((actual / goal) * 100));
+  return Math.min(100, Math.round(((actual || 0) / goal) * 100));
 }

@@ -296,7 +296,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const addToCart = (p: ApiProduct, variantId: string | null) => {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
     const unitPrice = v?.price ?? p.price;
-    const stock = v?.stock ?? p.stock ?? 0;
+    const stock = v?.stock ?? p.stock ?? 999;
     const key = variantId ?? p.id;
     setCart((cart) => {
       const existing = cart.find((l) => lineKey(l) === key);
@@ -432,8 +432,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         const v = p.variants?.find((x) => x.id === l.variantId);
         if (!v) continue;
         if (l.quantity > v.stock) return { name: `${p.name} · ${v.name}`, avail: v.stock };
-      } else if (l.quantity > (p.stock ?? 0)) {
-        return { name: p.name, avail: p.stock ?? 0 };
+      } else if (p.stock != null && l.quantity > p.stock) {
+        return { name: p.name, avail: p.stock };
       }
     }
     return null;

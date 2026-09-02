@@ -73,7 +73,7 @@ export default function SearchBox({ className }: { className?: string }) {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={p.image}
-                    alt=""
+                    alt={p.name}
                     className="h-10 w-10 shrink-0 rounded-lg border border-line bg-soft object-contain p-1"
                   />
                   <div className="min-w-0 flex-1">

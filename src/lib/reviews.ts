@@ -27,11 +27,16 @@ export async function saveReview(
   text: string,
   verified?: boolean,
 ): Promise<UserReview> {
-  const res = await fetch(`${API_BASE}/reviews`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ productSlug, name: name.trim(), rating, text: text.trim(), verified: !!verified }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productSlug, name: name.trim(), rating, text: text.trim(), verified: !!verified }),
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el servidor');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Error al guardar la reseña');

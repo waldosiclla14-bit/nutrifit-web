@@ -18,6 +18,7 @@ export default function PWA() {
       register();
     } else {
       window.addEventListener('load', register);
+      return () => window.removeEventListener('load', register);
     }
   }, []);
 
