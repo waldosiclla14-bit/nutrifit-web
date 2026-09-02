@@ -301,7 +301,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setCart((cart) => {
       const existing = cart.find((l) => lineKey(l) === key);
       if (existing) {
-        if (existing.quantity >= stock) return cart;
+        if (stock > 0 && existing.quantity >= stock) return cart;
         return cart.map((l) => (lineKey(l) === key ? { ...l, quantity: l.quantity + 1 } : l));
       }
       return [
@@ -447,11 +447,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     }
     if (mode === 'METRO' && (!metroLine || !metroStation || !deliveryDay || !deliveryTime)) {
       toast.error('Completa línea, estación, día y hora de entrega.');
-      return;
-    }
-    const shortage = insufficientStock();
-    if (shortage) {
-      toast.error(`Stock insuficiente para ${shortage.name}. Disponible: ${shortage.avail} uds.`);
       return;
     }
     setSaving(true);
@@ -857,7 +852,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         <button
                           key={v.id ?? p.id}
                           onClick={() => addToCart(p, v.id)}
-                          disabled={v.stock <= 0}
+                          disabled={v.stock != null && v.stock <= 0}
                           className="flex w-full items-center justify-between rounded-2xl border border-line bg-soft/50 px-3 py-2 text-left transition hover:border-accent disabled:opacity-40"
                         >
                           <span className="text-xs font-semibold">
