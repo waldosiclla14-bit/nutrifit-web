@@ -449,6 +449,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       toast.error('Completa línea, estación, día y hora de entrega.');
       return;
     }
+    // Generate idempotency key once per checkout attempt — prevents double-submit
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setSaving(true);
     try {
       const customer = await apiFetch<{ id: string }>('/customers', {
@@ -460,6 +464,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         method: 'POST',
         token,
         body: {
+          idempotencyKey,
           customerId: customer.id,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),

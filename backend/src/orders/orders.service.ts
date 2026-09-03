@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, DeliveryType } from '@prisma/client';
+import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, DeliveryType, MovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { RemindersService } from '../reminders/reminders.service';
@@ -105,6 +105,23 @@ export class OrdersService implements OnModuleInit {
     });
   }
 
+  private async logInventoryMovement(
+    variantId: string,
+    type: MovementType,
+    quantity: number,
+    previousStock: number,
+    newStock: number,
+    orderId?: string,
+    userId?: string,
+    notes?: string,
+  ) {
+    await this.prisma.inventoryMovement
+      .create({
+        data: { variantId, type, quantity, previousStock, newStock, orderId, userId, notes },
+      })
+      .catch((e) => this.logger.warn(`Failed to log inventory movement: ${e?.message}`));
+  }
+
   async findAll(query: any = {}) {
     const where: any = {};
     if (query.status) {
@@ -161,6 +178,16 @@ export class OrdersService implements OnModuleInit {
     this.validateOrderPayload(data);
     const deliveryType = this.validateDeliveryType(data.deliveryType);
     const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
+
+    // Idempotency: if client sends a key, return existing order instead of creating duplicate
+    const idempotencyKey = String(data?.idempotencyKey || '').trim() || null;
+    if (idempotencyKey) {
+      const existing = await this.prisma.order.findUnique({
+        where: { idempotencyKey },
+        include: { customer: true, items: { include: { product: true, variant: true } } },
+      });
+      if (existing) return existing;
+    }
 
     const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
     const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
@@ -259,6 +286,7 @@ export class OrdersService implements OnModuleInit {
         this.prisma.order.create({
           data: {
             orderNumber,
+            idempotencyKey,
             customerId: data.customerId,
             customerName: data.customerName,
             customerPhone: data.customerPhone,
@@ -464,7 +492,7 @@ export class OrdersService implements OnModuleInit {
     const results = await this.prisma.$transaction(writes);
     const updated = results[results.length - 1];
 
-    // Post-transaction safety: if we marked paid, verify no stock went negative
+    // Post-transaction safety + inventory movement logging
     if (markPaid) {
       for (const item of order.items) {
         if (!item.variantId) continue;
@@ -472,6 +500,17 @@ export class OrdersService implements OnModuleInit {
         if (v && v.stock < 0) {
           this.logger.error(`Stock negativo post-transacción: ${v.variantName || v.product?.name} = ${v.stock}`);
         }
+        // Log inventory movement: sale
+        const newStock = v?.stock ?? 0;
+        this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Venta ${order.orderNumber}`);
+      }
+    }
+    if (refunded) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
+        const newStock = v?.stock ?? 0;
+        this.logInventoryMovement(item.variantId, MovementType.CANCEL, item.quantity, newStock - item.quantity, newStock, id, userId, `Cancelación ${order.orderNumber}`);
       }
     }
 
@@ -560,6 +599,15 @@ export class OrdersService implements OnModuleInit {
     );
 
     await this.prisma.$transaction(writes);
+
+    // Log inventory movements after successful transaction
+    for (const item of existing.items) {
+      if (!item.variantId) continue;
+      const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
+      const newStock = v?.stock ?? 0;
+      this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Pago confirmado ${existing.orderNumber}`);
+    }
+
     return this.findOne(id);
   }
 

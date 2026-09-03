@@ -170,9 +170,10 @@ model ProductVariant {
   reservedStock Int     @default(0)
   lowStockAlert Int     @default(5)
 
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  batches    Batch[]
-  orderItems OrderItem[]
+  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batches            Batch[]
+  orderItems         OrderItem[]
+  inventoryMovements InventoryMovement[]
 
   @@map("product_variants")
 }
@@ -197,6 +198,7 @@ model Batch {
 model Order {
   id              String        @id @default(uuid())
   orderNumber     String        @unique
+  idempotencyKey  String?       @unique
   customerId      String
   customerName    String
   customerPhone   String
@@ -228,9 +230,10 @@ model Order {
   updatedAt       DateTime      @updatedAt
   createdById     String?
 
-  customer  Customer    @relation(fields: [customerId], references: [id])
-  items     OrderItem[]
-  createdBy User?       @relation("CreatedBy", fields: [createdById], references: [id])
+  customer             Customer            @relation(fields: [customerId], references: [id])
+  items                OrderItem[]
+  createdBy            User?               @relation("CreatedBy", fields: [createdById], references: [id])
+  inventoryMovements   InventoryMovement[]
 
   @@map("orders")
 }
@@ -413,4 +416,32 @@ model OrderCounter {
   current Int @default(0)
 
   @@map("order_counters")
+}
+
+enum MovementType {
+  SALE
+  CANCEL
+  ADJUSTMENT
+  RETURN
+}
+
+model InventoryMovement {
+  id             String       @id @default(uuid())
+  variantId      String
+  type           MovementType
+  quantity       Int
+  previousStock  Int
+  newStock       Int
+  orderId        String?
+  userId         String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+  order   Order?         @relation(fields: [orderId], references: [id])
+
+  @@index([variantId])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("inventory_movements")
 }

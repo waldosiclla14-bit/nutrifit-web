@@ -203,9 +203,13 @@ export async function submitStoreOrder(order: Order): Promise<void> {
     method: 'POST',
     body: { name: order.name, phone: order.phone },
   });
+  const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   await apiFetch('/orders/public', {
     method: 'POST',
     body: {
+      idempotencyKey,
       customerId: customer.id,
       customerName: order.name,
       customerPhone: order.phone,
