@@ -229,7 +229,7 @@ export function EditOrderModal({
           </div>
 
           <div className="mt-4 rounded-2xl border border-line bg-soft p-3">
-            <button onClick={loadCatalog} className="btn-outline px-3 py-1.5 text-[11px]">
+            <button onClick={loadCatalog} className="btn-outline px-3 py-2 text-[11px] min-h-[44px]">
               {catalogLoading ? 'Cargando…' : catalog ? 'Buscar producto' : 'Cargar catálogo'}
             </button>
             {catalog && (

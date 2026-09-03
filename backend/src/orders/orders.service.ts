@@ -402,13 +402,17 @@ export class OrdersService implements OnModuleInit {
         // Verify that stock was actually reserved for all variants.
         // The WHERE clause in the UPDATE prevents negative stock but
         // silently succeeds with 0 rows if stock is insufficient.
+        const verifyIds = itemsWithCost.filter(i => i.variantId).map(i => i.variantId);
+        const verified = verifyIds.length
+          ? await this.prisma.productVariant.findMany({
+              where: { id: { in: verifyIds } },
+              select: { id: true, reservedStock: true, stock: true, variantName: true },
+            })
+          : [];
+        const verifiedMap = new Map(verified.map(v => [v.id, v]));
         for (const item of itemsWithCost) {
           if (!item.variantId) continue;
-          const v = await this.prisma.productVariant.findUnique({
-            where: { id: item.variantId },
-            select: { reservedStock: true, stock: true, variantName: true },
-          });
-          // If reservedStock didn't increase, the reservation failed — roll back
+          const v = verifiedMap.get(item.variantId);
           const origVariant = variantMap.get(item.variantId);
           if (v && origVariant && v.reservedStock <= origVariant.reservedStock) {
             // Release the coupon if claimed
@@ -565,24 +569,29 @@ export class OrdersService implements OnModuleInit {
     const updated = results[results.length - 1];
 
     // Post-transaction safety + inventory movement logging
-    if (markPaid) {
+    if (markPaid || refunded) {
+      const variantIds = order.items.filter(i => i.variantId).map(i => i.variantId);
+      const variantsPost = variantIds.length
+        ? await this.prisma.productVariant.findMany({
+            where: { id: { in: variantIds } },
+            select: { id: true, stock: true, variantName: true, product: { select: { name: true } } },
+          })
+        : [];
+      const variantPostMap = new Map(variantsPost.map(v => [v.id, v]));
+
       for (const item of order.items) {
         if (!item.variantId) continue;
-        const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true, variantName: true, product: { select: { name: true } } } });
-        if (v && v.stock < 0) {
+        const v = variantPostMap.get(item.variantId);
+        if (markPaid && v && v.stock < 0) {
           this.logger.error(`Stock negativo post-transacción: ${v.variantName || v.product?.name} = ${v.stock}`);
         }
-        // Log inventory movement: sale
         const newStock = v?.stock ?? 0;
-        this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Venta ${order.orderNumber}`);
-      }
-    }
-    if (refunded) {
-      for (const item of order.items) {
-        if (!item.variantId) continue;
-        const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
-        const newStock = v?.stock ?? 0;
-        this.logInventoryMovement(item.variantId, MovementType.CANCEL, item.quantity, newStock - item.quantity, newStock, id, userId, `Cancelación ${order.orderNumber}`);
+        if (markPaid) {
+          this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Venta ${order.orderNumber}`);
+        }
+        if (refunded) {
+          this.logInventoryMovement(item.variantId, MovementType.CANCEL, item.quantity, newStock - item.quantity, newStock, id, userId, `Cancelación ${order.orderNumber}`);
+        }
       }
     }
 
@@ -673,9 +682,17 @@ export class OrdersService implements OnModuleInit {
     await this.prisma.$transaction(writes);
 
     // Log inventory movements after successful transaction
+    const confirmVariantIds = existing.items.filter(i => i.variantId).map(i => i.variantId);
+    const confirmVariants = confirmVariantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: confirmVariantIds } },
+          select: { id: true, stock: true },
+        })
+      : [];
+    const confirmVariantMap = new Map(confirmVariants.map(v => [v.id, v]));
     for (const item of existing.items) {
       if (!item.variantId) continue;
-      const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true } });
+      const v = confirmVariantMap.get(item.variantId);
       const newStock = v?.stock ?? 0;
       this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Pago confirmado ${existing.orderNumber}`);
     }

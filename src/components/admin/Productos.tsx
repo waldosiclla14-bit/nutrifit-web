@@ -700,7 +700,7 @@ export function Productos({
                             <button
                               disabled={saving === v.id}
                               onClick={() => save(p, v, v.stock)}
-                              className="btn-accent px-4 py-1.5 text-[11px] disabled:opacity-50"
+                              className="btn-accent px-4 py-2 text-[11px] min-h-[44px] disabled:opacity-50"
                             >
                               {saving === v.id ? 'Guardando…' : 'Guardar'}
                             </button>
@@ -726,7 +726,7 @@ export function Productos({
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="btn-outline px-3 py-1.5 text-xs disabled:opacity-30"
+              className="btn-outline px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
             >
               ← Anterior
             </button>
@@ -736,7 +736,7 @@ export function Productos({
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="btn-outline px-3 py-1.5 text-xs disabled:opacity-30"
+              className="btn-outline px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
             >
               Siguiente →
             </button>

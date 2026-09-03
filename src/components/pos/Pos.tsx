@@ -177,6 +177,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [reportLoading, setReportLoading] = useState(false);
   const [metroLines, setMetroLines] = useState<{ line: string; stations: string[] }[]>([]);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const cartRef = useRef<HTMLDivElement | null>(null);
+  const customerNameRef = useRef<HTMLInputElement | null>(null);
+
+  const scrollToCart = () => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   useEffect(() => {
     if (mode === 'METRO' && metroLines.length === 0) {
@@ -189,11 +193,20 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       if (e.key === 'F1') {
         e.preventDefault();
         searchRef.current?.focus();
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        customerNameRef.current?.focus();
+      } else if (e.key === 'F3' && cart.length > 0) {
+        e.preventDefault();
+        pauseSale();
+      } else if (e.key === 'F4' && cart.length > 0 && !saving) {
+        e.preventDefault();
+        scrollToCart();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [cart.length, saving]);
 
   useEffect(() => {
     try {
@@ -653,7 +666,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           </div>
 
           {reportLoading && !report ? (
-            <p className="py-8 text-center text-sm text-muted">Cargando resumen…</p>
+            <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
+              <RefreshCw size={14} className="animate-spin" /> Cargando resumen…
+            </div>
           ) : !report ? (
             <p className="py-8 text-center text-sm text-muted">Sin datos por ahora. Pulsa Actualizar.</p>
           ) : (
@@ -705,6 +720,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             <div className="flex gap-2">
               <button onClick={copyReceipt} className="btn-outline px-4 py-2 text-xs">
                 <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
+              </button>
+              <button
+                onClick={() => openWhatsApp(receipt.customerPhone, receiptText(receipt))}
+                className="btn-outline px-4 py-2 text-xs text-emerald-600 hover:border-emerald-300"
+              >
+                <MessageCircle size={13} /> WhatsApp
               </button>
               <button onClick={printReceipt} className="btn-outline px-4 py-2 text-xs">
                 <Printer size={13} /> Imprimir
@@ -818,7 +839,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar producto o SKU… (F1)"
+              placeholder="Buscar producto o SKU… (F1 · F2 cliente · F3 pausar)"
               className="input pl-10"
             />
           </div>
@@ -842,7 +863,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
           {loading ? (
-            <p className="py-10 text-center text-sm text-muted">Cargando…</p>
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
+              <RefreshCw size={16} className="animate-spin" /> Cargando productos…
+            </div>
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((p) => {
@@ -862,7 +885,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         >
                           <span className="text-xs font-semibold">
                             {v.name || 'Sin variante'}
-                            <span className="ml-1 font-normal text-muted">({v.stock} uds)</span>
+                            <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
                           </span>
                           <span className="flex flex-col items-end">
                             <span className="text-sm font-bold">{formatPrice(v.price)}</span>
@@ -881,7 +904,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div className="h-fit rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6">
+        <div ref={cartRef} className="h-fit rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6">
           <p className="flex items-center gap-2 font-display text-lg uppercase">
             <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
@@ -893,15 +916,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
                   <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="rounded-full border border-line p-1">
-                  <Minus size={12} />
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
+                  <Minus size={14} />
                 </button>
-                <span className="w-6 text-center text-sm font-bold">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} className="rounded-full border border-line p-1">
-                  <Plus size={12} />
+                <span className="w-8 text-center text-sm font-bold">{l.quantity}</span>
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
+                  <Plus size={14} />
                 </button>
-                <button onClick={() => setQty(lineKey(l), 0)} className="rounded-full p-1 text-red-500">
-                  <Trash2 size={13} />
+                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}
@@ -942,7 +965,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
 
           <div className="mt-4 space-y-2">
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="input" />
+            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
             <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="input" />
             <select value={payment} onChange={(e) => setPayment(e.target.value)} className="input">
               <option value="EFECTIVO">Efectivo</option>
@@ -950,6 +973,21 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <option value="TARJETA_MANUAL">Tarjeta</option>
               <option value="MIXTO">Mixto</option>
             </select>
+            {payment === 'MIXTO' && (
+              <div className="rounded-2xl border border-line bg-soft/40 p-3 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Pago mixto</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted">Primera parte ($)</label>
+                    <input type="number" min={0} step={100} placeholder="0" className="input w-full text-xs mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted">Segunda parte ($)</label>
+                    <input type="number" min={0} step={100} placeholder="0" className="input w-full text-xs mt-1" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {showCashPay && (
@@ -962,8 +1000,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <button
                     key={t}
                     onClick={() => setPago(t)}
-                    className={`rounded-full border px-2 py-1.5 text-[11px] font-bold transition ${
-                      pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted'
+                    className={`min-h-[40px] rounded-full border px-3 py-2 text-xs font-bold transition active:scale-95 ${
+                      pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'
                     }`}
                   >
                     {formatPrice(t)}
@@ -1088,7 +1126,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <button
                       key={pct}
                       onClick={() => setDiscountPct(pct)}
-                      className={`rounded-full border px-1 py-1.5 text-[11px] font-bold transition ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted'}`}
+                      className={`min-h-[40px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}
                     >
                       {pct === 0 ? '0%' : `-${pct}%`}
                     </button>
@@ -1160,6 +1198,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
       </div>
+
+      {cart.length > 0 && (
+        <button
+          onClick={scrollToCart}
+          className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink bg-ink px-6 py-3 font-bold text-paper shadow-xl transition hover:scale-105 active:scale-95 lg:hidden"
+        >
+          <ShoppingCart size={16} />
+          <span>{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
+          <span className="border-l border-paper/30 pl-3">{formatPrice(total)}</span>
+        </button>
+      )}
     </div>
   );
 }
