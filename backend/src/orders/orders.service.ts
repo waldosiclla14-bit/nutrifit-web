@@ -431,10 +431,11 @@ export class OrdersService implements OnModuleInit {
     let markPaid = false;
     let refunded = false;
 
-    // PAID: descontar stock físicamente UNA sola vez. Solo cuando la orden
-    // estaba CONFIRMADA y el pago aún no estaba confirmado (para evitar el
-    // doble descuento si luego se llama a confirmPayment).
-    if (status === OrderStatus.PAID && oldStatus === OrderStatus.CONFIRMED && order.paymentStatus !== PaymentStatus.CONFIRMED) {
+    // PAID: descontar stock físicamente UNA sola vez. Se ejecuta para
+    // cualquier transición a PAID (PENDING→PAID, CONFIRMED→PAID, etc.)
+    // siempre que el pago no haya sido confirmado previamente (para
+    // evitar el doble descuento si luego se llama a confirmPayment).
+    if (status === OrderStatus.PAID && order.paymentStatus !== PaymentStatus.CONFIRMED) {
       for (const item of order.items) {
         if (!item.variantId) continue;
         writes.push(
@@ -488,6 +489,20 @@ export class OrdersService implements OnModuleInit {
         },
       }),
     );
+
+    // Update customer lifetime stats when marking as paid
+    if (markPaid) {
+      writes.push(
+        this.prisma.customer.update({
+          where: { id: order.customerId },
+          data: {
+            totalSpent: { increment: order.total },
+            totalOrders: { increment: 1 },
+            lastOrderAt: new Date(),
+          },
+        }),
+      );
+    }
 
     const results = await this.prisma.$transaction(writes);
     const updated = results[results.length - 1];
@@ -728,11 +743,8 @@ export class OrdersService implements OnModuleInit {
       if (!item.variantId) continue;
       writes.push(
         isPaid
-          ? this.prisma.$executeRaw`UPDATE "product_variants" SET "stock" = "stock" - ${item.quantity} WHERE "id" = ${item.variantId}`
-          : this.prisma.productVariant.update({
-              where: { id: item.variantId },
-              data: { reservedStock: { increment: item.quantity } },
-            }),
+          ? this.prisma.$executeRaw`UPDATE "product_variants" SET "stock" = GREATEST("stock" - ${item.quantity}, 0), "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0) WHERE "id" = ${item.variantId} AND "stock" >= ${item.quantity}`
+          : this.prisma.$executeRaw`UPDATE "product_variants" SET "reservedStock" = "reservedStock" + ${item.quantity} WHERE "id" = ${item.variantId} AND ("stock" - "reservedStock") >= ${item.quantity}`,
       );
     }
 

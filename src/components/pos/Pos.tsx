@@ -440,7 +440,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   const checkout = async () => {
-    if (cart.length === 0) return;
+    if (saving || cart.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim()) {
       toast.error('Ingresa nombre y teléfono del cliente.');
       return;
