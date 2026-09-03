@@ -2,11 +2,16 @@ import { Injectable, BadRequestException, Logger, NotFoundException, OnModuleIni
 import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, DeliveryType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { RemindersService } from '../reminders/reminders.service';
 
 @Injectable()
 export class OrdersService implements OnModuleInit {
   private readonly logger = new Logger(OrdersService.name);
-  constructor(private prisma: PrismaService, private couponsService: CouponsService) {}
+  constructor(
+    private prisma: PrismaService,
+    private couponsService: CouponsService,
+    private remindersService: RemindersService,
+  ) {}
 
   async onModuleInit() {
     await this.syncOrderCounter();
@@ -33,6 +38,71 @@ export class OrdersService implements OnModuleInit {
     } catch (err) {
       this.logger.warn(`Could not sync OrderCounter: ${err}`);
     }
+  }
+
+  private async createOrderReminder(order: any) {
+    if (!order.customerId) return;
+
+    const items = (order.items || [])
+      .map((i: any) => `${i.quantity}x ${i.productName || i.variantName || 'item'}`)
+      .join(', ');
+
+    const deliveryInfo = [
+      order.metroLine ? `Línea ${order.metroLine}` : '',
+      order.metroStation ? `Estación ${order.metroStation}` : '',
+      order.deliveryDay ? `Día: ${order.deliveryDay}` : '',
+      order.deliveryTime ? `Hora: ${order.deliveryTime}` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ');
+
+    const title = `Pedido ${order.orderNumber} — ${order.customerName || ''}`.trim();
+    const message = [
+      `Pedido ${order.orderNumber}`,
+      items,
+      deliveryInfo,
+      `Total: $${(order.total || 0).toLocaleString('es-CL')}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    // Compute dueAt: prefer deliveryDay + deliveryTime, otherwise tomorrow 10:00
+    let dueAt = new Date();
+    if (order.deliveryDay) {
+      // deliveryDay is like "Lunes", "Martes", etc.
+      const dayMap: Record<string, number> = {
+        lunes: 1, martes: 2, miércoles: 3, miercoles: 3,
+        jueves: 4, viernes: 5, sábado: 6, sabado: 6, domingo: 0,
+      };
+      const targetDay = dayMap[order.deliveryDay.toLowerCase()];
+      if (targetDay !== undefined) {
+        const currentDay = dueAt.getDay();
+        let daysAhead = targetDay - currentDay;
+        if (daysAhead <= 0) daysAhead += 7;
+        dueAt.setDate(dueAt.getDate() + daysAhead);
+      }
+    } else {
+      dueAt.setDate(dueAt.getDate() + 1);
+    }
+
+    // Set delivery time if provided (format "HH:mm" or similar)
+    if (order.deliveryTime) {
+      const timeMatch = String(order.deliveryTime).match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        dueAt.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+      } else {
+        dueAt.setHours(10, 0, 0, 0);
+      }
+    } else {
+      dueAt.setHours(10, 0, 0, 0);
+    }
+
+    await this.remindersService.create({
+      customerId: order.customerId,
+      title,
+      message,
+      dueAt: dueAt.toISOString(),
+    });
   }
 
   async findAll(query: any = {}) {
@@ -227,6 +297,12 @@ export class OrdersService implements OnModuleInit {
             .updateMany({ where: { code: couponCode }, data: { usedOrderId: order.id } })
             .catch(() => undefined);
         }
+
+        // Auto-create reminder in Agenda for every new order
+        this.createOrderReminder(order).catch((e) =>
+          this.logger.warn(`No se pudo crear recordatorio para orden ${order.orderNumber}: ${e?.message}`),
+        );
+
         return order;
       } catch (err: any) {
         const isOrderNumberCollision = err?.code === 'P2002';
