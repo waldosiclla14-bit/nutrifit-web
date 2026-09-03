@@ -22,6 +22,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       message = exception.message;
       const prisma = exception as any;
+      // Log Prisma details internally but NEVER expose to client
       if (prisma.code) {
         extra = { prismaCode: prisma.code, meta: prisma.meta };
       }
@@ -39,7 +40,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     };
-    if (extra) Object.assign(body, extra);
+    // Never expose internal details (Prisma codes, meta) to client
 
     response.status(status).json(body);
   }

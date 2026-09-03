@@ -199,11 +199,11 @@ export function clearSessionCookie() {
 }
 
 export async function submitStoreOrder(order: Order): Promise<void> {
-  const customer = await apiFetch<{ id: string }>('/customers', {
+  const customer = await apiFetch<{ id: string }>('/customers/public', {
     method: 'POST',
     body: { name: order.name, phone: order.phone },
   });
-  await apiFetch('/orders', {
+  await apiFetch('/orders/public', {
     method: 'POST',
     body: {
       customerId: customer.id,

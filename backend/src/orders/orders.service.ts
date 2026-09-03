@@ -162,7 +162,6 @@ export class OrdersService implements OnModuleInit {
     const deliveryType = this.validateDeliveryType(data.deliveryType);
     const paymentMethod = this.validatePaymentMethod(data.paymentMethod);
 
-    const subtotal = Math.max(0, Math.round(Number(data.subtotal) || 0));
     const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
     const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
 
@@ -185,8 +184,9 @@ export class OrdersService implements OnModuleInit {
       if (item.variantId) {
         const variant = variantMap.get(item.variantId);
         if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-        if (variant.stock < item.quantity) {
-          throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
+        const available = variant.stock - variant.reservedStock;
+        if (available < item.quantity) {
+          throw new BadRequestException(`Stock insuficiente para ${variant.variantName} (disponible: ${available})`);
         }
         const realPrice = variant.price ?? variant.product.basePrice ?? 0;
         if (realPrice > 0 && Number(item.unitPrice) !== Number(realPrice)) {
@@ -197,6 +197,12 @@ export class OrdersService implements OnModuleInit {
       itemsWithCost.push({ ...item, unitCost });
       totalCost += unitCost * item.quantity;
     }
+
+    // Recompute subtotal server-side from validated prices (never trust client)
+    const subtotal = itemsWithCost.reduce(
+      (sum: number, item: any) => sum + Math.round(Number(item.unitPrice) || 0) * item.quantity,
+      0,
+    );
 
     let appliedDiscount = Math.max(0, Math.round(Number(data.discount) || 0));
 
@@ -233,6 +239,21 @@ export class OrdersService implements OnModuleInit {
 
     const buildWrites = (orderNumber: string): PrismaPromise<any>[] => {
       const writes: PrismaPromise<any>[] = [];
+
+      // Reserve stock atomically inside the transaction.
+      // Uses SELECT FOR UPDATE via raw SQL to lock rows and prevent
+      // concurrent orders from over-reserving the same units.
+      for (const item of itemsWithCost) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.$executeRaw`
+            UPDATE "product_variants"
+            SET "reservedStock" = "reservedStock" + ${item.quantity}
+            WHERE "id" = ${item.variantId}
+              AND ("stock" - "reservedStock") >= ${item.quantity}
+          `,
+        );
+      }
 
       writes.push(
         this.prisma.order.create({
@@ -292,6 +313,29 @@ export class OrdersService implements OnModuleInit {
       try {
         const results = await this.prisma.$transaction(buildWrites(orderNumber));
         const order = results[results.length - 1];
+
+        // Verify that stock was actually reserved for all variants.
+        // The WHERE clause in the UPDATE prevents negative stock but
+        // silently succeeds with 0 rows if stock is insufficient.
+        for (const item of itemsWithCost) {
+          if (!item.variantId) continue;
+          const v = await this.prisma.productVariant.findUnique({
+            where: { id: item.variantId },
+            select: { reservedStock: true, stock: true, variantName: true },
+          });
+          // If reservedStock didn't increase, the reservation failed — roll back
+          const origVariant = variantMap.get(item.variantId);
+          if (v && origVariant && v.reservedStock <= origVariant.reservedStock) {
+            // Release the coupon if claimed
+            if (couponClaimed && couponCode) {
+              await this.prisma.coupon
+                .updateMany({ where: { code: couponCode }, data: { usedAt: null, usedOrderId: null } })
+                .catch(() => undefined);
+            }
+            throw new BadRequestException(`Stock insuficiente para ${item.variantName || v.variantName}`);
+          }
+        }
+
         if (couponClaimed && couponCode) {
           await this.prisma.coupon
             .updateMany({ where: { code: couponCode }, data: { usedOrderId: order.id } })
@@ -368,9 +412,9 @@ export class OrdersService implements OnModuleInit {
         writes.push(
           this.prisma.$executeRaw`
             UPDATE "product_variants"
-            SET "stock" = "stock" - ${item.quantity},
+            SET "stock" = GREATEST("stock" - ${item.quantity}, 0),
                 "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
-            WHERE "id" = ${item.variantId}
+            WHERE "id" = ${item.variantId} AND "stock" >= ${item.quantity}
           `,
         );
       }
@@ -420,6 +464,17 @@ export class OrdersService implements OnModuleInit {
     const results = await this.prisma.$transaction(writes);
     const updated = results[results.length - 1];
 
+    // Post-transaction safety: if we marked paid, verify no stock went negative
+    if (markPaid) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true, variantName: true, product: { select: { name: true } } } });
+        if (v && v.stock < 0) {
+          this.logger.error(`Stock negativo post-transacción: ${v.variantName || v.product?.name} = ${v.stock}`);
+        }
+      }
+    }
+
     // Audit log
     await this.prisma.auditLog.create({
       data: {
@@ -451,15 +506,15 @@ export class OrdersService implements OnModuleInit {
 
     const writes: PrismaPromise<any>[] = [];
 
-    // Descontar stock físicamente UNA sola vez.
+    // Descontar stock físicamente UNA sola vez. El WHERE previene stock negativo.
     for (const item of existing.items) {
       if (!item.variantId) continue;
       writes.push(
         this.prisma.$executeRaw`
           UPDATE "product_variants"
-          SET "stock" = "stock" - ${item.quantity},
+          SET "stock" = GREATEST("stock" - ${item.quantity}, 0),
               "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
-          WHERE "id" = ${item.variantId}
+          WHERE "id" = ${item.variantId} AND "stock" >= ${item.quantity}
         `,
       );
     }

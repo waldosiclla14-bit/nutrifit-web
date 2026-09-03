@@ -90,7 +90,7 @@ export class ProductsController {
 
   @Patch(':id/price')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SELLER)
+  @Roles(Role.ADMIN)
   async updatePrice(@Param('id') id: string, @Req() req: ExpressRequest) {
     const body = await readJsonBody(req);
     return this.productsService.updatePrice(id, body.price);

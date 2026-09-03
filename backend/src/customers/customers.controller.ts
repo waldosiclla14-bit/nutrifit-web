@@ -34,8 +34,21 @@ export class CustomersController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   async create(@Req() req: Request) {
+    const data = await readJsonBody(req);
+    return this.customersService.create({
+      name: data?.name,
+      phone: data?.phone,
+      email: data?.email,
+    });
+  }
+
+  @Post('public')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async createPublic(@Req() req: Request) {
     const data = await readJsonBody(req);
     return this.customersService.create({
       name: data?.name,

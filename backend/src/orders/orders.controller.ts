@@ -47,9 +47,18 @@ export class OrdersController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   async create(@Request() req: any) {
     return this.ordersService.create({ ...(await readJsonBody(req)), createdById: req.user?.id });
+  }
+
+  @Post('public')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async createPublicOrder(@Request() req: any) {
+    const body = await readJsonBody(req);
+    return this.ordersService.create({ ...body, createdById: null });
   }
 
   @Patch(':id/status')
