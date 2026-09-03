@@ -15,6 +15,7 @@ export class OrdersService implements OnModuleInit {
 
   async onModuleInit() {
     await this.syncOrderCounter();
+    await this.expireAbandonedOrders();
   }
 
   private async syncOrderCounter() {
@@ -37,6 +38,52 @@ export class OrdersService implements OnModuleInit {
       this.logger.log(`OrderCounter synced to ${maxNum}`);
     } catch (err) {
       this.logger.warn(`Could not sync OrderCounter: ${err}`);
+    }
+  }
+
+  private async expireAbandonedOrders() {
+    try {
+      // Release reserved stock for PENDING orders older than 24 hours
+      // that were created via public endpoint (createdById is null)
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const abandoned = await this.prisma.order.findMany({
+        where: {
+          status: OrderStatus.PENDING,
+          createdById: null,
+          createdAt: { lt: cutoff },
+        },
+        include: { items: true },
+      });
+
+      if (abandoned.length === 0) return;
+
+      this.logger.log(`Expiring ${abandoned.length} abandoned public orders`);
+      for (const order of abandoned) {
+        try {
+          const writes: PrismaPromise<any>[] = [];
+          for (const item of order.items) {
+            if (!item.variantId) continue;
+            writes.push(
+              this.prisma.$executeRaw`
+                UPDATE "product_variants"
+                SET "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+                WHERE "id" = ${item.variantId}
+              `,
+            );
+          }
+          writes.push(
+            this.prisma.order.update({
+              where: { id: order.id },
+              data: { status: OrderStatus.CANCELLED, updatedAt: new Date() },
+            }),
+          );
+          await this.prisma.$transaction(writes);
+        } catch (e) {
+          this.logger.warn(`Failed to expire order ${order.orderNumber}: ${e}`);
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`expireAbandonedOrders error: ${err}`);
     }
   }
 
@@ -151,14 +198,24 @@ export class OrdersService implements OnModuleInit {
       }
     }
 
-    return this.prisma.order.findMany({
-      where,
-      include: {
-        customer: { select: { id: true, name: true, phone: true } },
-        createdBy: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const include = {
+      customer: { select: { id: true, name: true, phone: true } },
+      createdBy: { select: { id: true, name: true } },
+    };
+
+    // Pagination: if page is provided, return { data, total, page, limit }
+    const page = Math.max(1, parseInt(query.page, 10) || 0);
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+
+    if (page > 0) {
+      const [data, total] = await Promise.all([
+        this.prisma.order.findMany({ where, include, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+        this.prisma.order.count({ where }),
+      ]);
+      return { data, total, page, limit };
+    }
+
+    return this.prisma.order.findMany({ where, include, orderBy: { createdAt: 'desc' } });
   }
 
   async findOne(id: string) {

@@ -5,11 +5,20 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.customer.findMany({
-      include: { _count: { select: { orders: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(query: any = {}) {
+    const include = { _count: { select: { orders: true } } };
+    const page = Math.max(1, parseInt(query?.page, 10) || 0);
+    const limit = Math.min(100, Math.max(1, parseInt(query?.limit, 10) || 50));
+
+    if (page > 0) {
+      const [data, total] = await Promise.all([
+        this.prisma.customer.findMany({ include, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+        this.prisma.customer.count(),
+      ]);
+      return { data, total, page, limit };
+    }
+
+    return this.prisma.customer.findMany({ include, orderBy: { createdAt: 'desc' } });
   }
 
   async findOne(id: string) {

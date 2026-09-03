@@ -45,6 +45,33 @@ export class ProductsController {
     return this.productsService.getInventoryValue();
   }
 
+  @Get('inventory-movements')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  async getInventoryMovements(@Query() query: any) {
+    const where: any = {};
+    if (query.variantId) where.variantId = query.variantId;
+    if (query.type) where.type = query.type;
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
+      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
+    }
+    const page = Math.max(1, parseInt(query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+    const [data, total] = await Promise.all([
+      this.productsService['prisma'].inventoryMovement.findMany({
+        where,
+        include: { variant: { include: { product: { select: { name: true, slug: true } } } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.productsService['prisma'].inventoryMovement.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
   @Get('sku/:sku')
   async findBySku(@Param('sku') sku: string) {
     return this.productsService.toPublicVariant(await this.productsService.findBySku(sku));

@@ -37,6 +37,7 @@ const Clientes = lazy(() => import('@/components/admin/Clientes').then(m => ({ d
 const Agenda = lazy(() => import('@/components/admin/Agenda').then(m => ({ default: m.Agenda })));
 const Caja = lazy(() => import('@/components/admin/Caja').then(m => ({ default: m.Caja })));
 const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ default: m.Reportes })));
+const Inventario = lazy(() => import('@/components/admin/Inventario').then(m => ({ default: m.Inventario })));
 
 function TabSkeleton() {
   return (
@@ -52,7 +53,7 @@ function TabSkeleton() {
   );
 }
 
-type TabKey = 'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes';
+type TabKey = 'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -229,6 +230,7 @@ function Dashboard({
     { key: 'agenda', label: 'Agenda', icon: CalendarDays },
     { key: 'caja', label: 'Caja', icon: Wallet },
     { key: 'reportes', label: 'Reportes', icon: BarChart3 },
+    { key: 'inventario', label: 'Inventario', icon: Boxes },
   ];
 
   return (
@@ -287,6 +289,7 @@ function Dashboard({
             {tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
             {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
             {tab === 'reportes' && <Reportes token={token} />}
+            {tab === 'inventario' && <Inventario token={token} />}
           </Suspense>
         )}
       </div>

@@ -157,3 +157,21 @@ export type AdminInventoryValue = {
   potentialProfit: number;
   avgMargin: number;
 };
+
+export type AdminInventoryMovement = {
+  id: string;
+  variantId: string;
+  type: 'SALE' | 'CANCEL' | 'ADJUSTMENT' | 'RETURN';
+  quantity: number;
+  previousStock: number;
+  newStock: number;
+  orderId: string | null;
+  userId: string | null;
+  notes: string | null;
+  createdAt: string;
+  variant: {
+    variantName: string;
+    sku: string;
+    product: { name: string; slug: string };
+  };
+};
