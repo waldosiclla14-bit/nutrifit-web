@@ -231,7 +231,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     try {
       const [p, cr] = await Promise.all([
         apiFetch<any[]>('/products/internal', { token }),
-        apiFetch<any | null>('/cash-register/current-lite', { token }),
+        apiFetch<any | null>('/cash-register/current-lite', { token }).catch(() =>
+          apiFetch<any | null>('/cash-register/current', { token }),
+        ),
       ]);
       setProducts(
         (p || []).map((x) => {
