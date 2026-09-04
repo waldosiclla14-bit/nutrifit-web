@@ -899,67 +899,78 @@ export class OrdersService implements OnModuleInit {
 
     const paidStatuses = [OrderStatus.PAID, OrderStatus.DELIVERED];
 
-    const [todaySales, yesterdaySales, monthSales, totalOrders, pendingOrders, totalCustomers, topProducts, salesByDay] =
-      await Promise.all([
-        this.prisma.order.aggregate({
-          where: { status: { in: paidStatuses }, createdAt: { gte: today } },
-          _sum: { total: true, profit: true },
-          _count: true,
-        }),
-        this.prisma.order.aggregate({
-          where: { status: { in: paidStatuses }, createdAt: { gte: yesterday, lt: today } },
-          _sum: { total: true },
-          _count: true,
-        }),
-        this.prisma.order.aggregate({
-          where: { status: { in: paidStatuses }, createdAt: { gte: monthStart } },
-          _sum: { total: true, profit: true },
-          _count: true,
-        }),
+    // Consolidate 3 aggregates + 2 counts + top products + salesByDay into 4 queries
+    const [salesStats, counts, topProducts, salesByDay] = await Promise.all([
+      // Single raw SQL for today/yesterday/month aggregates
+      this.prisma.$queryRaw<{
+        today_total: bigint; today_profit: bigint; today_count: bigint;
+        yesterday_total: bigint; yesterday_count: bigint;
+        month_total: bigint; month_profit: bigint; month_count: bigint;
+      }[]>`
+        SELECT
+          SUM(CASE WHEN "createdAt" >= ${today} THEN "total" ELSE 0 END)::int AS today_total,
+          SUM(CASE WHEN "createdAt" >= ${today} THEN "profit" ELSE 0 END)::int AS today_profit,
+          COUNT(CASE WHEN "createdAt" >= ${today} THEN 1 END)::int AS today_count,
+          SUM(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${today} THEN "total" ELSE 0 END)::int AS yesterday_total,
+          COUNT(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${today} THEN 1 END)::int AS yesterday_count,
+          SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "total" ELSE 0 END)::int AS month_total,
+          SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "profit" ELSE 0 END)::int AS month_profit,
+          COUNT(CASE WHEN "createdAt" >= ${monthStart} THEN 1 END)::int AS month_count
+        FROM "orders"
+        WHERE "status" IN ('PAID', 'DELIVERED')
+      `,
+      // Combined count query
+      Promise.all([
         this.prisma.order.count(),
         this.prisma.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] } } }),
         this.prisma.customer.count(),
-        this.prisma.orderItem.groupBy({
-          by: ['productName'],
-          where: { order: { status: { in: paidStatuses } } },
-          _sum: { quantity: true, total: true },
-          orderBy: { _sum: { quantity: 'desc' } },
-          take: 5,
-        }),
-        this.prisma.$queryRaw`
-          SELECT
-            DATE("createdAt") as date,
-            SUM("total")::int as total,
-            SUM("profit")::int as profit,
-            COUNT(*)::int as count
-          FROM "orders"
-          WHERE "status" IN ('PAID', 'DELIVERED')
-            AND "createdAt" >= CURRENT_DATE - INTERVAL '7 days'
-          GROUP BY DATE("createdAt")
-          ORDER BY date ASC
-        `,
-      ]);
+      ]),
+      this.prisma.orderItem.groupBy({
+        by: ['productName'],
+        where: { order: { status: { in: paidStatuses } } },
+        _sum: { quantity: true, total: true },
+        orderBy: { _sum: { quantity: 'desc' } },
+        take: 5,
+      }),
+      this.prisma.$queryRaw`
+        SELECT
+          DATE("createdAt") as date,
+          SUM("total")::int as total,
+          SUM("profit")::int as profit,
+          COUNT(*)::int as count
+        FROM "orders"
+        WHERE "status" IN ('PAID', 'DELIVERED')
+          AND "createdAt" >= CURRENT_DATE - INTERVAL '7 days'
+        GROUP BY DATE("createdAt")
+        ORDER BY date ASC
+      `,
+    ]);
 
-    const todayTotal = todaySales._sum.total || 0;
-    const yesterdayTotal = yesterdaySales._sum.total || 0;
-    const todayProfit = todaySales._sum.profit || 0;
-    const monthTotal = monthSales._sum.total || 0;
-    const monthProfit = monthSales._sum.profit || 0;
+    const s = salesStats[0];
+    const todayTotal = Number(s.today_total);
+    const yesterdayTotal = Number(s.yesterday_total);
+    const todayProfit = Number(s.today_profit);
+    const monthTotal = Number(s.month_total);
+    const monthProfit = Number(s.month_profit);
+    const todayCount = Number(s.today_count);
+    const monthCount = Number(s.month_count);
+
+    const [totalOrders, pendingOrders, totalCustomers] = counts;
 
     const salesGrowth =
       yesterdayTotal > 0 ? Math.round(((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 * 10) / 10 : 0;
-    const avgTicket = todaySales._count > 0 ? Math.round(todayTotal / todaySales._count) : 0;
-    const monthAvgTicket = monthSales._count > 0 ? Math.round(monthTotal / monthSales._count) : 0;
+    const avgTicket = todayCount > 0 ? Math.round(todayTotal / todayCount) : 0;
+    const monthAvgTicket = monthCount > 0 ? Math.round(monthTotal / monthCount) : 0;
     const todayMargin = todayTotal > 0 ? Math.round((todayProfit / todayTotal) * 100 * 10) / 10 : 0;
     const monthMargin = monthTotal > 0 ? Math.round((monthProfit / monthTotal) * 100 * 10) / 10 : 0;
 
     return {
       todaySales: todayTotal,
-      todayOrders: todaySales._count,
+      todayOrders: todayCount,
       todayProfit,
       todayMargin,
       monthSales: monthTotal,
-      monthOrders: monthSales._count,
+      monthOrders: monthCount,
       monthProfit,
       monthMargin,
       salesGrowth,

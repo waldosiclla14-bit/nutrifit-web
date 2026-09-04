@@ -63,6 +63,7 @@ model Customer {
   coupons   Coupon[]
   reminders Reminder[]
 
+  @@index([createdAt])
   @@map("customers")
 }
 
@@ -153,6 +154,9 @@ model Product {
   variants   ProductVariant[]
   orderItems OrderItem[]
 
+  @@index([isActive])
+  @@index([categoryId])
+  @@index([createdAt])
   @@map("products")
 }
 
@@ -175,6 +179,8 @@ model ProductVariant {
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
 
+  @@index([productId])
+  @@index([isActive])
   @@map("product_variants")
 }
 
@@ -235,6 +241,10 @@ model Order {
   createdBy            User?               @relation("CreatedBy", fields: [createdById], references: [id])
   inventoryMovements   InventoryMovement[]
 
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([customerId])
   @@map("orders")
 }
 
@@ -334,6 +344,7 @@ model CashRegister {
   openedBy  User           @relation("RegistersOpened", fields: [openedById], references: [id])
   movements CashMovement[]
 
+  @@index([isOpen])
   @@map("cash_registers")
 }
 
