@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
 import { BRAND } from '@/data/seed';
 import { CartProvider } from '@/context/CartContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import TrustStrip from '@/components/home/TrustStrip';
-
-const CartDrawer = dynamic(() => import('@/components/layout/CartDrawer'), { ssr: false });
-const MetaPixel = dynamic(() => import('@/components/analytics/MetaPixel'), { ssr: false });
-const GA4 = dynamic(() => import('@/components/analytics/GA4'), { ssr: false });
+import CartDrawer from '@/components/layout/CartDrawer';
+import MetaPixel from '@/components/analytics/MetaPixel';
+import GA4 from '@/components/analytics/GA4';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
