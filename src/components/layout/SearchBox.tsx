@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Search } from 'lucide-react';
 import { PRODUCTS } from '@/data/seed';
@@ -70,10 +71,11 @@ export default function SearchBox({ className }: { className?: string }) {
                   }}
                   className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-soft"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={p.image}
                     alt={p.name}
+                    width={40}
+                    height={40}
                     className="h-10 w-10 shrink-0 rounded-lg border border-line bg-soft object-contain p-1"
                   />
                   <div className="min-w-0 flex-1">
