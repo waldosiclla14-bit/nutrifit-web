@@ -58,6 +58,8 @@ export class ProductsService implements OnModuleInit {
         sku: true,
         basePrice: true,
         costPrice: true,
+        description: true,
+        comparePrice: true,
         category: { select: { id: true, name: true } },
         brand: { select: { id: true, name: true } },
         variants: {
