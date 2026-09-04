@@ -141,19 +141,20 @@ function Dashboard({
         setGoals(g);
         setInventory(iv);
       } else if (t === 'ordenes') {
-        const o = await apiFetch<AdminOrder[]>('/orders?page=1&limit=200', { token });
-        setOrders(o || []);
+        const res = await apiFetch<any>('/orders?page=1&limit=200', { token });
+        setOrders(res?.data || res || []);
       } else if (t === 'productos') {
         const p = await apiFetch<any[]>('/products/internal', { token });
         setProducts((p || []).map(mapApiProduct));
       } else if (t === 'clientes') {
-        const c = await apiFetch<AdminCustomer[]>('/customers?page=1&limit=200', { token });
-        setCustomers(c || []);
+        const res = await apiFetch<any>('/customers?page=1&limit=200', { token });
+        setCustomers(res?.data || res || []);
       } else if (t === 'agenda') {
-        const [r, c] = await Promise.all([
+        const [r, cRes] = await Promise.all([
           apiFetch<AdminReminder[]>('/reminders', { token }).catch(() => []),
-          apiFetch<AdminCustomer[]>('/customers', { token }).catch(() => []),
+          apiFetch<any>('/customers', { token }).catch(() => ({ data: [] })),
         ]);
+        const c = cRes?.data || cRes || [];
         setReminders(
           (r || []).map((x: any) => ({
             id: x.id,
