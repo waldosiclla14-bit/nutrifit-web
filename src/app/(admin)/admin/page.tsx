@@ -141,13 +141,13 @@ function Dashboard({
         setGoals(g);
         setInventory(iv);
       } else if (t === 'ordenes') {
-        const o = await apiFetch<AdminOrder[]>('/orders', { token });
+        const o = await apiFetch<AdminOrder[]>('/orders?page=1&limit=200', { token });
         setOrders(o || []);
       } else if (t === 'productos') {
         const p = await apiFetch<any[]>('/products/internal', { token });
         setProducts((p || []).map(mapApiProduct));
       } else if (t === 'clientes') {
-        const c = await apiFetch<AdminCustomer[]>('/customers', { token });
+        const c = await apiFetch<AdminCustomer[]>('/customers?page=1&limit=200', { token });
         setCustomers(c || []);
       } else if (t === 'agenda') {
         const [r, c] = await Promise.all([

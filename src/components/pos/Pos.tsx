@@ -231,20 +231,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     try {
       const [p, cr] = await Promise.all([
         apiFetch<any[]>('/products/internal', { token }),
-        apiFetch<any | null>('/cash-register/current', { token }),
+        apiFetch<any | null>('/cash-register/current-lite', { token }),
       ]);
       setProducts(
-        (p || []).map((x) => ({
-          id: x.id,
-          name: x.name,
-          brand: x.brand,
-          sku: x.sku,
-          price: x.basePrice ?? x.price,
-          costPrice: x.costPrice ?? 0,
-          stock: x.stock,
-          active: x.isActive !== false,
-          category: x.category ? { id: x.category.id, name: x.category.name } : null,
-          variants: (x.variants || []).map((v: any) => ({
+        (p || []).map((x) => {
+          const variants = (x.variants || []).map((v: any) => ({
             id: v.id,
             name: v.variantName || v.name || 'Sin variante',
             sku: v.sku,
@@ -253,8 +244,21 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             stock: v.stock,
             lowStockAlert: v.lowStockAlert,
             active: v.isActive !== false,
-          })),
-        })),
+          }));
+          const totalStock = variants.reduce((s: number, v: any) => s + (v.stock ?? 0), 0);
+          return {
+            id: x.id,
+            name: x.name,
+            brand: x.brand,
+            sku: x.sku,
+            price: x.basePrice ?? x.price,
+            costPrice: x.costPrice ?? 0,
+            stock: totalStock,
+            active: x.isActive !== false,
+            category: x.category ? { id: x.category.id, name: x.category.name } : null,
+            variants,
+          };
+        }),
       );
       setCash(
         cr

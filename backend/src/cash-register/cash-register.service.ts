@@ -12,6 +12,13 @@ export class CashRegisterService {
     });
   }
 
+  async getCurrentLite() {
+    return this.prisma.cashRegister.findFirst({
+      where: { isOpen: true },
+      select: { id: true, isOpen: true, initialAmount: true, openedAt: true },
+    });
+  }
+
   async open(data: { openedById: string; initialAmount: number }) {
     const existing = await this.getCurrent();
     if (existing) throw new BadRequestException('Ya existe una caja abierta');

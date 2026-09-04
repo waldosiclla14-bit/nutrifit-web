@@ -40,6 +40,45 @@ export class ProductsService implements OnModuleInit {
     });
   }
 
+  async findInternal(query: any = {}) {
+    const where: any = { isActive: true };
+    if (query.category) where.categoryId = query.category;
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { sku: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        basePrice: true,
+        costPrice: true,
+        category: { select: { id: true, name: true } },
+        brand: { select: { id: true, name: true } },
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            variantName: true,
+            sku: true,
+            price: true,
+            costPrice: true,
+            stock: true,
+            reservedStock: true,
+            lowStockAlert: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findOne(idOrSlug: string) {
     return this.prisma.product.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
@@ -228,25 +267,19 @@ export class ProductsService implements OnModuleInit {
   }
 
   async getInventoryValue() {
-    const products = await this.prisma.product.findMany({
-      where: { isActive: true },
-      include: { variants: { where: { isActive: true } } },
-    });
-
-    let totalCost = 0;
-    let totalRetail = 0;
-    let totalItems = 0;
-
-    for (const product of products) {
-      for (const variant of product.variants) {
-        const cost = variant.costPrice || product.costPrice || 0;
-        const price = variant.price || product.basePrice;
-        totalCost += cost * variant.stock;
-        totalRetail += price * variant.stock;
-        totalItems += variant.stock;
-      }
-    }
-
+    const result = await this.prisma.$queryRaw<{ total_cost: bigint; total_retail: bigint; total_items: bigint }[]>`
+      SELECT
+        COALESCE(SUM(COALESCE(v."costPrice", p."costPrice", 0) * v."stock"), 0) AS total_cost,
+        COALESCE(SUM(COALESCE(v."price", p."basePrice") * v."stock"), 0) AS total_retail,
+        COALESCE(SUM(v."stock"), 0) AS total_items
+      FROM "product_variants" v
+      JOIN "products" p ON p."id" = v."productId"
+      WHERE p."isActive" = true AND v."isActive" = true
+    `;
+    const r = result[0];
+    const totalCost = Number(r.total_cost);
+    const totalRetail = Number(r.total_retail);
+    const totalItems = Number(r.total_items);
     return {
       totalCost,
       totalRetail,

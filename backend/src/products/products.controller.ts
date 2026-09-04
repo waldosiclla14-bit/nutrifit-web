@@ -21,7 +21,7 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)
   findAllInternal(@Query() query: any) {
-    return this.productsService.findAll(query);
+    return this.productsService.findInternal(query);
   }
 
   @Get('featured')

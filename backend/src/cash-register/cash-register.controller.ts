@@ -17,6 +17,11 @@ export class CashRegisterController {
     return this.cashService.getCurrent();
   }
 
+  @Get('current-lite')
+  getCurrentLite() {
+    return this.cashService.getCurrentLite();
+  }
+
   @Get('history')
   getHistory() {
     return this.cashService.getHistory();
