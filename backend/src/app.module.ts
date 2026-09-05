@@ -17,6 +17,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { GoogleModule } from './google/google.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DeliveryModule } from './delivery/delivery.module';
     RemindersModule,
     ReviewsModule,
     PingModule,
+    GoogleModule,
     DeliveryModule,
   ],
   providers: [

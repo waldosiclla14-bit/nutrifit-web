@@ -18,6 +18,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
+import NotificationButton from './NotificationButton';
 
 type Station = { id: string; name: string; line: string; lineName: string; commune: string };
 
@@ -242,6 +243,23 @@ export function Entregas({ token }: { token: string }) {
                       <button onClick={() => setSelectedDelivery(d)} className="rounded-lg px-2 py-1 text-xs font-semibold hover:bg-soft min-h-[32px]">
                         Ver
                       </button>
+                      <NotificationButton
+                        delivery={{
+                          deliveryId: d.id,
+                          orderNumber: d.order?.orderNumber,
+                          customerName: d.customer?.name || d.order?.customerName,
+                          customerPhone: d.customer?.phone || d.order?.customerPhone,
+                          stationName: d.station?.name,
+                          lineName: d.station?.line,
+                          deliveryDate: d.deliveryDate,
+                          windowStart: d.windowStart,
+                          windowEnd: d.windowEnd,
+                          meetingPoint: d.meetingPoint,
+                          deliveryCode: d.deliveryCode,
+                          commune: d.station?.commune,
+                          status: d.status,
+                        }}
+                      />
                       {d.status === 'CONFIRMED' && (
                         <button
                           onClick={() => updateStatus(d.id, 'IN_ROUTE')}
@@ -402,6 +420,23 @@ function DeliveryDetail({
                 <XCircle size={14} /> Cancelar
               </button>
             )}
+            <NotificationButton
+              delivery={{
+                deliveryId: delivery.id,
+                orderNumber: delivery.order?.orderNumber,
+                customerName: delivery.customer?.name || delivery.order?.customerName,
+                customerPhone: delivery.customer?.phone || delivery.order?.customerPhone,
+                stationName: delivery.station?.name,
+                lineName: delivery.station?.line,
+                deliveryDate: delivery.deliveryDate,
+                windowStart: delivery.windowStart,
+                windowEnd: delivery.windowEnd,
+                meetingPoint: delivery.meetingPoint,
+                deliveryCode: delivery.deliveryCode,
+                commune: delivery.station?.commune,
+                status: delivery.status,
+              }}
+            />
           </div>
         </div>
       </div>

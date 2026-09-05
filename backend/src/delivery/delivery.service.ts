@@ -1,10 +1,18 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryStatus, DeliveryType, Prisma } from '@prisma/client';
+import { NotificationService } from './notification.service';
+import { GoogleCalendarService } from '../google/google-calendar.service';
 
 @Injectable()
 export class DeliveryService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(DeliveryService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private notificationService: NotificationService,
+    private googleCalendar: GoogleCalendarService,
+  ) {}
 
   async findAll(query: any = {}) {
     const where: any = {};
@@ -132,7 +140,53 @@ export class DeliveryService {
 
     await this.audit(delivery.id, 'CREATED', null, { deliveryType: data.deliveryType, stationId: data.stationId });
 
-    return delivery;
+    // Create Google Calendar event if configured
+    let calendarEventId: string | null = null;
+    if (this.googleCalendar.isReady() && delivery.station) {
+      calendarEventId = await this.googleCalendar.createDeliveryEvent({
+        id: delivery.id,
+        orderNumber: delivery.order?.orderNumber,
+        customerName: delivery.order?.customerName,
+        stationName: delivery.station.name,
+        lineName: delivery.station.lineName,
+        deliveryDate: delivery.deliveryDate,
+        windowStart: delivery.windowStart,
+        windowEnd: delivery.windowEnd,
+        meetingPoint: delivery.meetingPoint,
+        commune: delivery.station.commune,
+        latitude: delivery.station.latitude,
+        longitude: delivery.station.longitude,
+      });
+
+      if (calendarEventId) {
+        await this.prisma.delivery.update({
+          where: { id: delivery.id },
+          data: { calendarEventId },
+        });
+      }
+    }
+
+    // Build notification data for customer
+    const notifData = {
+      deliveryId: delivery.id,
+      orderNumber: delivery.order?.orderNumber,
+      customerName: delivery.order?.customerName,
+      customerPhone: delivery.order?.customerPhone,
+      stationName: delivery.station?.name,
+      lineName: delivery.station?.lineName,
+      deliveryDate: delivery.deliveryDate,
+      windowStart: delivery.windowStart,
+      windowEnd: delivery.windowEnd,
+      meetingPoint: delivery.meetingPoint,
+      deliveryCode,
+      commune: delivery.station?.commune,
+    };
+    const notifMessage = this.notificationService.buildDeliveryStatusMessage(delivery.status, notifData);
+    const whatsappUrl = notifData.customerPhone && notifMessage
+      ? this.notificationService.getWhatsAppUrl(notifData.customerPhone, notifMessage)
+      : null;
+
+    return { ...delivery, calendarEventId, whatsappUrl };
   }
 
   async updateStatus(id: string, status: DeliveryStatus, userId?: string) {
@@ -178,6 +232,57 @@ export class DeliveryService {
     });
 
     await this.audit(id, 'STATUS_CHANGED', { status: delivery.status }, { status });
+
+    // Send WhatsApp notification to customer
+    if (updated.order?.customerPhone) {
+      const notifData = {
+        deliveryId: updated.id,
+        orderNumber: updated.order?.orderNumber,
+        customerName: updated.order?.customerName,
+        customerPhone: updated.order?.customerPhone,
+        stationName: updated.station?.name,
+        lineName: updated.station?.lineName,
+        deliveryDate: updated.deliveryDate,
+        windowStart: updated.windowStart,
+        windowEnd: updated.windowEnd,
+        meetingPoint: updated.meetingPoint,
+        deliveryCode: updated.deliveryCode,
+        commune: updated.station?.commune,
+      };
+
+      const message = this.notificationService.buildDeliveryStatusMessage(status, notifData);
+      if (message) {
+        this.notificationService.logNotification(status, id, 'whatsapp');
+      }
+    }
+
+    // Update Google Calendar event on status change
+    if (updated.calendarEventId && this.googleCalendar.isReady()) {
+      const STATUS_LABELS: Record<string, string> = {
+        PAYMENT_CONFIRMED: '💰 Pago confirmado',
+        PREPARING: '📦 En preparación',
+        READY: '✅ Listo',
+        SCHEDULED: '📅 Agendada',
+        CONFIRMED: '✔️ Confirmada',
+        IN_ROUTE: '🚚 En camino',
+        ARRIVED: '📍 Llegó',
+        DELIVERED: '🎉 Entregada',
+        CANCELLED: '❌ Cancelada',
+        RESCHEDULED: '🔄 Reagendada',
+      };
+
+      const label = STATUS_LABELS[status] || status;
+      const eventTitle = `Entrega #${updated.order?.orderNumber || id.slice(0, 8)} — ${label}`;
+
+      await this.googleCalendar.updateDeliveryEvent(updated.calendarEventId, {
+        summary: eventTitle,
+      });
+    }
+
+    // Delete calendar event if cancelled
+    if (status === DeliveryStatus.CANCELLED && updated.calendarEventId && this.googleCalendar.isReady()) {
+      await this.googleCalendar.deleteDeliveryEvent(updated.calendarEventId);
+    }
 
     return updated;
   }
@@ -235,6 +340,23 @@ export class DeliveryService {
       windowStart: data.windowStart,
       windowEnd: data.windowEnd,
     });
+
+    // Update Google Calendar event
+    if (updated.calendarEventId && this.googleCalendar.isReady()) {
+      const newDate = new Date(data.deliveryDate);
+      const [startH, startM] = data.windowStart.split(':').map(Number);
+      const [endH, endM] = data.windowEnd.split(':').map(Number);
+      const startTime = new Date(newDate);
+      startTime.setHours(startH, startM, 0, 0);
+      const endTime = new Date(newDate);
+      endTime.setHours(endH, endM, 0, 0);
+
+      await this.googleCalendar.updateDeliveryEvent(updated.calendarEventId, {
+        summary: `Entrega #${id.slice(0, 8)} — 🔄 Reagendada`,
+        start: startTime,
+        end: endTime,
+      });
+    }
 
     return updated;
   }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Clock, User } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import GoogleCalendarStatus from './GoogleCalendarStatus';
 
 type Delivery = {
   id: string;
@@ -181,6 +182,8 @@ export function Calendario({ token }: { token: string }) {
           <span key={k} className="flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${color}`} />{STATUS_LABEL[k]}</span>
         ))}
       </div>
+
+      <GoogleCalendarStatus />
 
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>

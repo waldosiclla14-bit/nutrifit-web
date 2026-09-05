@@ -4,6 +4,23 @@ import { DeliveryService } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryStatus, DeliveryType } from '@prisma/client';
 
+jest.mock('../google/google-calendar.service', () => ({
+  GoogleCalendarService: jest.fn().mockImplementation(() => ({
+    isReady: jest.fn().mockReturnValue(false),
+    createDeliveryEvent: jest.fn().mockResolvedValue(null),
+    updateDeliveryEvent: jest.fn().mockResolvedValue(true),
+    deleteDeliveryEvent: jest.fn().mockResolvedValue(true),
+  })),
+}));
+
+jest.mock('./notification.service', () => ({
+  NotificationService: jest.fn().mockImplementation(() => ({
+    buildDeliveryStatusMessage: jest.fn().mockReturnValue('test message'),
+    getWhatsAppUrl: jest.fn().mockReturnValue('https://wa.me/test'),
+    logNotification: jest.fn(),
+  })),
+}));
+
 describe('DeliveryService', () => {
   let service: DeliveryService;
   let prismaMock: any;
@@ -56,10 +73,15 @@ describe('DeliveryService', () => {
       },
     };
 
+    const { NotificationService } = require('./notification.service');
+    const { GoogleCalendarService } = require('../google/google-calendar.service');
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeliveryService,
         { provide: PrismaService, useValue: prismaMock },
+        NotificationService,
+        GoogleCalendarService,
       ],
     }).compile();
 
