@@ -503,11 +503,13 @@ export class ProductsService implements OnModuleInit {
   }
 
   async getLowStock() {
-    const variants = await this.prisma.productVariant.findMany({
-      include: { product: true },
-    });
-    return variants
-      .filter((v) => v.stock <= v.lowStockAlert)
-      .sort((a, b) => a.stock - b.stock);
+    return this.prisma.$queryRaw`
+      SELECT pv.*, p."name" as "productName"
+      FROM "product_variants" pv
+      JOIN "products" p ON p.id = pv."productId"
+      WHERE pv."isActive" = true
+        AND pv."stock" <= pv."lowStockAlert"
+      ORDER BY pv."stock" ASC
+    ` as Promise<any[]>;
   }
 }

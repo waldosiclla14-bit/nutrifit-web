@@ -86,6 +86,8 @@ model Reminder {
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([status, dueAt])
   @@map("reminders")
 }
 
@@ -99,6 +101,7 @@ model Address {
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
   @@map("addresses")
 }
 
@@ -182,6 +185,7 @@ model ProductVariant {
 
   @@index([productId])
   @@index([isActive])
+  @@index([productId, isActive])
   @@map("product_variants")
 }
 
@@ -195,6 +199,8 @@ model Batch {
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
+  @@index([variantId])
+  @@index([expiryDate])
   @@map("batches")
 }
 
@@ -247,6 +253,8 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([customerId])
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
   @@map("orders")
 }
 
@@ -266,6 +274,8 @@ model Coupon {
 
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
+  @@index([customerId])
+  @@index([isActive, expiresAt])
   @@map("coupons")
 }
 
@@ -287,6 +297,9 @@ model OrderItem {
   product Product?       @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
 
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
   @@map("order_items")
 }
 
@@ -363,6 +376,9 @@ model CashMovement {
   register  CashRegister @relation(fields: [registerId], references: [id])
   createdBy User         @relation(fields: [createdById], references: [id])
 
+  @@index([registerId])
+  @@index([createdById])
+  @@index([type, createdAt])
   @@map("cash_movements")
 }
 
@@ -456,6 +472,7 @@ model InventoryMovement {
   @@index([variantId])
   @@index([orderId])
   @@index([createdAt])
+  @@index([variantId, createdAt])
   @@map("inventory_movements")
 }
 
@@ -557,6 +574,8 @@ model Delivery {
   @@index([status])
   @@index([deliveryDate])
   @@index([assignedTo])
+  @@index([status, deliveryDate])
+  @@index([deliveryDate, windowStart])
   @@map("deliveries")
 }
 

@@ -383,7 +383,7 @@ export class DeliveryService {
 
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [todayDeliveries, weekDeliveries, monthDeliveries, statusCounts, stationCounts, lineCounts] =
+    const [todayDeliveries, weekDeliveries, monthDeliveries, statusCounts, stationCounts] =
       await Promise.all([
         this.prisma.delivery.count({
           where: { deliveryDate: { gte: today, lt: tomorrow } },
@@ -403,42 +403,33 @@ export class DeliveryService {
           where: { deliveryDate: { gte: monthStart } },
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
-          take: 10,
-        }),
-        this.prisma.delivery.groupBy({
-          by: ['stationId'],
-          where: { deliveryDate: { gte: monthStart } },
-          _count: { id: true },
         }),
       ]);
 
     const statusMap: Record<string, number> = {};
     statusCounts.forEach((s) => { statusMap[s.status] = s._count.id; });
 
-    const stationIds = stationCounts.map((s) => s.stationId).filter(Boolean);
-    const stations = stationIds.length
-      ? await this.prisma.metroStation.findMany({ where: { id: { in: stationIds } } })
+    // Batch-fetch all stations in one query (fixes N+1)
+    const allStationIds = stationCounts.map((s) => s.stationId).filter(Boolean) as string[];
+    const stations = allStationIds.length
+      ? await this.prisma.metroStation.findMany({ where: { id: { in: allStationIds } } })
       : [];
     const stationMap = new Map(stations.map((s) => [s.id, s]));
 
-    const stationStats = stationCounts.map((s) => ({
+    // Top 10 stations
+    const topStations = stationCounts.slice(0, 10).map((s) => ({
       station: stationMap.get(s.stationId || ''),
       count: s._count.id,
     }));
 
-    const lineStats = await Promise.all(
-      lineCounts.map(async (l) => {
-        const station = l.stationId
-          ? await this.prisma.metroStation.findUnique({ where: { id: l.stationId } })
-          : null;
-        return { line: station?.line || 'N/A', lineName: station?.lineName || 'N/A', count: l._count.id };
-      }),
-    );
-
+    // Aggregate by line from the same data (no second query needed)
     const lineMap: Record<string, { line: string; lineName: string; count: number }> = {};
-    lineStats.forEach((l) => {
-      if (!lineMap[l.line]) lineMap[l.line] = { line: l.line, lineName: l.lineName, count: 0 };
-      lineMap[l.line].count += l.count;
+    stationCounts.forEach((s) => {
+      const station = stationMap.get(s.stationId || '');
+      const line = station?.line || 'N/A';
+      const lineName = station?.lineName || 'N/A';
+      if (!lineMap[line]) lineMap[line] = { line, lineName, count: 0 };
+      lineMap[line].count += s._count.id;
     });
 
     return {
@@ -446,7 +437,7 @@ export class DeliveryService {
       week: weekDeliveries,
       month: monthDeliveries,
       byStatus: statusMap,
-      topStations: stationStats,
+      topStations,
       byLine: Object.values(lineMap),
     };
   }
