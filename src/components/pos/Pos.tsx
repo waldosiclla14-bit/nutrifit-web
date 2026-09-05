@@ -63,6 +63,12 @@ const LINE_COLORS: Record<string, string> = {
   L4A: '#00AEEF', L5: '#00A651', L6: '#92278F',
 };
 
+const TIME_PERIODS = {
+  manana: { label: 'Mañana · 08–12', start: 8, end: 12 },
+  tarde: { label: 'Tarde · 12–18', start: 12, end: 18 },
+  noche: { label: 'Noche · 18–22', start: 18, end: 22 },
+} as const;
+
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
 
@@ -189,6 +195,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<'manana' | 'tarde' | 'noche'>(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'manana';
+    if (h < 18) return 'tarde';
+    return 'noche';
+  });
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
   const [mixedCash, setMixedCash] = useState(0);
@@ -1200,7 +1212,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           {mode === 'METRO' && (
             <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">🚇 Entrega en Metro</p>
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm">🚇</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-ink leading-tight">Entrega en metro</p>
+                  <p className="text-[11px] text-muted">Retira tu pedido en la estación y horario que elijas</p>
+                </div>
+              </div>
               <div className="mt-3 space-y-2">
                 {/* Line selector pills */}
                 <div>
@@ -1308,28 +1328,60 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
                   </div>
                 ) : slots.length > 0 ? (
-                  <div className="rounded-xl border border-line overflow-hidden max-h-[240px] overflow-y-auto">
-                    {slots.map((s) => (
-                      <button
-                        key={s.start}
-                        type="button"
-                        disabled={!s.available}
-                        onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-xs border-b border-line/30 last:border-0 transition ${
-                          deliveryTime === s.start
-                            ? 'bg-accent text-paper font-semibold'
-                            : s.available
-                            ? 'bg-paper hover:bg-soft'
-                            : 'bg-soft/50 text-muted opacity-60 cursor-not-allowed'
-                        }`}
-                      >
-                        <span>{s.start} – {s.end}</span>
-                        <span className={`text-[10px] font-semibold ${s.count >= s.max ? 'text-red-500' : s.count > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                          {s.count}/{s.max}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    {/* Period tabs */}
+                    <div className="flex gap-1 p-0.5 bg-soft rounded-xl">
+                      {(Object.entries(TIME_PERIODS) as [string, { label: string; start: number; end: number }][]).map(([key, period]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setTimePeriod(key as 'manana' | 'tarde' | 'noche')}
+                          className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition ${
+                            timePeriod === key
+                              ? 'bg-paper text-ink shadow-sm'
+                              : 'text-muted hover:text-ink'
+                          }`}
+                        >
+                          {period.label}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Slots grid */}
+                    <div className="grid grid-cols-2 gap-px bg-line/30 rounded-xl border border-line overflow-hidden max-h-[200px] overflow-y-auto">
+                      {slots
+                        .filter((s) => {
+                          const h = parseInt(s.start.split(':')[0], 10);
+                          const p = TIME_PERIODS[timePeriod];
+                          return h >= p.start && h < p.end;
+                        })
+                        .map((s) => {
+                          const full = s.count >= s.max;
+                          const partial = s.count > 0 && !full;
+                          return (
+                            <button
+                              key={s.start}
+                              type="button"
+                              disabled={!s.available}
+                              onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }}
+                              className={`flex items-center justify-between px-2.5 py-2 bg-paper text-xs transition border-l-[3px] ${
+                                deliveryTime === s.start
+                                  ? 'bg-accent/5 border-l-accent'
+                                  : 'border-l-transparent'
+                              } ${!s.available ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft'}`}
+                            >
+                              <span className={`font-mono text-[13px] tracking-wide ${deliveryTime === s.start ? 'text-accent font-semibold' : ''}`}>
+                                {s.start}
+                              </span>
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                full ? 'bg-soft text-muted' : partial ? 'bg-amber-50 text-amber-700' : 'bg-accent/10 text-accent'
+                              }`}>
+                                {full ? 'Sin cupo' : `${s.count}/${s.max}`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </>
                 ) : (
                   <select value={deliveryTime} onChange={(e) => {
                     setDeliveryTime(e.target.value);
