@@ -96,7 +96,8 @@ export function Entregas({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterLine, setFilterLine] = useState('');
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDateFrom, setFilterDateFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDateTo, setFilterDateTo] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -107,11 +108,9 @@ export function Entregas({ token }: { token: string }) {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (filterLine) params.set('line', filterLine);
-      if (filterDate) {
-        params.set('dateFrom', filterDate);
-        params.set('dateTo', filterDate);
-      }
-      params.set('limit', '100');
+      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+      if (filterDateTo) params.set('dateTo', filterDateTo);
+      params.set('limit', '200');
 
       const [delRes, statsRes] = await Promise.all([
         apiFetch<any>(`/deliveries?${params}`, { token }),
@@ -126,7 +125,7 @@ export function Entregas({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  }, [token, filterStatus, filterLine, filterDate]);
+  }, [token, filterStatus, filterLine, filterDateFrom, filterDateTo]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -179,7 +178,11 @@ export function Entregas({ token }: { token: string }) {
             className="input pl-9 text-sm"
           />
         </div>
-        <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="input text-sm" />
+        <div className="flex items-center gap-1">
+          <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="input text-sm" />
+          <span className="text-muted text-xs">—</span>
+          <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="input text-sm" />
+        </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input text-sm">
           <option value="">Todos los estados</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => (
@@ -192,6 +195,28 @@ export function Entregas({ token }: { token: string }) {
             <option key={l.line} value={l.line}>{l.lineName} ({l.count})</option>
           ))}
         </select>
+        <button onClick={() => {
+          const header = 'Pedido,Cliente,Estación,Línea,Comuna,Fecha,Hora,Código,Estado,Punto';
+          const rows = filtered.map(d => [
+            d.order?.orderNumber,
+            d.customer?.name || d.order?.customerName,
+            d.station?.name || '',
+            d.station?.line || '',
+            d.station?.commune || '',
+            d.deliveryDate ? new Date(d.deliveryDate).toLocaleDateString('es-CL') : '',
+            `${d.windowStart}–${d.windowEnd}`,
+            d.deliveryCode,
+            STATUS_LABELS[d.status] || d.status,
+            d.meetingPoint || '',
+          ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+          const blob = new Blob([`${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `entregas-${filterDateFrom}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }} className="btn-outline px-3 py-2 text-xs min-h-[40px]">CSV</button>
         <button onClick={loadData} className="btn-outline px-3 py-2 text-xs min-h-[40px]">
           <RefreshCw size={14} />
         </button>

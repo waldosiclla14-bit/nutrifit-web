@@ -442,6 +442,13 @@ export class OrdersService implements OnModuleInit {
           this.logger.warn(`No se pudo crear recordatorio para orden ${order.orderNumber}: ${e?.message}`),
         );
 
+        // Auto-create Delivery record for METRO orders
+        if (deliveryType === 'METRO' && data.metroStation) {
+          this.autoCreateDelivery(order, data).catch((e) =>
+            this.logger.warn(`No se pudo crear entrega para orden ${order.orderNumber}: ${e?.message}`),
+          );
+        }
+
         return order;
       } catch (err: any) {
         const isOrderNumberCollision = err?.code === 'P2002';
@@ -456,6 +463,55 @@ export class OrdersService implements OnModuleInit {
       }
     }
     throw new BadRequestException('No se pudo crear la orden');
+  }
+
+  private async autoCreateDelivery(order: any, data: any) {
+    try {
+      // Find the station by name to get the stationId
+      const station = await this.prisma.metroStation.findFirst({
+        where: { name: data.metroStation, active: true, deliveryEnabled: true },
+      });
+      if (!station) {
+        this.logger.warn(`Estación "${data.metroStation}" no encontrada o deshabilitada`);
+        return;
+      }
+
+      // Find the customer
+      const customer = await this.prisma.customer.findFirst({
+        where: { OR: [{ id: order.customerId }, { phone: order.customerPhone }] },
+      });
+      if (!customer) return;
+
+      // Compute windowEnd from deliveryTime (+30min default)
+      let windowEnd = '';
+      if (order.deliveryTime) {
+        const [h, m] = String(order.deliveryTime).split(':').map(Number);
+        const endM = m + 30;
+        const endH = h + Math.floor(endM / 60);
+        windowEnd = `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
+      }
+
+      // Generate delivery code
+      const deliveryCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+      await this.prisma.delivery.create({
+        data: {
+          orderId: order.id,
+          customerId: customer.id,
+          deliveryType: 'METRO',
+          stationId: station.id,
+          deliveryDate: order.deliveryDay ? new Date(order.deliveryDay) : null,
+          windowStart: order.deliveryTime || null,
+          windowEnd: windowEnd || null,
+          meetingPoint: station.defaultMeetingPoint || 'Acceso principal',
+          deliveryCode,
+          status: 'CREATED',
+        },
+      });
+      this.logger.log(`Delivery auto-creada para orden ${order.orderNumber}`);
+    } catch (e: any) {
+      this.logger.error(`Error auto-creando delivery: ${e?.message}`);
+    }
   }
 
   async deleteOrder(id: string) {

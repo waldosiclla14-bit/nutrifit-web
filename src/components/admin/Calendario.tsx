@@ -1,9 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Clock, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
+import { toast } from '@/lib/feedback';
 import GoogleCalendarStatus from './GoogleCalendarStatus';
 
 type Delivery = {
@@ -94,6 +95,17 @@ export function Calendario({ token }: { token: string }) {
   }, [token, currentDate, view]);
 
   useEffect(() => { loadDeliveries(); }, [loadDeliveries]);
+
+  const updateStatus = async (id: string, status: string) => {
+    try {
+      await apiFetch(`/deliveries/${id}/status`, { method: 'PATCH', body: { status }, token });
+      toast.success('Estado actualizado');
+      loadDeliveries();
+      setSelected(null);
+    } catch {
+      toast.error('Error al actualizar');
+    }
+  };
 
   const navigate = (dir: number) => {
     const d = new Date(currentDate);
@@ -283,6 +295,25 @@ export function Calendario({ token }: { token: string }) {
               <p className="text-xs text-muted">Código: <span className="font-mono font-bold">{selected.deliveryCode}</span></p>
               <p className="text-right font-bold">{formatPrice(selected.order?.total || 0)}</p>
             </div>
+
+            {/* Status actions */}
+            {selected.status !== 'DELIVERED' && selected.status !== 'CANCELLED' && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(selected.status === 'CREATED' || selected.status === 'CONFIRMATION_PENDING') && (
+                  <button onClick={() => updateStatus(selected.id, 'CONFIRMED')} className="btn-accent text-xs min-h-[36px] px-3">Confirmar</button>
+                )}
+                {selected.status === 'CONFIRMED' && (
+                  <button onClick={() => updateStatus(selected.id, 'IN_TRANSIT')} className="btn-accent text-xs min-h-[36px] px-3"><Truck size={12} className="mr-1" />En ruta</button>
+                )}
+                {selected.status === 'IN_TRANSIT' && (
+                  <button onClick={() => updateStatus(selected.id, 'ARRIVED')} className="btn-accent text-xs min-h-[36px] px-3">Llegó</button>
+                )}
+                {selected.status === 'ARRIVED' && (
+                  <button onClick={() => updateStatus(selected.id, 'DELIVERED')} className="btn-accent text-xs min-h-[36px] px-3">Entregar</button>
+                )}
+                <button onClick={() => updateStatus(selected.id, 'CANCELLED')} className="rounded-xl border border-red-300 text-red-600 text-xs min-h-[36px] px-3 hover:bg-red-50"><XCircle size={12} className="mr-1" />Cancelar</button>
+              </div>
+            )}
           </div>
         </div>
       )}
