@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShoppingBag,
   ShoppingCart,
+  Truck,
   Users,
   Wallet,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const Agenda = lazy(() => import('@/components/admin/Agenda').then(m => ({ defau
 const Caja = lazy(() => import('@/components/admin/Caja').then(m => ({ default: m.Caja })));
 const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ default: m.Reportes })));
 const Inventario = lazy(() => import('@/components/admin/Inventario').then(m => ({ default: m.Inventario })));
+const Entregas = lazy(() => import('@/components/admin/Entregas').then(m => ({ default: m.Entregas })));
 
 function TabSkeleton() {
   return (
@@ -53,7 +55,7 @@ function TabSkeleton() {
   );
 }
 
-type TabKey = 'resumen' | 'ordenes' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario';
+type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -226,6 +228,7 @@ function Dashboard({
   const tabs: { key: TabKey; label: string; icon: any }[] = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
     { key: 'ordenes', label: 'Órdenes', icon: ShoppingBag },
+    { key: 'entregas', label: 'Entregas', icon: Truck },
     { key: 'productos', label: 'Productos', icon: Boxes },
     { key: 'clientes', label: 'Clientes', icon: Users },
     { key: 'agenda', label: 'Agenda', icon: CalendarDays },
@@ -285,6 +288,7 @@ function Dashboard({
           <Suspense fallback={<TabSkeleton />}>
             {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
             {tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
+            {tab === 'entregas' && <Entregas token={token} />}
             {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
             {tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
             {tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
