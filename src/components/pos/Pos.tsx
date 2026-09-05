@@ -217,7 +217,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [showCash, setShowCash] = useState(false);
   const [report, setReport] = useState<AdminReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [metroLines, setMetroLines] = useState<{ line: string; stations: string[] }[]>([]);
+  const [metroLines, setMetroLines] = useState<{ line: string; lineName: string; stations: string[] }[]>([]);
   const [lineFilter, setLineFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const cartRef = useRef<HTMLDivElement | null>(null);
@@ -229,7 +229,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   useEffect(() => {
     if ((mode === 'METRO' || mode === 'DELIVERY') && metroLines.length === 0) {
       apiFetch<{ line: string; lineName: string; count: number }[]>('/metro-stations/lines', { token })
-        .then((lines) => setMetroLines(lines.map((l) => ({ line: l.line, stations: [] }))))
+        .then((lines) => setMetroLines(lines.map((l) => ({ line: l.line, lineName: l.lineName, stations: [] }))))
         .catch(() => {});
     }
   }, [mode, metroLines.length, token]);
@@ -1253,7 +1253,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ background: isActive ? '#fff' : color }}
                           />
-                          {l.line}
+                          {l.lineName || l.line}
                         </button>
                       );
                     })}
@@ -1292,7 +1292,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             style={{ background: LINE_COLORS[s.line] || '#666' }}
                           />
                           <span className="font-semibold">{s.name}</span>
-                          <span className="text-[11px] text-muted ml-auto">{s.line} · {s.commune}</span>
+                          <span className="text-[11px] text-muted ml-auto">{s.lineName || s.line} · {s.commune}</span>
                         </button>
                       ))}
                     </div>
@@ -1306,7 +1306,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <p className="text-xs text-muted">
                       <span className="inline-flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full" style={{ background: LINE_COLORS[metroLine] || '#666' }} />
-                        {metroLine}
+                        {metroLines.find(l => l.line === metroLine)?.lineName || metroLine}
                       </span>
                       {' · '}{selectedStationCommune || '—'}
                     </p>

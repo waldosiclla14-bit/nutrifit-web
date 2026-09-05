@@ -36,24 +36,45 @@ export class DeliverySeedService implements OnModuleInit {
   }
 
   private async seedStations() {
-    const count = await this.prisma.metroStation.count();
-    if (count > 0) {
-      this.logger.log(`Metro stations already seeded (${count})`);
-      return;
+    this.logger.log('Syncing metro stations with seed data...');
+
+    // Build set of valid station keys from seed
+    const validKeys = new Set(METRO_STATIONS.map(s => `${s.name}|${s.line}`));
+
+    // Remove stations not in seed (old/wrong data)
+    const existing = await this.prisma.metroStation.findMany({
+      select: { id: true, name: true, line: true },
+    });
+    let removed = 0;
+    for (const station of existing) {
+      if (!validKeys.has(`${station.name}|${station.line}`)) {
+        await this.prisma.metroStation.delete({ where: { id: station.id } }).catch(() => {});
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      this.logger.log(`Removed ${removed} obsolete stations`);
     }
 
-    this.logger.log('Seeding metro stations...');
-    let created = 0;
-
+    // Upsert all stations from seed
+    let upserted = 0;
     for (const station of METRO_STATIONS) {
       try {
-        const existing = await this.prisma.metroStation.findUnique({
+        await this.prisma.metroStation.upsert({
           where: { name_line: { name: station.name, line: station.line } },
-        });
-        if (existing) continue;
-
-        await this.prisma.metroStation.create({
-          data: {
+          update: {
+            lineName: station.lineName,
+            commune: station.commune,
+            latitude: station.latitude,
+            longitude: station.longitude,
+            defaultMeetingPoint: station.defaultMeetingPoint || 'Acceso principal',
+            notes: station.notes || null,
+            sortOrder: station.sortOrder,
+            normalizedName: normalize(station.name),
+            active: true,
+            deliveryEnabled: true,
+          },
+          create: {
             name: station.name,
             normalizedName: normalize(station.name),
             line: station.line,
@@ -68,13 +89,13 @@ export class DeliverySeedService implements OnModuleInit {
             sortOrder: station.sortOrder,
           },
         });
-        created++;
-      } catch {
-        // skip duplicates
+        upserted++;
+      } catch (e: any) {
+        this.logger.warn(`Failed to upsert station ${station.name} (${station.line}): ${e?.message}`);
       }
     }
 
-    this.logger.log(`Metro stations seeded: ${created} created`);
+    this.logger.log(`Metro stations synced: ${upserted} upserted, ${removed} removed`);
   }
 
   private async seedSettings() {
