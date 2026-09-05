@@ -27,11 +27,6 @@ import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import type { AdminReport } from '@/types/admin';
 
-let metroLinesCache: typeof import('@/data/metro').METRO_LINES | null = null;
-async function getMetroLines() {
-  if (!metroLinesCache) metroLinesCache = (await import('@/data/metro')).METRO_LINES;
-  return metroLinesCache;
-}
 import {
   ApiProduct,
   CartLine,
@@ -43,6 +38,25 @@ import {
   todayISO,
   marginOf,
 } from '@/components/pos/posTypes';
+
+type MetroStation = {
+  id: string;
+  name: string;
+  line: string;
+  lineName: string;
+  commune: string;
+  latitude: number;
+  longitude: number;
+  defaultMeetingPoint: string | null;
+};
+
+type DeliverySlot = {
+  start: string;
+  end: string;
+  available: boolean;
+  count: number;
+  max: number;
+};
 
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
@@ -157,11 +171,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [customerPhone, setCustomerPhone] = useState('');
   const [payment, setPayment] = useState('EFECTIVO');
   const [pago, setPago] = useState(0);
-  const [mode, setMode] = useState<'LOCAL' | 'METRO'>('LOCAL');
+  const [mode, setMode] = useState<'LOCAL' | 'METRO' | 'DELIVERY'>('LOCAL');
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
+  const [selectedStationId, setSelectedStationId] = useState('');
+  const [stationSearch, setStationSearch] = useState('');
+  const [stationResults, setStationResults] = useState<MetroStation[]>([]);
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
+  const [slots, setSlots] = useState<DeliverySlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
   const [cash, setCash] = useState<CashRegister | null>(null);
@@ -182,11 +201,49 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   const scrollToCart = () => cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // Load metro lines for the line filter
   useEffect(() => {
-    if (mode === 'METRO' && metroLines.length === 0) {
-      getMetroLines().then(setMetroLines).catch(() => {});
+    if ((mode === 'METRO' || mode === 'DELIVERY') && metroLines.length === 0) {
+      apiFetch<{ line: string; lineName: string; count: number }[]>('/metro-stations/lines', { token })
+        .then((lines) => setMetroLines(lines.map((l) => ({ line: l.line, stations: [] }))))
+        .catch(() => {});
     }
-  }, [mode, metroLines.length]);
+  }, [mode, metroLines.length, token]);
+
+  // Search stations from API
+  useEffect(() => {
+    if (mode !== 'METRO') return;
+    const term = stationSearch.trim();
+    if (term.length < 2) {
+      setStationResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      apiFetch<MetroStation[]>(`/metro-stations?search=${encodeURIComponent(term)}`, { token })
+        .then(setStationResults)
+        .catch(() => setStationResults([]));
+    }, 300);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [stationSearch, mode, token]);
+
+  // Load time slots when date or station changes
+  useEffect(() => {
+    if (mode !== 'METRO' || !deliveryDay) return;
+    setSlotsLoading(true);
+    const params = new URLSearchParams({ date: deliveryDay });
+    if (selectedStationId) params.set('stationId', selectedStationId);
+    apiFetch<DeliverySlot[]>(`/deliveries/slots?${params}`, { token })
+      .then((s) => {
+        setSlots(s);
+        if (s.length > 0 && !s.find((sl) => sl.start === deliveryTime)) {
+          const firstAvailable = s.find((sl) => sl.available);
+          if (firstAvailable) setDeliveryTime(firstAvailable.start);
+        }
+      })
+      .catch(() => setSlots([]))
+      .finally(() => setSlotsLoading(false));
+  }, [mode, deliveryDay, selectedStationId, token]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -464,8 +521,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       toast.error('Ingresa nombre y teléfono del cliente.');
       return;
     }
-    if (mode === 'METRO' && (!metroLine || !metroStation || !deliveryDay || !deliveryTime)) {
-      toast.error('Completa línea, estación, día y hora de entrega.');
+    if (mode === 'METRO' && (!selectedStationId || !deliveryDay || !deliveryTime)) {
+      toast.error('Selecciona estación, fecha y horario de entrega.');
       return;
     }
     // Generate idempotency key once per checkout attempt — prevents double-submit
@@ -487,9 +544,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           customerId: customer.id,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
-          deliveryType: mode === 'METRO' ? 'METRO' : 'RETIRO_TIENDA',
+          deliveryType: mode === 'METRO' ? 'METRO' : mode === 'DELIVERY' ? 'ENVIO_DOMICILIO' : 'RETIRO_TIENDA',
           metroLine: mode === 'METRO' ? metroLine : undefined,
           metroStation: mode === 'METRO' ? metroStation : undefined,
+          stationId: mode === 'METRO' ? selectedStationId : undefined,
           deliveryDay: mode === 'METRO' ? deliveryDay : undefined,
           deliveryTime: mode === 'METRO' ? deliveryTime : undefined,
           subtotal,
@@ -621,15 +679,21 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           <div className="flex overflow-hidden rounded-full border border-line bg-paper">
             <button
               onClick={() => setMode('LOCAL')}
-              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               <Store size={14} /> Local
             </button>
             <button
               onClick={() => setMode('METRO')}
-              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              <CalendarDays size={14} /> Entrega en metro
+              <CalendarDays size={14} /> Metro
+            </button>
+            <button
+              onClick={() => setMode('DELIVERY')}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              🏠 Domicilio
             </button>
           </div>
           {cash?.status === 'OPEN' ? (
@@ -1039,36 +1103,49 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           {mode === 'METRO' && (
             <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Agendar entrega</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">🚇 Entrega en Metro</p>
               <div className="mt-3 space-y-2">
-                <select
-                  value={metroLine}
-                  onChange={(e) => {
-                    setMetroLine(e.target.value);
-                    setMetroStation('');
-                  }}
-                  className="input"
-                >
-                  <option value="">Línea de metro…</option>
-                  {metroLines.map((l) => (
-                    <option key={l.line} value={l.line}>
-                      Línea {l.line}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={metroStation}
-                  onChange={(e) => setMetroStation(e.target.value)}
-                  disabled={!metroLine}
-                  className="input"
-                >
-                  <option value="">Estación…</option>
-                  {(metroLines.find((l) => l.line === metroLine)?.stations || []).map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                {/* Station search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    value={stationSearch}
+                    onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }}
+                    placeholder="Buscar estación..."
+                    className="input pl-9"
+                  />
+                  {stationResults.length > 0 && !selectedStationId && (
+                    <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-paper shadow-lg">
+                      {stationResults.slice(0, 15).map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            setSelectedStationId(s.id);
+                            setMetroStation(s.name);
+                            setMetroLine(s.line);
+                            setStationSearch(`${s.name} (${s.line})`);
+                            setStationResults([]);
+                          }}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-soft"
+                        >
+                          <span className="font-semibold">{s.name}</span>
+                          <span className="text-xs text-muted">{s.lineName} · {s.commune}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected station info */}
+                {selectedStationId && (
+                  <div className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
+                    <p className="text-sm font-bold text-ink">{metroStation}</p>
+                    <p className="text-xs text-muted">{metroLines.find((l) => l.line === metroLine)?.line || metroLine} · {stationResults.find((s) => s.id === selectedStationId)?.commune}</p>
+                  </div>
+                )}
+
+                {/* Date */}
                 <input
                   type="date"
                   value={deliveryDay}
@@ -1076,13 +1153,47 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   onChange={(e) => setDeliveryDay(e.target.value)}
                   className="input"
                 />
-                <select value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} className="input">
-                  {TIME_SLOTS.map((t) => (
-                    <option key={t} value={t}>
-                      {t} hrs
-                    </option>
-                  ))}
-                </select>
+
+                {/* Time slots */}
+                {slotsLoading ? (
+                  <div className="flex items-center gap-2 py-2 text-xs text-muted">
+                    <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
+                  </div>
+                ) : slots.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {slots.map((s) => (
+                      <button
+                        key={s.start}
+                        disabled={!s.available}
+                        onClick={() => setDeliveryTime(s.start)}
+                        className={`rounded-xl border px-2 py-1.5 text-xs font-semibold transition min-h-[36px] ${
+                          deliveryTime === s.start
+                            ? 'border-accent bg-accent text-paper'
+                            : s.available
+                            ? 'border-line bg-paper hover:border-accent'
+                            : 'border-line bg-soft/50 text-muted opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        {s.start}
+                        <span className="block text-[10px] font-normal">{s.count}/{s.max}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <select value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} className="input">
+                    {TIME_SLOTS.map((t) => (
+                      <option key={t} value={t}>{t} hrs</option>
+                    ))}
+                  </select>
+                )}
+
+                {/* Meeting point */}
+                {selectedStationId && (
+                  <div className="text-xs text-muted">
+                    Punto de encuentro: {stationResults.find((s) => s.id === selectedStationId)?.defaultMeetingPoint || 'Acceso principal'}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-muted">Envío ($)</span>
                   <input
