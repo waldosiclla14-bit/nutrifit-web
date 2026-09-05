@@ -58,6 +58,11 @@ type DeliverySlot = {
   max: number;
 };
 
+const LINE_COLORS: Record<string, string> = {
+  L1: '#DA291C', L2: '#FFC72C', L3: '#6F4E37', L4: '#0033A0',
+  L4A: '#00AEEF', L5: '#00A651', L6: '#92278F',
+};
+
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
 
@@ -201,6 +206,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [report, setReport] = useState<AdminReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [metroLines, setMetroLines] = useState<{ line: string; stations: string[] }[]>([]);
+  const [lineFilter, setLineFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const cartRef = useRef<HTMLDivElement | null>(null);
   const customerNameRef = useRef<HTMLInputElement | null>(null);
@@ -220,18 +226,20 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   useEffect(() => {
     if (mode !== 'METRO') return;
     const term = stationSearch.trim();
-    if (term.length < 2) {
+    if (term.length < 2 && !lineFilter) {
       setStationResults([]);
       return;
     }
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      apiFetch<MetroStation[]>(`/metro-stations?search=${encodeURIComponent(term)}`, { token })
+      let url = `/metro-stations?search=${encodeURIComponent(term || '*')}`;
+      if (lineFilter) url += `&line=${lineFilter}`;
+      apiFetch<MetroStation[]>(url, { token })
         .then(setStationResults)
         .catch(() => setStationResults([]));
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [stationSearch, mode, token]);
+  }, [stationSearch, mode, token, lineFilter]);
 
   // Load time slots when date or station changes
   useEffect(() => {
@@ -1194,6 +1202,44 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted">🚇 Entrega en Metro</p>
               <div className="mt-3 space-y-2">
+                {/* Line selector pills */}
+                <div>
+                  <p className="text-[10px] font-semibold text-muted mb-1">Línea de metro</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {metroLines.map((l) => {
+                      const color = LINE_COLORS[l.line] || '#666';
+                      const isActive = lineFilter === l.line;
+                      return (
+                        <button
+                          key={l.line}
+                          type="button"
+                          onClick={() => {
+                            setLineFilter(isActive ? null : l.line);
+                            setSelectedStationId('');
+                            setMetroStation('');
+                            setMetroLine('');
+                            setSelectedStationCommune('');
+                            setSelectedMeetingPoint('');
+                            setStationSearch('');
+                          }}
+                          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border transition ${
+                            isActive
+                              ? 'text-white border-transparent'
+                              : 'border-line bg-paper text-ink hover:bg-soft'
+                          }`}
+                          style={isActive ? { background: color } : {}}
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: isActive ? '#fff' : color }}
+                          />
+                          {l.line}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Station search */}
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -1201,11 +1247,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     type="text"
                     value={stationSearch}
                     onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }}
+                    onFocus={() => { if (stationResults.length > 0) document.getElementById('station-dropdown')?.classList.add('abierta'); }}
                     placeholder="Buscar estación..."
                     className="input pl-9"
                   />
                   {stationResults.length > 0 && !selectedStationId && (
-                    <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-paper shadow-lg">
+                    <div id="station-dropdown" className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-paper shadow-lg">
                       {stationResults.slice(0, 15).map((s) => (
                         <button
                           key={s.id}
@@ -1215,13 +1262,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             setMetroLine(s.line);
                             setSelectedStationCommune(s.commune);
                             setSelectedMeetingPoint(s.defaultMeetingPoint || 'Acceso principal');
-                            setStationSearch(`${s.name} (${s.line})`);
+                            setStationSearch(s.name);
                             setStationResults([]);
                           }}
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-soft"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-soft border-b border-line/30 last:border-0"
                         >
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ background: LINE_COLORS[s.line] || '#666' }}
+                          />
                           <span className="font-semibold">{s.name}</span>
-                          <span className="text-xs text-muted">{s.lineName} · {s.commune}</span>
+                          <span className="text-[11px] text-muted ml-auto">{s.line} · {s.commune}</span>
                         </button>
                       ))}
                     </div>
@@ -1232,7 +1283,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 {selectedStationId && (
                   <div className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
                     <p className="text-sm font-bold text-ink">{metroStation}</p>
-                    <p className="text-xs text-muted">{metroLines.find((l) => l.line === metroLine)?.line || metroLine} · {selectedStationCommune || '—'}</p>
+                    <p className="text-xs text-muted">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full" style={{ background: LINE_COLORS[metroLine] || '#666' }} />
+                        {metroLine}
+                      </span>
+                      {' · '}{selectedStationCommune || '—'}
+                    </p>
                   </div>
                 )}
 
@@ -1251,22 +1308,25 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
                   </div>
                 ) : slots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="rounded-xl border border-line overflow-hidden max-h-[240px] overflow-y-auto">
                     {slots.map((s) => (
                       <button
                         key={s.start}
+                        type="button"
                         disabled={!s.available}
                         onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }}
-                        className={`rounded-xl border px-2 py-1.5 text-xs font-semibold transition min-h-[36px] ${
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs border-b border-line/30 last:border-0 transition ${
                           deliveryTime === s.start
-                            ? 'border-accent bg-accent text-paper'
+                            ? 'bg-accent text-paper font-semibold'
                             : s.available
-                            ? 'border-line bg-paper hover:border-accent'
-                            : 'border-line bg-soft/50 text-muted opacity-50 cursor-not-allowed'
+                            ? 'bg-paper hover:bg-soft'
+                            : 'bg-soft/50 text-muted opacity-60 cursor-not-allowed'
                         }`}
                       >
-                        {s.start}
-                        <span className="block text-[10px] font-normal">{s.count}/{s.max}</span>
+                        <span>{s.start} – {s.end}</span>
+                        <span className={`text-[10px] font-semibold ${s.count >= s.max ? 'text-red-500' : s.count > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          {s.count}/{s.max}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -1283,8 +1343,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
                 {/* Meeting point */}
                 {selectedStationId && (
-                  <div className="text-xs text-muted">
-                    Punto de encuentro: {selectedMeetingPoint}
+                  <div className="text-[11px] text-muted flex items-center gap-1">
+                    📍 Punto de encuentro: <span className="font-semibold">{selectedMeetingPoint}</span>
                   </div>
                 )}
 
