@@ -175,14 +175,19 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
   const [selectedStationId, setSelectedStationId] = useState('');
+  const [selectedStationCommune, setSelectedStationCommune] = useState('');
+  const [selectedMeetingPoint, setSelectedMeetingPoint] = useState('');
   const [stationSearch, setStationSearch] = useState('');
   const [stationResults, setStationResults] = useState<MetroStation[]>([]);
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
+  const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
+  const [mixedCash, setMixedCash] = useState(0);
+  const [mixedTransfer, setMixedTransfer] = useState(0);
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -436,6 +441,20 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setDiscountAmountInput(0);
     setPago(0);
     setPaymentReceived(false);
+    setMetroLine('');
+    setMetroStation('');
+    setSelectedStationId('');
+    setSelectedStationCommune('');
+    setSelectedMeetingPoint('');
+    setStationSearch('');
+    setStationResults([]);
+    setDeliveryDay(tomorrowISO());
+    setDeliveryTime('11:00');
+    setDeliveryTimeEnd('11:30');
+    setSlots([]);
+    setShippingInput(1000);
+    setMixedCash(0);
+    setMixedTransfer(0);
   };
 
   const pauseSale = () => {
@@ -577,6 +596,33 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         } catch {
           await apiFetch(`/orders/${order.id}`, { method: 'DELETE', token }).catch(() => {});
           throw new Error('Error al registrar el pago. La venta fue cancelada.');
+        }
+      }
+      // Create Delivery record for METRO orders
+      if (mode === 'METRO') {
+        try {
+          const deliveryPayload: any = {
+            orderId: order.id,
+            customerId: customer.id,
+            deliveryType: 'METRO',
+            stationId: selectedStationId,
+            deliveryDate: deliveryDay,
+            windowStart: deliveryTime,
+            windowEnd: deliveryTimeEnd,
+            meetingPoint: selectedMeetingPoint,
+          };
+          const deliveryResult = await apiFetch<any>('/deliveries', { method: 'POST', token, body: deliveryPayload });
+          // If payment already received, transition delivery status
+          if (paymentReceived) {
+            await apiFetch(`/deliveries/${deliveryResult.id}/status`, {
+              method: 'PATCH',
+              token,
+              body: { status: 'PAYMENT_CONFIRMED' },
+            }).catch(() => {});
+          }
+        } catch (deliveryErr: any) {
+          console.error('[POS delivery]', deliveryErr);
+          toast.error(`Venta registrada pero error al agendar entrega: ${deliveryErr?.message || 'desconocido'}`);
         }
       }
       const paidNow = mode === 'LOCAL' || paymentReceived;
@@ -1048,14 +1094,29 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Pago mixto</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-semibold text-muted">Primera parte ($)</label>
-                    <input type="number" min={0} step={100} placeholder="0" className="input w-full text-xs mt-1" />
+                    <label className="text-[10px] font-semibold text-muted">Efectivo ($)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={mixedCash || ''}
+                      onChange={(e) => setMixedCash(Math.max(0, Number(e.target.value) || 0))}
+                      className="input w-full text-xs mt-1"
+                    />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold text-muted">Segunda parte ($)</label>
-                    <input type="number" min={0} step={100} placeholder="0" className="input w-full text-xs mt-1" />
+                    <label className="text-[10px] font-semibold text-muted">Transferencia ($)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={mixedTransfer || ''}
+                      onChange={(e) => setMixedTransfer(Math.max(0, Number(e.target.value) || 0))}
+                      className="input w-full text-xs mt-1"
+                    />
                   </div>
                 </div>
+                <p className="text-[10px] text-muted">Total: {formatPrice(mixedCash + mixedTransfer)} / {formatPrice(total)}</p>
               </div>
             )}
           </div>
@@ -1124,6 +1185,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             setSelectedStationId(s.id);
                             setMetroStation(s.name);
                             setMetroLine(s.line);
+                            setSelectedStationCommune(s.commune);
+                            setSelectedMeetingPoint(s.defaultMeetingPoint || 'Acceso principal');
                             setStationSearch(`${s.name} (${s.line})`);
                             setStationResults([]);
                           }}
@@ -1141,7 +1204,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 {selectedStationId && (
                   <div className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
                     <p className="text-sm font-bold text-ink">{metroStation}</p>
-                    <p className="text-xs text-muted">{metroLines.find((l) => l.line === metroLine)?.line || metroLine} · {stationResults.find((s) => s.id === selectedStationId)?.commune}</p>
+                    <p className="text-xs text-muted">{metroLines.find((l) => l.line === metroLine)?.line || metroLine} · {selectedStationCommune || '—'}</p>
                   </div>
                 )}
 
@@ -1165,7 +1228,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <button
                         key={s.start}
                         disabled={!s.available}
-                        onClick={() => setDeliveryTime(s.start)}
+                        onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }}
                         className={`rounded-xl border px-2 py-1.5 text-xs font-semibold transition min-h-[36px] ${
                           deliveryTime === s.start
                             ? 'border-accent bg-accent text-paper'
@@ -1180,7 +1243,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     ))}
                   </div>
                 ) : (
-                  <select value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} className="input">
+                  <select value={deliveryTime} onChange={(e) => {
+                    const val = e.target.value;
+                    setDeliveryTime(val);
+                    const [h, m] = val.split(':').map(Number);
+                    const endM = m + 30;
+                    const endH = h + Math.floor(endM / 60);
+                    setDeliveryTimeEnd(`${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`);
+                  }} className="input">
                     {TIME_SLOTS.map((t) => (
                       <option key={t} value={t}>{t} hrs</option>
                     ))}
@@ -1190,7 +1260,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 {/* Meeting point */}
                 {selectedStationId && (
                   <div className="text-xs text-muted">
-                    Punto de encuentro: {stationResults.find((s) => s.id === selectedStationId)?.defaultMeetingPoint || 'Acceso principal'}
+                    Punto de encuentro: {selectedMeetingPoint}
                   </div>
                 )}
 

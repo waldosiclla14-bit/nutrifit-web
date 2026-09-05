@@ -116,17 +116,23 @@ export class OrdersService implements OnModuleInit {
     // Compute dueAt: prefer deliveryDay + deliveryTime, otherwise tomorrow 10:00
     let dueAt = new Date();
     if (order.deliveryDay) {
-      // deliveryDay is like "Lunes", "Martes", etc.
-      const dayMap: Record<string, number> = {
-        lunes: 1, martes: 2, miércoles: 3, miercoles: 3,
-        jueves: 4, viernes: 5, sábado: 6, sabado: 6, domingo: 0,
-      };
-      const targetDay = dayMap[order.deliveryDay.toLowerCase()];
-      if (targetDay !== undefined) {
-        const currentDay = dueAt.getDay();
-        let daysAhead = targetDay - currentDay;
-        if (daysAhead <= 0) daysAhead += 7;
-        dueAt.setDate(dueAt.getDate() + daysAhead);
+      // Handle ISO date strings (e.g. "2026-09-06") from POS
+      const isoDateMatch = String(order.deliveryDay).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoDateMatch) {
+        dueAt = new Date(`${order.deliveryDay}T10:00:00`);
+      } else {
+        // Handle day name strings (e.g. "Lunes", "Martes")
+        const dayMap: Record<string, number> = {
+          lunes: 1, martes: 2, miércoles: 3, miercoles: 3,
+          jueves: 4, viernes: 5, sábado: 6, sabado: 6, domingo: 0,
+        };
+        const targetDay = dayMap[String(order.deliveryDay).toLowerCase()];
+        if (targetDay !== undefined) {
+          const currentDay = dueAt.getDay();
+          let daysAhead = targetDay - currentDay;
+          if (daysAhead <= 0) daysAhead += 7;
+          dueAt.setDate(dueAt.getDate() + daysAhead);
+        }
       }
     } else {
       dueAt.setDate(dueAt.getDate() + 1);
