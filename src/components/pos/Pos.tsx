@@ -188,6 +188,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [shippingInput, setShippingInput] = useState(1000);
   const [mixedCash, setMixedCash] = useState(0);
   const [mixedTransfer, setMixedTransfer] = useState(0);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -412,11 +413,18 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.unitPrice * l.quantity, 0), [cart]);
+
+  function computeEndTime(timeStart: string): string {
+    const [h, m] = timeStart.split(':').map(Number);
+    const endM = m + 30;
+    const endH = h + Math.floor(endM / 60);
+    return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
+  }
   const discountAmount = useMemo(() => {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
     return Math.round((subtotal * discountPct) / 100);
   }, [subtotal, discountPct, discountMode, discountAmountInput]);
-  const shippingCost = mode === 'METRO' ? Math.max(0, shippingInput) : 0;
+  const shippingCost = (mode === 'METRO' || mode === 'DELIVERY') ? Math.max(0, shippingInput) : 0;
   const total = Math.max(0, subtotal - discountAmount + shippingCost);
 
   const tenders = useMemo(() => tendersOf(total), [total]);
@@ -455,6 +463,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setShippingInput(1000);
     setMixedCash(0);
     setMixedTransfer(0);
+    setDeliveryAddress('');
   };
 
   const pauseSale = () => {
@@ -544,6 +553,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       toast.error('Selecciona estación, fecha y horario de entrega.');
       return;
     }
+    if (mode === 'DELIVERY' && (!deliveryAddress.trim() || !deliveryDay)) {
+      toast.error('Ingresa la dirección y fecha de envío.');
+      return;
+    }
     // Generate idempotency key once per checkout attempt — prevents double-submit
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
@@ -567,8 +580,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           metroLine: mode === 'METRO' ? metroLine : undefined,
           metroStation: mode === 'METRO' ? metroStation : undefined,
           stationId: mode === 'METRO' ? selectedStationId : undefined,
-          deliveryDay: mode === 'METRO' ? deliveryDay : undefined,
-          deliveryTime: mode === 'METRO' ? deliveryTime : undefined,
+          deliveryDay: (mode === 'METRO' || mode === 'DELIVERY') ? deliveryDay : undefined,
+          deliveryTime: (mode === 'METRO' || mode === 'DELIVERY') ? deliveryTime : undefined,
+          address: mode === 'DELIVERY' ? deliveryAddress.trim() : undefined,
           subtotal,
           discount: discountAmount,
           shippingCost,
@@ -598,19 +612,23 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           throw new Error('Error al registrar el pago. La venta fue cancelada.');
         }
       }
-      // Create Delivery record for METRO orders
-      if (mode === 'METRO') {
+      // Create Delivery record for METRO and DELIVERY orders
+      if (mode === 'METRO' || mode === 'DELIVERY') {
         try {
           const deliveryPayload: any = {
             orderId: order.id,
             customerId: customer.id,
-            deliveryType: 'METRO',
-            stationId: selectedStationId,
+            deliveryType: mode === 'METRO' ? 'METRO' : 'ENVIO_DOMICILIO',
             deliveryDate: deliveryDay,
             windowStart: deliveryTime,
             windowEnd: deliveryTimeEnd,
-            meetingPoint: selectedMeetingPoint,
           };
+          if (mode === 'METRO') {
+            deliveryPayload.stationId = selectedStationId;
+            deliveryPayload.meetingPoint = selectedMeetingPoint;
+          } else {
+            deliveryPayload.address = deliveryAddress.trim();
+          }
           const deliveryResult = await apiFetch<any>('/deliveries', { method: 'POST', token, body: deliveryPayload });
           // If payment already received, transition delivery status
           if (paymentReceived) {
@@ -649,6 +667,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       });
       toast.success(paidNow ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`);
       if (mode === 'METRO') {
+        // Get deliveryCode from the delivery result if available
+        let deliveryCodeVal = '';
+        try {
+          const delRes = await apiFetch<any>(`/deliveries/order/${order.id}`, { token }).catch(() => null);
+          deliveryCodeVal = delRes?.deliveryCode || '';
+        } catch {}
+
         setSalePhone(customerPhone.trim());
         setSaleMsg(
           buildDeliveryOrderMessage({
@@ -671,6 +696,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             metroStation,
             deliveryDay,
             deliveryTime,
+            deliveryTimeEnd,
+            meetingPoint: selectedMeetingPoint,
+            deliveryCode: deliveryCodeVal,
           }),
         );
       }
@@ -1244,12 +1272,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   </div>
                 ) : (
                   <select value={deliveryTime} onChange={(e) => {
-                    const val = e.target.value;
-                    setDeliveryTime(val);
-                    const [h, m] = val.split(':').map(Number);
-                    const endM = m + 30;
-                    const endH = h + Math.floor(endM / 60);
-                    setDeliveryTimeEnd(`${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`);
+                    setDeliveryTime(e.target.value);
+                    setDeliveryTimeEnd(computeEndTime(e.target.value));
                   }} className="input">
                     {TIME_SLOTS.map((t) => (
                       <option key={t} value={t}>{t} hrs</option>
@@ -1274,6 +1298,56 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))}
                     className="input w-full text-sm"
                   />
+                </div>
+                <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={paymentReceived}
+                    onChange={(e) => setPaymentReceived(e.target.checked)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  Ya recibí el pago ({PAYMENT_LABELS[payment] ?? payment})
+                </label>
+              </div>
+            </div>
+          )}
+
+          {mode === 'DELIVERY' && (
+            <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">🏠 Envío a Domicilio</p>
+              <div className="mt-3 space-y-2">
+                <input
+                  type="text"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder="Dirección completa (calle, número, comuna)"
+                  className="input"
+                />
+                <input
+                  type="date"
+                  value={deliveryDay}
+                  min={todayISO()}
+                  onChange={(e) => setDeliveryDay(e.target.value)}
+                  className="input"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="time"
+                    value={deliveryTime}
+                    onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }}
+                    className="input"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-muted">Envío ($)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={500}
+                      value={shippingInput}
+                      onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))}
+                      className="input w-full text-sm"
+                    />
+                  </div>
                 </div>
                 <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
                   <input

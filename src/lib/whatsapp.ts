@@ -106,6 +106,9 @@ export type DeliverySaleMessage = {
   metroStation: string;
   deliveryDay: string;
   deliveryTime: string;
+  deliveryTimeEnd?: string;
+  meetingPoint?: string;
+  deliveryCode?: string;
 };
 
 export function formatDeliveryDay(iso: string) {
@@ -147,8 +150,15 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push('');
   lines.push('*ENTREGA AGENDADA:*');
   lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
-  lines.push(`⏰ ${m.deliveryTime} hrs`);
+  lines.push(`⏰ ${m.deliveryTime}${m.deliveryTimeEnd ? ` – ${m.deliveryTimeEnd}` : ''} hrs`);
   lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
+  if (m.meetingPoint) {
+    lines.push(`📍 Punto de encuentro: *${m.meetingPoint}*`);
+  }
+  if (m.deliveryCode) {
+    lines.push(`🔑 Código de entrega: *${m.deliveryCode}*`);
+    lines.push('(Muéstralo al repartidor al momento de recibir)');
+  }
   lines.push('');
   lines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
   lines.push(webFooter());

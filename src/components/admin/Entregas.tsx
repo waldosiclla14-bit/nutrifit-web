@@ -373,6 +373,9 @@ function DeliveryDetail({
               <Row label="Comuna" value={delivery.station.commune} />
             </>
           )}
+          {delivery.deliveryType === 'ENVIO_DOMICILIO' && delivery.address && (
+            <Row label="Dirección" value={delivery.address} />
+          )}
           <Row label="Fecha" value={delivery.deliveryDate ? new Date(delivery.deliveryDate).toLocaleDateString('es-CL') : '—'} />
           <Row label="Horario" value={delivery.windowStart ? `${delivery.windowStart}–${delivery.windowEnd || ''}` : '—'} />
           <Row label="Punto" value={delivery.meetingPoint || '—'} />
