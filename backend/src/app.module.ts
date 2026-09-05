@@ -16,6 +16,7 @@ import { HealthModule } from './health/health.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
+import { DeliveryModule } from './delivery/delivery.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { PingModule } from './ping/ping.module';
     RemindersModule,
     ReviewsModule,
     PingModule,
+    DeliveryModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
