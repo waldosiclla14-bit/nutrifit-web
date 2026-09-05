@@ -62,6 +62,7 @@ model Customer {
   addresses Address[]
   coupons   Coupon[]
   reminders Reminder[]
+  deliveries Delivery[]
 
   @@index([createdAt])
   @@map("customers")
@@ -240,6 +241,7 @@ model Order {
   items                OrderItem[]
   createdBy            User?               @relation("CreatedBy", fields: [createdById], references: [id])
   inventoryMovements   InventoryMovement[]
+  delivery             Delivery?
 
   @@index([status])
   @@index([paymentStatus])
@@ -455,4 +457,134 @@ model InventoryMovement {
   @@index([orderId])
   @@index([createdAt])
   @@map("inventory_movements")
+}
+
+// ───────────────────────────────────────────────
+// NUTRIFIT DELIVERY — Estaciones Metro
+// ───────────────────────────────────────────────
+
+model MetroStation {
+  id                  String   @id @default(uuid())
+  name                String
+  normalizedName      String
+  line                String
+  lineName            String
+  commune             String
+  latitude            Float
+  longitude           Float
+  active              Boolean  @default(true)
+  deliveryEnabled     Boolean  @default(true)
+  defaultMeetingPoint String?
+  notes               String?
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  deliveries Delivery[]
+
+  @@unique([name, line])
+  @@index([line])
+  @@index([commune])
+  @@index([active, deliveryEnabled])
+  @@index([normalizedName])
+  @@map("metro_stations")
+}
+
+// ───────────────────────────────────────────────
+// NUTRIFIT DELIVERY — Entregas
+// ───────────────────────────────────────────────
+
+enum DeliveryStatus {
+  CREATED
+  PAYMENT_CONFIRMED
+  PREPARING
+  READY
+  SCHEDULED
+  CONFIRMATION_PENDING
+  CONFIRMED
+  IN_ROUTE
+  ARRIVED
+  DELIVERED
+  CANCELLED
+  RESCHEDULED
+  CUSTOMER_UNAVAILABLE
+  NOT_DELIVERED
+  INCIDENT
+}
+
+model Delivery {
+  id              String          @id @default(uuid())
+  orderId         String          @unique
+  customerId      String
+  deliveryType    DeliveryType
+
+  stationId       String?
+  address         String?
+
+  deliveryDate    DateTime?
+  windowStart     String?
+  windowEnd       String?
+
+  meetingPoint    String?
+  notes           String?
+
+  status          DeliveryStatus  @default(CREATED)
+
+  calendarEventId String?
+  routeId         String?
+  routeSequence   Int?
+
+  assignedTo      String?
+
+  deliveryCode    String          @default(uuid())
+
+  confirmedAt     DateTime?
+  startedAt       DateTime?
+  arrivedAt       DateTime?
+  deliveredAt     DateTime?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  order    Order         @relation(fields: [orderId], references: [id])
+  customer Customer      @relation(fields: [customerId], references: [id])
+  station  MetroStation? @relation(fields: [stationId], references: [id])
+  auditLogs DeliveryAuditLog[]
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([stationId])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([assignedTo])
+  @@map("deliveries")
+}
+
+model DeliveryAuditLog {
+  id          String   @id @default(uuid())
+  deliveryId  String
+  userId      String?
+  action      String
+  oldValue    Json?
+  newValue    Json?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@index([deliveryId])
+  @@index([createdAt])
+  @@map("delivery_audit_log")
+}
+
+// ───────────────────────────────────────────────
+// NUTRIFIT DELIVERY — Configuración
+// ───────────────────────────────────────────────
+
+model DeliverySettings {
+  id                       String @id @default(uuid())
+  key                      String @unique
+  value                    Json
+
+  @@map("delivery_settings")
 }
