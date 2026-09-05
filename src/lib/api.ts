@@ -6,10 +6,14 @@ const TOKEN_KEY = 'nutrifit:admin:token';
 
 // ── In-memory GET cache with TTL ──────────────────────────────────────────────
 const CACHE_TTL = 30_000; // 30 seconds
+const LONG_CACHE_TTL = 300_000; // 5 minutes for static data
 const _cache = new Map<string, { data: any; expiry: number }>();
 
 // Endpoints that must always be fresh (state changes rapidly)
 const NO_CACHE_PATHS = ['/cash-register/current'];
+
+// Endpoints that rarely change — use longer cache (5 min)
+const LONG_CACHE_PATHS = ['/metro-stations', '/metro-stations/lines', '/metro-stations/communes'];
 
 function cacheKey(method: string, path: string, token?: string): string {
   return `${method}:${path}:${token || ''}`;
@@ -17,6 +21,10 @@ function cacheKey(method: string, path: string, token?: string): string {
 
 function isNoCache(path: string): boolean {
   return NO_CACHE_PATHS.some((p) => path.startsWith(p));
+}
+
+function isLongCache(path: string): boolean {
+  return LONG_CACHE_PATHS.some((p) => path.startsWith(p));
 }
 
 function cacheGet(key: string): any | undefined {
@@ -29,8 +37,9 @@ function cacheGet(key: string): any | undefined {
   return entry.data;
 }
 
-function cacheSet(key: string, data: any): void {
-  _cache.set(key, { data, expiry: Date.now() + CACHE_TTL });
+function cacheSet(key: string, data: any, path?: string): void {
+  const ttl = path && isLongCache(path) ? LONG_CACHE_TTL : CACHE_TTL;
+  _cache.set(key, { data, expiry: Date.now() + ttl });
 }
 
 // Invalidate cache entries matching a path prefix
@@ -60,6 +69,8 @@ function invalidateAfterMutation(path: string): void {
     clearCache('/cash-register');
   } else if (path.startsWith('/reminders')) {
     clearCache('/reminders');
+  } else if (path.startsWith('/deliveries')) {
+    clearCache('/deliveries');
   }
 }
 // ───────────────────────────────────────────────────────────────────────────────
@@ -147,7 +158,7 @@ export async function apiFetch<T = any>(
 
   // ── Store in cache after successful GET ──────────────────────────────────
   if (method === 'GET' && !isNoCache(path)) {
-    cacheSet(cacheKey(method, path, opts.token), data);
+    cacheSet(cacheKey(method, path, opts.token), data, path);
   }
   // ── Invalidate related cache after mutations ─────────────────────────────
   if (method !== 'GET') {
