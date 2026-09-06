@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2, X } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
-import type { AdminProduct, AdminVariant } from '@/types/admin';
+import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 
 let xlsxModule: typeof import('xlsx') | null = null;
 async function getXlsx() {
@@ -25,6 +25,8 @@ type EditProductForm = {
   description: string;
   registroIsp: string;
   reason: string;
+  supplierId: string;
+  lowStockThreshold: string;
   variants: {
     id?: string;
     variantName: string;
@@ -52,13 +54,14 @@ export function Productos({
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '' });
+  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
   const [formVariants, setFormVariants] = useState([
     { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [compactMode, setCompactMode] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -77,12 +80,18 @@ export function Productos({
     return Array.from(cats).sort();
   }, [products]);
 
+  useEffect(() => {
+    apiFetch<AdminSupplier[]>('/suppliers', { token })
+      .then((data) => setSuppliers(Array.isArray(data) ? data.filter((s) => s.active) : []))
+      .catch(() => {});
+  }, [token]);
+
   const filteredProducts = useMemo(() => {
     let list = products;
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((p) => {
-        const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.category?.name || ''}`.toLowerCase();
+        const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.supplier?.name || ''} ${p.category?.name || ''}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -181,6 +190,8 @@ export function Productos({
           brand: form.brand,
           description: form.description,
           registroIsp: form.registroIsp,
+          supplierId: form.supplierId || undefined,
+          lowStockThreshold: form.lowStockThreshold ? Number(form.lowStockThreshold) : undefined,
           variants: formVariants
             .filter((v) => v.variantName.trim() || v.sku.trim())
             .map((v) => ({
@@ -194,7 +205,7 @@ export function Productos({
         },
       });
       setShowForm(false);
-      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '' });
+      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
       setFormVariants([{ variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
       await onChanged();
     } catch (err: any) {
@@ -217,6 +228,8 @@ export function Productos({
       description: p.description || '',
       registroIsp: p.registroIsp || '',
       reason: '',
+      supplierId: p.supplierId || '',
+      lowStockThreshold: p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
       variants: (p.variants || []).map((v) => ({
         id: v.id,
         variantName: v.name,
@@ -269,6 +282,8 @@ export function Productos({
           comparePrice: Number(editForm.comparePrice) || undefined,
           description: editForm.description,
           registroIsp: editForm.registroIsp,
+          supplierId: editForm.supplierId || null,
+          lowStockThreshold: editForm.lowStockThreshold ? Number(editForm.lowStockThreshold) : null,
           variants: editForm.variants.map((v) => ({
             id: v.id,
             variantName: v.variantName,
@@ -558,6 +573,11 @@ export function Productos({
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
             <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />
             <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
+            <select value={form.supplierId} onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))} className="input">
+              <option value="">Sin proveedor</option>
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <input value={form.lowStockThreshold} onChange={(e) => setForm((f) => ({ ...f, lowStockThreshold: e.target.value }))} placeholder="Umbral stock bajo (global: 5)" type="number" min="1" className="input" />
             <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descripción (opcional)" className="input md:col-span-2" rows={2} />
             <input value={form.registroIsp} onChange={(e) => setForm((f) => ({ ...f, registroIsp: e.target.value }))} placeholder="Registro ISP N° (opcional)" className="input" />
           </div>
@@ -604,7 +624,7 @@ export function Productos({
                 <div className="min-w-0">
                   <p className="font-bold leading-snug">{p.name || p.sku || 'Producto sin nombre'}</p>
                   <p className="mt-0.5 text-xs text-muted">
-                    {[p.sku, p.brandName, p.category?.name].filter(Boolean).join(' · ') || '—'}
+                    {[p.sku, p.brandName, p.supplier?.name, p.category?.name].filter(Boolean).join(' · ') || '—'}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -810,6 +830,11 @@ export function Productos({
               <input value={editForm.reason} onChange={(e) => setEditForm((f) => (f ? { ...f, reason: e.target.value } : f))} placeholder="Motivo de ajuste de stock (si cambias stock)" className="input md:col-span-2" />
               <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="Descripción" className="input md:col-span-2" rows={2} />
               <input value={editForm.registroIsp} onChange={(e) => setEditForm((f) => (f ? { ...f, registroIsp: e.target.value } : f))} placeholder="Registro ISP N°" className="input" />
+              <select value={editForm.supplierId} onChange={(e) => setEditForm((f) => (f ? { ...f, supplierId: e.target.value } : f))} className="input">
+                <option value="">Sin proveedor</option>
+                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <input value={editForm.lowStockThreshold} onChange={(e) => setEditForm((f) => (f ? { ...f, lowStockThreshold: e.target.value } : f))} placeholder="Umbral stock bajo (global: 5)" type="number" min="1" className="input" />
             </div>
 
             <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>

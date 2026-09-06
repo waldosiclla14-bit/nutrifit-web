@@ -59,6 +59,9 @@ export type AdminProduct = {
   registroIsp?: string | null;
   category?: { id: string; name: string } | null;
   variants?: AdminVariant[];
+  supplierId?: string | null;
+  supplier?: { id: string; name: string } | null;
+  lowStockThreshold?: number | null;
 };
 
 export type AdminCustomer = {
@@ -174,4 +177,15 @@ export type AdminInventoryMovement = {
     sku: string;
     product: { name: string; slug: string };
   };
+};
+
+export type AdminSupplier = {
+  id: string;
+  name: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  paymentTerms: string | null;
+  active: boolean;
+  createdAt: string;
 };

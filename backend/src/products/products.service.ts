@@ -32,6 +32,7 @@ export class ProductsService implements OnModuleInit {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         brand: { select: { id: true, name: true, slug: true } },
+        supplier: { select: { id: true, name: true } },
         variants: {
           where: { isActive: true },
         },
@@ -60,8 +61,10 @@ export class ProductsService implements OnModuleInit {
         costPrice: true,
         description: true,
         comparePrice: true,
+        lowStockThreshold: true,
         category: { select: { id: true, name: true } },
         brand: { select: { id: true, name: true } },
+        supplier: { select: { id: true, name: true } },
         variants: {
           where: { isActive: true },
           select: {
@@ -157,6 +160,12 @@ export class ProductsService implements OnModuleInit {
     if (data.brandId !== undefined || data.brand !== undefined) {
       const brandId = await this.resolveBrand(data.brandId, data.brand);
       productData.brandId = brandId ?? null;
+    }
+    if (data.supplierId !== undefined) {
+      productData.supplierId = data.supplierId ? String(data.supplierId) : null;
+    }
+    if (data.lowStockThreshold !== undefined) {
+      productData.lowStockThreshold = data.lowStockThreshold != null ? Math.max(1, Number(data.lowStockThreshold) || 5) : null;
     }
 
     const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
@@ -355,9 +364,11 @@ export class ProductsService implements OnModuleInit {
         registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
         categoryId,
         brandId,
+        supplierId: data.supplierId ? String(data.supplierId) : null,
+        lowStockThreshold: data.lowStockThreshold != null ? Math.max(1, Number(data.lowStockThreshold) || 5) : null,
         variants: { create: variantCreates },
       },
-      include: { category: true, brand: true, variants: true },
+      include: { category: true, brand: true, supplier: true, variants: true },
     });
   }
 
