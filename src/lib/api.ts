@@ -107,7 +107,7 @@ export async function apiFetch<T = any>(
 
   async function attempt(): Promise<Response> {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
-    const timer = controller ? setTimeout(() => controller.abort(), 25000) : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), 45000) : undefined;
     try {
       return await fetch(`${API_BASE}/api${path}`, {
         method,
@@ -245,4 +245,13 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       })),
     },
   });
+}
+
+// ── Keep-alive ping to prevent Render cold starts ─────────────────────────────
+// Pings /api/health every 10 minutes to keep the free-tier instance awake
+if (typeof window !== 'undefined') {
+  const KEEPALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes
+  setInterval(() => {
+    fetch(`${API_BASE}/api/health`, { method: 'GET' }).catch(() => {});
+  }, KEEPALIVE_INTERVAL);
 }
