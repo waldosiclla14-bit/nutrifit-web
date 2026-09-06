@@ -57,6 +57,7 @@ export function Productos({
     { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [compactMode, setCompactMode] = useState(true);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
@@ -608,6 +609,20 @@ export function Productos({
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {!p.active && <span className="text-[11px] font-bold text-red-500">INACTIVO</span>}
+                  {(() => {
+                    const totalStock = variants.reduce((s, v) => s + (v.stock ?? 0), 0);
+                    const hasLow = variants.some((v) => stockLevel(v.stock ?? 0, v.lowStockAlert ?? 5).label !== 'OK');
+                    if (hasLow) return <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Stock bajo</span>;
+                    if (totalStock === 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">Sin stock</span>;
+                    return null;
+                  })()}
+                  <button
+                    onClick={() => setCompactMode(!compactMode)}
+                    className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-1 text-[10px] text-muted hover:border-accent min-h-[36px]"
+                    title={compactMode ? 'Vista detallada' : 'Vista compacta'}
+                  >
+                    {compactMode ? '📋' : '📊'}
+                  </button>
                   <button
                     onClick={() => openEdit(p)}
                     className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-2 text-[11px] font-bold text-ink hover:border-accent min-h-[44px]"
@@ -625,7 +640,42 @@ export function Productos({
               </div>
 
               {variants.length > 0 ? (
-                <div className="px-4 py-3">
+                compactMode ? (
+                  /* ── Compact view: 3-column grid per variant ────────────── */
+                  <div className="px-4 py-2">
+                    <div className="grid grid-cols-3 gap-px bg-line/30 rounded-xl border border-line overflow-hidden">
+                      {variants.map((v) => {
+                        const lvl = stockLevel(v.stock, v.lowStockAlert);
+                        const m = marginOf(v.price, v.costPrice);
+                        return (
+                          <div key={v.id} className="bg-paper px-3 py-2">
+                            <p className="text-[11px] font-semibold text-ink truncate">{v.name || '—'}</p>
+                            <div className="mt-1 grid grid-cols-3 gap-1 text-center">
+                              <div>
+                                <p className="text-[9px] text-muted uppercase">P</p>
+                                <p className="text-[11px] font-bold text-ink">${(v.price ?? 0).toLocaleString('es-CL')}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-muted uppercase">C</p>
+                                <p className="text-[11px] font-bold text-ink">${(v.costPrice ?? 0).toLocaleString('es-CL')}</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] text-muted uppercase">S</p>
+                                <p className={`text-[11px] font-bold ${lvl.cls}`}>{v.stock ?? 0}</p>
+                              </div>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between">
+                              <span className={`text-[9px] font-bold ${marginCls(m)}`}>{m}%</span>
+                              <span className={`text-[9px] font-bold ${lvl.cls}`}>{lvl.label}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Detailed view (original) ──────────────────────────── */
+                  <div className="px-4 py-3">
                   <div className="hidden md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] md:items-end md:gap-3">
                     <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Variante</div>
                     <div className="border-b border-line pb-2 text-[10px] font-bold uppercase tracking-widest text-muted">Precio</div>
@@ -710,6 +760,7 @@ export function Productos({
                     })}
                   </div>
                 </div>
+                )
               ) : (
                 <p className="px-4 py-4 text-center text-xs text-muted">Sin variantes registradas.</p>
               )}

@@ -15,6 +15,7 @@ import type {
 } from '@/types/admin';
 import { Bars7 } from './Bars7';
 import { GoalEditor } from './GoalEditor';
+import LowStockBySupplier from './LowStockBySupplier';
 
 const RANGES = [
   ['7d', '7 días'],
@@ -522,6 +523,9 @@ export function Resumen({
             </>
           )}
         </div>
+
+        <LowStockBySupplier token={token} />
+
       </div>
 
       <div className="rounded-3xl border border-line bg-paper p-6">
