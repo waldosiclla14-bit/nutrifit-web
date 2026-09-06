@@ -106,6 +106,29 @@ model Address {
 }
 
 // ───────────────────────────────────────────────
+// PROVEEDORES
+// ───────────────────────────────────────────────
+
+model Supplier {
+  id           String      @id @default(uuid())
+  name         String
+  contactInfo  String?
+  paymentTerms PaymentTerm @default(CONTADO)
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  products Product[]
+
+  @@map("suppliers")
+}
+
+enum PaymentTerm {
+  CREDITO
+  CONTADO
+}
+
+// ───────────────────────────────────────────────
 // CATEGORÍAS, MARCAS Y PRODUCTOS
 // ───────────────────────────────────────────────
 
@@ -136,31 +159,36 @@ model Brand {
 }
 
 model Product {
-  id           String   @id @default(uuid())
-  sku          String   @unique
-  name         String
-  slug         String   @unique
-  description  String?
-  basePrice    Int
-  costPrice    Int      @default(0)
-  comparePrice Int?
-  registroIsp  String?
-  imageUrl     String?
-  isActive     Boolean  @default(true)
-  isFeatured   Boolean  @default(false)
-  categoryId   String
-  brandId      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(uuid())
+  sku               String   @unique
+  name              String
+  slug              String   @unique
+  description       String?
+  basePrice         Int
+  costPrice         Int      @default(0)
+  comparePrice      Int?
+  registroIsp       String?
+  imageUrl          String?
+  isActive          Boolean  @default(true)
+  isFeatured        Boolean  @default(false)
+  categoryId        String
+  brandId           String?
+  lowStockThreshold Int?     // null = use global default (5)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   category   Category         @relation(fields: [categoryId], references: [id])
   brand      Brand?           @relation(fields: [brandId], references: [id])
   variants   ProductVariant[]
   orderItems OrderItem[]
+  supplier   Supplier?        @relation(fields: [supplierId], references: [id])
+  supplierId String?
+  stockAdjustments StockAdjustment[]
 
   @@index([isActive])
   @@index([categoryId])
   @@index([createdAt])
+  @@index([supplierId])
   @@map("products")
 }
 
@@ -182,6 +210,7 @@ model ProductVariant {
   batches            Batch[]
   orderItems         OrderItem[]
   inventoryMovements InventoryMovement[]
+  stockAdjustments   StockAdjustment[]
 
   @@index([productId])
   @@index([isActive])
@@ -452,6 +481,7 @@ enum MovementType {
   CANCEL
   ADJUSTMENT
   RETURN
+  RESTOCK
 }
 
 model InventoryMovement {
@@ -474,6 +504,37 @@ model InventoryMovement {
   @@index([createdAt])
   @@index([variantId, createdAt])
   @@map("inventory_movements")
+}
+
+// ───────────────────────────────────────────────
+// AJUSTES DE STOCK (Fase 2)
+// ───────────────────────────────────────────────
+
+enum AdjustmentReason {
+  INGRESO_COMPRA
+  CONTEO_FISICO
+  MERMA
+  DEVOLUCION
+}
+
+model StockAdjustment {
+  id             String           @id @default(uuid())
+  productId      String
+  variantId      String?
+  quantityDelta  Int              // positive = ingreso, negative = merma/devolución
+  reason         AdjustmentReason
+  notes          String?
+  createdById    String?
+  createdAt      DateTime         @default(now())
+
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([reason, createdAt])
+  @@index([createdAt])
+  @@map("stock_adjustments")
 }
 
 // ───────────────────────────────────────────────

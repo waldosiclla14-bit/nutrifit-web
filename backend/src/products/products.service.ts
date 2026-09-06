@@ -504,11 +504,12 @@ export class ProductsService implements OnModuleInit {
 
   async getLowStock() {
     return this.prisma.$queryRaw`
-      SELECT pv.*, p."name" as "productName"
+      SELECT pv.*, p."name" as "productName",
+        COALESCE(p."lowStockThreshold", 5) as "effectiveThreshold"
       FROM "product_variants" pv
       JOIN "products" p ON p.id = pv."productId"
       WHERE pv."isActive" = true
-        AND pv."stock" <= pv."lowStockAlert"
+        AND pv."stock" <= COALESCE(p."lowStockThreshold", 5)
       ORDER BY pv."stock" ASC
     ` as Promise<any[]>;
   }

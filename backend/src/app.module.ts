@@ -18,6 +18,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { GoogleModule } from './google/google.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { GoogleModule } from './google/google.module';
     PingModule,
     GoogleModule,
     DeliveryModule,
+    InventoryModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
