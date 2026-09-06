@@ -38,6 +38,13 @@ export class ProductsController {
     return this.productsService.getLowStock();
   }
 
+  @Get('low-stock-by-supplier')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  getLowStockBySupplier() {
+    return this.productsService.getLowStockBySupplier();
+  }
+
   @Get('inventory-value')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)

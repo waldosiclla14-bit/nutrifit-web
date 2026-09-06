@@ -511,6 +511,46 @@ export class ProductsService implements OnModuleInit {
       WHERE pv."isActive" = true
         AND pv."stock" <= COALESCE(p."lowStockThreshold", 5)
       ORDER BY pv."stock" ASC
-    ` as Promise<any[]>;
+    `;
+  }
+
+  async getLowStockBySupplier() {
+    const rows: any[] = await this.prisma.$queryRaw`
+      SELECT
+        pv.id as "variantId",
+        pv."variantName",
+        pv.sku,
+        pv.stock,
+        pv."lowStockAlert",
+        p.id as "productId",
+        p.name as "productName",
+        COALESCE(p."lowStockThreshold", 5) as "threshold",
+        s.id as "supplierId",
+        s.name as "supplierName",
+        s."paymentTerms" as "supplierPaymentTerms"
+      FROM "product_variants" pv
+      JOIN "products" p ON p.id = pv."productId"
+      LEFT JOIN "suppliers" s ON s.id = p."supplierId"
+      WHERE pv."isActive" = true
+        AND pv."stock" <= COALESCE(p."lowStockThreshold", 5)
+      ORDER BY s.name NULLS LAST, pv."stock" ASC
+    `;
+
+    // Group by supplier
+    const groups: Record<string, { supplierId: string | null; supplierName: string; paymentTerms: string | null; products: any[] }> = {};
+    for (const row of rows) {
+      const key = row.supplierId || '__none__';
+      if (!groups[key]) {
+        groups[key] = {
+          supplierId: row.supplierId,
+          supplierName: row.supplierName || 'Sin proveedor',
+          paymentTerms: row.supplierPaymentTerms,
+          products: [],
+        };
+      }
+      groups[key].products.push(row);
+    }
+
+    return Object.values(groups);
   }
 }
