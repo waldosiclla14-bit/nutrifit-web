@@ -260,15 +260,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       setStationResults([]);
       return;
     }
-    const controller = new AbortController();
+    let cancelled = false;
     const timer = setTimeout(() => {
       let url = `/metro-stations?search=${encodeURIComponent(term || '*')}`;
       if (lineFilter) url += `&line=${lineFilter}`;
       apiFetch<MetroStation[]>(url, { token })
-        .then(setStationResults)
-        .catch(() => setStationResults([]));
+        .then((data) => { if (!cancelled) setStationResults(data); })
+        .catch(() => { if (!cancelled) setStationResults([]); });
     }, 300);
-    return () => { clearTimeout(timer); controller.abort(); };
+    return () => { clearTimeout(timer); cancelled = true; };
   }, [stationSearch, mode, token, lineFilter]);
 
   // Load time slots when date or station changes
@@ -869,19 +869,19 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex overflow-hidden rounded-full border border-line bg-paper">
             <button
-              onClick={() => setMode('LOCAL')}
+              onClick={() => { setMode('LOCAL'); setShippingInput(0); setPaymentReceived(true); }}
               className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               <Store size={14} /> Local
             </button>
             <button
-              onClick={() => setMode('METRO')}
+              onClick={() => { setMode('METRO'); setShippingInput(1000); setPaymentReceived(false); }}
               className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               <CalendarDays size={14} /> Metro
             </button>
             <button
-              onClick={() => setMode('DELIVERY')}
+              onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); }}
               className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               🏠 Domicilio

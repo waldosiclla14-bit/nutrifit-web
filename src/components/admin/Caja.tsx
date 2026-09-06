@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/utils';
 import { toast, useConfirm } from '@/lib/feedback';
 import type { AdminCashRegister } from '@/types/admin';
 
-export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | null; token: string; onChanged: () => void }) {
+export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | null; token: string; onChanged: () => Promise<void> | void }) {
   const [initial, setInitial] = useState('0');
   const [final, setFinal] = useState('');
   const [saving, setSaving] = useState(false);

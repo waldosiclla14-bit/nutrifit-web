@@ -130,6 +130,9 @@ export default function StationMap({ stations, selectedLine }: { stations: Stati
     document.head.appendChild(script);
     return () => {
       document.head.removeChild(script);
+      delete (window as any).initMap;
+      delete (window as any)._stationMap;
+      delete (window as any)._stationMarkers;
     };
   }, [apiKey, stations, selectedLine, mapLoaded]);
 

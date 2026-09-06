@@ -330,7 +330,16 @@ export function Calendario({ token }: { token: string }) {
 }
 
 function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (d: Delivery) => void }) {
-  const hours = Array.from({ length: 14 }, (_, i) => i + 8); // 8:00 - 21:00
+  // Collect all unique hours from deliveries + default 8-21 range
+  const deliveryHours = new Set<number>();
+  deliveries.forEach((d) => {
+    if (d.windowStart) {
+      const h = parseInt(d.windowStart.split(':')[0], 10);
+      if (!Number.isNaN(h)) deliveryHours.add(h);
+    }
+  });
+  const defaultHours = Array.from({ length: 14 }, (_, i) => i + 8);
+  const allHours = [...new Set([...defaultHours, ...deliveryHours])].sort((a, b) => a - b);
 
   const byHour: Record<number, Delivery[]> = {};
   deliveries.forEach((d) => {
@@ -342,7 +351,7 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
 
   return (
     <div className="space-y-0">
-      {hours.map((h) => {
+      {allHours.map((h) => {
         const hourDeliveries = byHour[h] || [];
         return (
           <div key={h} className="flex border-b border-line">
