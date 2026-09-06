@@ -209,7 +209,7 @@ export function Entregas({ token }: { token: string }) {
             STATUS_LABELS[d.status] || d.status,
             d.meetingPoint || '',
           ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-          const blob = new Blob([`${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+          const blob = new Blob(['\uFEFF' + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -275,7 +275,7 @@ export function Entregas({ token }: { token: string }) {
                           customerName: d.customer?.name || d.order?.customerName,
                           customerPhone: d.customer?.phone || d.order?.customerPhone,
                           stationName: d.station?.name,
-                          lineName: d.station?.line,
+                          lineName: d.station?.lineName || d.station?.line,
                           deliveryDate: d.deliveryDate,
                           windowStart: d.windowStart,
                           windowEnd: d.windowEnd,

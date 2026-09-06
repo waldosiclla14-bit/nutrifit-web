@@ -1060,7 +1060,7 @@ export class OrdersService implements OnModuleInit {
     to.setHours(23, 59, 59, 999);
     const from = query.from ? new Date(query.from) : new Date(to);
     from.setHours(0, 0, 0, 0);
-    from.setMonth(from.getMonth() - 1);
+    if (!query.from) from.setMonth(from.getMonth() - 1);
 
     const where: any = {
       status: { in: [OrderStatus.PAID, OrderStatus.DELIVERED] },

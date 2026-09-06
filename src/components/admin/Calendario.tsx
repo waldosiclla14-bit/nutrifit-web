@@ -32,6 +32,10 @@ const STATUS_DOT: Record<string, string> = {
   ARRIVED: 'bg-indigo-400',
   DELIVERED: 'bg-green-500',
   CANCELLED: 'bg-red-400',
+  RESCHEDULED: 'bg-violet-400',
+  CUSTOMER_UNAVAILABLE: 'bg-orange-300',
+  NOT_DELIVERED: 'bg-red-300',
+  INCIDENT: 'bg-red-500',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -46,6 +50,10 @@ const STATUS_LABEL: Record<string, string> = {
   ARRIVED: 'Llegó',
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelado',
+  RESCHEDULED: 'Reprogramado',
+  CUSTOMER_UNAVAILABLE: 'Cliente no disponible',
+  NOT_DELIVERED: 'No entregado',
+  INCIDENT: 'Incidente',
 };
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -303,9 +311,9 @@ export function Calendario({ token }: { token: string }) {
                   <button onClick={() => updateStatus(selected.id, 'CONFIRMED')} className="btn-accent text-xs min-h-[36px] px-3">Confirmar</button>
                 )}
                 {selected.status === 'CONFIRMED' && (
-                  <button onClick={() => updateStatus(selected.id, 'IN_TRANSIT')} className="btn-accent text-xs min-h-[36px] px-3"><Truck size={12} className="mr-1" />En ruta</button>
+                  <button onClick={() => updateStatus(selected.id, 'IN_ROUTE')} className="btn-accent text-xs min-h-[36px] px-3"><Truck size={12} className="mr-1" />En ruta</button>
                 )}
-                {selected.status === 'IN_TRANSIT' && (
+                {selected.status === 'IN_ROUTE' && (
                   <button onClick={() => updateStatus(selected.id, 'ARRIVED')} className="btn-accent text-xs min-h-[36px] px-3">Llegó</button>
                 )}
                 {selected.status === 'ARRIVED' && (

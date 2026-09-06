@@ -19,7 +19,7 @@ interface LowStockProduct {
 interface SupplierGroup {
   supplierId: string | null;
   supplierName: string;
-  paymentTerms: string | null;
+  supplierPaymentTerms: string | null;
   products: LowStockProduct[];
 }
 
@@ -101,9 +101,9 @@ export default function LowStockBySupplier({ token, onReceiveStock }: Props) {
                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 <Truck size={14} className="text-muted" />
                 <span className="text-sm font-semibold text-ink">{group.supplierName}</span>
-                {group.paymentTerms && (
+                {group.supplierPaymentTerms && (
                   <span className="rounded-full bg-soft px-2 py-0.5 text-[10px] font-medium text-muted uppercase">
-                    {group.paymentTerms}
+                    {group.supplierPaymentTerms}
                   </span>
                 )}
               </div>

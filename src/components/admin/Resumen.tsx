@@ -69,7 +69,7 @@ function normalizeLowStock(items: any[]): LowStockItem[] {
   const out: LowStockItem[] = [];
   for (const it of items || []) {
     if (!it) continue;
-    const name = String(it.name || it.title || 'Producto');
+    const name = String(it.productName || it.name || it.title || 'Producto');
     const sku = String(it.sku ?? '');
     const alert: number | null =
       typeof it.lowStockAlert === 'number'

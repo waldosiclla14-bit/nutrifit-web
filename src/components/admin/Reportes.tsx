@@ -108,15 +108,15 @@ export function Reportes({ token }: { token: string }) {
               {byDay.length > 0 ? (
                 <div className="mt-4">
                   <div className="flex h-44 items-end gap-2">
-                    {byDay.map((d) => {
+                    {(() => {
                       const max = Math.max(...byDay.map((x) => x.total), 1);
-                      return (
+                      return byDay.map((d) => (
                         <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
                           <div className="w-full rounded-t-md bg-accent/70" style={{ height: `${Math.max((d.total / max) * 100, 3)}%` }} title={`${formatPrice(d.total)} (utilidad ${formatPrice(d.profit)})`} />
                           <span className="text-[10px] text-muted">{d.date.slice(5)}</span>
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                   </div>
                   <p className="mt-2 text-[11px] text-muted">Barras verdes = ventas por día. Pasa el cursor para ver utilidad.</p>
                 </div>

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, cx, uid } from '@/lib/utils';
-import { buildDeliveryOrderMessage, openWhatsApp } from '@/lib/whatsapp';
+import { buildDeliveryOrderMessage, openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import type { AdminReport } from '@/types/admin';
@@ -103,6 +103,24 @@ type Hold = {
   customerName: string;
   customerPhone: string;
   total: number;
+  mode: 'LOCAL' | 'METRO' | 'DELIVERY';
+  payment: string;
+  metroLine: string;
+  metroStation: string;
+  selectedStationId: string;
+  selectedStationCommune: string;
+  selectedMeetingPoint: string;
+  deliveryDay: string;
+  deliveryTime: string;
+  deliveryTimeEnd: string;
+  deliveryAddress: string;
+  shippingInput: number;
+  paymentReceived: boolean;
+  discountPct: number;
+  discountMode: 'percent' | 'amount';
+  discountAmountInput: number;
+  mixedCash: number;
+  mixedTransfer: number;
 };
 
 function roundUp(value: number, step: number) {
@@ -438,6 +456,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     const [h, m] = timeStart.split(':').map(Number);
     const endM = m + 30;
     const endH = h + Math.floor(endM / 60);
+    if (endH > 23) return '23:59';
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
   }
   const discountAmount = useMemo(() => {
@@ -465,6 +484,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setCart([]);
     setCustomerName('');
     setCustomerPhone('');
+    setPayment('EFECTIVO');
     setDiscountPct(0);
     setDiscountAmountInput(0);
     setPago(0);
@@ -495,6 +515,24 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       customerName,
       customerPhone,
       total,
+      mode,
+      payment,
+      metroLine,
+      metroStation,
+      selectedStationId,
+      selectedStationCommune,
+      selectedMeetingPoint,
+      deliveryDay,
+      deliveryTime,
+      deliveryTimeEnd,
+      deliveryAddress,
+      shippingInput,
+      paymentReceived,
+      discountPct,
+      discountMode,
+      discountAmountInput,
+      mixedCash,
+      mixedTransfer,
     };
     persistHolds([hold, ...holds]);
     resetSaleForm();
@@ -506,6 +544,24 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setCart(h.lines.map((l) => ({ ...l })));
     setCustomerName(h.customerName);
     setCustomerPhone(h.customerPhone);
+    setMode(h.mode || 'LOCAL');
+    setPayment(h.payment || 'EFECTIVO');
+    setMetroLine(h.metroLine || '');
+    setMetroStation(h.metroStation || '');
+    setSelectedStationId(h.selectedStationId || '');
+    setSelectedStationCommune(h.selectedStationCommune || '');
+    setSelectedMeetingPoint(h.selectedMeetingPoint || '');
+    setDeliveryDay(h.deliveryDay || tomorrowISO());
+    setDeliveryTime(h.deliveryTime || '11:00');
+    setDeliveryTimeEnd(h.deliveryTimeEnd || '11:30');
+    setDeliveryAddress(h.deliveryAddress || '');
+    setShippingInput(h.shippingInput ?? 1000);
+    setPaymentReceived(h.paymentReceived || false);
+    setDiscountPct(h.discountPct || 0);
+    setDiscountMode(h.discountMode || 'percent');
+    setDiscountAmountInput(h.discountAmountInput || 0);
+    setMixedCash(h.mixedCash || 0);
+    setMixedTransfer(h.mixedTransfer || 0);
     setReceipt(null);
     setSaleMsg(null);
     toast.info('Venta recuperada de espera.');
@@ -576,6 +632,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     if (mode === 'DELIVERY' && (!deliveryAddress.trim() || !deliveryDay)) {
       toast.error('Ingresa la dirección y fecha de envío.');
       return;
+    }
+    if (payment === 'MIXTO') {
+      const mixTotal = (mixedCash || 0) + (mixedTransfer || 0);
+      if (mixTotal <= 0) {
+        toast.error('Ingresa el monto en efectivo y/o transferencia para pago mixto.');
+        return;
+      }
+      if (mixTotal < total) {
+        toast.error(`El total de pago mixto ($${mixTotal.toLocaleString('es-CL')}) es menor al total ($${total.toLocaleString('es-CL')}).`);
+        return;
+      }
     }
     // Generate idempotency key once per checkout attempt — prevents double-submit
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -721,6 +788,36 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             deliveryCode: deliveryCodeVal,
           }),
         );
+      } else if (mode === 'DELIVERY') {
+        setSalePhone(customerPhone.trim());
+        const delLines: string[] = [];
+        delLines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
+        delLines.push('─'.repeat(24));
+        delLines.push('');
+        delLines.push(`Hola ${customerName.trim()} 👋`);
+        delLines.push(`Tu pedido ${order.orderNumber} quedó registrado con envío a domicilio.`);
+        delLines.push('');
+        delLines.push('*PRODUCTOS:*');
+        cart.forEach((l, i) => {
+          delLines.push(`${i + 1}. ${l.productName}${l.variantName ? ` (${l.variantName})` : ''} ×${l.quantity}`);
+          delLines.push(`   ${formatPrice(l.unitPrice * l.quantity)}`);
+        });
+        delLines.push('');
+        delLines.push('─'.repeat(24));
+        delLines.push(`*Subtotal:* ${formatPrice(subtotal)}`);
+        if (discountAmount) delLines.push(`*Descuento:* -${formatPrice(discountAmount)}`);
+        delLines.push(`*Envío:* ${shippingCost > 0 ? formatPrice(shippingCost) : 'GRATIS'}`);
+        delLines.push(`*TOTAL:* ${formatPrice(total)}`);
+        delLines.push(`*Pago:* ${PAYMENT_LABELS[payment] ?? payment}${paidNow ? ' · RECIBIDO' : ' · CONTRA ENTREGA'}`);
+        delLines.push('');
+        delLines.push('*ENVÍO A DOMICILIO:*');
+        delLines.push(`📅 ${deliveryDay}`);
+        delLines.push(`⏰ ${deliveryTime}${deliveryTimeEnd ? ` – ${deliveryTimeEnd}` : ''} hrs`);
+        delLines.push(`🏠 ${deliveryAddress}`);
+        delLines.push('');
+        delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
+        delLines.push(webFooter());
+        setSaleMsg(delLines.join('\n'));
       }
       resetSaleForm();
       await load(false);

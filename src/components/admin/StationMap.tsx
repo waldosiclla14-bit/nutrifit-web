@@ -36,7 +36,43 @@ export default function StationMap({ stations, selectedLine }: { stations: Stati
   }, []);
 
   useEffect(() => {
-    if (!apiKey || !mapRef.current || mapLoaded) return;
+    if (!apiKey || !mapRef.current) return;
+
+    // If map already loaded, just update markers
+    if (mapLoaded && (window as any).google?.maps) {
+      // Clear existing markers and re-render
+      const map = (window as any)._stationMap;
+      if (map) {
+        // Remove old markers
+        const oldMarkers = (window as any)._stationMarkers || [];
+        oldMarkers.forEach((m: any) => m.setMap(null));
+        const filtered = selectedLine ? stations.filter((s) => s.line === selectedLine) : stations;
+        const newMarkers: any[] = [];
+        filtered.forEach((station) => {
+          if (!station.active || !station.deliveryEnabled) return;
+          const marker = new (window as any).google.maps.Marker({
+            position: { lat: station.latitude, lng: station.longitude },
+            map,
+            title: `Metro ${station.name}`,
+            icon: {
+              path: (window as any).google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: LINE_COLORS[station.line] || '#666',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 2,
+            },
+          });
+          const infoWindow = new (window as any).google.maps.InfoWindow({
+            content: `<div style="font-family:Inter,sans-serif;padding:4px;"><strong style="color:${LINE_COLORS[station.line] || '#333'}">Metro ${station.name}</strong><div style="font-size:12px;color:#666;">${station.lineName} · ${station.commune}</div>${station.defaultMeetingPoint ? `<div style="font-size:11px;color:#888;margin-top:4px;">📍 ${station.defaultMeetingPoint}</div>` : ''}<div style="font-size:11px;color:#00a651;margin-top:2px;">✓ Habilitada</div></div>`,
+          });
+          marker.addListener('click', () => infoWindow.open(map, marker));
+          newMarkers.push(marker);
+        });
+        (window as any)._stationMarkers = newMarkers;
+      }
+      return;
+    }
 
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
@@ -50,8 +86,10 @@ export default function StationMap({ stations, selectedLine }: { stations: Stati
         mapTypeControl: false,
         streetViewControl: false,
       });
+      (window as any)._stationMap = map;
 
       const filtered = selectedLine ? stations.filter((s) => s.line === selectedLine) : stations;
+      const markers: any[] = [];
 
       filtered.forEach((station) => {
         if (!station.active || !station.deliveryEnabled) return;
@@ -82,7 +120,9 @@ export default function StationMap({ stations, selectedLine }: { stations: Stati
         });
 
         marker.addListener('click', () => infoWindow.open(map, marker));
+        markers.push(marker);
       });
+      (window as any)._stationMarkers = markers;
 
       setMapLoaded(true);
     };

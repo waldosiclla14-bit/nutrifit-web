@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { toast } from '@/lib/feedback';
+import { toast, useConfirm } from '@/lib/feedback';
 import type { AdminCashRegister } from '@/types/admin';
 
 export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | null; token: string; onChanged: () => void }) {
   const [initial, setInitial] = useState('0');
   const [final, setFinal] = useState('');
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
 
   const open = async () => {
     setSaving(true);
@@ -25,6 +26,13 @@ export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | nul
 
   const close = async () => {
     if (!cash) return;
+    const counted = Number(final) || 0;
+    const ok = await confirm({
+      title: 'Cerrar caja',
+      message: `¿Confirmar cierre con $${counted.toLocaleString('es-CL')} contado? Se calculará la diferencia automáticamente.`,
+      confirmLabel: 'Cerrar caja',
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await apiFetch(`/cash-register/${cash.id}/close`, { method: 'PATCH', token, body: { finalAmount: Number(final) || 0 } });
