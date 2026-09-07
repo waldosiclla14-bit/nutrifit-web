@@ -370,7 +370,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       );
     } catch (err: any) {
       if (handleAuthError(err, onLogout)) return;
-      toast.error(err?.message || 'Error al cargar datos.');
+      toast.error(err?.message || 'No se pudieron cargar los productos. Verifica tu conexión.');
     } finally {
       if (initial) setLoading(false);
     }
@@ -623,6 +623,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     if (saving || cart.length === 0) return;
     if (!customerName.trim() || !customerPhone.trim()) {
       toast.error('Ingresa nombre y teléfono del cliente.');
+      if (!customerName.trim()) customerNameRef.current?.focus();
+      else document.querySelector<HTMLInputElement>('[placeholder="Teléfono"]')?.focus();
       return;
     }
     if (mode === 'METRO' && (!selectedStationId || !deliveryDay || !deliveryTime)) {
@@ -824,7 +826,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     } catch (err: any) {
       if (handleAuthError(err, onLogout)) return;
       console.error('[POS checkout]', err?.prismaCode ? { prismaCode: err.prismaCode, meta: err.meta, message: err.message } : err);
-      toast.error(err?.message || 'Error al cobrar.');
+      toast.error(err?.message || 'Error al cobrar. Verifica la conexión y vuelve a intentar.');
     } finally {
       setSaving(false);
     }
@@ -1101,8 +1103,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar producto o SKU… (F1 · F2 cliente · F3 pausar)"
-              className="input pl-10"
+              className="input pl-10 pr-9"
             />
+            {query.length > 0 && (
+              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition">
+                <X size={15} />
+              </button>
+            )}
           </div>
           {categories.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1146,7 +1153,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         >
                           <span className="text-xs font-semibold">
                             {v.name || 'Sin variante'}
-                            <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
+                            {v.stock != null && v.stock <= 0 ? (
+                              <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
+                            ) : (
+                              <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
+                            )}
                           </span>
                           <span className="flex flex-col items-end">
                             <span className="text-sm font-bold">{formatPrice(v.price)}</span>
@@ -1169,7 +1180,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           <p className="flex items-center gap-2 font-display text-lg uppercase">
             <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
-          <div className="mt-4 max-h-[40vh] space-y-2 overflow-y-auto">
+          {cart.length > 0 && (
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
+              <span className="text-xs font-semibold text-muted">{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
+              <span className="font-display text-lg">{formatPrice(total)}</span>
+            </div>
+          )}
+          <div className="mt-2 max-h-[40vh] space-y-2 overflow-y-auto">
             {cart.map((l) => (
               <div key={lineKey(l)} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
                 <div className="min-w-0 flex-1">
@@ -1177,14 +1194,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
                   <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
                   <Minus size={14} />
                 </button>
                 <span className="w-8 text-center text-sm font-bold">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
                   <Plus size={14} />
                 </button>
-                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
+                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -1213,6 +1230,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <p className="truncate text-[11px] text-muted">
                       {h.customerName || 'Sin cliente'} · {h.lines.length} {h.lines.length === 1 ? 'item' : 'items'}
                     </p>
+                    {h.lines.length > 0 && (
+                      <p className="truncate text-[10px] text-muted/70">
+                        {h.lines.slice(0, 2).map((l) => `${l.productName}${l.quantity > 1 ? ` ×${l.quantity}` : ''}`).join(', ')}
+                        {h.lines.length > 2 ? ` +${h.lines.length - 2} más` : ''}
+                      </p>
+                    )}
                   </div>
                   <button onClick={() => resumeHold(h)} title="Retomar venta" className="rounded-full border border-line bg-paper p-1.5 hover:border-accent">
                     <Play size={13} />
@@ -1227,8 +1250,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           <div className="mt-4 space-y-2">
             <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono" className="input" />
-            <select value={payment} onChange={(e) => setPayment(e.target.value)} className="input">
+            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+            <select value={payment} onChange={(e) => {
+              const val = e.target.value;
+              setPayment(val);
+              if (val !== 'MIXTO') {
+                setMixedCash(0);
+                setMixedTransfer(0);
+              }
+            }} className="input">
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA_MANUAL">Tarjeta</option>
@@ -1262,6 +1292,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   </div>
                 </div>
                 <p className="text-[10px] text-muted">Total: {formatPrice(mixedCash + mixedTransfer)} / {formatPrice(total)}</p>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-line/30">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${mixedCash + mixedTransfer >= total ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                    style={{ width: `${Math.min(100, ((mixedCash + mixedTransfer) / Math.max(total, 1)) * 100)}%` }}
+                  />
+                </div>
+                {mixedCash + mixedTransfer > 0 && mixedCash + mixedTransfer < total && (
+                  <p className="text-[10px] font-semibold text-amber-600">Faltan {formatPrice(total - mixedCash - mixedTransfer)}</p>
+                )}
               </div>
             )}
           </div>
@@ -1276,7 +1315,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <button
                     key={t}
                     onClick={() => setPago(t)}
-                    className={`min-h-[40px] rounded-full border px-3 py-2 text-xs font-bold transition active:scale-95 ${
+                    className={`min-h-[44px] rounded-full border px-3 py-2 text-xs font-bold transition active:scale-95 ${
                       pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'
                     }`}
                   >
@@ -1302,7 +1341,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               {cashShort ? (
                 <p className="mt-2 text-sm font-bold text-red-500">Faltan {formatPrice(total - pago)}</p>
               ) : (
-                pago > 0 && <p className="mt-2 text-sm font-bold text-emerald-600">Vuelto: {formatPrice(pago - total)}</p>
+                pago > 0 && (
+                  pago > total
+                    ? <p className="mt-2 text-sm font-bold text-emerald-600">Vuelto: {formatPrice(pago - total)}</p>
+                    : pago === total && <p className="mt-2 text-sm font-bold text-muted">Pago exacto</p>
+                )
               )}
             </div>
           )}
@@ -1393,6 +1436,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         </button>
                       ))}
                     </div>
+                  )}
+                  {stationSearch.length >= 2 && stationResults.length === 0 && !selectedStationId && (
+                    <p className="mt-1.5 text-[11px] text-muted">Sin resultados para &ldquo;{stationSearch}&rdquo;</p>
                   )}
                 </div>
 
@@ -1596,13 +1642,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <button
                       key={pct}
                       onClick={() => setDiscountPct(pct)}
-                      className={`min-h-[40px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}
+                      className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}
                     >
                       {pct === 0 ? '0%' : `-${pct}%`}
                     </button>
                   ))}
                 </div>
               ) : (
+                  <>
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-sm font-bold text-muted">$</span>
                   <input
@@ -1622,6 +1669,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     Limpiar
                   </button>
                 </div>
+                <p className="mt-1 text-[10px] text-muted">Máximo: {formatPrice(subtotal)}</p>
+                </>
               )}
             </div>
           )}
@@ -1656,7 +1705,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             {saving
               ? 'Procesando…'
               : mode === 'METRO'
-                ? 'Registrar venta con entrega'
+                ? paymentReceived
+                  ? `Cobrar ${formatPrice(total)} y registrar`
+                  : 'Registrar venta (pago contra entrega)'
+                : mode === 'DELIVERY'
+                ? paymentReceived
+                  ? `Cobrar ${formatPrice(total)} y registrar`
+                  : 'Registrar venta (envío a domicilio)'
                 : showCashPay
                   ? `Cobrar ${formatPrice(total)}`
                   : 'Cobrar'}
