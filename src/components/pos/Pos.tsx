@@ -1132,8 +1132,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
-              <RefreshCw size={16} className="animate-spin" /> Cargando productos…
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="skeleton h-32 rounded-3xl" />
+              ))}
             </div>
           ) : (
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
