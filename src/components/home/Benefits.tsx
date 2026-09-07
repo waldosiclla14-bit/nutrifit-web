@@ -31,24 +31,24 @@ const ITEMS = [
 
 export default function Benefits() {
   return (
-    <section className="bg-dark py-14 text-white lg:py-[100px]" id="beneficios">
+    <section className="bg-sport-bg py-14 text-white lg:py-[100px]" id="beneficios">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
-          <p className="section-label text-accent">BENEFICIOS</p>
-          <h2 className="section-title-dark">
-            Compra con <span className="text-accent">confianza</span>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">BENEFICIOS</p>
+          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+            Compra con <span className="text-sport-green">confianza</span>
           </h2>
         </Reveal>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ITEMS.map((item, i) => (
             <Reveal key={item.title} delay={i * 60}>
-              <article className="flex h-full gap-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur transition-colors hover:border-accent/50">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink">
+              <article className="flex h-full gap-4 rounded-3xl border border-sport-border/50 bg-sport-card p-6 transition-colors hover:border-sport-green/40">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sport-green text-white">
                   <item.icon size={22} />
                 </span>
                 <div>
-                  <h3 className="font-display text-lg uppercase tracking-wide">{item.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/70">{item.text}</p>
+                  <h3 className="font-display text-lg uppercase tracking-wide text-white">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-white/50">{item.text}</p>
                 </div>
               </article>
             </Reveal>

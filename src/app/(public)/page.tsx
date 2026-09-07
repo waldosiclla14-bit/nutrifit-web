@@ -14,7 +14,6 @@ import HowTo from '@/components/home/HowTo';
 import Guarantee from '@/components/home/Guarantee';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
-import Testimonials from '@/components/home/Testimonials';
 
 export const metadata: Metadata = {
   alternates: { canonical: '/' },
@@ -75,7 +74,6 @@ export default function Home() {
       <HeroSection />
       <NutritionalTransparency />
       <UGCProof />
-      <Testimonials />
       <FeaturedCarousel />
       <CrossSell />
       <Categories />
