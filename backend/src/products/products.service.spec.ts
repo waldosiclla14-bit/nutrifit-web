@@ -12,6 +12,8 @@ describe('ProductsService', () => {
       product: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -55,10 +57,14 @@ describe('ProductsService', () => {
         { id: 'p1', name: 'Whey Protein', supplier: { id: 's1', name: 'Proveedor A' }, variants: [] },
       ];
       prisma.product.findMany.mockResolvedValue(mockProducts);
+      prisma.product.count.mockResolvedValue(1);
 
       const result = await service.findAll();
 
-      expect(result).toEqual(mockProducts);
+      expect(result.data).toEqual(mockProducts);
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(50);
       expect(prisma.product.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           include: expect.objectContaining({
