@@ -35,8 +35,8 @@ const localBusinessJsonLd = {
       '@id': `${BRAND.url}/#store`,
       name: 'NUTRIFIT Suplementos',
       url: BRAND.url,
-      logo: `${BRAND.url}/img/logo.png`,
-      image: `${BRAND.url}/img/logo.png`,
+      logo: `${BRAND.url}/img/logo-fallback.png`,
+      image: `${BRAND.url}/img/logo-fallback.png`,
       description:
         'Tienda de suplementos deportivos y vitaminas en Santiago de Chile. Entrega en estaciones de Metro en todas las líneas.',
       telephone: `+${BRAND.whatsappDigits}`,

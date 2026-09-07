@@ -52,7 +52,7 @@ export default async function Image() {
             }}
           >
             <img
-              src={`${BRAND.url}/img/logo.png`}
+              src={`${BRAND.url}/img/logo-fallback.png`}
               alt="Logo NutriFit"
               width={420}
               height={180}

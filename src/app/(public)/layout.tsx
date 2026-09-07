@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
-  icons: { icon: '/img/logo.png' },
+  icons: { icon: '/img/logo-fallback.png' },
 };
 
 export default function PublicLayout({
@@ -58,8 +58,8 @@ export default function PublicLayout({
     '@id': `${BRAND.url}/#organization`,
     name: 'NutriFit',
     url: BRAND.url,
-    logo: `${BRAND.url}/img/logo.png`,
-    image: `${BRAND.url}/img/logo.png`,
+      logo: `${BRAND.url}/img/logo-fallback.png`,
+      image: `${BRAND.url}/img/logo-fallback.png`,
     description:
       'Suplementos originales en Chile. Whey protein, creatina, vitaminas y bienestar. Compra por WhatsApp y entrega en estaciones de metro.',
     slogan: BRAND.tagline,

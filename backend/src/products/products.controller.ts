@@ -14,7 +14,13 @@ export class ProductsController {
 
   @Get()
   async findAll(@Query() query: any) {
-    return this.productsService.toPublicProducts(await this.productsService.findAll(query));
+    const result = await this.productsService.findAll(query);
+    return {
+      data: this.productsService.toPublicProducts(result.data),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    };
   }
 
   @Get('internal')
@@ -26,9 +32,8 @@ export class ProductsController {
 
   @Get('featured')
   async findFeatured() {
-    return this.productsService.toPublicProducts(
-      await this.productsService.findAll({ featured: true }),
-    );
+    const result = await this.productsService.findAll({ featured: true, limit: 20 });
+    return this.productsService.toPublicProducts(result.data);
   }
 
   @Get('low-stock')
