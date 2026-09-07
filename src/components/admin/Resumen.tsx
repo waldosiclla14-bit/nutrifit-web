@@ -150,11 +150,11 @@ export function Resumen({
       try {
         const [ls, cs] = await Promise.all([
           apiFetch<any[]>('/products/low-stock', { token }).catch(() => [] as any[]),
-          apiFetch<AdminCustomer[]>('/customers', { token }).catch(() => [] as AdminCustomer[]),
+          apiFetch<any>('/customers?page=1&limit=50', { token }).catch(() => ({ data: [] })),
         ]);
         if (!alive) return;
         setLowStock(normalizeLowStock(Array.isArray(ls) ? ls : []));
-        setCustomers(Array.isArray(cs) ? cs : []);
+        setCustomers(cs?.data || (Array.isArray(cs) ? cs : []));
       } catch {
         if (alive) toast.error('Error al cargar stock y clientes.');
       }

@@ -123,11 +123,10 @@ function Dashboard({
     if (!silent) setLoading(true);
     try {
       if (t === 'resumen') {
-        const [s, cr, g, iv] = await Promise.all([
+        const [s, cr, g] = await Promise.all([
           apiFetch<AdminStats>('/orders/stats', { token }),
           apiFetch<any | null>('/cash-register/current', { token }),
           apiFetch<AdminGoals>('/config/goals', { token }),
-          apiFetch<AdminInventoryValue>('/products/inventory-value', { token }).catch(() => null),
         ]);
         setStats(s);
         setCash(
@@ -146,20 +145,23 @@ function Dashboard({
             : null,
         );
         setGoals(g);
-        setInventory(iv);
+        // Load inventory value separately (non-blocking)
+        apiFetch<AdminInventoryValue>('/products/inventory-value', { token })
+          .then(setInventory)
+          .catch(() => {});
       } else if (t === 'ordenes') {
-        const res = await apiFetch<any>('/orders?page=1&limit=200', { token });
+        const res = await apiFetch<any>('/orders?page=1&limit=50', { token });
         setOrders(res?.data || res || []);
       } else if (t === 'productos') {
         const p = await apiFetch<any[]>('/products/internal', { token });
         setProducts((p || []).map(mapApiProduct));
       } else if (t === 'clientes') {
-        const res = await apiFetch<any>('/customers?page=1&limit=200', { token });
+        const res = await apiFetch<any>('/customers?page=1&limit=50', { token });
         setCustomers(res?.data || res || []);
       } else if (t === 'agenda') {
         const [r, cRes] = await Promise.all([
           apiFetch<AdminReminder[]>('/reminders', { token }).catch(() => []),
-          apiFetch<any>('/customers', { token }).catch(() => ({ data: [] })),
+          apiFetch<any>('/customers?page=1&limit=50', { token }).catch(() => ({ data: [] })),
         ]);
         const c = cRes?.data || cRes || [];
         setReminders(
