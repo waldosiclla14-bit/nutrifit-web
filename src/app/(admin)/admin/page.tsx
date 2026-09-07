@@ -72,6 +72,14 @@ export default function AdminPage() {
     setTokenState(t);
   }, [router]);
 
+  const handleLogout = useCallback(() => {
+    clearToken();
+    clearSessionCookie();
+    router.replace('/login?next=/admin');
+  }, [router]);
+
+  const handleSell = useCallback(() => router.push('/pos'), [router]);
+
   if (!token) return null;
   return (
     <ConfirmProvider>
@@ -79,12 +87,8 @@ export default function AdminPage() {
         token={token}
         tab={tab}
         setTab={setTab}
-        onSell={() => router.push('/pos')}
-        onLogout={() => {
-          clearToken();
-          clearSessionCookie();
-          router.replace('/login?next=/admin');
-        }}
+        onSell={handleSell}
+        onLogout={handleLogout}
       />
     </ConfirmProvider>
   );

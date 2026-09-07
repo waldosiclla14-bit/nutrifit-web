@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'https://nutrifit-api-635n.onrender.com').replace(/\/$/, '');
 
 const nextConfig = {
   reactStrictMode: true,
