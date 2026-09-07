@@ -153,11 +153,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push(`⏰ ${m.deliveryTime}${m.deliveryTimeEnd ? ` – ${m.deliveryTimeEnd}` : ''} hrs`);
   lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
   if (m.meetingPoint) {
-    lines.push(`📍 Punto de encuentro: *${m.meetingPoint}*`);
-  }
-  if (m.deliveryCode) {
-    lines.push(`🔑 Código de entrega: *${m.deliveryCode}*`);
-    lines.push('(Muéstralo al repartidor al momento de recibir)');
+    lines.push(`📍 Punto de encuentro: *${m.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
   }
   lines.push('');
   lines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');

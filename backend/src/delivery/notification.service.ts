@@ -101,30 +101,20 @@ export class NotificationService {
         lines.push('');
         lines.push(`Te esperamos en *Metro ${data.stationName || 'la estación'}*.`);
         if (data.meetingPoint) {
-          lines.push(`Punto de encuentro: *${data.meetingPoint}*`);
-        }
-        if (data.deliveryCode) {
-          lines.push(`Tu código de entrega: *${data.deliveryCode}*`);
-          lines.push('(Muéstralo al repartidor al momento de recibir)');
+          lines.push(`Punto de encuentro: *${data.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
         }
         break;
 
       case DeliveryStatus.IN_ROUTE:
         lines.push('');
         lines.push('¡Tu pedido va en camino! El repartidor llegará pronto a la estación.');
-        if (data.deliveryCode) {
-          lines.push(`Código de entrega: *${data.deliveryCode}*`);
-        }
         break;
 
       case DeliveryStatus.ARRIVED:
         lines.push('');
         lines.push('¡El repartidor llegó a la estación!');
         if (data.meetingPoint) {
-          lines.push(`Búscalo en: *${data.meetingPoint}*`);
-        }
-        if (data.deliveryCode) {
-          lines.push(`Código: *${data.deliveryCode}*`);
+          lines.push(`Búscalo en: *${data.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
         }
         break;
 
