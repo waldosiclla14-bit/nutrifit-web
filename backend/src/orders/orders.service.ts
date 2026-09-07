@@ -373,6 +373,7 @@ export class OrdersService implements OnModuleInit {
             paymentStatus: PaymentStatus.PENDING,
             needsInvoice: data.needsInvoice || false,
             createdById: data.createdById,
+            cashRegisterId: data.cashRegisterId || null,
             items: {
               create: itemsWithCost.map((item: any) => ({
                 productId: item.productId,
@@ -742,6 +743,20 @@ export class OrdersService implements OnModuleInit {
     );
 
     await this.prisma.$transaction(writes);
+
+    // Create cash movement if order is linked to a cash register
+    if (existing.cashRegisterId && paymentMethod === 'EFECTIVO') {
+      await this.prisma.cashMovement.create({
+        data: {
+          registerId: existing.cashRegisterId,
+          type: 'INCOME',
+          amount: existing.total,
+          reason: `Venta POS #${existing.orderNumber}`,
+          orderId: id,
+          createdById: userId,
+        },
+      }).catch((e) => this.logger.warn(`Failed to create cash movement: ${e?.message}`));
+    }
 
     // Log inventory movements after successful transaction
     const confirmVariantIds = existing.items.filter(i => i.variantId).map(i => i.variantId);

@@ -677,6 +677,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           shippingCost,
           total,
           paymentMethod: payment,
+          cashRegisterId: cash?.id || null,
           items: cart.map((l) => ({
             productId: l.productId,
             variantId: l.variantId,

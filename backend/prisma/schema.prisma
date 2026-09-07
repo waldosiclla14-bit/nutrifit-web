@@ -271,6 +271,7 @@ model Order {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   createdById     String?
+  cashRegisterId  String?
 
   customer             Customer            @relation(fields: [customerId], references: [id])
   items                OrderItem[]
@@ -282,6 +283,7 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([customerId])
+  @@index([cashRegisterId])
   @@index([status, createdAt])
   @@index([customerId, createdAt])
   @@map("orders")
