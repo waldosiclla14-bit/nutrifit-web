@@ -46,6 +46,7 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Enlaces</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+            <li><Link href="/sobre-nosotros" className="transition-colors hover:text-accent">Sobre nosotros</Link></li>
             <li><Link href="/productos" className="transition-colors hover:text-accent">Catálogo</Link></li>
             <li><Link href="/#combos" className="transition-colors hover:text-accent">Combos</Link></li>
             <li><Link href="/#beneficios" className="transition-colors hover:text-accent">Beneficios</Link></li>
