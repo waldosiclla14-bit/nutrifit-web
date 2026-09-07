@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Anton, Inter } from 'next/font/google';
+import { Bebas_Neue, Inter } from 'next/font/google';
 import PWA from '@/components/layout/PWA';
 import { SonnerToaster } from '@/lib/feedback';
 import './globals.css';
 
-const anton = Anton({
+const bebasNeue = Bebas_Neue({
   weight: '400',
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-anton',
+  variable: '--font-bebas',
 });
 
 const inter = Inter({
@@ -62,7 +62,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body className={`${anton.variable} ${inter.variable}`}>
+      <body className={`${bebasNeue.variable} ${inter.variable}`}>
         <PWA />
         {children}
         <SonnerToaster
