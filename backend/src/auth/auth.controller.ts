@@ -81,4 +81,10 @@ export class AuthController {
     const dto: ChangePasswordDto = await readJsonBody(req);
     return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
   }
+
+  @Post('bootstrap')
+  async bootstrap(@Req() req: any) {
+    const dto: { bootstrapKey: string; email: string; newPassword: string } = await readJsonBody(req);
+    return this.authService.bootstrapPassword(dto.bootstrapKey, dto.email, dto.newPassword);
+  }
 }

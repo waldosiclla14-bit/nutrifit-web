@@ -38,4 +38,19 @@ export class AuthService {
     await this.prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
     return { ok: true };
   }
+
+  async bootstrapPassword(bootstrapKey: string, email: string, newPassword: string) {
+    const adminKey = process.env.ADMIN_PASSWORD;
+    if (!adminKey || bootstrapKey !== adminKey) {
+      throw new UnauthorizedException('Clave de bootstrap inválida');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      throw new UnauthorizedException('La nueva contraseña debe tener al menos 6 caracteres');
+    }
+    const user = await this.prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
+    return { ok: true, email: user.email };
+  }
 }
