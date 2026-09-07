@@ -10,14 +10,14 @@ const PROMISES = [
 function Item({ icon: Icon, title, text }: { icon: React.ComponentType<{ size?: number }>; title: string; text: string }) {
   return (
     <div className="flex w-[260px] shrink-0 items-center gap-3 px-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accentDeep">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-green">
         <Icon size={18} />
       </span>
       <div className="min-w-0">
-        <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-ink">
+        <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-white">
           {title}
         </p>
-        <p className="truncate text-xs text-muted">{text}</p>
+        <p className="truncate text-xs text-white/40">{text}</p>
       </div>
     </div>
   );
@@ -29,7 +29,7 @@ export default function TrustStrip() {
   ));
 
   return (
-    <div className="border-b border-line bg-soft">
+    <div className="border-b border-sport-border/30 bg-sport-bg">
       {/* Mobile: carrusel auto-scroll */}
       <div className="lg:hidden overflow-hidden py-5">
         <div
@@ -45,14 +45,14 @@ export default function TrustStrip() {
       <div className="container-px hidden lg:grid grid-cols-4 gap-x-6 py-5">
         {PROMISES.map(({ icon: Icon, title, text }) => (
           <div key={title} className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accentDeep">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-green">
               <Icon size={18} />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-ink">
+              <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-white">
                 {title}
               </p>
-              <p className="truncate text-xs text-muted">{text}</p>
+              <p className="truncate text-xs text-white/40">{text}</p>
             </div>
           </div>
         ))}
