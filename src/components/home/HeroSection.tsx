@@ -85,7 +85,7 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mt-4 max-w-xl font-display text-[2.6rem] uppercase leading-[0.95] tracking-wide sm:text-6xl lg:text-[4.2rem]"
           >
-            Tu proteína y creatina 100% original, sin pagar envíos caros
+            Tu proteína y creatina, en tu Metro <span className="text-sport-green">hoy</span>
           </motion.h1>
 
           <motion.p
@@ -94,8 +94,8 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-4 max-w-md text-[15px] leading-relaxed text-white/60"
           >
-            Suplementos con sello de garantía. Te los entrego mañana en tu Metro.
-            Coordina por WhatsApp en 2 min.
+            Suplementos originales con sello de garantía. Coordinas por WhatsApp y
+            te los llevo a tu estación de Metro el mismo día.
           </motion.p>
 
           {/* Rating */}
@@ -358,16 +358,16 @@ export default function HeroSection() {
 
               <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
                 <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 backdrop-blur-md">
-                  <Sparkles size={13} className="text-sport-orange" />
+                  <ShieldCheck size={13} className="text-sport-green" />
                   <span className="text-[11px] font-bold text-white">
-                    Sello de Garantía
+                    Productos originales
                   </span>
                 </div>
               </div>
 
-              {/* 100% original badge */}
+              {/* Same-day delivery badge */}
               <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full border border-sport-green/30 bg-sport-green/15 px-3 py-1.5 text-[11px] font-extrabold text-sport-green backdrop-blur-md sm:bottom-4 sm:left-4">
-                <BadgeCheck size={12} /> 100% original
+                <Truck size={12} /> Entrega mismo día
               </span>
             </div>
 
