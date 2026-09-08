@@ -35,9 +35,9 @@ export default function BundleOffers({ productId }: { productId: number }) {
         return (
           <div
             key={bundle.id}
-            className="flex flex-col gap-4 rounded-3xl border border-accent/60 bg-accent/10 p-5 sm:flex-row sm:items-center"
+            className="flex flex-col gap-4 rounded-3xl border border-sport-green/60 bg-sport-green/10 p-5 sm:flex-row sm:items-center"
           >
-            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-soft">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-sport-surface">
               {bundle.image && (
                 <Image
                   src={bundle.image}
@@ -49,17 +49,17 @@ export default function BundleOffers({ productId }: { productId: number }) {
               )}
             </div>
             <div className="flex-1">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-accentDeep">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-sport-orange">
                 <Gift size={13} />
                 Compra este set y ahorra {pricing.percent}%
               </p>
               <p className="mt-1 font-display text-base uppercase tracking-wide">{bundle.title}</p>
-              <p className="mt-0.5 text-xs text-muted">
+              <p className="mt-0.5 text-xs text-white/50">
                 <span className="line-through">{formatPrice(pricing.sum)}</span>{' '}
-                <span className="font-semibold text-ink">{formatPrice(pricing.price)}</span>
+                <span className="font-semibold text-white">{formatPrice(pricing.price)}</span>
               </p>
               {variantItem && (
-                <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+                <label className="mt-2 flex items-center gap-2 text-xs text-white/50">
                   <span className="shrink-0 font-semibold">
                     Sabor {variantItem.product.name.replace('FullEnergic 100% Whey Protein', 'whey')}
                   </span>

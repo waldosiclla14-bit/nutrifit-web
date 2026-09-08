@@ -25,7 +25,7 @@
   }
 
   body {
-    @apply bg-paper font-sans text-ink;
+    @apply bg-sport-bg font-sans text-white;
   }
 
   @media screen and (max-width: 767px) {
@@ -37,8 +37,8 @@
   }
 
   ::selection {
-    background: rgb(var(--accent));
-    color: rgb(var(--ink));
+    background: rgb(16 185 129 / 0.3);
+    color: white;
   }
 
   ::-webkit-scrollbar {
@@ -46,15 +46,15 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: rgb(var(--paper));
+    background: #0B0F17;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--soft-2));
+    background: #334155;
     border-radius: 999px;
-    border: 2px solid rgb(var(--paper));
+    border: 2px solid #0B0F17;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--accent));
+    background: #10B981;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -77,35 +77,35 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-bold tracking-wide text-paper transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-orange px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-green px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-paper/60 px-7 py-3.5 text-sm font-bold tracking-wide text-ink backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-sport-card/60 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-outline-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green hover:text-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .chip {
-    @apply inline-flex items-center rounded-full border border-line px-3 py-1 text-xs font-medium transition-colors;
+    @apply inline-flex items-center rounded-full border border-sport-border px-3 py-1 text-xs font-medium transition-colors;
   }
 
   .input {
-    @apply w-full rounded-xl border border-line bg-soft/60 px-4 py-3 text-sm text-ink outline-none transition focus:border-accent focus:bg-paper focus:ring-2 focus:ring-accent/40;
+    @apply w-full rounded-xl border border-sport-border bg-sport-surface/60 px-4 py-3 text-sm text-white outline-none transition focus:border-sport-green focus:bg-sport-card focus:ring-2 focus:ring-sport-green/40;
   }
 
   .label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-muted;
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/50;
   }
 
   .section-label {
-    @apply text-xs font-extrabold uppercase tracking-[0.25em] text-accentDeep;
+    @apply text-xs font-extrabold uppercase tracking-[0.25em] text-sport-orange;
   }
 
   .section-title {
@@ -138,9 +138,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgb(var(--soft)) 25%,
-    rgb(var(--soft-2)) 37%,
-    rgb(var(--soft)) 63%
+    #1E293B 25%,
+    #334155 37%,
+    #1E293B 63%
   );
   background-size: 400px 100%;
   animation: shimmer 1.6s linear infinite;

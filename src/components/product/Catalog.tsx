@@ -89,7 +89,7 @@ export default function Catalog({
       <Reveal className="mb-8">
         <p className="section-label">CATÁLOGO</p>
         <h1 className="section-title">
-          Suplementos <span className="text-accentDeep">originales</span>
+          Suplementos <span className="text-sport-orange">originales</span>
         </h1>
       </Reveal>
 
@@ -100,7 +100,7 @@ export default function Catalog({
             onClick={() => setCat('')}
             className={cx(
               'chip shrink-0 !px-4 !py-1.5 text-xs font-bold uppercase tracking-wide',
-              !cat ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+              !cat ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
             )}
           >
             Todos
@@ -112,7 +112,7 @@ export default function Catalog({
               onClick={() => setCat(cat === c.key ? '' : c.key)}
               className={cx(
                 'chip shrink-0 !px-4 !py-1.5 text-xs font-bold uppercase tracking-wide',
-                cat === c.key ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+                cat === c.key ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
               )}
             >
               {c.label}
@@ -126,7 +126,7 @@ export default function Catalog({
             onClick={() => setShowFilters((v) => !v)}
             className={cx(
               'chip gap-1.5 !px-4 !py-2.5 text-xs font-bold uppercase tracking-wide',
-              showFilters ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+              showFilters ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
             )}
           >
             <SlidersHorizontal size={14} /> Filtros
@@ -147,12 +147,12 @@ export default function Catalog({
       </div>
 
       {showFilters && (
-        <div className="mb-8 rounded-3xl border border-line bg-soft p-5">
+        <div className="mb-8 rounded-3xl border border-sport-border bg-sport-surface p-5">
           <div className="grid gap-6 md:grid-cols-3">
             <div>
               <h3 className="label">Buscar</h3>
               <div className="relative">
-                <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+                <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -172,7 +172,7 @@ export default function Catalog({
                     onClick={() => toggleBrand(b)}
                     className={cx(
                       'chip',
-                      brands.includes(b) ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+                      brands.includes(b) ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
                     )}
                   >
                     {b}
@@ -190,7 +190,7 @@ export default function Catalog({
                     onClick={() => toggleGoal(key)}
                     className={cx(
                       'chip',
-                      goals.includes(key) ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+                      goals.includes(key) ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
                     )}
                   >
                     {label}
@@ -209,7 +209,7 @@ export default function Catalog({
                   onClick={() => setPrice(p.key)}
                   className={cx(
                     'chip',
-                    price === p.key ? 'bg-ink text-white' : 'bg-paper hover:border-accent',
+                    price === p.key ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
                   )}
                 >
                   {p.label}
@@ -221,7 +221,7 @@ export default function Catalog({
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-5 text-xs font-bold uppercase tracking-wide text-accentDeep underline underline-offset-4"
+              className="mt-5 text-xs font-bold uppercase tracking-wide text-sport-orange underline underline-offset-4"
             >
               Limpiar filtros
             </button>
@@ -229,8 +229,8 @@ export default function Catalog({
         </div>
       )}
 
-      <p className="mb-5 text-sm text-muted">
-        <strong className="text-ink">{results.length}</strong> producto{results.length === 1 ? '' : 's'}
+      <p className="mb-5 text-sm text-white/50">
+        <strong className="text-white">{results.length}</strong> producto{results.length === 1 ? '' : 's'}
       </p>
 
       {results.length > 0 ? (
@@ -240,9 +240,9 @@ export default function Catalog({
           ))}
         </div>
       ) : (
-        <div className="rounded-3xl border border-line bg-soft p-12 text-center">
+        <div className="rounded-3xl border border-sport-border bg-sport-surface p-12 text-center">
           <p className="font-display text-xl uppercase tracking-wide">Sin resultados</p>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm text-white/50">
             No encontramos productos con esos filtros. Prueba con otros términos.
           </p>
           <button type="button" onClick={clearFilters} className="btn-primary mt-6">
