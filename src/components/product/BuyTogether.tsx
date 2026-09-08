@@ -53,9 +53,9 @@ export default function BuyTogether({
   return (
     <section className="mt-14">
       <h2 className="mb-4 font-display text-xl uppercase tracking-wide">
-        Compra juntos y <span className="text-sport-orange">ahorra</span>
+        Compra juntos y <span className="text-accentDeep">ahorra</span>
       </h2>
-      <div className="rounded-3xl border border-sport-border bg-sport-surface p-6">
+      <div className="rounded-3xl border border-line bg-soft p-6">
         <div className="grid gap-4 sm:grid-cols-3">
           {picks.map((p, i) => {
             const meta = pickMeta(p);
@@ -63,13 +63,13 @@ export default function BuyTogether({
               <div key={p.id} className="relative min-w-0">
               {i > 0 && (
                 <span className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 sm:flex">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sport-orange text-sport-green">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-accent">
                     <Plus size={14} />
                   </span>
                 </span>
               )}
-              <div className="flex items-center gap-3 rounded-2xl border border-sport-border bg-sport-card p-3 sm:flex-col sm:gap-2 sm:text-center">
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-sport-surface sm:h-24 sm:w-24">
+              <div className="flex items-center gap-3 rounded-2xl border border-line bg-paper p-3 sm:flex-col sm:gap-2 sm:text-center">
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-soft sm:h-24 sm:w-24">
                   <Image
                     src={meta.image}
                     alt={meta.name}
@@ -85,11 +85,11 @@ export default function BuyTogether({
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 sm:justify-center">
                     {p.oldPrice && (
-                      <span className="text-[11px] text-white/50 line-through">
+                      <span className="text-[11px] text-muted line-through">
                         {formatPrice(p.oldPrice)}
                       </span>
                     )}
-                    <span className="text-sm font-bold text-sport-orange">
+                    <span className="text-sm font-bold text-accentDeep">
                       {formatPrice(p.price)}
                     </span>
                   </div>
@@ -100,22 +100,22 @@ export default function BuyTogether({
           })}
         </div>
 
-        <div className="mt-5 flex flex-col items-center justify-between gap-4 border-t border-sport-border pt-5 sm:flex-row">
+        <div className="mt-5 flex flex-col items-center justify-between gap-4 border-t border-line pt-5 sm:flex-row">
           <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-sport-orange">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-accentDeep">
               <Check size={18} />
             </span>
             <div>
               <p className="text-sm">
                 <span className="font-bold">Total: {formatPrice(total)}</span>
                 {oldTotal > total && (
-                  <span className="ml-2 text-xs text-white/50 line-through">
+                  <span className="ml-2 text-xs text-muted line-through">
                     {formatPrice(oldTotal)}
                   </span>
                 )}
               </p>
               {savings > 0 && (
-                <p className="text-xs font-bold text-sport-orange">
+                <p className="text-xs font-bold text-accentDeep">
                   Ahorras {formatPrice(savings)} en este pack
                 </p>
               )}

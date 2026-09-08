@@ -29,25 +29,25 @@ const FAQS = [
 
 export default function FAQ() {
   return (
-    <section className="bg-sport-bg py-14 lg:py-[100px]" id="faq">
+    <section className="bg-soft py-14 lg:py-[100px]" id="faq">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">PREGUNTAS FRECUENTES</p>
-          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
-            Resolvemos tus <span className="text-sport-green">dudas</span>
+          <p className="section-label">PREGUNTAS FRECUENTES</p>
+          <h2 className="section-title">
+            Resolvemos tus <span className="text-accentDeep">dudas</span>
           </h2>
         </Reveal>
         <div className="mx-auto max-w-3xl space-y-3">
           {FAQS.map((faq, i) => (
             <Reveal key={faq.q} delay={i * 50}>
-              <details className="group rounded-2xl border border-sport-border/50 bg-sport-card p-5 open:shadow-sportCard">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-white sm:text-base [&::-webkit-details-marker]:hidden">
+              <details className="group rounded-2xl border border-line bg-paper p-5 open:shadow-card">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold sm:text-base [&::-webkit-details-marker]:hidden">
                   {faq.q}
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sport-bg text-white/60 transition-transform duration-300 group-open:rotate-45">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-soft transition-transform duration-300 group-open:rotate-45">
                     +
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-white/50">{faq.a}</p>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{faq.a}</p>
               </details>
             </Reveal>
           ))}

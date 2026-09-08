@@ -42,7 +42,7 @@ export default function SearchBox({ className }: { className?: string }) {
       <form onSubmit={onSubmit}>
         <Search
           size={16}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50"
+          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted"
         />
         <input
           value={query}
@@ -59,7 +59,7 @@ export default function SearchBox({ className }: { className?: string }) {
       </form>
 
       {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-sport-border bg-sport-card shadow-soft">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-line bg-paper shadow-soft">
           <ul className="max-h-80 overflow-y-auto py-1">
             {suggestions.map((p) => (
               <li key={p.id}>
@@ -69,23 +69,23 @@ export default function SearchBox({ className }: { className?: string }) {
                     setOpen(false);
                     setQuery('');
                   }}
-                  className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-sport-surface"
+                  className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-soft"
                 >
                   <Image
                     src={p.image}
                     alt={p.name}
                     width={40}
                     height={40}
-                    className="h-10 w-10 shrink-0 rounded-lg border border-sport-border bg-sport-surface object-contain p-1"
+                    className="h-10 w-10 shrink-0 rounded-lg border border-line bg-soft object-contain p-1"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold leading-snug">{p.name}</p>
-                    <p className="text-[11px] text-white/50">{p.categoryLabel}</p>
+                    <p className="text-[11px] text-muted">{p.categoryLabel}</p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-bold text-sport-orange">{formatPrice(p.price)}</p>
+                    <p className="text-sm font-bold text-accentDeep">{formatPrice(p.price)}</p>
                     {getDiscount(p) && (
-                      <p className="text-[11px] font-extrabold text-sport-orange">-{getDiscount(p)}%</p>
+                      <p className="text-[11px] font-extrabold text-accentDeep">-{getDiscount(p)}%</p>
                     )}
                   </div>
                 </Link>
@@ -98,7 +98,7 @@ export default function SearchBox({ className }: { className?: string }) {
               setOpen(false);
               setQuery('');
             }}
-            className="flex items-center justify-center gap-1.5 border-t border-sport-border bg-sport-surface px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-sport-orange transition-colors hover:bg-sport-surface"
+            className="flex items-center justify-center gap-1.5 border-t border-line bg-soft px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-accentDeep transition-colors hover:bg-soft2"
           >
             Ver todos los resultados <ArrowRight size={13} />
           </Link>

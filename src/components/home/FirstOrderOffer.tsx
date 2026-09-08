@@ -103,41 +103,37 @@ export default function FirstOrderOffer() {
       aria-label="5% OFF en tu primer pedido"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-sport-card p-8 shadow-2xl">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-sport-green/25 blur-[80px]" />
+      <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-paper p-8 shadow-2xl">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent/25 blur-[80px]" />
         <button
           type="button"
           onClick={handleClose}
           aria-label="Cerrar"
-          className="absolute right-4 top-4 rounded-full p-1.5 text-white/60 transition-colors hover:bg-white/10"
+          className="absolute right-4 top-4 rounded-full p-1.5 transition-colors hover:bg-soft"
         >
           <X size={18} />
         </button>
 
-        <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-sport-green">
+        <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-accentDeep">
           Bienvenido a NUTRIFIT
         </p>
-        <h3 className="mt-2 font-display text-3xl uppercase leading-tight tracking-wide text-white">
-          Lleva <span className="text-sport-green">5% OFF</span> en tu primer pedido
+        <h3 className="mt-2 font-display text-3xl uppercase leading-tight tracking-wide">
+          Lleva <span className="text-accentDeep">5% OFF</span> en tu primer pedido
         </h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/50">
+        <p className="mt-2 text-sm leading-relaxed text-muted">
           Usa tu cupón de bienvenida en tu primera compra por WhatsApp y empieza a entrenar
           con confianza.
         </p>
 
-        <div className="mt-6 rounded-2xl border-2 border-dashed border-sport-green/50 bg-sport-green/10 px-5 py-3 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-white/40">Tu cupón</p>
-          <p className="font-display text-2xl uppercase tracking-widest text-white">NUTRIFIT5</p>
+        <div className="mt-6 rounded-2xl border-2 border-dashed border-accentDeep/50 bg-accent/10 px-5 py-3 text-center">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted">Tu cupón</p>
+          <p className="font-display text-2xl uppercase tracking-widest text-ink">NUTRIFIT5</p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleClaim}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-sport-green px-6 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow"
-        >
+        <button type="button" onClick={handleClaim} className="btn-accent mt-6 w-full">
           <MessageCircle size={16} /> Quiero mi 5% OFF
         </button>
-        <p className="mt-3 text-center text-[11px] text-white/35">
+        <p className="mt-3 text-center text-[11px] text-muted">
           Válido en tu primer pedido. Aplica sobre el total.
         </p>
       </div>

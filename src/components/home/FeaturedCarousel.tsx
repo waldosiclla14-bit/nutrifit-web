@@ -19,15 +19,15 @@ export default function FeaturedCarousel() {
   };
 
   return (
-    <section className="bg-sport-surface py-14 lg:py-[100px]" id="destacados">
+    <section className="bg-soft py-14 lg:py-[100px]" id="destacados">
       <div className="container-px">
         <Reveal className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">MÁS VENDIDOS</p>
-            <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
-              Top <span className="text-sport-green">ventas</span>
+            <p className="section-label">MÁS VENDIDOS</p>
+            <h2 className="section-title">
+              Top <span className="text-accentDeep">ventas</span>
             </h2>
-            <p className="mt-2 max-w-xl text-sm text-white/50">
+            <p className="mt-2 max-w-xl text-sm text-muted">
               Los productos favoritos de nuestros clientes en Santiago.
             </p>
           </div>
@@ -36,7 +36,7 @@ export default function FeaturedCarousel() {
               type="button"
               onClick={() => scroll(-1)}
               aria-label="Anterior"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-white/60 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper transition-colors hover:border-accent"
             >
               <ChevronLeft size={18} />
             </button>
@@ -44,7 +44,7 @@ export default function FeaturedCarousel() {
               type="button"
               onClick={() => scroll(1)}
               aria-label="Siguiente"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-white/60 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper transition-colors hover:border-accent"
             >
               <ChevronRight size={18} />
             </button>
@@ -67,7 +67,7 @@ export default function FeaturedCarousel() {
             type="button"
             onClick={() => scroll(-1)}
             aria-label="Anterior"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-white/60 transition-colors hover:border-sport-green hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper transition-colors hover:border-accent"
           >
             <ChevronLeft size={18} />
           </button>
@@ -75,7 +75,7 @@ export default function FeaturedCarousel() {
             type="button"
             onClick={() => scroll(1)}
             aria-label="Siguiente"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-white/60 transition-colors hover:border-sport-green hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper transition-colors hover:border-accent"
           >
             <ChevronRight size={18} />
           </button>

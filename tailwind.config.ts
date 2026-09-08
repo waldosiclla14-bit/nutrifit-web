@@ -14,15 +14,6 @@ const config: Config = {
         accent: 'rgb(var(--accent) / <alpha-value>)',
         accentDeep: 'rgb(var(--accent-deep) / <alpha-value>)',
         dark: '#0B0B0B',
-        sport: {
-          bg: '#0B0F17',
-          card: '#1E293B',
-          border: '#334155',
-          green: '#10B981',
-          greenLight: '#34D399',
-          orange: '#F97316',
-          surface: '#0F172A',
-        },
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -31,9 +22,7 @@ const config: Config = {
       boxShadow: {
         soft: '0 12px 40px -14px rgba(11, 11, 11, 0.14)',
         card: '0 2px 14px -4px rgba(11, 11, 11, 0.08)',
-        glow: '0 14px 44px -16px rgba(178, 242, 55, 0.5)',
-        sportGlow: '0 14px 44px -16px rgba(16, 185, 129, 0.4)',
-        sportCard: '0 8px 32px -8px rgba(0, 0, 0, 0.4)',
+        glow: '0 14px 44px -16px rgba(93, 214, 44, 0.5)',
       },
       borderRadius: {
         '4xl': '2rem',

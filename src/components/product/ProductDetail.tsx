@@ -87,21 +87,21 @@ export default function ProductDetail({
 
   return (
     <div className="container-px py-10">
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-white/50">
-        <Link href="/" className="transition-colors hover:text-sport-orange">
+      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        <Link href="/" className="transition-colors hover:text-accentDeep">
           Inicio
         </Link>
         <ChevronRight size={12} />
-        <Link href="/productos" className="transition-colors hover:text-sport-orange">
+        <Link href="/productos" className="transition-colors hover:text-accentDeep">
           Catálogo
         </Link>
         <ChevronRight size={12} />
-        <span className="font-semibold text-white">{product.name}</span>
+        <span className="font-semibold text-ink">{product.name}</span>
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
         <div>
-          <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-sport-border bg-sport-surface">
+          <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-line bg-soft">
             <Image
               src={img}
               alt={cartName}
@@ -111,15 +111,15 @@ export default function ProductDetail({
               className="object-contain p-8"
             />
             {discount && (
-              <span className="absolute left-4 top-4 rounded-full bg-sport-green px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white">
+              <span className="absolute left-4 top-4 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-ink">
                 -{discount}%
               </span>
             )}
           </div>
           <ul className="mt-4 grid gap-3 sm:grid-cols-3">
             {infoCards.map((card) => (
-              <li key={card.text} className="flex items-center gap-2.5 rounded-2xl border border-sport-border bg-sport-surface px-4 py-3 text-xs font-semibold">
-                <card.icon size={16} className="shrink-0 text-sport-orange" />
+              <li key={card.text} className="flex items-center gap-2.5 rounded-2xl border border-line bg-soft px-4 py-3 text-xs font-semibold">
+                <card.icon size={16} className="shrink-0 text-accentDeep" />
                 {card.text}
               </li>
             ))}
@@ -128,11 +128,11 @@ export default function ProductDetail({
 
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-sport-green">
+            <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-accent">
               {product.brand}
             </span>
             {product.bestseller && (
-              <span className="rounded-full bg-sport-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest">
+              <span className="rounded-full bg-soft2 px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest">
                 Más vendido
               </span>
             )}
@@ -149,12 +149,12 @@ export default function ProductDetail({
               {formatPrice(product.price)}
             </span>
             {product.oldPrice && (
-              <span className="pb-1 text-base text-white/50 line-through">
+              <span className="pb-1 text-base text-muted line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
             {discount && (
-              <span className="mb-1 rounded-full bg-sport-green px-2 py-0.5 text-xs font-extrabold text-white">
+              <span className="mb-1 rounded-full bg-accent px-2 py-0.5 text-xs font-extrabold text-ink">
                 Ahorras {formatPrice((product.oldPrice ?? 0) - product.price)}
               </span>
             )}
@@ -162,16 +162,16 @@ export default function ProductDetail({
           <div className="mt-3">
             <LiveViewers productId={product.id} />
           </div>
-          <p className="mt-5 text-sm leading-relaxed text-white/80">{product.desc}</p>
+          <p className="mt-5 text-sm leading-relaxed text-ink/80">{product.desc}</p>
           {product.registroIsp && (
-            <p className="mt-2 text-xs font-semibold text-white/50">
+            <p className="mt-2 text-xs font-semibold text-muted">
               Reg. ISP N° {product.registroIsp}
             </p>
           )}
 
           <div className="mt-5 flex flex-wrap gap-2">
             {product.benefits.map((b) => (
-              <span key={b} className="chip bg-sport-surface">
+              <span key={b} className="chip bg-soft">
                 ✓ {b}
               </span>
             ))}
@@ -190,8 +190,8 @@ export default function ProductDetail({
                     className={cx(
                       'rounded-full border px-4 py-2 text-sm font-bold transition-all',
                       v.name === flavor
-                        ? 'border-accent bg-sport-green text-white shadow-sm'
-                        : 'border-sport-border bg-sport-card text-white hover:border-accent',
+                        ? 'border-accent bg-accent text-ink shadow-sm'
+                        : 'border-line bg-paper text-ink hover:border-accent',
                     )}
                   >
                     {v.name}
@@ -202,12 +202,12 @@ export default function ProductDetail({
           )}
 
           <div className="mt-6 flex items-center gap-4">
-            <div className="flex items-center rounded-full border border-sport-border">
+            <div className="flex items-center rounded-full border border-line">
               <button
                 type="button"
                 onClick={() => setQty((v) => Math.max(1, v - 1))}
                 aria-label="Disminuir cantidad"
-                className="flex h-12 w-12 items-center justify-center rounded-l-full transition-colors hover:bg-sport-surface"
+                className="flex h-12 w-12 items-center justify-center rounded-l-full transition-colors hover:bg-soft"
               >
                 <Minus size={16} />
               </button>
@@ -216,20 +216,20 @@ export default function ProductDetail({
                 type="button"
                 onClick={() => setQty((v) => (stock > 0 ? Math.min(stock, v + 1) : v))}
                 aria-label="Aumentar cantidad"
-                className="flex h-12 w-12 items-center justify-center rounded-r-full transition-colors hover:bg-sport-surface"
+                className="flex h-12 w-12 items-center justify-center rounded-r-full transition-colors hover:bg-soft"
               >
                 <Plus size={16} />
               </button>
             </div>
-            <p className="text-xs text-white/50">
-              Stock disponible: <strong className="text-white">{stock} uds.</strong>
+            <p className="text-xs text-muted">
+              Stock disponible: <strong className="text-ink">{stock} uds.</strong>
             </p>
             <button
               type="button"
               onClick={() => toggleFavorite(product.id)}
               aria-label={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-              className={`ml-auto flex h-12 w-12 items-center justify-center rounded-full border border-sport-border transition-colors ${
-                fav ? 'text-red-500' : 'text-white/50 hover:text-red-500'
+              className={`ml-auto flex h-12 w-12 items-center justify-center rounded-full border border-line transition-colors ${
+                fav ? 'text-red-500' : 'text-muted hover:text-red-500'
               }`}
             >
               <Heart size={18} className={fav ? 'fill-red-500' : ''} />
@@ -251,26 +251,26 @@ export default function ProductDetail({
             </button>
           </div>
           <BundleOffers productId={product.id} />
-          <p className="mt-3 text-center text-xs text-white/50 sm:text-left">
+          <p className="mt-3 text-center text-xs text-muted sm:text-left">
             Envío gratis en metro sobre {formatPrice(getSettings().freeShippingFrom)}.
           </p>
         </div>
       </div>
 
       <div className="mt-14 grid gap-8 lg:grid-cols-3">
-        <div className="rounded-3xl border border-sport-border p-6 lg:col-span-2">
+        <div className="rounded-3xl border border-line p-6 lg:col-span-2">
           <SectionTitle>Detalles del producto</SectionTitle>
-          <div className="space-y-6 text-sm leading-relaxed text-white/80">
+          <div className="space-y-6 text-sm leading-relaxed text-ink/80">
             <div>
-              <h3 className="mb-1.5 font-bold text-white">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
+              <h3 className="mb-1.5 font-bold text-ink">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
               <p>{product.modoUso}</p>
             </div>
             <div>
-              <h3 className="mb-1.5 font-bold text-white">{isAccessory ? 'Detalles' : 'Ingredientes'}</h3>
+              <h3 className="mb-1.5 font-bold text-ink">{isAccessory ? 'Detalles' : 'Ingredientes'}</h3>
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 {product.ingredientes.map((ing) => (
                   <li key={ing} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sport-orange" />
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accentDeep" />
                     {ing}
                   </li>
                 ))}
@@ -279,12 +279,12 @@ export default function ProductDetail({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-sport-border p-6">
+        <div className="rounded-3xl border border-line p-6">
           <SectionTitle>{isAccessory ? 'Especificaciones' : 'Nutrientes'}</SectionTitle>
           <ul className="divide-y divide-line">
             {product.nutrientes.map(([label, value]) => (
               <li key={label} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="text-white/50">{label}</span>
+                <span className="text-muted">{label}</span>
                 <span className="font-bold">{value}</span>
               </li>
             ))}

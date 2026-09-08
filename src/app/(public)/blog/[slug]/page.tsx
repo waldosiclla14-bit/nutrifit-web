@@ -54,21 +54,21 @@ export default async function BlogPostPage({
       />
       <Link
         href="/blog"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-bold text-sport-orange underline underline-offset-4"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-bold text-accentDeep underline underline-offset-4"
       >
         <ArrowLeft size={14} /> Volver al blog
       </Link>
 
       <div className="mx-auto max-w-2xl">
-        <span className="rounded-full bg-sport-surface px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white/50">
+        <span className="rounded-full bg-soft px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
           {post.category}
         </span>
         <h1 className="mt-4 font-display text-3xl uppercase leading-tight sm:text-4xl">
           {post.title}
         </h1>
-        <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-white/50">
+        <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-muted">
           <Clock size={13} /> {post.readTime} de lectura
-          <span className="text-sport-surface">·</span>
+          <span className="text-soft2">·</span>
           {new Date(post.date).toLocaleDateString('es-CL', {
             day: 'numeric',
             month: 'long',
@@ -88,7 +88,7 @@ export default async function BlogPostPage({
               return (
                 <ul key={i} className="space-y-2">
                   {block.items.map((item, j) => (
-                    <li key={j} className="flex gap-2.5 text-sm leading-relaxed text-white/80">
+                    <li key={j} className="flex gap-2.5 text-sm leading-relaxed text-ink/80">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accentDeep" />
                       {item}
                     </li>
@@ -96,7 +96,7 @@ export default async function BlogPostPage({
                 </ul>
               );
             return (
-              <p key={i} className="text-sm leading-relaxed text-white/80">
+              <p key={i} className="text-sm leading-relaxed text-ink/80">
                 {block.text}
               </p>
             );
