@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const res = await fetch(`${API_BASE}/api/health`, {
       method: 'GET',
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(60_000),
       cache: 'no-store',
     });
     const elapsed = Date.now() - start;
@@ -26,9 +26,12 @@ export async function GET() {
     const elapsed = Date.now() - start;
     return NextResponse.json({
       ok: false,
-      error: err?.message || 'Unknown error',
+      error: err?.name === 'TimeoutError' ? 'Backend cold-starting (timeout 60s)' : err?.message || 'Unknown error',
       elapsed,
       timestamp: new Date().toISOString(),
-    }, { headers: { 'Cache-Control': 'no-store' } });
+    }, {
+      status: err?.name === 'TimeoutError' ? 503 : 500,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 }

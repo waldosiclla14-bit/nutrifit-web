@@ -248,10 +248,16 @@ export async function submitStoreOrder(order: Order): Promise<void> {
 }
 
 // ── Keep-alive ping to prevent Render cold starts ─────────────────────────────
-// Pings /api/health every 10 minutes to keep the free-tier instance awake
+// Pings /api/health every 10 minutes to keep the free-tier instance awake.
+// Uses a 60s timeout to handle cold starts (Render free tier spins down after
+// ~15 min idle and takes 30-60s to wake up).
 if (typeof window !== 'undefined') {
   const KEEPALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes
   setInterval(() => {
-    fetch(`${API_BASE}/api/health`, { method: 'GET' }).catch(() => {});
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    fetch(`${API_BASE}/api/health`, { method: 'GET', signal: controller.signal })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer));
   }, KEEPALIVE_INTERVAL);
 }
