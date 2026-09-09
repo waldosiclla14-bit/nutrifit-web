@@ -537,6 +537,11 @@ export class OrdersService implements OnModuleInit {
         }
       }
     }
+    // Delete related records before deleting the order (foreign key constraints)
+    writes.push(this.prisma.deliveryAuditLog.deleteMany({ where: { delivery: { orderId: id } } }));
+    writes.push(this.prisma.delivery.deleteMany({ where: { orderId: id } }));
+    writes.push(this.prisma.inventoryMovement.deleteMany({ where: { orderId: id } }));
+    writes.push(this.prisma.orderItem.deleteMany({ where: { orderId: id } }));
     writes.push(this.prisma.order.delete({ where: { id } }));
     await this.prisma.$transaction(writes);
     return { id, deleted: true };
