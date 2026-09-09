@@ -33,7 +33,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
     <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-sport-border/50 bg-sport-card shadow-sportCard transition-all duration-300 hover:-translate-y-1 hover:border-sport-green/40">
       <Link
         href={`/productos/${product.slug}`}
-        className="relative block aspect-[4/5] overflow-hidden bg-white/[0.03]"
+        className="relative block aspect-[4/5] overflow-hidden bg-gray-50"
       >
         <Image
           src={product.image}
@@ -53,27 +53,27 @@ export default function BestSellerCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
           {product.brand}
         </p>
         <Link
           href={`/productos/${product.slug}`}
-          className="line-clamp-2 text-sm font-bold leading-snug text-white transition-colors hover:text-sport-green"
+          className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 transition-colors hover:text-sport-green"
         >
           {product.name}
         </Link>
-        <div className="flex items-center gap-1.5 text-xs text-white/40">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Stars rating={product.rating} size={13} />
-          <span className="font-semibold text-white/70">{product.rating.toFixed(1)}</span>
+          <span className="font-semibold text-gray-600">{product.rating.toFixed(1)}</span>
           <span>({product.reviews})</span>
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
             {product.oldPrice && (
-              <span className="text-sm text-white/30 line-through">{formatPrice(product.oldPrice)}</span>
+              <span className="text-sm text-gray-400 line-through">{formatPrice(product.oldPrice)}</span>
             )}
-            <span className="text-[18px] font-bold leading-none text-white">
+            <span className="text-[18px] font-bold leading-none text-gray-900">
               {formatPrice(product.price)}
             </span>
           </div>

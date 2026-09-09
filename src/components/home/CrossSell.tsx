@@ -40,10 +40,10 @@ export default function CrossSell() {
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">COMPRADOS JUNTOS</p>
-          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
             Los que compraron esto <span className="text-sport-green">también llevaron</span>
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-white/50">
+          <p className="mx-auto mt-3 max-w-lg text-sm text-gray-500">
             Combina los favoritos y ahorra {BUNDLE_DISCOUNT}% en tu pedido.
           </p>
         </Reveal>
@@ -54,7 +54,7 @@ export default function CrossSell() {
               {products.map((product, i) => (
                 <div key={product.id} className="flex items-center gap-4 sm:flex-col sm:gap-0">
                   <div className="flex flex-col items-center gap-3 rounded-2xl border border-sport-border/50 bg-sport-card p-5 sm:flex-1 sm:border-0 sm:rounded-none sm:border-r sm:last:border-r-0 sm:p-6">
-                    <div className="relative h-24 w-24 overflow-hidden rounded-xl bg-white/[0.03]">
+                    <div className="relative h-24 w-24 overflow-hidden rounded-xl bg-gray-50">
                       <Image
                         src={product.image}
                         alt={product.name}
@@ -64,10 +64,10 @@ export default function CrossSell() {
                       />
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                         {product.brand}
                       </p>
-                      <p className="mt-1 text-sm font-bold leading-snug text-white line-clamp-2">
+                      <p className="mt-1 text-sm font-bold leading-snug text-gray-900 line-clamp-2">
                         {product.name}
                       </p>
                       <p className="mt-1 text-sm font-bold text-sport-green">
@@ -80,7 +80,7 @@ export default function CrossSell() {
                   </div>
                   {i < products.length - 1 && (
                     <span className="hidden items-center justify-center sm:flex">
-                      <Plus size={18} className="text-white/30" />
+                      <Plus size={18} className="text-gray-400" />
                     </span>
                   )}
                 </div>
@@ -89,14 +89,14 @@ export default function CrossSell() {
 
             <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-sport-border/50 bg-sport-card p-6 sm:flex-row sm:justify-between">
               <div>
-                <p className="text-sm text-white/40">
+                <p className="text-sm text-gray-400">
                   <span className="line-through">{formatPrice(total)}</span>
                   <span className="ml-2 text-xs font-bold text-sport-orange">-{BUNDLE_DISCOUNT}%</span>
                 </p>
                 <p className="font-display text-2xl leading-none tracking-wide text-sport-green">
                   {formatPrice(finalPrice)}
                 </p>
-                <p className="mt-1 text-xs text-white/35">Ahorras {formatPrice(discount)}</p>
+                <p className="mt-1 text-xs text-gray-400">Ahorras {formatPrice(discount)}</p>
               </div>
               <button
                 type="button"

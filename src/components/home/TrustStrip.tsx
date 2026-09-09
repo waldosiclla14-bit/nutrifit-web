@@ -14,10 +14,10 @@ function Item({ icon: Icon, title, text }: { icon: React.ComponentType<{ size?: 
         <Icon size={18} />
       </span>
       <div className="min-w-0">
-        <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-white">
+        <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-gray-900">
           {title}
         </p>
-        <p className="truncate text-xs text-white/40">{text}</p>
+        <p className="truncate text-xs text-gray-400">{text}</p>
       </div>
     </div>
   );
@@ -49,10 +49,10 @@ export default function TrustStrip() {
               <Icon size={18} />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-white">
+              <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-gray-900">
                 {title}
               </p>
-              <p className="truncate text-xs text-white/40">{text}</p>
+              <p className="truncate text-xs text-gray-400">{text}</p>
             </div>
           </div>
         ))}

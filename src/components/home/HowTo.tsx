@@ -24,7 +24,7 @@ export default function HowTo() {
     <section className="container-px bg-sport-bg py-14 lg:py-[100px]" id="como-comprar">
       <Reveal className="mb-10 text-center">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">CÓMO COMPRAR</p>
-        <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+        <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
           Compra en <span className="text-sport-green">3 pasos</span>
         </h2>
       </Reveal>
@@ -38,8 +38,8 @@ export default function HowTo() {
               <span className="mt-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-sport-bg text-sport-green">
                 <step.icon size={22} />
               </span>
-              <h3 className="mt-4 font-display text-xl uppercase tracking-wide text-white">{step.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/50">{step.text}</p>
+              <h3 className="mt-4 font-display text-xl uppercase tracking-wide text-gray-900">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-500">{step.text}</p>
             </article>
           </Reveal>
         ))}

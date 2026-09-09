@@ -60,7 +60,7 @@ export default function HeroSection() {
   const pct = Math.min(100, Math.round((subtotal / freeShippingFrom) * 100));
 
   return (
-    <section className="relative overflow-hidden bg-sport-bg text-white">
+    <section className="relative overflow-hidden bg-sport-bg text-gray-900">
       {/* Decorative blurs */}
       <div className="pointer-events-none absolute -right-32 -top-40 h-[500px] w-[500px] rounded-full bg-sport-green/10 blur-[160px]" />
       <div className="pointer-events-none absolute bottom-0 left-1/4 h-72 w-72 rounded-full bg-sport-green/5 blur-[120px]" />
@@ -92,7 +92,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-4 max-w-md text-[15px] leading-relaxed text-white/60"
+            className="mt-4 max-w-md text-[15px] leading-relaxed text-gray-500"
           >
             Suplementos originales con sello de garantía. Coordinas por WhatsApp y
             te los llevo a tu estación de Metro el mismo día.
@@ -109,12 +109,12 @@ export default function HeroSection() {
               <Stars rating={avgRating} size={15} />
               <span className="text-sm font-bold">{avgRating}</span>
             </div>
-            <span className="h-3.5 w-px bg-white/15" />
-            <span className="text-[13px] text-white/45">
+            <span className="h-3.5 w-px bg-gray-100" />
+            <span className="text-[13px] text-gray-400">
               {totalReviews.toLocaleString('es-CL')} reseñas
             </span>
-            <span className="h-3.5 w-px bg-white/15" />
-            <span className="text-[13px] text-white/45">
+            <span className="h-3.5 w-px bg-gray-100" />
+            <span className="text-[13px] text-gray-400">
               +500 pedidos entregados
             </span>
           </motion.div>
@@ -129,7 +129,7 @@ export default function HeroSection() {
             <span className="font-display text-5xl tracking-wide sm:text-6xl">
               {formatPrice(PACK_PRICE)}
             </span>
-            <span className="text-lg text-white/35 line-through">
+            <span className="text-lg text-gray-400 line-through">
               {formatPrice(PACK_OLD)}
             </span>
             <span className="rounded-full bg-sport-orange/20 px-2.5 py-1 text-[11px] font-extrabold text-sport-orange ring-1 ring-sport-orange/40">
@@ -144,7 +144,7 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="mt-6"
           >
-            <p className="mb-2.5 text-[13px] font-bold text-white/75">Elige tu sabor</p>
+            <p className="mb-2.5 text-[13px] font-bold text-gray-600">Elige tu sabor</p>
             <div className="flex flex-wrap gap-2">
               {FLAVORS.map((f) => {
                 const active = f.name === flavor.name;
@@ -196,7 +196,7 @@ export default function HeroSection() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-orange opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-orange" />
             </span>
-            <p className="text-[13px] font-semibold text-white/70">
+            <p className="text-[13px] font-semibold text-gray-600">
               ¡Quedan solo{' '}
               <span className="font-extrabold text-sport-orange">{stockLeft} unidades</span>{' '}
               en stock!
@@ -227,16 +227,16 @@ export default function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-white/50"
+            className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gray-500"
           >
             <span className="flex items-center gap-1.5">
               <ShieldCheck size={13} className="text-sport-green" /> Garantía 30 días
             </span>
-            <span className="h-3 w-px bg-white/15" />
+            <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
               <Lock size={13} className="text-sport-green" /> Pago seguro
             </span>
-            <span className="h-3 w-px bg-white/15" />
+            <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
               <Truck size={13} className="text-sport-green" /> Envío gratis en Metro
             </span>
@@ -250,14 +250,14 @@ export default function HeroSection() {
             className="mt-4 max-w-md"
           >
             <div className="flex items-center justify-between text-[12px]">
-              <span className="text-white/45">
+              <span className="text-gray-400">
                 {remaining > 0
                   ? `Te faltan ${formatPrice(remaining)} para envío gratis`
                   : '¡Tienes envío gratis!'}
               </span>
               <span className="font-bold text-sport-green">{pct}%</span>
             </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
               <motion.div
                 className="h-full rounded-full bg-sport-green"
                 initial={{ width: 0 }}
@@ -278,7 +278,7 @@ export default function HeroSection() {
               {SOCIAL_PROOF.map((person, i) => (
                 <div
                   key={person.name}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-sport-bg text-[10px] font-extrabold text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
                   style={{
                     backgroundColor: ['#5DD62C', '#F97316', '#3B82F6', '#8B5CF6'][i],
                     zIndex: 4 - i,
@@ -289,8 +289,8 @@ export default function HeroSection() {
                 </div>
               ))}
             </div>
-            <p className="text-[13px] text-white/50">
-              <span className="font-semibold text-white/70">+500 deportistas</span>{' '}
+            <p className="text-[13px] text-gray-500">
+              <span className="font-semibold text-gray-600">+500 deportistas</span>{' '}
               ya tienen su pack
             </p>
           </motion.div>
@@ -308,7 +308,7 @@ export default function HeroSection() {
             <div className="absolute inset-0 -z-10 rounded-full bg-sport-green/15 blur-[100px]" />
 
             {/* Main card with glassmorphism */}
-            <div className="relative rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl sm:p-6">
+            <div className="relative rounded-[2rem] border border-gray-200 bg-gray-50 p-5 backdrop-blur-xl sm:p-6">
               {/* Product images */}
               <div className="relative flex items-center justify-center gap-2">
                 <AnimatePresence mode="wait">
@@ -318,7 +318,7 @@ export default function HeroSection() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.3 }}
-                    className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-white/[0.03]"
+                    className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-gray-50"
                   >
                     <Image
                       src={flavor.image}
@@ -331,11 +331,11 @@ export default function HeroSection() {
                   </motion.div>
                 </AnimatePresence>
 
-                <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-sport-bg text-lg font-extrabold text-sport-green shadow-lg">
+                <span className="z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-300 bg-sport-bg text-lg font-extrabold text-sport-green shadow-lg">
                   +
                 </span>
 
-                <div className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-white/[0.03]">
+                <div className="relative aspect-[4/5] min-w-0 flex-1 overflow-hidden rounded-2xl bg-gray-50">
                   <Image
                     src="/img/producto34.jpg"
                     alt="Eco Naturales Creatina Monohidratada 300g"
@@ -348,18 +348,18 @@ export default function HeroSection() {
 
               {/* Glassmorphism badges */}
               <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
-                <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 backdrop-blur-md">
                   <BadgeCheck size={13} className="text-sport-green" />
-                  <span className="text-[11px] font-bold text-white">
+                  <span className="text-[11px] font-bold text-gray-900">
                     24g Proteína por Scoop
                   </span>
                 </div>
               </div>
 
               <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
-                <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 backdrop-blur-md">
                   <ShieldCheck size={13} className="text-sport-green" />
-                  <span className="text-[11px] font-bold text-white">
+                  <span className="text-[11px] font-bold text-gray-900">
                     Productos originales
                   </span>
                 </div>
@@ -377,7 +377,7 @@ export default function HeroSection() {
             </span>
 
             {/* Metro badge floating */}
-            <span className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full border border-white/15 bg-sport-bg px-3.5 py-1.5 text-[12px] font-bold text-white shadow-lg sm:-bottom-4">
+            <span className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full border border-gray-200 bg-sport-bg px-3.5 py-1.5 text-[12px] font-bold text-white shadow-lg sm:-bottom-4">
               <Truck size={13} className="text-sport-green" /> Entrega en Metro
             </span>
           </motion.div>

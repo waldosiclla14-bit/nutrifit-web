@@ -38,7 +38,7 @@ export default function StickyBottomBar() {
         >
           <div className="container-px flex items-center gap-3">
             {/* Mini image */}
-            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-white/[0.04]">
+            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-50">
               <Image
                 src="/img/producto1.webp"
                 alt="Pack Proteína + Creatina"
@@ -50,7 +50,7 @@ export default function StickyBottomBar() {
 
             {/* Info */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-bold text-white">
+              <p className="truncate text-[13px] font-bold text-gray-900">
                 Pack Proteína + Creatina
               </p>
               <p className="font-display text-xl tracking-wide text-sport-green">

@@ -25,7 +25,7 @@
   }
 
   body {
-    @apply bg-sport-bg font-sans text-white;
+    @apply bg-sport-bg font-sans text-sport-text;
   }
 
   @media screen and (max-width: 767px) {
@@ -38,7 +38,7 @@
 
   ::selection {
     background: rgb(93 214 44 / 0.3);
-    color: white;
+    color: #0F172A;
   }
 
   ::-webkit-scrollbar {
@@ -46,12 +46,12 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: #0B0F17;
+    background: #F1F5F9;
   }
   ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #CBD5E1;
     border-radius: 999px;
-    border: 2px solid #0B0F17;
+    border: 2px solid #F1F5F9;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #5DD62C;
@@ -85,11 +85,11 @@
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-sport-card/60 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-outline-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 py-3.5 text-sm font-bold tracking-wide text-white backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green hover:text-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green hover:text-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .chip {
@@ -97,11 +97,11 @@
   }
 
   .input {
-    @apply w-full rounded-xl border border-sport-border bg-sport-surface/60 px-4 py-3 text-sm text-white outline-none transition focus:border-sport-green focus:bg-sport-card focus:ring-2 focus:ring-sport-green/40;
+    @apply w-full rounded-xl border border-sport-border bg-white px-4 py-3 text-sm text-sport-text outline-none transition focus:border-sport-green focus:bg-white focus:ring-2 focus:ring-sport-green/40;
   }
 
   .label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/50;
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-sport-textMuted;
   }
 
   .section-label {
@@ -113,7 +113,7 @@
   }
 
   .section-title-dark {
-    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight text-white lg:text-[36px];
+    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight text-sport-text lg:text-[36px];
   }
 
   .reveal {
@@ -138,9 +138,9 @@
 .skeleton {
   background: linear-gradient(
     90deg,
-    #1E293B 25%,
-    #334155 37%,
-    #1E293B 63%
+    #E2E8F0 25%,
+    #F1F5F9 37%,
+    #E2E8F0 63%
   );
   background-size: 400px 100%;
   animation: shimmer 1.6s linear infinite;
@@ -153,8 +153,8 @@
 
 .hero-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);

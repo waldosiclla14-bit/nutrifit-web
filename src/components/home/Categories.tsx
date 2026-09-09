@@ -9,7 +9,7 @@ export default function Categories() {
     <section className="container-px bg-sport-surface py-14 lg:py-[100px]" id="categorias">
       <Reveal className="mb-10 text-center">
         <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">CATEGORÍAS</p>
-        <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+        <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
           Encuentra lo que <span className="text-sport-green">necesitas</span>
         </h2>
       </Reveal>
@@ -30,10 +30,10 @@ export default function Categories() {
                   className="object-contain p-6 transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300" />
-              <div className="absolute bottom-0 w-full p-4 text-white">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300" />
+              <div className="absolute bottom-0 w-full p-4 text-gray-900">
                 <h3 className="font-display text-lg uppercase tracking-wide drop-shadow-md">{cat.label}</h3>
-                <p className="mt-1 text-xs text-white/60 transition-colors duration-300 group-hover:text-white/80">
+                <p className="mt-1 text-xs text-gray-500 transition-colors duration-300 group-hover:text-white/80">
                   {cat.blurb}
                 </p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sport-green transition-all duration-300 group-hover:gap-2">

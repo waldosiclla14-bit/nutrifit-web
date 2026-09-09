@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/utils';
 
 export default function Footer() {
   return (
-    <footer className="bg-sport-bg text-white" id="contacto">
+    <footer className="bg-sport-bg text-gray-900" id="contacto">
       <div className="container-px grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -15,7 +15,7 @@ export default function Footer() {
               Nutri<span className="text-sport-green">Fit</span>
             </span>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-white/70">
+          <p className="mt-4 text-sm leading-relaxed text-gray-600">
             Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en Metro.
           </p>
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sport-green">
@@ -24,17 +24,17 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Contacto</h4>
-          <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+          <h4 className="text-sm font-bold uppercase tracking-widest text-gray-800">Contacto</h4>
+          <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
             <li>
               WhatsApp:{' '}
-              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-sport-green">
+              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-green">
                 {BRAND.whatsapp}
               </a>
             </li>
             <li>
               Instagram:{' '}
-              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-sport-green">
+              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-green">
                 {BRAND.instagram}
               </a>
             </li>
@@ -44,8 +44,8 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Enlaces</h4>
-          <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+          <h4 className="text-sm font-bold uppercase tracking-widest text-gray-800">Enlaces</h4>
+          <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
             <li><Link href="/sobre-nosotros" className="transition-colors hover:text-sport-green">Sobre nosotros</Link></li>
             <li><Link href="/productos" className="transition-colors hover:text-sport-green">Catálogo</Link></li>
             <li><Link href="/#combos" className="transition-colors hover:text-sport-green">Combos</Link></li>
@@ -57,8 +57,8 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Información</h4>
-          <ul className="mt-4 space-y-2.5 text-sm text-white/70">
+          <h4 className="text-sm font-bold uppercase tracking-widest text-gray-800">Información</h4>
+          <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
             <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-sport-green">Políticas de Entrega</Link></li>
             <li><Link href="/legal#terminos" className="transition-colors hover:text-sport-green">Términos y Condiciones</Link></li>
             <li><Link href="/legal#privacidad" className="transition-colors hover:text-sport-green">Política de Privacidad</Link></li>
@@ -66,8 +66,8 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/10">
-        <div className="container-px flex flex-col items-center justify-between gap-3 py-6 text-xs text-white/60 sm:flex-row">
+      <div className="border-t border-gray-200">
+        <div className="container-px flex flex-col items-center justify-between gap-3 py-6 text-xs text-gray-500 sm:flex-row">
           <p className="text-center sm:text-left">
             NutriFit SpA - Productos 100% originales con sello - Emitimos boleta - Entregas en 140+
             estaciones de Metro Santiago

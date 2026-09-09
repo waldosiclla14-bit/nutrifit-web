@@ -41,7 +41,7 @@ export default function Header() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="text-sm font-semibold text-white transition-colors hover:text-sport-green"
+                className="text-sm font-semibold text-gray-900 transition-colors hover:text-sport-green"
               >
                 {item.label}
               </Link>
@@ -54,14 +54,14 @@ export default function Header() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram NutriFit"
-              className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-sport-surface sm:flex"
+              className="hidden h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100 sm:flex"
             >
               <Instagram size={19} />
             </a>
             <Link
               href="/favoritos"
               aria-label="Mis favoritos"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-sport-surface"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
             >
               <Heart size={19} />
               {favCount > 0 && (
@@ -74,7 +74,7 @@ export default function Header() {
               type="button"
               onClick={openCart}
               aria-label="Abrir carrito"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-sport-surface"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
             >
               <ShoppingBag size={19} />
               {itemCount > 0 && (
@@ -87,7 +87,7 @@ export default function Header() {
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-sport-surface lg:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden"
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -105,7 +105,7 @@ export default function Header() {
                   key={item.label}
                   href={item.href}
                   onClick={() => setMenuOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-sport-surface"
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-gray-100"
                 >
                   {item.label}
                 </Link>
@@ -113,7 +113,7 @@ export default function Header() {
               <Link
                 href="/favoritos"
                 onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-sport-surface"
+                className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors hover:bg-gray-100"
               >
                 <Heart size={16} /> Mis favoritos
               </Link>

@@ -33,7 +33,7 @@ export default function FAQ() {
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">PREGUNTAS FRECUENTES</p>
-          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
             Resolvemos tus <span className="text-sport-green">dudas</span>
           </h2>
         </Reveal>
@@ -41,13 +41,13 @@ export default function FAQ() {
           {FAQS.map((faq, i) => (
             <Reveal key={faq.q} delay={i * 50}>
               <details className="group rounded-2xl border border-sport-border/50 bg-sport-card p-5 open:shadow-sportCard">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-white sm:text-base [&::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-bold text-gray-900 sm:text-base [&::-webkit-details-marker]:hidden">
                   {faq.q}
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sport-bg text-white/60 transition-transform duration-300 group-open:rotate-45">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sport-bg text-gray-500 transition-transform duration-300 group-open:rotate-45">
                     +
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-white/50">{faq.a}</p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-500">{faq.a}</p>
               </details>
             </Reveal>
           ))}

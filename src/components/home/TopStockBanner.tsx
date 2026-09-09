@@ -18,8 +18,8 @@ export default function TopStockBanner() {
           <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-sport-green" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
         </span>
-        <p className="text-[13px] font-semibold tracking-wide text-white/80">
-          <span className="text-white">Stock actualizado hoy:</span>{' '}
+        <p className="text-[13px] font-semibold tracking-wide text-gray-800">
+          <span className="text-gray-900">Stock actualizado hoy:</span>{' '}
           Solo{' '}
           <span className="font-extrabold text-sport-green">
             {PACK_STOCK} packs

@@ -109,7 +109,7 @@ export default function FirstOrderOffer() {
           type="button"
           onClick={handleClose}
           aria-label="Cerrar"
-          className="absolute right-4 top-4 rounded-full p-1.5 text-white/60 transition-colors hover:bg-white/10"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100"
         >
           <X size={18} />
         </button>
@@ -117,17 +117,17 @@ export default function FirstOrderOffer() {
         <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-sport-green">
           Bienvenido a NUTRIFIT
         </p>
-        <h3 className="mt-2 font-display text-3xl uppercase leading-tight tracking-wide text-white">
+        <h3 className="mt-2 font-display text-3xl uppercase leading-tight tracking-wide text-gray-900">
           Lleva <span className="text-sport-green">5% OFF</span> en tu primer pedido
         </h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/50">
+        <p className="mt-2 text-sm leading-relaxed text-gray-500">
           Usa tu cupón de bienvenida en tu primera compra por WhatsApp y empieza a entrenar
           con confianza.
         </p>
 
         <div className="mt-6 rounded-2xl border-2 border-dashed border-sport-green/50 bg-sport-green/10 px-5 py-3 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-white/40">Tu cupón</p>
-          <p className="font-display text-2xl uppercase tracking-widest text-white">NUTRIFIT5</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Tu cupón</p>
+          <p className="font-display text-2xl uppercase tracking-widest text-gray-900">NUTRIFIT5</p>
         </div>
 
         <button
@@ -137,7 +137,7 @@ export default function FirstOrderOffer() {
         >
           <MessageCircle size={16} /> Quiero mi 5% OFF
         </button>
-        <p className="mt-3 text-center text-[11px] text-white/35">
+        <p className="mt-3 text-center text-[11px] text-gray-400">
           Válido en tu primer pedido. Aplica sobre el total.
         </p>
       </div>

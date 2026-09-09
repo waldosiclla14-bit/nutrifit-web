@@ -51,10 +51,10 @@ export default function NutritionalTransparency() {
           <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">
             Transparencia nutricional
           </p>
-          <h2 className="mt-3 font-display text-[28px] uppercase tracking-wide text-white lg:text-[36px]">
+          <h2 className="mt-3 font-display text-[28px] uppercase tracking-wide text-gray-900 lg:text-[36px]">
             Qué hay dentro de tu pack
           </h2>
-          <p className="mx-auto mt-3 max-w-md text-[15px] text-white/50">
+          <p className="mx-auto mt-3 max-w-md text-[15px] text-gray-500">
             Datos reales, sin relleno. Cada porción tiene exactamente lo que necesitas para entrenar.
           </p>
         </motion.div>
@@ -77,7 +77,7 @@ export default function NutritionalTransparency() {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-bold transition-colors ${
-                    isActive ? 'text-white' : 'text-white/45 hover:text-white/70'
+                    isActive ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
                   }`}
                 >
                   {isActive && (
@@ -113,13 +113,13 @@ export default function NutritionalTransparency() {
                 transition={{ duration: 0.4, delay: i * 0.08 }}
                 className="group rounded-2xl border border-sport-border/50 bg-sport-card/60 p-5 text-center backdrop-blur transition-colors hover:border-sport-green/40"
               >
-                <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                   {stat.label}
                 </p>
                 <p className="mt-2 font-display text-4xl tracking-wide text-sport-green">
                   {stat.value}
                 </p>
-                <p className="mt-1 text-[12px] text-white/35">{stat.sub}</p>
+                <p className="mt-1 text-[12px] text-gray-400">{stat.sub}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -133,7 +133,7 @@ export default function NutritionalTransparency() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="mt-6 text-center text-[14px] text-white/40"
+            className="mt-6 text-center text-[14px] text-gray-400"
           >
             {active.description}
           </motion.p>

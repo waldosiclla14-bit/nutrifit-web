@@ -31,11 +31,11 @@ const ITEMS = [
 
 export default function Benefits() {
   return (
-    <section className="bg-sport-bg py-14 text-white lg:py-[100px]" id="beneficios">
+    <section className="bg-sport-bg py-14 text-gray-900 lg:py-[100px]" id="beneficios">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">BENEFICIOS</p>
-          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-white lg:text-[36px]">
+          <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
             Compra con <span className="text-sport-green">confianza</span>
           </h2>
         </Reveal>
@@ -47,8 +47,8 @@ export default function Benefits() {
                   <item.icon size={22} />
                 </span>
                 <div>
-                  <h3 className="font-display text-lg uppercase tracking-wide text-white">{item.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/50">{item.text}</p>
+                  <h3 className="font-display text-lg uppercase tracking-wide text-gray-900">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{item.text}</p>
                 </div>
               </article>
             </Reveal>
