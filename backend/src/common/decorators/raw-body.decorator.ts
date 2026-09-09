@@ -1,4 +1,4 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 
 function parseLimit(limit: string): number {
@@ -17,12 +17,17 @@ function parseLimit(limit: string): number {
 // receives the body here.
 export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
   const limitBytes = parseLimit(limit);
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let done = false;
     const finish = (value: any) => {
       if (done) return;
       done = true;
       resolve(value);
+    };
+    const fail = (err: Error) => {
+      if (done) return;
+      done = true;
+      reject(err);
     };
     const chunks: Buffer[] = [];
     let size = 0;
@@ -31,7 +36,7 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       size += chunk.length;
       if (size > limitBytes) {
         req.destroy();
-        finish({});
+        fail(new BadRequestException('Body too large'));
       }
     });
     req.on('end', () => {
@@ -40,16 +45,10 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       try {
         finish(JSON.parse(raw));
       } catch {
-        finish({});
+        fail(new BadRequestException('JSON malformado'));
       }
     });
-    req.on('error', () => finish({}));
-    // NOTE: do NOT call req.resume() here. On a Node http.IncomingMessage the
-    // 'data' listener auto-resumes the stream; calling req.resume() explicitly
-    // can synchronously flush a buffered body in a tight loop, blocking the
-    // event loop so no timer (incl. the safety timeout below) can fire and the
-    // request hangs until the proxy 502s. The 5s hard timeout is the safety net
-    // for the rare case the body never delivers 'end'.
-    setTimeout(() => finish({}), 15000);
+    req.on('error', () => fail(new BadRequestException('Error leyendo body')));
+    setTimeout(() => fail(new BadRequestException('Timeout leyendo body')), 15000);
   });
 }

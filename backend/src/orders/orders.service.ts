@@ -492,8 +492,9 @@ export class OrdersService implements OnModuleInit {
         windowEnd = `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
       }
 
-      // Generate delivery code
-      const deliveryCode = Math.floor(1000 + Math.random() * 9000).toString();
+      // Generate delivery code (cryptographically secure)
+      const crypto = await import('crypto');
+      const deliveryCode = crypto.randomInt(1000, 9999).toString();
 
       await this.prisma.delivery.create({
         data: {

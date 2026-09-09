@@ -1,4 +1,5 @@
 import { Controller, Post, Req, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { AuthService } from './auth.service';
@@ -83,6 +84,7 @@ export class AuthController {
   }
 
   @Post('bootstrap')
+  @Throttle({ default: { limit: 3, ttl: 300000 } })
   async bootstrap(@Req() req: any) {
     const dto: { bootstrapKey: string; email: string; newPassword: string } = await readJsonBody(req);
     return this.authService.bootstrapPassword(dto.bootstrapKey, dto.email, dto.newPassword);

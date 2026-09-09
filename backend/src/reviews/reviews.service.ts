@@ -9,6 +9,10 @@ type CreateReviewBody = {
   verified?: boolean;
 };
 
+function stripHtml(input: string): string {
+  return input.replace(/<[^>]*>/g, '').replace(/[<>"'&]/g, '').trim();
+}
+
 @Injectable()
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
@@ -26,10 +30,10 @@ export class ReviewsService {
     const productSlug = body.productSlug?.trim();
     if (!productSlug) throw new BadRequestException('productSlug es obligatorio');
 
-    const name = body.name?.trim();
+    const name = stripHtml(body.name || '');
     if (!name || name.length < 2) throw new BadRequestException('Nombre inválido');
 
-    const text = body.text?.trim();
+    const text = stripHtml(body.text || '');
     if (!text || text.length < 5) throw new BadRequestException('La reseña debe tener al menos 5 caracteres');
 
     const rating = Math.round(Number(body.rating) || 0);
@@ -37,7 +41,7 @@ export class ReviewsService {
 
     return this.prisma.review.create({
       data: {
-        productSlug,
+        productSlug: stripHtml(productSlug),
         name,
         rating,
         text,

@@ -16,8 +16,8 @@ services:
       - key: CORS_ORIGINS
         value: https://nutrifit-web-nu.vercel.app
       - key: ADMIN_PASSWORD
-        value: admin-change-me-2026
+        sync: false
       - key: SELLER_PASSWORD
-        value: seller-change-me-2026
+        sync: false
       - key: PORT
         value: 3001

@@ -38,8 +38,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: status,
       message: message || 'Error interno del servidor',
       timestamp: new Date().toISOString(),
-      path: request.url,
     };
+    // Only include path in non-500 errors to avoid leaking internal structure
+    if (status < 500) {
+      body.path = request.url;
+    }
     // Never expose internal details (Prisma codes, meta) to client
 
     response.status(status).json(body);

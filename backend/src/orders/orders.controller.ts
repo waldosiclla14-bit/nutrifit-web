@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Query, UseGuards, Request, HttpException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -58,6 +58,9 @@ export class OrdersController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async createPublicOrder(@Request() req: any) {
     const body = await readJsonBody(req);
+    if (!body.customerPhone) {
+      throw new HttpException('Se requiere customerPhone para pedidos públicos', 400);
+    }
     return this.ordersService.create({ ...body, createdById: null });
   }
 

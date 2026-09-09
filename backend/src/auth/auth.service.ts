@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -19,7 +20,7 @@ export class AuthService {
     const user = await this.validateUser(String(email || '').trim().toLowerCase(), password);
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const payload = { sub: user.id, email: user.email, role: user.role, iss: 'nutrifit-api', aud: 'nutrifit-client' };
     return {
       access_token: this.jwtService.sign(payload),
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
@@ -41,7 +42,13 @@ export class AuthService {
 
   async bootstrapPassword(bootstrapKey: string, email: string, newPassword: string) {
     const adminKey = process.env.ADMIN_PASSWORD;
-    if (!adminKey || bootstrapKey !== adminKey) {
+    if (!adminKey) {
+      throw new UnauthorizedException('Bootstrap no configurado');
+    }
+    // Timing-safe comparison to prevent timing attacks
+    const keyBuf = Buffer.from(bootstrapKey || '');
+    const adminBuf = Buffer.from(adminKey);
+    if (keyBuf.length !== adminBuf.length || !crypto.timingSafeEqual(keyBuf, adminBuf)) {
       throw new UnauthorizedException('Clave de bootstrap inválida');
     }
     if (!newPassword || newPassword.length < 6) {
