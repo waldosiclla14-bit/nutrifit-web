@@ -152,14 +152,14 @@ export default function UGCProof() {
           <div className="hidden gap-2 sm:flex">
             <button
               onClick={() => scroll('left')}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
               aria-label="Anterior"
             >
               <ChevronLeft size={18} />
             </button>
             <button
               onClick={() => scroll('right')}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
               aria-label="Siguiente"
             >
               <ChevronRight size={18} />
@@ -179,7 +179,7 @@ export default function UGCProof() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="min-w-[280px] max-w-[320px] flex-1 snap-start rounded-2xl border border-sport-border/50 bg-sport-card/60 p-5 backdrop-blur transition-colors hover:border-sport-green/40"
+              className="min-w-[280px] max-w-[320px] flex-1 snap-start rounded-2xl border border-sport-border bg-white p-5 transition-colors hover:border-sport-green/40"
             >
               {/* Header */}
               <div className="flex items-center gap-3">

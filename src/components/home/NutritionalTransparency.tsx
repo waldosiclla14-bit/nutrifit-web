@@ -111,7 +111,7 @@ export default function NutritionalTransparency() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
-                className="group rounded-2xl border border-sport-border/50 bg-sport-card/60 p-5 text-center backdrop-blur transition-colors hover:border-sport-green/40"
+                className="group rounded-2xl border border-sport-border bg-white p-5 text-center transition-colors hover:border-sport-green/40"
               >
                 <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
                   {stat.label}

@@ -36,7 +36,7 @@ export default function FeaturedCarousel() {
               type="button"
               onClick={() => scroll(-1)}
               aria-label="Anterior"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
             >
               <ChevronLeft size={18} />
             </button>
@@ -44,7 +44,7 @@ export default function FeaturedCarousel() {
               type="button"
               onClick={() => scroll(1)}
               aria-label="Siguiente"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
             >
               <ChevronRight size={18} />
             </button>
@@ -67,7 +67,7 @@ export default function FeaturedCarousel() {
             type="button"
             onClick={() => scroll(-1)}
             aria-label="Anterior"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
           >
             <ChevronLeft size={18} />
           </button>
@@ -75,7 +75,7 @@ export default function FeaturedCarousel() {
             type="button"
             onClick={() => scroll(1)}
             aria-label="Siguiente"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
           >
             <ChevronRight size={18} />
           </button>

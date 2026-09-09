@@ -377,7 +377,7 @@ export default function HeroSection() {
             </span>
 
             {/* Metro badge floating */}
-            <span className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full border border-gray-200 bg-sport-bg px-3.5 py-1.5 text-[12px] font-bold text-white shadow-lg sm:-bottom-4">
+            <span className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full border border-gray-200 bg-sport-bg px-3.5 py-1.5 text-[12px] font-bold text-gray-900 shadow-lg sm:-bottom-4">
               <Truck size={13} className="text-sport-green" /> Entrega en Metro
             </span>
           </motion.div>

@@ -31,9 +31,9 @@ export default function Categories() {
                 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300" />
-              <div className="absolute bottom-0 w-full p-4 text-gray-900">
+              <div className="absolute bottom-0 w-full p-4 text-white">
                 <h3 className="font-display text-lg uppercase tracking-wide drop-shadow-md">{cat.label}</h3>
-                <p className="mt-1 text-xs text-gray-500 transition-colors duration-300 group-hover:text-white/80">
+                <p className="mt-1 text-xs text-white/70 transition-colors duration-300 group-hover:text-white">
                   {cat.blurb}
                 </p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sport-green transition-all duration-300 group-hover:gap-2">
