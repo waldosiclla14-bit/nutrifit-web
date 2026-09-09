@@ -280,7 +280,7 @@ export default function HeroSection() {
                   key={person.name}
                   className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-sport-bg text-[10px] font-extrabold text-white"
                   style={{
-                    backgroundColor: ['#10B981', '#F97316', '#3B82F6', '#8B5CF6'][i],
+                    backgroundColor: ['#5DD62C', '#F97316', '#3B82F6', '#8B5CF6'][i],
                     zIndex: 4 - i,
                   }}
                   title={person.name}
