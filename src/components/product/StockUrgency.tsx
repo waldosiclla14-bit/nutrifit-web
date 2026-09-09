@@ -32,7 +32,7 @@ export default function StockUrgency({
             Stock bajo
           </span>
         </div>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-soft">
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-sport-surface">
           <div
             className={cx(
               'h-full rounded-full transition-all duration-500',

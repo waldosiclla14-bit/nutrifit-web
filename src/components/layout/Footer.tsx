@@ -7,18 +7,18 @@ import { formatPrice } from '@/lib/utils';
 
 export default function Footer() {
   return (
-    <footer className="bg-dark text-white" id="contacto">
+    <footer className="bg-sport-bg text-white" id="contacto">
       <div className="container-px grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="font-display text-lg uppercase tracking-wide">
-              Nutri<span className="text-accent">Fit</span>
+              Nutri<span className="text-sport-green">Fit</span>
             </span>
           </div>
           <p className="mt-4 text-sm leading-relaxed text-white/70">
             Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en Metro.
           </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sport-green">
             {BRAND.tagline}
           </p>
         </div>
@@ -28,13 +28,13 @@ export default function Footer() {
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
             <li>
               WhatsApp:{' '}
-              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-accent">
+              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-sport-green">
                 {BRAND.whatsapp}
               </a>
             </li>
             <li>
               Instagram:{' '}
-              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-accent">
+              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-white transition-colors hover:text-sport-green">
                 {BRAND.instagram}
               </a>
             </li>
@@ -46,22 +46,22 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Enlaces</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-            <li><Link href="/sobre-nosotros" className="transition-colors hover:text-accent">Sobre nosotros</Link></li>
-            <li><Link href="/productos" className="transition-colors hover:text-accent">Catálogo</Link></li>
-            <li><Link href="/#combos" className="transition-colors hover:text-accent">Combos</Link></li>
-            <li><Link href="/#beneficios" className="transition-colors hover:text-accent">Beneficios</Link></li>
-            <li><Link href="/#opiniones" className="transition-colors hover:text-accent">Opiniones</Link></li>
-            <li><Link href="/blog" className="transition-colors hover:text-accent">Blog y guías</Link></li>
-            <li><Link href="/favoritos" className="transition-colors hover:text-accent">Mis favoritos</Link></li>
+            <li><Link href="/sobre-nosotros" className="transition-colors hover:text-sport-green">Sobre nosotros</Link></li>
+            <li><Link href="/productos" className="transition-colors hover:text-sport-green">Catálogo</Link></li>
+            <li><Link href="/#combos" className="transition-colors hover:text-sport-green">Combos</Link></li>
+            <li><Link href="/#beneficios" className="transition-colors hover:text-sport-green">Beneficios</Link></li>
+            <li><Link href="/#opiniones" className="transition-colors hover:text-sport-green">Opiniones</Link></li>
+            <li><Link href="/blog" className="transition-colors hover:text-sport-green">Blog y guías</Link></li>
+            <li><Link href="/favoritos" className="transition-colors hover:text-sport-green">Mis favoritos</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-sm font-bold uppercase tracking-widest text-white/90">Información</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-white/70">
-            <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-accent">Políticas de Entrega</Link></li>
-            <li><Link href="/legal#terminos" className="transition-colors hover:text-accent">Términos y Condiciones</Link></li>
-            <li><Link href="/legal#privacidad" className="transition-colors hover:text-accent">Política de Privacidad</Link></li>
+            <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-sport-green">Políticas de Entrega</Link></li>
+            <li><Link href="/legal#terminos" className="transition-colors hover:text-sport-green">Términos y Condiciones</Link></li>
+            <li><Link href="/legal#privacidad" className="transition-colors hover:text-sport-green">Política de Privacidad</Link></li>
           </ul>
         </div>
       </div>

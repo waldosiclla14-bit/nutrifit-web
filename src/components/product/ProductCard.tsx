@@ -40,10 +40,10 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-paper shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-soft">
+    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-sport-border bg-sport-card shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
       <Link
         href={`/productos/${product.slug}`}
-        className="relative block aspect-[4/5] overflow-hidden bg-soft"
+        className="relative block aspect-[4/5] overflow-hidden bg-sport-surface"
       >
         {!loaded && <div className="skeleton absolute inset-0" aria-hidden="true" />}
         <Image
@@ -59,17 +59,17 @@ export default function ProductCard({ product }: { product: Product }) {
         />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {discount && (
-            <span className="rounded-full bg-accent px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-ink">
+            <span className="rounded-full bg-sport-green px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
               -{discount}%
             </span>
           )}
           {product.bestseller && (
-            <span className="rounded-full bg-ink px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
               Más vendido
             </span>
           )}
           {hasVariants && (
-            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-accentDeep shadow-sm">
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-sport-orange shadow-sm">
               {(product.variants || []).length} sabores
             </span>
           )}
@@ -81,37 +81,37 @@ export default function ProductCard({ product }: { product: Product }) {
         type="button"
         onClick={() => toggleFavorite(product.id)}
         aria-label={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-line bg-paper/90 backdrop-blur transition-all ${
-          fav ? 'text-red-500' : 'text-muted hover:text-red-500'
+        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-sport-border bg-sport-card/90 backdrop-blur transition-all ${
+          fav ? 'text-red-500' : 'text-white/50 hover:text-red-500'
         }`}
       >
         <Heart size={16} className={fav ? 'fill-red-500' : ''} />
       </button>
 
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">
           {product.brand}
         </p>
         <Link
           href={`/productos/${product.slug}`}
-          className="line-clamp-2 text-sm font-bold leading-snug transition-colors hover:text-accentDeep"
+          className="line-clamp-2 text-sm font-bold leading-snug transition-colors hover:text-sport-green"
         >
           {product.name}
         </Link>
-        <div className="flex items-center gap-1.5 text-xs text-muted">
+        <div className="flex items-center gap-1.5 text-xs text-white/50">
           <Stars rating={product.rating} size={13} />
-          <span className="font-semibold text-ink">{product.rating.toFixed(1)}</span>
+          <span className="font-semibold text-white">{product.rating.toFixed(1)}</span>
           <span>({product.reviews})</span>
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
             {product.oldPrice && (
-              <span className="text-sm text-muted line-through">
+              <span className="text-sm text-white/50 line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
-            <span className="text-[18px] font-bold leading-none text-ink">
+            <span className="text-[18px] font-bold leading-none text-white">
               {formatPrice(product.price)}
             </span>
           </div>
@@ -119,7 +119,7 @@ export default function ProductCard({ product }: { product: Product }) {
             type="button"
             onClick={addToCart}
             aria-label={`Agregar ${product.name} al carrito`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white transition-all duration-300 hover:bg-accent hover:text-ink group-hover:shadow-glow"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-sport-orange text-white transition-all duration-300 hover:bg-sport-green hover:text-white group-hover:shadow-glow"
           >
             <ShoppingBag size={17} />
           </button>

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
-import Hero from '@/components/home/Hero';
+import TopStockBanner from '@/components/home/TopStockBanner';
+import HeroSection from '@/components/home/HeroSection';
+import NutritionalTransparency from '@/components/home/NutritionalTransparency';
+import UGCProof from '@/components/home/UGCProof';
+import StickyBottomBar from '@/components/home/StickyBottomBar';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
@@ -10,7 +14,6 @@ import HowTo from '@/components/home/HowTo';
 import Guarantee from '@/components/home/Guarantee';
 import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
-import Testimonials from '@/components/home/Testimonials';
 
 export const metadata: Metadata = {
   alternates: { canonical: '/' },
@@ -67,8 +70,10 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <Hero />
-      <Testimonials />
+      <TopStockBanner />
+      <HeroSection />
+      <NutritionalTransparency />
+      <UGCProof />
       <FeaturedCarousel />
       <CrossSell />
       <Categories />
@@ -78,6 +83,7 @@ export default function Home() {
       <MetroCoverage />
       <FAQ />
       <FirstOrderOffer />
+      <StickyBottomBar />
     </>
   );
 }

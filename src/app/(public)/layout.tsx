@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/CartContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
 import MetaPixel from '@/components/analytics/MetaPixel';
 import GA4 from '@/components/analytics/GA4';
@@ -93,6 +94,7 @@ export default function PublicLayout({
       <FavoritesProvider>
         <CartProvider>
           <Header />
+          <TrustStrip />
           <main>{children}</main>
           <Footer />
           <CartDrawer />
