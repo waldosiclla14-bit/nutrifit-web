@@ -17,14 +17,14 @@ export default function LiveViewers({ productId }: { productId: number }) {
   if (viewers === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 text-xs font-semibold text-white/70">
+    <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
       <span className="relative flex h-2 w-2">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
       </span>
-      <Eye size={13} className="text-white/50" />
+      <Eye size={13} className="text-gray-500" />
       <span>
-        <strong className="text-white">{viewers}</strong> personas viendo esto ahora
+        <strong className="text-gray-900">{viewers}</strong> personas viendo esto ahora
       </span>
     </div>
   );

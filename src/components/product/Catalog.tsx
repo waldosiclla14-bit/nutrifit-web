@@ -152,7 +152,7 @@ export default function Catalog({
             <div>
               <h3 className="label">Buscar</h3>
               <div className="relative">
-                <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
+                <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
@@ -229,8 +229,8 @@ export default function Catalog({
         </div>
       )}
 
-      <p className="mb-5 text-sm text-white/50">
-        <strong className="text-white">{results.length}</strong> producto{results.length === 1 ? '' : 's'}
+      <p className="mb-5 text-sm text-gray-500">
+        <strong className="text-gray-900">{results.length}</strong> producto{results.length === 1 ? '' : 's'}
       </p>
 
       {results.length > 0 ? (
@@ -242,7 +242,7 @@ export default function Catalog({
       ) : (
         <div className="rounded-3xl border border-sport-border bg-sport-surface p-12 text-center">
           <p className="font-display text-xl uppercase tracking-wide">Sin resultados</p>
-          <p className="mt-2 text-sm text-white/50">
+          <p className="mt-2 text-sm text-gray-500">
             No encontramos productos con esos filtros. Prueba con otros términos.
           </p>
           <button type="button" onClick={clearFilters} className="btn-primary mt-6">

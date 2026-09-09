@@ -82,14 +82,14 @@ export default function ProductCard({ product }: { product: Product }) {
         onClick={() => toggleFavorite(product.id)}
         aria-label={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
         className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-sport-border bg-sport-card/90 backdrop-blur transition-all ${
-          fav ? 'text-red-500' : 'text-white/50 hover:text-red-500'
+          fav ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
         }`}
       >
         <Heart size={16} className={fav ? 'fill-red-500' : ''} />
       </button>
 
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
           {product.brand}
         </p>
         <Link
@@ -98,20 +98,20 @@ export default function ProductCard({ product }: { product: Product }) {
         >
           {product.name}
         </Link>
-        <div className="flex items-center gap-1.5 text-xs text-white/50">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500">
           <Stars rating={product.rating} size={13} />
-          <span className="font-semibold text-white">{product.rating.toFixed(1)}</span>
+          <span className="font-semibold text-gray-900">{product.rating.toFixed(1)}</span>
           <span>({product.reviews})</span>
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
             {product.oldPrice && (
-              <span className="text-sm text-white/50 line-through">
+              <span className="text-sm text-gray-500 line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
-            <span className="text-[18px] font-bold leading-none text-white">
+            <span className="text-[18px] font-bold leading-none text-gray-900">
               {formatPrice(product.price)}
             </span>
           </div>

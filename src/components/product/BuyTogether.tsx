@@ -85,7 +85,7 @@ export default function BuyTogether({
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 sm:justify-center">
                     {p.oldPrice && (
-                      <span className="text-[11px] text-white/50 line-through">
+                      <span className="text-[11px] text-gray-500 line-through">
                         {formatPrice(p.oldPrice)}
                       </span>
                     )}
@@ -109,7 +109,7 @@ export default function BuyTogether({
               <p className="text-sm">
                 <span className="font-bold">Total: {formatPrice(total)}</span>
                 {oldTotal > total && (
-                  <span className="ml-2 text-xs text-white/50 line-through">
+                  <span className="ml-2 text-xs text-gray-500 line-through">
                     {formatPrice(oldTotal)}
                   </span>
                 )}

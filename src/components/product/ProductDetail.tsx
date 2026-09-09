@@ -87,7 +87,7 @@ export default function ProductDetail({
 
   return (
     <div className="container-px py-10">
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-white/50">
+      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
         <Link href="/" className="transition-colors hover:text-sport-orange">
           Inicio
         </Link>
@@ -96,7 +96,7 @@ export default function ProductDetail({
           Catálogo
         </Link>
         <ChevronRight size={12} />
-        <span className="font-semibold text-white">{product.name}</span>
+        <span className="font-semibold text-gray-900">{product.name}</span>
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
@@ -149,7 +149,7 @@ export default function ProductDetail({
               {formatPrice(product.price)}
             </span>
             {product.oldPrice && (
-              <span className="pb-1 text-base text-white/50 line-through">
+              <span className="pb-1 text-base text-gray-500 line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
@@ -162,9 +162,9 @@ export default function ProductDetail({
           <div className="mt-3">
             <LiveViewers productId={product.id} />
           </div>
-          <p className="mt-5 text-sm leading-relaxed text-white/80">{product.desc}</p>
+          <p className="mt-5 text-sm leading-relaxed text-gray-700">{product.desc}</p>
           {product.registroIsp && (
-            <p className="mt-2 text-xs font-semibold text-white/50">
+            <p className="mt-2 text-xs font-semibold text-gray-500">
               Reg. ISP N° {product.registroIsp}
             </p>
           )}
@@ -191,7 +191,7 @@ export default function ProductDetail({
                       'rounded-full border px-4 py-2 text-sm font-bold transition-all',
                       v.name === flavor
                         ? 'border-accent bg-sport-green text-white shadow-sm'
-                        : 'border-sport-border bg-sport-card text-white hover:border-accent',
+                        : 'border-sport-border bg-sport-card text-gray-900 hover:border-accent',
                     )}
                   >
                     {v.name}
@@ -221,15 +221,15 @@ export default function ProductDetail({
                 <Plus size={16} />
               </button>
             </div>
-            <p className="text-xs text-white/50">
-              Stock disponible: <strong className="text-white">{stock} uds.</strong>
+            <p className="text-xs text-gray-500">
+              Stock disponible: <strong className="text-gray-900">{stock} uds.</strong>
             </p>
             <button
               type="button"
               onClick={() => toggleFavorite(product.id)}
               aria-label={fav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
               className={`ml-auto flex h-12 w-12 items-center justify-center rounded-full border border-sport-border transition-colors ${
-                fav ? 'text-red-500' : 'text-white/50 hover:text-red-500'
+                fav ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
               }`}
             >
               <Heart size={18} className={fav ? 'fill-red-500' : ''} />
@@ -251,7 +251,7 @@ export default function ProductDetail({
             </button>
           </div>
           <BundleOffers productId={product.id} />
-          <p className="mt-3 text-center text-xs text-white/50 sm:text-left">
+          <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
             Envío gratis en metro sobre {formatPrice(getSettings().freeShippingFrom)}.
           </p>
         </div>
@@ -260,13 +260,13 @@ export default function ProductDetail({
       <div className="mt-14 grid gap-8 lg:grid-cols-3">
         <div className="rounded-3xl border border-sport-border p-6 lg:col-span-2">
           <SectionTitle>Detalles del producto</SectionTitle>
-          <div className="space-y-6 text-sm leading-relaxed text-white/80">
+          <div className="space-y-6 text-sm leading-relaxed text-gray-700">
             <div>
-              <h3 className="mb-1.5 font-bold text-white">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
+              <h3 className="mb-1.5 font-bold text-gray-900">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
               <p>{product.modoUso}</p>
             </div>
             <div>
-              <h3 className="mb-1.5 font-bold text-white">{isAccessory ? 'Detalles' : 'Ingredientes'}</h3>
+              <h3 className="mb-1.5 font-bold text-gray-900">{isAccessory ? 'Detalles' : 'Ingredientes'}</h3>
               <ul className="grid gap-1.5 sm:grid-cols-2">
                 {product.ingredientes.map((ing) => (
                   <li key={ing} className="flex items-start gap-2">
@@ -284,7 +284,7 @@ export default function ProductDetail({
           <ul className="divide-y divide-line">
             {product.nutrientes.map(([label, value]) => (
               <li key={label} className="flex items-center justify-between py-2.5 text-sm">
-                <span className="text-white/50">{label}</span>
+                <span className="text-gray-500">{label}</span>
                 <span className="font-bold">{value}</span>
               </li>
             ))}

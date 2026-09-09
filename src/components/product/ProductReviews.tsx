@@ -73,7 +73,7 @@ export default function ProductReviews({
         <div className="flex items-center gap-2 text-sm">
           <Stars rating={average} size={16} />
           <span className="font-bold">{average.toFixed(1)}</span>
-          <span className="text-white/50">
+          <span className="text-gray-500">
             ({reviews.length + reviewCount} reseñas)
           </span>
         </div>
@@ -85,10 +85,10 @@ export default function ProductReviews({
             <article key={r.id} className="rounded-3xl border border-sport-border bg-sport-card p-5">
               <div className="flex items-center justify-between">
                 <Stars rating={r.rating} size={14} />
-                <span className="text-[11px] text-white/50">{formatDate(r.createdAt)}</span>
+                <span className="text-[11px] text-gray-500">{formatDate(r.createdAt)}</span>
               </div>
               <p className="mt-3 text-sm leading-relaxed">&ldquo;{r.text}&rdquo;</p>
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-white/50">
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-gray-500">
                 — {r.name}
               </p>
               {r.verified && (
@@ -100,7 +100,7 @@ export default function ProductReviews({
           ))}
         </div>
       ) : (
-        <p className="mb-5 rounded-2xl border border-sport-border bg-sport-surface px-5 py-4 text-sm text-white/50">
+        <p className="mb-5 rounded-2xl border border-sport-border bg-sport-surface px-5 py-4 text-sm text-gray-500">
           Aún no hay reseñas de clientes para este producto. ¡Sé el primero en opinar!
         </p>
       )}
@@ -149,7 +149,7 @@ export default function ProductReviews({
             className="input resize-none"
           />
           {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-white/50">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-gray-500">
             <input
               type="checkbox"
               checked={verified}
