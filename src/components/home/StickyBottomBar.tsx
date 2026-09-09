@@ -63,7 +63,7 @@ export default function StickyBottomBar() {
               whileTap={{ scale: 0.95 }}
               type="button"
               onClick={addPack}
-              className="flex h-11 items-center gap-2 rounded-full bg-sport-green px-5 text-[13px] font-extrabold text-white shadow-sportGlow"
+              className="flex h-11 items-center gap-2 rounded-full bg-sport-green px-5 text-[13px] font-extrabold text-white shadow-sportGlow focus-visible:ring-2 focus-visible:ring-sport-green"
             >
               <ShoppingBag size={16} />
               Agregar

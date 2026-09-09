@@ -31,8 +31,8 @@ const config: Config = {
       boxShadow: {
         soft: '0 12px 40px -14px rgba(11, 11, 11, 0.14)',
         card: '0 2px 14px -4px rgba(11, 11, 11, 0.08)',
-        glow: '0 14px 44px -16px rgba(178, 242, 55, 0.5)',
-        sportGlow: '0 14px 44px -16px rgba(16, 185, 129, 0.4)',
+        glow: '0 14px 44px -16px rgba(93, 214, 44, 0.5)',
+        sportGlow: '0 14px 44px -16px rgba(93, 214, 44, 0.4)',
         sportCard: '0 8px 32px -8px rgba(0, 0, 0, 0.4)',
       },
       borderRadius: {

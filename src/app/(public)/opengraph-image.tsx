@@ -33,7 +33,7 @@ export default async function Image() {
             width: 620,
             height: 620,
             borderRadius: 999,
-            background: '#b2f237',
+            background: '#5DD62C',
             opacity: 0.9,
           }}
         />
@@ -62,12 +62,12 @@ export default async function Image() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#b2f237', letterSpacing: 3 }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: '#5DD62C', letterSpacing: 3 }}>
             PRODUCTOS ORIGINALES · SANTIAGO
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', fontSize: 82, fontWeight: 900, lineHeight: 0.98 }}>
             <span>WHEY +</span>
-            <span style={{ color: '#b2f237' }}>CREATINA</span>
+            <span style={{ color: '#5DD62C' }}>CREATINA</span>
           </div>
           <div style={{ fontSize: 32, color: 'rgba(255,255,255,0.78)' }}>
             Packs desde $27.500 · Elige tu sabor
@@ -78,7 +78,7 @@ export default async function Image() {
           <div style={{ fontSize: 24, fontWeight: 700 }}>
             Compra por WhatsApp · Entrega en estaciones de Metro
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#0b0b0b', background: '#b2f237', padding: '12px 20px', borderRadius: 999 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#0b0b0b', background: '#5DD62C', padding: '12px 20px', borderRadius: 999 }}>
             {BRAND.whatsapp}
           </div>
         </div>

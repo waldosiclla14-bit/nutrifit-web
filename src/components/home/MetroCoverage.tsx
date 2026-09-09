@@ -10,7 +10,7 @@ export default function MetroCoverage() {
             <span className="flex h-16 w-16 items-center justify-center rounded-full bg-sport-bg text-sport-green mx-auto">
               <Train size={28} />
             </span>
-            <h2 className="mt-6 font-display text-3xl uppercase tracking-wide text-white lg:text-4xl">
+            <h2 className="mt-6 font-display text-[28px] uppercase tracking-wide text-white lg:text-[36px]">
               7 líneas · <span className="text-sport-green">+140 estaciones</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-white/50">

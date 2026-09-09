@@ -30,7 +30,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-sport-border/50 bg-sport-card shadow-sportCard transition-all duration-300 hover:-translate-y-1 hover:border-sport-green/40">
+    <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-sport-border/50 bg-sport-card shadow-sportCard transition-all duration-300 hover:-translate-y-1 hover:border-sport-green/40">
       <Link
         href={`/productos/${product.slug}`}
         className="relative block aspect-[4/5] overflow-hidden bg-white/[0.03]"

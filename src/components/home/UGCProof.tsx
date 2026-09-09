@@ -117,7 +117,7 @@ export default function UGCProof() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-sport-surface py-16 sm:py-20">
+    <section className="relative overflow-hidden bg-sport-surface py-14 lg:py-[100px]">
       <div className="container-px">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -130,7 +130,7 @@ export default function UGCProof() {
             <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">
               Opiniones reales
             </p>
-            <h2 className="mt-3 font-display text-4xl uppercase tracking-wide text-white sm:text-5xl">
+            <h2 className="mt-3 font-display text-[28px] uppercase tracking-wide text-white lg:text-[36px]">
               Lo que dicen nuestros clientes
             </h2>
             <a
