@@ -24,6 +24,25 @@ export class CustomersService {
     });
   }
 
+  async getSegments() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [vip, recurrentes, nuevos, dormidos, top] = await Promise.all([
+      this.prisma.customer.count({ where: { OR: [{ isVip: true }, { totalSpent: { gte: 100000 } }] } }),
+      this.prisma.customer.count({ where: { totalOrders: { gte: 2 } } }),
+      this.prisma.customer.count({ where: { totalOrders: 1 } }),
+      this.prisma.customer.count({ where: { lastOrderAt: { lt: thirtyDaysAgo } } }),
+      this.prisma.customer.findMany({
+        orderBy: { totalSpent: 'desc' },
+        take: 5,
+        select: { name: true, totalSpent: true, totalOrders: true },
+      }),
+    ]);
+    return {
+      counts: { recurrentes, nuevos, dormidos, vip },
+      top: top.map((c) => ({ name: c.name, spent: c.totalSpent, orders: c.totalOrders })),
+    };
+  }
+
   async findByPhone(phone: string) {
     return this.prisma.customer.findFirst({
       where: { phone },

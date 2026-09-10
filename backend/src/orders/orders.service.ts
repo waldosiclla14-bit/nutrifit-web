@@ -974,11 +974,15 @@ export class OrdersService implements OnModuleInit {
   }
 
   async getStats() {
+    const now = new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    // Same-hour window yesterday (fair intraday comparison, avoids fake -100% at dawn)
+    const dayElapsedMs = now.getTime() - today.getTime();
+    const yesterdayToDate = new Date(yesterday.getTime() + dayElapsedMs);
     // Previous month, same elapsed days (fair month-to-date comparison)
     const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const elapsedMs = today.getTime() - monthStart.getTime();
@@ -999,8 +1003,8 @@ export class OrdersService implements OnModuleInit {
           SUM(CASE WHEN "createdAt" >= ${today} THEN "total" ELSE 0 END)::int AS today_total,
           SUM(CASE WHEN "createdAt" >= ${today} THEN "profit" ELSE 0 END)::int AS today_profit,
           COUNT(CASE WHEN "createdAt" >= ${today} THEN 1 END)::int AS today_count,
-          SUM(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${today} THEN "total" ELSE 0 END)::int AS yesterday_total,
-          COUNT(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${today} THEN 1 END)::int AS yesterday_count,
+          SUM(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${yesterdayToDate} THEN "total" ELSE 0 END)::int AS yesterday_total,
+          COUNT(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${yesterdayToDate} THEN 1 END)::int AS yesterday_count,
           SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "total" ELSE 0 END)::int AS month_total,
           SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "profit" ELSE 0 END)::int AS month_profit,
           COUNT(CASE WHEN "createdAt" >= ${monthStart} THEN 1 END)::int AS month_count,

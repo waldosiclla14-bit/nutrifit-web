@@ -26,6 +26,13 @@ export class CustomersController {
     return this.customersService.findByPhone(phone);
   }
 
+  @Get('segments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  getSegments() {
+    return this.customersService.getSegments();
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)

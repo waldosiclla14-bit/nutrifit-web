@@ -13,6 +13,7 @@ import { PayDonut, SalesArea, TopBars } from './charts';
 export function Reportes({ token }: { token: string }) {
   const [range, setRange] = useState<'hoy' | '7d' | '30d' | 'mes'>('30d');
   const [report, setReport] = useState<AdminReport | null>(null);
+  const [prevReport, setPrevReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -25,8 +26,17 @@ export function Reportes({ token }: { token: string }) {
       else if (range === '30d') from.setDate(from.getDate() - 30);
       else from = new Date(to.getFullYear(), to.getMonth(), 1);
       const q = `from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`;
-      const r = await apiFetch<AdminReport>(`/orders/reports?${q}`, { token });
+      // Ventana previa de igual duración para comparar
+      const duration = to.getTime() - from.getTime();
+      const prevTo = new Date(from.getTime() - 1);
+      const prevFrom = new Date(prevTo.getTime() - duration);
+      const pq = `from=${prevFrom.toISOString().split('T')[0]}&to=${prevTo.toISOString().split('T')[0]}`;
+      const [r, p] = await Promise.all([
+        apiFetch<AdminReport>(`/orders/reports?${q}`, { token }),
+        apiFetch<AdminReport>(`/orders/reports?${pq}`, { token }).catch(() => null),
+      ]);
       setReport(r);
+      setPrevReport(p);
     } catch (err: any) {
       toast.error(err?.message || 'Error al cargar reportes.');
     } finally {
@@ -55,6 +65,33 @@ export function Reportes({ token }: { token: string }) {
     if (!report) return [];
     return report.categories.slice(0, 5);
   }, [report]);
+
+  const pctDelta = (cur: number, prev: number) =>
+    prev > 0 ? Math.round(((cur - prev) / prev) * 100 * 10) / 10 : 0;
+  const deltaCls = (v: number) => (v > 0 ? 'text-emerald-600' : v < 0 ? 'text-red-600' : 'text-muted');
+  const deltaTxt = (v: number) => `${v > 0 ? '▲' : v < 0 ? '▼' : '•'} ${Math.abs(v)}% vs ant.`;
+
+  const kpis = useMemo(() => {
+    if (!report) return [];
+    const p = prevReport;
+    const dSales = pctDelta(report.totalSales, p?.totalSales ?? 0);
+    const dProfit = pctDelta(report.totalProfit, p?.totalProfit ?? 0);
+    const dOrders = pctDelta(report.orderCount, p?.orderCount ?? 0);
+    const dTicket = pctDelta(report.avgTicket, p?.avgTicket ?? 0);
+    const dMargin = Math.round(((report.margin - (p?.margin ?? report.margin)) * 10)) / 10;
+    return [
+      { label: 'Ventas', value: formatPrice(report.totalSales), d: dSales, dt: deltaTxt(dSales) },
+      { label: 'Utilidad', value: formatPrice(report.totalProfit), d: dProfit, dt: deltaTxt(dProfit) },
+      {
+        label: 'Margen',
+        value: `${report.margin}%`,
+        d: dMargin,
+        dt: `${dMargin > 0 ? '▲' : dMargin < 0 ? '▼' : '•'} ${Math.abs(dMargin)} pp vs ant.`,
+      },
+      { label: 'Órdenes', value: String(report.orderCount), d: dOrders, dt: deltaTxt(dOrders) },
+      { label: 'Ticket promedio', value: formatPrice(report.avgTicket), d: dTicket, dt: deltaTxt(dTicket) },
+    ];
+  }, [report, prevReport]);
 
   return (
     <div className="space-y-6">
@@ -90,16 +127,11 @@ export function Reportes({ token }: { token: string }) {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {[
-              { label: 'Ventas', value: formatPrice(report.totalSales) },
-              { label: 'Utilidad', value: formatPrice(report.totalProfit) },
-              { label: 'Margen', value: `${report.margin}%` },
-              { label: 'Órdenes', value: String(report.orderCount) },
-              { label: 'Ticket promedio', value: formatPrice(report.avgTicket) },
-            ].map((c) => (
+            {kpis.map((c) => (
               <div key={c.label} className="rounded-3xl border border-line bg-paper p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">{c.label}</p>
                 <p className="mt-2 font-display text-2xl uppercase">{c.value}</p>
+                <p className={`mt-1 text-[11px] font-semibold ${deltaCls(c.d)}`}>{c.dt}</p>
               </div>
             ))}
           </div>

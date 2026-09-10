@@ -11,7 +11,7 @@ import type {
   AdminGoals,
   AdminInventoryValue,
   AdminReport,
-  AdminCustomer,
+  AdminSegments,
 } from '@/types/admin';
 import { CountUp, HourBars, SalesArea, Spark, TopBars } from './charts';
 import { GoalEditor } from './GoalEditor';
@@ -24,6 +24,14 @@ const RANGES = [
   ['mes', 'Mes'],
   ['año', 'Año'],
 ] as const;
+
+const TREND_LABEL: Record<RangeKey, string> = {
+  '7d': 'Últimos 7 días',
+  '30d': 'Últimos 30 días',
+  '90d': 'Últimos 90 días',
+  mes: 'Este mes',
+  año: 'Este año',
+};
 
 type RangeKey = (typeof RANGES)[number][0];
 
@@ -118,7 +126,7 @@ export function Resumen({
   const [prevReport, setPrevReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
-  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [segments, setSegments] = useState<AdminSegments | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,13 +155,13 @@ export function Resumen({
     let alive = true;
     (async () => {
       try {
-        const [ls, cs] = await Promise.all([
+        const [ls, sg] = await Promise.all([
           apiFetch<any[]>('/products/low-stock', { token }).catch(() => [] as any[]),
-          apiFetch<any>('/customers?page=1&limit=50', { token }).catch(() => ({ data: [] })),
+          apiFetch<AdminSegments>('/customers/segments', { token }).catch(() => null),
         ]);
         if (!alive) return;
         setLowStock(normalizeLowStock(Array.isArray(ls) ? ls : []));
-        setCustomers(cs?.data || (Array.isArray(cs) ? cs : []));
+        setSegments(sg);
       } catch {
         if (alive) toast.error('Error al cargar stock y clientes.');
       }
@@ -203,40 +211,49 @@ export function Resumen({
 
   const rangeDaily = useMemo(() => {
     if (!report) return [];
-    const map = new Map<string, number>();
+    const map = new Map<string, { total: number; profit: number }>();
     for (const o of report.orders) {
       const d = o.createdAt.slice(0, 10);
-      map.set(d, (map.get(d) || 0) + (o.total || 0));
+      const cur = map.get(d) || { total: 0, profit: 0 };
+      cur.total += o.total || 0;
+      cur.profit += o.profit || 0;
+      map.set(d, cur);
     }
-    return [...map.entries()].map(([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date));
+    return [...map.entries()]
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }, [report]);
 
-  const customerData = useMemo(() => {
-    const normalized = customers.map((c) => ({
-      name: String(c.name || 'Cliente'),
-      spent: Number(c.totalSpent) || 0,
-      orders: Number(c.totalOrders) || 0,
-      lastOrderAt: c.lastOrderAt || null,
-      isVip: !!c.isVip,
-    }));
-    const top = [...normalized].sort((a, b) => b.spent - a.spent).slice(0, 5);
-    const now = Date.now();
-    const THIRTY = 30 * DAY_MS;
-    let recurrentes = 0;
-    let nuevos = 0;
-    let dormidos = 0;
-    let vip = 0;
-    for (const c of normalized) {
-      if (c.isVip || c.spent >= 100000) vip++;
-      if (c.orders >= 2) recurrentes++;
-      else if (c.orders === 1) nuevos++;
-      if (c.lastOrderAt) {
-        const t = new Date(c.lastOrderAt).getTime();
-        if (!isNaN(t) && now - t > THIRTY) dormidos++;
-      }
+  const trendDaily = useMemo(() => {
+    if (rangeDaily.length > 0) return rangeDaily;
+    return (stats?.salesByDay ?? []).map((d) => ({ date: d.date, total: d.total, profit: d.profit }));
+  }, [rangeDaily, stats]);
+
+  const trendTop = useMemo(() => {
+    if (report && report.categories.length > 0) {
+      const items = report.categories.slice(0, 5);
+      const max = Math.max(...items.map((x) => x.total), 1);
+      return items.map((c) => ({
+        label: c.product,
+        sub: `${c.quantity} uds · ${formatPrice(c.total)}`,
+        value: c.total,
+        max,
+      }));
     }
-    return { top, counts: { recurrentes, nuevos, dormidos, vip } };
-  }, [customers]);
+    const fallback = stats?.topProducts ?? [];
+    const max = Math.max(...fallback.map((x) => x.revenue), 1);
+    return fallback.map((p) => ({
+      label: p.name,
+      sub: `${p.quantity} uds · ${formatPrice(p.revenue)}`,
+      value: p.revenue,
+      max,
+    }));
+  }, [report, stats]);
+
+  const customerData = useMemo<AdminSegments>(() => {
+    if (!segments) return { top: [], counts: { recurrentes: 0, nuevos: 0, dormidos: 0, vip: 0 } };
+    return segments;
+  }, [segments]);
 
   if (!stats) return null;
 
@@ -463,27 +480,20 @@ export function Resumen({
 
         <div className="rounded-3xl border border-line bg-paper p-6">
           <div className="flex items-center justify-between">
-            <p className="font-display text-lg uppercase">Últimos 7 días</p>
+            <p className="font-display text-lg uppercase">{TREND_LABEL[range]}</p>
             <span className="text-[11px] text-muted">verde = ventas · naranja = utilidad</span>
           </div>
-          {stats.salesByDay.length > 0 ? (
+          {trendDaily.length > 0 ? (
             <div className="mt-4">
-              <SalesArea data={stats.salesByDay} />
+              <SalesArea data={trendDaily} />
             </div>
           ) : (
-            <p className="mt-4 text-sm text-muted">Sin ventas en los últimos 7 días.</p>
+            <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
           )}
           <p className="mt-4 font-display text-sm uppercase">Top 5 productos</p>
-          {stats.topProducts.length > 0 ? (
+          {trendTop.length > 0 ? (
             <div className="mt-2">
-              <TopBars
-                items={stats.topProducts.map((p) => ({
-                  label: p.name,
-                  sub: `${p.quantity} uds · ${formatPrice(p.revenue)}`,
-                  value: p.revenue,
-                  max: Math.max(...stats.topProducts.map((x) => x.revenue)),
-                }))}
-              />
+              <TopBars items={trendTop} />
             </div>
           ) : (
             <p className="mt-2 text-sm text-muted">Sin datos aún.</p>
@@ -512,7 +522,8 @@ export function Resumen({
           )}
         </div>
 
-        <div className="rounded-3xl border border-line bg-paper p-6">
+        <div className="space-y-6">
+          <div className="rounded-3xl border border-line bg-paper p-6">
           <div className="flex items-center justify-between">
             <p className="font-display text-lg uppercase">Stock bajo</p>
             {lowStock.length > 0 && (
@@ -552,9 +563,10 @@ export function Resumen({
               )}
             </>
           )}
-        </div>
+          </div>
 
-        <LowStockBySupplier token={token} />
+          <LowStockBySupplier token={token} />
+        </div>
 
       </div>
 

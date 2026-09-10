@@ -112,6 +112,11 @@ export type AdminStats = {
   salesByDay: { date: string; total: number; profit: number; orders: number }[];
 };
 
+export type AdminSegments = {
+  counts: { recurrentes: number; nuevos: number; dormidos: number; vip: number };
+  top: { name: string; spent: number; orders: number }[];
+};
+
 export type AdminGoals = {
   dailySales: number;
   monthlySales: number;
