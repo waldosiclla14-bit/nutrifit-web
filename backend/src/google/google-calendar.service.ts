@@ -2,6 +2,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google, calendar_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { PrismaService } from '../prisma/prisma.service';
+
+const TOKENS_KEY = 'google_oauth_tokens';
 
 @Injectable()
 export class GoogleCalendarService implements OnModuleInit {
@@ -9,10 +12,11 @@ export class GoogleCalendarService implements OnModuleInit {
   private calendar: calendar_v3.Calendar | null = null;
   private oauth2Client: OAuth2Client | null = null;
   private isConfigured = false;
+  private hasUserAuth = false;
 
-  constructor(private config: ConfigService) {}
+  constructor(private config: ConfigService, private prisma: PrismaService) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
     const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
@@ -25,7 +29,35 @@ export class GoogleCalendarService implements OnModuleInit {
     this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
     this.isConfigured = true;
+    // Re-persistir tokens cuando la librería los refresque automáticamente
+    this.oauth2Client.on('tokens', () => {
+      this.saveTokens().catch((e) => this.logger.warn(`No se pudieron guardar tokens: ${e?.message}`));
+    });
+    // Restaurar autorización del usuario guardada en BD (sobrevive reinicios)
+    try {
+      const row = await this.prisma.config.findUnique({ where: { key: TOKENS_KEY } });
+      if (row) {
+        const tokens = JSON.parse(row.value);
+        if (tokens?.refresh_token || tokens?.access_token) {
+          this.oauth2Client.setCredentials(tokens);
+          this.hasUserAuth = true;
+          this.logger.log('Google Calendar: sesión de usuario restaurada desde BD');
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn(`No se pudieron restaurar tokens: ${e?.message}`);
+    }
     this.logger.log('Google Calendar habilitado');
+  }
+
+  private async saveTokens() {
+    if (!this.oauth2Client) return;
+    await this.prisma.config.upsert({
+      where: { key: TOKENS_KEY },
+      update: { value: JSON.stringify(this.oauth2Client.credentials) },
+      create: { key: TOKENS_KEY, value: JSON.stringify(this.oauth2Client.credentials) },
+    });
+    this.hasUserAuth = true;
   }
 
   getAuthUrl(state?: string) {
@@ -49,12 +81,13 @@ export class GoogleCalendarService implements OnModuleInit {
 
     const { tokens } = await this.oauth2Client.getToken(code);
     this.oauth2Client.setCredentials(tokens);
+    await this.saveTokens();
     this.logger.log('Google Calendar credentials actualizados');
     return true;
   }
 
   isReady() {
-    return this.isConfigured && this.calendar !== null;
+    return this.isConfigured && this.calendar !== null && this.hasUserAuth;
   }
 
   async createDeliveryEvent(delivery: {
