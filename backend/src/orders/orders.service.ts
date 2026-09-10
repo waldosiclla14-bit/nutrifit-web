@@ -979,6 +979,10 @@ export class OrdersService implements OnModuleInit {
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    // Previous month, same elapsed days (fair month-to-date comparison)
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const elapsedMs = today.getTime() - monthStart.getTime();
+    const prevMonthToDate = new Date(prevMonthStart.getTime() + elapsedMs);
 
     const paidStatuses = [OrderStatus.PAID, OrderStatus.DELIVERED];
 
@@ -989,6 +993,7 @@ export class OrdersService implements OnModuleInit {
         today_total: bigint; today_profit: bigint; today_count: bigint;
         yesterday_total: bigint; yesterday_count: bigint;
         month_total: bigint; month_profit: bigint; month_count: bigint;
+        prev_month_total: bigint; prev_month_count: bigint;
       }[]>`
         SELECT
           SUM(CASE WHEN "createdAt" >= ${today} THEN "total" ELSE 0 END)::int AS today_total,
@@ -998,7 +1003,9 @@ export class OrdersService implements OnModuleInit {
           COUNT(CASE WHEN "createdAt" >= ${yesterday} AND "createdAt" < ${today} THEN 1 END)::int AS yesterday_count,
           SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "total" ELSE 0 END)::int AS month_total,
           SUM(CASE WHEN "createdAt" >= ${monthStart} THEN "profit" ELSE 0 END)::int AS month_profit,
-          COUNT(CASE WHEN "createdAt" >= ${monthStart} THEN 1 END)::int AS month_count
+          COUNT(CASE WHEN "createdAt" >= ${monthStart} THEN 1 END)::int AS month_count,
+          SUM(CASE WHEN "createdAt" >= ${prevMonthStart} AND "createdAt" < ${prevMonthToDate} THEN "total" ELSE 0 END)::int AS prev_month_total,
+          COUNT(CASE WHEN "createdAt" >= ${prevMonthStart} AND "createdAt" < ${prevMonthToDate} THEN 1 END)::int AS prev_month_count
         FROM "orders"
         WHERE "status" IN ('PAID', 'DELIVERED')
       `,
@@ -1036,12 +1043,19 @@ export class OrdersService implements OnModuleInit {
     const monthTotal = Number(s.month_total);
     const monthProfit = Number(s.month_profit);
     const todayCount = Number(s.today_count);
+    const yesterdayCount = Number(s.yesterday_count);
     const monthCount = Number(s.month_count);
+    const prevMonthTotal = Number(s.prev_month_total);
+    const prevMonthCount = Number(s.prev_month_count);
 
     const [totalOrders, pendingOrders, totalCustomers] = counts;
 
-    const salesGrowth =
-      yesterdayTotal > 0 ? Math.round(((todayTotal - yesterdayTotal) / yesterdayTotal) * 100 * 10) / 10 : 0;
+    const pct = (cur: number, prev: number) =>
+      prev > 0 ? Math.round(((cur - prev) / prev) * 100 * 10) / 10 : 0;
+    const salesGrowth = pct(todayTotal, yesterdayTotal);
+    const ordersGrowth = pct(todayCount, yesterdayCount);
+    const monthGrowth = pct(monthTotal, prevMonthTotal);
+    const monthOrdersGrowth = pct(monthCount, prevMonthCount);
     const avgTicket = todayCount > 0 ? Math.round(todayTotal / todayCount) : 0;
     const monthAvgTicket = monthCount > 0 ? Math.round(monthTotal / monthCount) : 0;
     const todayMargin = todayTotal > 0 ? Math.round((todayProfit / todayTotal) * 100 * 10) / 10 : 0;
@@ -1057,6 +1071,9 @@ export class OrdersService implements OnModuleInit {
       monthProfit,
       monthMargin,
       salesGrowth,
+      ordersGrowth,
+      monthGrowth,
+      monthOrdersGrowth,
       avgTicket,
       monthAvgTicket,
       totalOrders,

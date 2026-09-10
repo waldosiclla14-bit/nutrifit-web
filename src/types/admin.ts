@@ -99,6 +99,9 @@ export type AdminStats = {
   monthProfit: number;
   monthMargin: number;
   salesGrowth: number;
+  ordersGrowth: number;
+  monthGrowth: number;
+  monthOrdersGrowth: number;
   avgTicket: number;
   monthAvgTicket: number;
   totalOrders: number;

@@ -231,25 +231,30 @@ export function Resumen({
 
   if (!stats) return null;
 
-  const growth = stats.salesGrowth;
-  const growthTxt =
-    stats.todaySales === 0 && stats.salesGrowth === 0
+  const growthTxtFor = (v: number, suffix: string) =>
+    stats.todaySales === 0 && v === 0 && suffix === 'vs ayer'
       ? 'sin ventas aún'
-      : `${growth > 0 ? '▲' : growth < 0 ? '▼' : '•'} ${Math.abs(growth)}% vs ayer`;
+      : `${v > 0 ? '▲' : v < 0 ? '▼' : '•'} ${Math.abs(v)}% ${suffix}`;
+  const growthClsFor = (v: number) => (v > 0 ? 'text-emerald-600' : v < 0 ? 'text-red-600' : 'text-muted');
 
-  const cards: { label: string; value: string; sub: string; extra: string; Icon: LucideIcon }[] = [
+  const growth = stats.salesGrowth;
+  const growthTxt = growthTxtFor(growth, 'vs ayer');
+
+  const cards: { label: string; value: string; sub: string; extra: string; extraCls: string; Icon: LucideIcon }[] = [
     {
       label: 'Ventas hoy',
       value: formatPrice(stats.todaySales),
-      sub: `${stats.todayOrders} órdenes · ticket ${formatPrice(stats.avgTicket)}`,
+      sub: `${stats.todayOrders} órdenes (${growthTxtFor(stats.ordersGrowth ?? 0, 'vs ayer')}) · ticket ${formatPrice(stats.avgTicket)}`,
       extra: growthTxt,
+      extraCls: growthClsFor(growth),
       Icon: TrendingUp,
     },
     {
       label: 'Ventas del mes',
       value: formatPrice(stats.monthSales),
-      sub: `${stats.monthOrders} órdenes · ticket ${formatPrice(stats.monthAvgTicket)}`,
-      extra: `Utilidad ${formatPrice(stats.monthProfit)} · margen ${stats.monthMargin}%`,
+      sub: `${stats.monthOrders} órdenes (${growthTxtFor(stats.monthOrdersGrowth ?? 0, 'vs mes ant.')}) · ticket ${formatPrice(stats.monthAvgTicket)}`,
+      extra: growthTxtFor(stats.monthGrowth ?? 0, 'vs mes ant.'),
+      extraCls: growthClsFor(stats.monthGrowth ?? 0),
       Icon: CalendarDays,
     },
     {
@@ -257,6 +262,7 @@ export function Resumen({
       value: String(stats.pendingOrders),
       sub: `${stats.totalOrders} totales`,
       extra: `Utilidad hoy ${formatPrice(stats.todayProfit)}`,
+      extraCls: 'text-accent',
       Icon: ShoppingBag,
     },
     {
@@ -264,6 +270,7 @@ export function Resumen({
       value: String(stats.totalCustomers),
       sub: 'registrados',
       extra: `Margen hoy ${stats.todayMargin}%`,
+      extraCls: 'text-accent',
       Icon: Users,
     },
   ];
@@ -313,7 +320,7 @@ export function Resumen({
             <p className="pr-10 text-xs font-semibold uppercase tracking-widest text-muted">{c.label}</p>
             <p className="mt-2 font-display text-3xl uppercase">{c.value}</p>
             <p className="mt-1 text-xs text-muted">{c.sub}</p>
-            <p className="mt-1 text-[11px] font-semibold text-accent">{c.extra}</p>
+            <p className={`mt-1 text-[11px] font-semibold ${c.extraCls}`}>{c.extra}</p>
           </div>
         ))}
       </div>
