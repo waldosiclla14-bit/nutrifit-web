@@ -13,7 +13,7 @@ import type {
   AdminReport,
   AdminCustomer,
 } from '@/types/admin';
-import { Bars7 } from './Bars7';
+import { CountUp, HourBars, SalesArea, Spark, TopBars } from './charts';
 import { GoalEditor } from './GoalEditor';
 import LowStockBySupplier from './LowStockBySupplier';
 
@@ -36,7 +36,6 @@ type LowStockItem = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21];
 
 function iso(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -202,6 +201,16 @@ export function Resumen({
     return { hour, total };
   }, [byHour]);
 
+  const rangeDaily = useMemo(() => {
+    if (!report) return [];
+    const map = new Map<string, number>();
+    for (const o of report.orders) {
+      const d = o.createdAt.slice(0, 10);
+      map.set(d, (map.get(d) || 0) + (o.total || 0));
+    }
+    return [...map.entries()].map(([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date));
+  }, [report]);
+
   const customerData = useMemo(() => {
     const normalized = customers.map((c) => ({
       name: String(c.name || 'Cliente'),
@@ -240,10 +249,23 @@ export function Resumen({
   const growth = stats.salesGrowth;
   const growthTxt = growthTxtFor(growth, 'vs ayer');
 
-  const cards: { label: string; value: string; sub: string; extra: string; extraCls: string; Icon: LucideIcon }[] = [
+  const cards: {
+    label: string;
+    value: string;
+    raw?: number;
+    fmt?: (n: number) => string;
+    spark?: number[];
+    sub: string;
+    extra: string;
+    extraCls: string;
+    Icon: LucideIcon;
+  }[] = [
     {
       label: 'Ventas hoy',
       value: formatPrice(stats.todaySales),
+      raw: stats.todaySales,
+      fmt: formatPrice,
+      spark: stats.salesByDay.map((d) => d.total),
       sub: `${stats.todayOrders} órdenes (${growthTxtFor(stats.ordersGrowth ?? 0, 'vs ayer')}) · ticket ${formatPrice(stats.avgTicket)}`,
       extra: growthTxt,
       extraCls: growthClsFor(growth),
@@ -252,6 +274,9 @@ export function Resumen({
     {
       label: 'Ventas del mes',
       value: formatPrice(stats.monthSales),
+      raw: stats.monthSales,
+      fmt: formatPrice,
+      spark: (rangeDaily.length > 0 ? rangeDaily : stats.salesByDay).map((d) => d.total),
       sub: `${stats.monthOrders} órdenes (${growthTxtFor(stats.monthOrdersGrowth ?? 0, 'vs mes ant.')}) · ticket ${formatPrice(stats.monthAvgTicket)}`,
       extra: growthTxtFor(stats.monthGrowth ?? 0, 'vs mes ant.'),
       extraCls: growthClsFor(stats.monthGrowth ?? 0),
@@ -260,6 +285,9 @@ export function Resumen({
     {
       label: 'Órdenes pendientes',
       value: String(stats.pendingOrders),
+      raw: stats.pendingOrders,
+      fmt: (n) => String(n),
+      spark: stats.salesByDay.map((d) => d.orders),
       sub: `${stats.totalOrders} totales`,
       extra: `Utilidad hoy ${formatPrice(stats.todayProfit)}`,
       extraCls: 'text-accent',
@@ -268,6 +296,8 @@ export function Resumen({
     {
       label: 'Clientes',
       value: String(stats.totalCustomers),
+      raw: stats.totalCustomers,
+      fmt: (n) => String(n),
       sub: 'registrados',
       extra: `Margen hoy ${stats.todayMargin}%`,
       extraCls: 'text-accent',
@@ -297,8 +327,6 @@ export function Resumen({
   const deltaTxt = `${period.delta >= 0 ? '+' : ''}${formatPrice(period.delta)}`;
   const deltaCls = period.delta >= 0 ? 'text-emerald-600' : 'text-red-600';
 
-  const maxHour = Math.max(...byHour.map((h) => h.total), 1);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -318,8 +346,15 @@ export function Resumen({
           <div key={c.label} className="relative rounded-3xl border border-line bg-paper p-6">
             <c.Icon className="absolute right-5 top-5 h-5 w-5 text-accent/70" />
             <p className="pr-10 text-xs font-semibold uppercase tracking-widest text-muted">{c.label}</p>
-            <p className="mt-2 font-display text-3xl uppercase">{c.value}</p>
+            <p className="mt-2 font-display text-3xl uppercase">
+              {c.raw !== undefined && c.fmt ? <CountUp value={c.raw} format={c.fmt} /> : c.value}
+            </p>
             <p className="mt-1 text-xs text-muted">{c.sub}</p>
+            {c.spark && c.spark.length > 1 ? (
+              <div className="mt-2">
+                <Spark data={c.spark} />
+              </div>
+            ) : null}
             <p className={`mt-1 text-[11px] font-semibold ${c.extraCls}`}>{c.extra}</p>
           </div>
         ))}
@@ -427,25 +462,28 @@ export function Resumen({
         </div>
 
         <div className="rounded-3xl border border-line bg-paper p-6">
-          <p className="font-display text-lg uppercase">Últimos 7 días</p>
+          <div className="flex items-center justify-between">
+            <p className="font-display text-lg uppercase">Últimos 7 días</p>
+            <span className="text-[11px] text-muted">verde = ventas · naranja = utilidad</span>
+          </div>
           {stats.salesByDay.length > 0 ? (
             <div className="mt-4">
-              <Bars7 data={stats.salesByDay} />
+              <SalesArea data={stats.salesByDay} />
             </div>
           ) : (
             <p className="mt-4 text-sm text-muted">Sin ventas en los últimos 7 días.</p>
           )}
           <p className="mt-4 font-display text-sm uppercase">Top 5 productos</p>
           {stats.topProducts.length > 0 ? (
-            <div className="mt-2 space-y-2">
-              {stats.topProducts.map((p, i) => (
-                <div key={p.name} className="flex items-center justify-between text-sm">
-                  <span className="text-muted">{i + 1}. {p.name}</span>
-                  <span className="font-semibold">
-                    {p.quantity} uds · {formatPrice(p.revenue)}
-                  </span>
-                </div>
-              ))}
+            <div className="mt-2">
+              <TopBars
+                items={stats.topProducts.map((p) => ({
+                  label: p.name,
+                  sub: `${p.quantity} uds · ${formatPrice(p.revenue)}`,
+                  value: p.revenue,
+                  max: Math.max(...stats.topProducts.map((x) => x.revenue)),
+                }))}
+              />
             </div>
           ) : (
             <p className="mt-2 text-sm text-muted">Sin datos aún.</p>
@@ -460,23 +498,8 @@ export function Resumen({
             <p className="mt-4 text-sm text-muted">{loading ? 'Cargando…' : 'Sin datos del período.'}</p>
           ) : (
             <>
-              <div className="mt-4 flex h-28 items-end gap-[3px]">
-                {byHour.map((h) => (
-                  <div key={h.hour} className="flex h-full flex-1 flex-col items-center justify-end">
-                    <div
-                      className={`w-full rounded-t ${
-                        h.hour === peakHour.hour && peakHour.total > 0 ? 'bg-accent' : 'bg-accent/40'
-                      }`}
-                      style={{ height: `${Math.max((h.total / maxHour) * 100, h.total > 0 ? 4 : 1.5)}%` }}
-                      title={`${h.hour}:00 – ${formatPrice(h.total)}`}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2 flex justify-between text-[9px] text-muted">
-                {HOUR_LABELS.map((h) => (
-                  <span key={h}>{h}:00</span>
-                ))}
+              <div className="mt-4">
+                <HourBars data={byHour} peakHour={peakHour.hour} />
               </div>
               {peakHour.total > 0 ? (
                 <p className="mt-2 text-xs text-muted">

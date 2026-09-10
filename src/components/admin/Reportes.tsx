@@ -8,7 +8,7 @@ import { toast } from '@/lib/feedback';
 import { CHART_COLORS, PAYMENT_LABEL } from '@/lib/admin/constants';
 import { exportCSV } from '@/lib/admin/export';
 import type { AdminReport } from '@/types/admin';
-import { Donut } from './Donut';
+import { PayDonut, SalesArea, TopBars } from './charts';
 
 export function Reportes({ token }: { token: string }) {
   const [range, setRange] = useState<'7d' | '30d' | 'mes'>('30d');
@@ -104,21 +104,13 @@ export function Reportes({ token }: { token: string }) {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-line bg-paper p-6">
-              <p className="font-display text-lg uppercase">Ventas vs utilidad</p>
+              <div className="flex items-center justify-between">
+                <p className="font-display text-lg uppercase">Ventas vs utilidad</p>
+                <span className="text-[11px] text-muted">verde = ventas · naranja = utilidad</span>
+              </div>
               {byDay.length > 0 ? (
                 <div className="mt-4">
-                  <div className="flex h-44 items-end gap-2">
-                    {(() => {
-                      const max = Math.max(...byDay.map((x) => x.total), 1);
-                      return byDay.map((d) => (
-                        <div key={d.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                          <div className="w-full rounded-t-md bg-accent/70" style={{ height: `${Math.max((d.total / max) * 100, 3)}%` }} title={`${formatPrice(d.total)} (utilidad ${formatPrice(d.profit)})`} />
-                          <span className="text-[10px] text-muted">{d.date.slice(5)}</span>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                  <p className="mt-2 text-[11px] text-muted">Barras verdes = ventas por día. Pasa el cursor para ver utilidad.</p>
+                  <SalesArea data={byDay} />
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-muted">Sin ventas en el período.</p>
@@ -129,7 +121,10 @@ export function Reportes({ token }: { token: string }) {
               <p className="font-display text-lg uppercase">Por método de pago</p>
               {report.methods.length > 0 ? (
                 <div className="mt-4 flex items-center gap-6">
-                  <Donut data={report.methods} />
+                  <PayDonut
+                    data={report.methods.map((m) => ({ label: PAYMENT_LABEL[m.method] || m.method, total: m.total }))}
+                    colors={CHART_COLORS}
+                  />
                   <div className="space-y-2">
                     {report.methods.map((m, i) => (
                       <div key={m.method} className="flex items-center gap-2 text-sm">
@@ -150,21 +145,15 @@ export function Reportes({ token }: { token: string }) {
             <div className="rounded-3xl border border-line bg-paper p-6">
               <p className="font-display text-lg uppercase">Rendimiento por producto</p>
               {report.categories.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {report.categories.slice(0, 8).map((c) => {
-                    const max = Math.max(...report.categories.map((x) => x.total), 1);
-                    return (
-                      <div key={c.product}>
-                        <div className="flex justify-between text-xs">
-                          <span className="font-semibold">{c.product}</span>
-                          <span className="text-muted">{c.quantity} uds · {formatPrice(c.total)}</span>
-                        </div>
-                        <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-soft">
-                          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max((c.total / max) * 100, 2)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mt-4">
+                  <TopBars
+                    items={report.categories.slice(0, 8).map((c) => ({
+                      label: c.product,
+                      sub: `${c.quantity} uds · ${formatPrice(c.total)}`,
+                      value: c.total,
+                      max: Math.max(...report.categories.map((x) => x.total)),
+                    }))}
+                  />
                 </div>
               ) : (
                 <p className="mt-4 text-sm text-muted">Sin datos.</p>
