@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { toast } from '@/lib/feedback';
 
 export default function GoogleCalendarStatus() {
   const [status, setStatus] = useState<{ configured: boolean; url: string | null } | null>(null);
@@ -15,9 +16,24 @@ export default function GoogleCalendarStatus() {
   }, []);
 
   const handleConnect = async () => {
-    const res = await apiFetch('/google/calendar/auth-url');
-    if (res?.url) {
-      window.open(res.url, '_blank', 'width=600,height=700');
+    // Ventana sincrónica: evita que el navegador bloquee el popup tras el await
+    const win = window.open('about:blank', '_blank', 'width=600,height=700');
+    try {
+      const res = await apiFetch<{ configured: boolean; url: string | null }>('/google/calendar/auth-url');
+      if (res?.url) {
+        if (win) win.location.href = res.url;
+        else window.open(res.url, '_blank', 'width=600,height=700');
+      } else {
+        win?.close();
+        toast.error('Backend sin configurar: verifica GOOGLE_CLIENT_ID/SECRET en Render y que el deploy esté Live');
+      }
+    } catch (err: any) {
+      win?.close();
+      toast.error(
+        err?.status === 401 || err?.status === 403
+          ? 'Sin permiso: solo administradores pueden conectar Google Calendar'
+          : err?.message || 'No se pudo obtener la URL de autorización',
+      );
     }
   };
 
