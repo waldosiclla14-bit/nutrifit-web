@@ -23,15 +23,16 @@ export class GoogleAuthController {
 
   @Get('calendar/callback')
   async handleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
+    const frontend = process.env.FRONTEND_URL || 'https://nutrifit-web-nu.vercel.app';
     if (!code) {
-      return res.redirect('/admin?google=error');
+      return res.redirect(`${frontend}/admin?google=error`);
     }
 
     try {
       await this.googleCalendar.setCredentials(code);
-      return res.redirect('/admin?google=connected');
+      return res.redirect(`${frontend}/admin?google=connected`);
     } catch (error) {
-      return res.redirect('/admin?google=error');
+      return res.redirect(`${frontend}/admin?google=error`);
     }
   }
 
