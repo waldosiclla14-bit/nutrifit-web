@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
 
 export default function GoogleCalendarStatus() {
-  const [status, setStatus] = useState<{ configured: boolean; url: string | null } | null>(null);
+  const [status, setStatus] = useState<{ configured: boolean; url?: string | null; mode?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,6 +47,7 @@ export default function GoogleCalendarStatus() {
   }
 
   if (!status?.configured) {
+    const isService = status?.mode === 'service';
     return (
       <div className="bg-soft border border-line/20 rounded-xl p-4">
         <div className="flex items-center gap-3">
@@ -55,18 +56,26 @@ export default function GoogleCalendarStatus() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium ink">Google Calendar no conectado</p>
-            <p className="text-xs text-muted">Conecta para crear eventos automáticamente</p>
+            <p className="text-xs text-muted">
+              {isService
+                ? 'La cuenta de servicio no tiene acceso: comparte el calendario con ella en Google Calendar'
+                : 'Conecta para crear eventos automáticamente'}
+            </p>
           </div>
-          <button
-            onClick={handleConnect}
-            className="btn-primary text-xs px-3 py-2 min-h-[36px]"
-          >
-            Conectar
-          </button>
+          {!isService && (
+            <button
+              onClick={handleConnect}
+              className="btn-primary text-xs px-3 py-2 min-h-[36px]"
+            >
+              Conectar
+            </button>
+          )}
         </div>
-        <p className="text-xs text-muted/60 mt-3">
-          Requiere configurar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en el backend
-        </p>
+        {!isService && (
+          <p className="text-xs text-muted/60 mt-3">
+            Requiere configurar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en el backend
+          </p>
+        )}
       </div>
     );
   }

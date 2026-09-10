@@ -1,10 +1,16 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google, calendar_v3 } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
+import { JWT, OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 
 const TOKENS_KEY = 'google_oauth_tokens';
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+];
+
+type AuthMode = 'service' | 'oauth' | 'none';
 
 @Injectable()
 export class GoogleCalendarService implements OnModuleInit {
@@ -13,22 +19,49 @@ export class GoogleCalendarService implements OnModuleInit {
   private oauth2Client: OAuth2Client | null = null;
   private isConfigured = false;
   private hasUserAuth = false;
+  private mode: AuthMode = 'none';
+  private calendarId = 'primary';
 
   constructor(private config: ConfigService, private prisma: PrismaService) {}
 
   async onModuleInit() {
+    // Vía preferida: cuenta de servicio (sin OAuth, sin consentimientos)
+    const saEmail = this.config.get<string>('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+    const saKey = this.config.get<string>('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
+    if (saEmail && saKey) {
+      try {
+        const jwt = new JWT({
+          email: saEmail,
+          key: saKey.replace(/\\n/g, '\n'),
+          scopes: SCOPES,
+        });
+        this.calendar = google.calendar({ version: 'v3', auth: jwt });
+        this.calendarId = this.config.get<string>('GOOGLE_CALENDAR_ID') || 'primary';
+        this.isConfigured = true;
+        this.hasUserAuth = true;
+        this.mode = 'service';
+        this.logger.log(`Google Calendar habilitado (service account, calendar=${this.calendarId})`);
+        return;
+      } catch (e: any) {
+        this.logger.error(`Service account inválida: ${e?.message}`);
+      }
+    }
+
+    // Fallback: OAuth de usuario
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
     const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
 
     if (!clientId || !clientSecret) {
-      this.logger.warn('Google Calendar no configurado (faltan GOOGLE_CLIENT_ID/SECRET)');
+      this.logger.warn('Google Calendar no configurado (faltan GOOGLE_CLIENT_ID/SECRET o SERVICE_ACCOUNT)');
       return;
     }
 
     this.oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+    this.calendarId = 'primary';
     this.isConfigured = true;
+    this.mode = 'oauth';
     // Re-persistir tokens cuando la librería los refresque automáticamente
     this.oauth2Client.on('tokens', () => {
       this.saveTokens().catch((e) => this.logger.warn(`No se pudieron guardar tokens: ${e?.message}`));
@@ -95,15 +128,24 @@ export class GoogleCalendarService implements OnModuleInit {
     return this.isConfigured && this.oauth2Client !== null;
   }
 
+  /** 'service' | 'oauth' | 'none' — el frontend lo usa para mostrar el flujo correcto. */
+  getMode() {
+    return this.mode;
+  }
+
   /** Verificación real contra la API: detecta tokens revocados/expirados. */
   async checkConnection(): Promise<boolean> {
     if (!this.isReady() || !this.calendar) return false;
     try {
-      await this.calendar.calendarList.get({ calendarId: 'primary' });
+      if (this.mode === 'service') {
+        await this.calendar.calendars.get({ calendarId: this.calendarId });
+      } else {
+        await this.calendar.calendarList.get({ calendarId: this.calendarId });
+      }
       return true;
     } catch (e: any) {
       this.logger.warn(`Google Calendar sin acceso: ${e?.message}`);
-      if (e?.code === 401 || e?.code === 403) {
+      if (e?.code === 401 || e?.code === 403 || e?.code === 404) {
         this.hasUserAuth = false;
         await this.prisma.config.deleteMany({ where: { key: TOKENS_KEY } }).catch(() => undefined);
       }
@@ -153,7 +195,7 @@ export class GoogleCalendarService implements OnModuleInit {
       ].filter(Boolean).join('\n');
 
       const event = await this.calendar.events.insert({
-        calendarId: 'primary',
+        calendarId: this.calendarId,
         requestBody: {
           summary: `Entrega #${delivery.orderNumber || delivery.id.slice(0, 8)}`,
           description,
@@ -204,7 +246,7 @@ export class GoogleCalendarService implements OnModuleInit {
       }
 
       await this.calendar.events.patch({
-        calendarId: 'primary',
+        calendarId: this.calendarId,
         eventId,
         requestBody,
       });
@@ -221,7 +263,7 @@ export class GoogleCalendarService implements OnModuleInit {
 
     try {
       await this.calendar.events.delete({
-        calendarId: 'primary',
+        calendarId: this.calendarId,
         eventId,
       });
       return true;
@@ -242,7 +284,7 @@ export class GoogleCalendarService implements OnModuleInit {
       endOfDay.setHours(23, 59, 59, 999);
 
       const response = await this.calendar.events.list({
-        calendarId: 'primary',
+        calendarId: this.calendarId,
         timeMin: startOfDay.toISOString(),
         timeMax: endOfDay.toISOString(),
         singleEvents: true,
