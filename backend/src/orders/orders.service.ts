@@ -1014,6 +1014,10 @@ export class OrdersService implements OnModuleInit {
         this.prisma.order.count(),
         this.prisma.order.count({ where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] } } }),
         this.prisma.customer.count(),
+        this.prisma.order.aggregate({
+          where: { status: { in: [OrderStatus.PENDING, OrderStatus.CONFIRMED] } },
+          _sum: { total: true },
+        }),
       ]),
       this.prisma.orderItem.groupBy({
         by: ['productName'],
@@ -1048,7 +1052,7 @@ export class OrdersService implements OnModuleInit {
     const prevMonthTotal = Number(s.prev_month_total);
     const prevMonthCount = Number(s.prev_month_count);
 
-    const [totalOrders, pendingOrders, totalCustomers] = counts;
+    const [totalOrders, pendingOrders, totalCustomers, pendingAgg] = counts;
 
     const pct = (cur: number, prev: number) =>
       prev > 0 ? Math.round(((cur - prev) / prev) * 100 * 10) / 10 : 0;
@@ -1078,6 +1082,7 @@ export class OrdersService implements OnModuleInit {
       monthAvgTicket,
       totalOrders,
       pendingOrders,
+      pendingTotal: pendingAgg._sum.total || 0,
       totalCustomers,
       topProducts: topProducts.map((p: any) => ({
         name: p.productName,

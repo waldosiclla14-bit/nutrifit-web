@@ -11,7 +11,7 @@ import type { AdminReport } from '@/types/admin';
 import { PayDonut, SalesArea, TopBars } from './charts';
 
 export function Reportes({ token }: { token: string }) {
-  const [range, setRange] = useState<'7d' | '30d' | 'mes'>('30d');
+  const [range, setRange] = useState<'hoy' | '7d' | '30d' | 'mes'>('30d');
   const [report, setReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +20,8 @@ export function Reportes({ token }: { token: string }) {
     try {
       const to = new Date();
       let from = new Date();
-      if (range === '7d') from.setDate(from.getDate() - 7);
+      if (range === 'hoy') from = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+      else if (range === '7d') from.setDate(from.getDate() - 7);
       else if (range === '30d') from.setDate(from.getDate() - 30);
       else from = new Date(to.getFullYear(), to.getMonth(), 1);
       const q = `from=${from.toISOString().split('T')[0]}&to=${to.toISOString().split('T')[0]}`;
@@ -60,6 +61,7 @@ export function Reportes({ token }: { token: string }) {
       <div className="flex flex-wrap items-center gap-2">
         {(
           [
+            ['hoy', 'Hoy'],
             ['7d', '7 días'],
             ['30d', '30 días'],
             ['mes', 'Este mes'],

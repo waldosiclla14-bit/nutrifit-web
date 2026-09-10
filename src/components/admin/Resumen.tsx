@@ -288,7 +288,7 @@ export function Resumen({
       raw: stats.pendingOrders,
       fmt: (n) => String(n),
       spark: stats.salesByDay.map((d) => d.orders),
-      sub: `${stats.totalOrders} totales`,
+      sub: `${stats.totalOrders} totales · por cobrar ${formatPrice(stats.pendingTotal ?? 0)}`,
       extra: `Utilidad hoy ${formatPrice(stats.todayProfit)}`,
       extraCls: 'text-accent',
       Icon: ShoppingBag,

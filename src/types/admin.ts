@@ -106,6 +106,7 @@ export type AdminStats = {
   monthAvgTicket: number;
   totalOrders: number;
   pendingOrders: number;
+  pendingTotal: number;
   totalCustomers: number;
   topProducts: { name: string; quantity: number; revenue: number }[];
   salesByDay: { date: string; total: number; profit: number; orders: number }[];
