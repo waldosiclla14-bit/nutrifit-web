@@ -90,6 +90,22 @@ export class GoogleCalendarService implements OnModuleInit {
     return this.isConfigured && this.calendar !== null && this.hasUserAuth;
   }
 
+  /** Verificación real contra la API: detecta tokens revocados/expirados. */
+  async checkConnection(): Promise<boolean> {
+    if (!this.isReady() || !this.calendar) return false;
+    try {
+      await this.calendar.calendarList.get({ calendarId: 'primary' });
+      return true;
+    } catch (e: any) {
+      this.logger.warn(`Google Calendar sin acceso: ${e?.message}`);
+      if (e?.code === 401 || e?.code === 403) {
+        this.hasUserAuth = false;
+        await this.prisma.config.deleteMany({ where: { key: TOKENS_KEY } }).catch(() => undefined);
+      }
+      return false;
+    }
+  }
+
   async createDeliveryEvent(delivery: {
     id: string;
     orderNumber?: string;
