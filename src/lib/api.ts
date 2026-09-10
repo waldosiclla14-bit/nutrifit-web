@@ -92,7 +92,8 @@ export async function apiFetch<T = any>(
   opts: { method?: string; body?: unknown; token?: string } = {},
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  const authToken = opts.token ?? (typeof window !== 'undefined' ? getToken() : null);
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
   const method = opts.method ?? 'GET';
   const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
   const maxAttempts = method === 'GET' ? 2 : 1;
