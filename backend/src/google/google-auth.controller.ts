@@ -14,7 +14,7 @@ export class GoogleAuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   getAuthUrl() {
-    if (!this.googleCalendar.isReady()) {
+    if (!this.googleCalendar.isClientConfigured()) {
       return { configured: false, url: null };
     }
     const url = this.googleCalendar.getAuthUrl('admin');

@@ -90,6 +90,11 @@ export class GoogleCalendarService implements OnModuleInit {
     return this.isConfigured && this.calendar !== null && this.hasUserAuth;
   }
 
+  /** Cliente OAuth configurado (vars presentes), haya o no autorización de usuario. */
+  isClientConfigured() {
+    return this.isConfigured && this.oauth2Client !== null;
+  }
+
   /** Verificación real contra la API: detecta tokens revocados/expirados. */
   async checkConnection(): Promise<boolean> {
     if (!this.isReady() || !this.calendar) return false;
