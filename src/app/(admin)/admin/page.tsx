@@ -1,7 +1,7 @@
 'use client';
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   BarChart3,
   Boxes,
@@ -58,8 +58,9 @@ function TabSkeleton() {
 
 type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'calendario' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario';
 
-export default function AdminPage() {
+function AdminPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [token, setTokenState] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('resumen');
 
@@ -71,6 +72,14 @@ export default function AdminPage() {
     }
     setTokenState(t);
   }, [router]);
+
+  useEffect(() => {
+    const g = searchParams.get('google');
+    if (g === 'connected') toast.success('Google Calendar conectado');
+    else if (g === 'error') toast.error('No se pudo conectar Google Calendar');
+    else return;
+    router.replace('/admin');
+  }, [searchParams, router]);
 
   const handleLogout = useCallback(() => {
     clearToken();
@@ -312,5 +321,13 @@ function Dashboard({
         <PasswordModal token={token} onClose={() => setShowPassword(false)} onChanged={load} />
       )}
     </div>
+  );
+}
+
+export default function AdminPageWrapper() {
+  return (
+    <Suspense>
+      <AdminPage />
+    </Suspense>
   );
 }
