@@ -10,7 +10,7 @@ const LONG_CACHE_TTL = 300_000; // 5 minutes for static data
 const _cache = new Map<string, { data: any; expiry: number }>();
 
 // Endpoints that must always be fresh (state changes rapidly)
-const NO_CACHE_PATHS = ['/cash-register/current', '/cash-register/current-lite', '/google/calendar/status'];
+const NO_CACHE_PATHS = ['/cash-register/current', '/cash-register/current-lite', '/todoist/status'];
 
 // Endpoints that rarely change — use longer cache (5 min)
 const LONG_CACHE_PATHS = ['/metro-stations', '/metro-stations/lines', '/metro-stations/communes'];
