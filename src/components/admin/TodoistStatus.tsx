@@ -7,6 +7,7 @@ import { toast } from '@/lib/feedback';
 const REASON_MSG: Record<string, string> = {
   no_access: 'Token inválido o sin acceso: revisa TODOIST_API_TOKEN en Render',
   not_configured: 'Falta TODOIST_API_TOKEN en el backend (Render → Environment)',
+  timeout: 'Todoist no responde (15s): puede ser red de Render, reintenta',
   error: 'Error conectando con Todoist, reintenta en unos minutos',
 };
 

@@ -71,10 +71,11 @@ export class TodoistService implements OnModuleInit {
   constructor(private config: ConfigService) {}
 
   async onModuleInit() {
-    const token = this.config.get<string>('TODOIST_API_TOKEN');
+    const rawToken = this.config.get<string>('TODOIST_API_TOKEN');
+    const token = rawToken ? rawToken.trim() : '';
     const projectName = this.config.get<string>('TODOIST_PROJECT_NAME');
     if (projectName) this.projectName = projectName;
-    this.logger.log(`Todoist env: TOKEN=${token ? 'presente' : 'ausente'} PROJECT=${this.projectName}`);
+    this.logger.log(`Todoist env: TOKEN=${token ? `presente (${token.length} chars)` : 'ausente'} PROJECT=${this.projectName}`);
     if (!token) {
       this.logger.warn('Todoist no configurado (falta TODOIST_API_TOKEN)');
       return;
@@ -90,14 +91,21 @@ export class TodoistService implements OnModuleInit {
   }
 
   private async req(path: string, init: RequestInit = {}): Promise<any> {
-    const res = await fetch(`${API}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        ...((init.headers as Record<string, string>) || {}),
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API}${path}`, {
+        ...init,
+        signal: AbortSignal.timeout(15000),
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          ...((init.headers as Record<string, string>) || {}),
+        },
+      });
+    } catch (e: any) {
+      if (e?.name === 'TimeoutError') throw new Error('Todoist timeout (15s)');
+      throw new Error(`Todoist red: ${e?.message}`);
+    }
     if (res.status === 204) return null;
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -132,6 +140,7 @@ export class TodoistService implements OnModuleInit {
       return { ok: true, reason: 'ok' };
     } catch (e: any) {
       this.logger.warn(`Todoist sin acceso: ${e?.message}`);
+      if (/timeout/i.test(e?.message || '')) return { ok: false, reason: 'timeout' };
       return { ok: false, reason: /40[13]/.test(String(e?.message)) ? 'no_access' : 'error' };
     }
   }
