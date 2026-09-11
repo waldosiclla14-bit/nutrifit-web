@@ -14,11 +14,12 @@ export default function PosPage() {
   useEffect(() => {
     const t = getToken();
     if (!t) {
-      router.replace('/login?next=/pos');
+      // Navegación dura: router.replace suave puede atascarse en iOS/PWA
+      window.location.href = '/login?next=/pos';
       return;
     }
     setTokenState(t);
-  }, [router]);
+  }, []);
 
   if (!token) {
     return (

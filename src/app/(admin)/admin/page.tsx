@@ -69,11 +69,12 @@ function AdminPage() {
   useEffect(() => {
     const t = getToken();
     if (!t) {
-      router.replace('/login?next=/admin');
+      // Navegación dura: router.replace suave puede atascarse en iOS/PWA
+      window.location.href = '/login?next=/admin';
       return;
     }
     setTokenState(t);
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const g = searchParams.get('google');

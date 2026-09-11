@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, setSessionCookie, setToken } from '@/lib/api';
+import { apiFetch, getToken, setSessionCookie, setToken } from '@/lib/api';
 
 export default function LoginClient() {
   const router = useRouter();
@@ -32,6 +32,10 @@ export default function LoginClient() {
       });
       setToken(res.access_token);
       setSessionCookie();
+      if (!getToken()) {
+        setError('El navegador bloqueó el almacenamiento (modo privado o cookies desactivadas). Actívalo e intenta de nuevo.');
+        return;
+      }
       router.replace(next);
       router.refresh();
     } catch (err: any) {
