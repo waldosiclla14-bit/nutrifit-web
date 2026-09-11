@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryStatus, DeliveryType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
-import { GoogleCalendarService } from '../google/google-calendar.service';
+import { TodoistService } from '../todoist/todoist.service';
 
 @Injectable()
 export class DeliveryService {
@@ -11,7 +11,7 @@ export class DeliveryService {
   constructor(
     private prisma: PrismaService,
     private notificationService: NotificationService,
-    private googleCalendar: GoogleCalendarService,
+    private todoist: TodoistService,
   ) {}
 
   async findAll(query: any = {}) {
@@ -140,16 +140,16 @@ export class DeliveryService {
 
     await this.audit(delivery.id, 'CREATED', null, { deliveryType: data.deliveryType, stationId: data.stationId });
 
-    // Create Google Calendar event if configured
+    // Create Todoist task if configured
     let calendarEventId: string | null = null;
-    if (!this.googleCalendar.isReady()) {
-      this.logger.warn(`Calendar omitido entrega ${delivery.id}: google no listo (modo=${this.googleCalendar.getMode()})`);
+    if (!this.todoist.isReady()) {
+      this.logger.warn(`Todoist omitido entrega ${delivery.id}: no listo`);
     } else if (!delivery.station) {
-      this.logger.warn(`Calendar omitido entrega ${delivery.id}: sin estación`);
+      this.logger.warn(`Todoist omitido entrega ${delivery.id}: sin estación`);
     } else if (!delivery.deliveryDate) {
-      this.logger.warn(`Calendar omitido entrega ${delivery.id}: sin fecha`);
+      this.logger.warn(`Todoist omitido entrega ${delivery.id}: sin fecha`);
     } else {
-      calendarEventId = await this.googleCalendar.createDeliveryEvent({
+      calendarEventId = await this.todoist.createDeliveryTask({
         id: delivery.id,
         orderNumber: delivery.order?.orderNumber,
         customerName: delivery.order?.customerName,
@@ -262,8 +262,8 @@ export class DeliveryService {
       }
     }
 
-    // Update Google Calendar event on status change
-    if (updated.calendarEventId && this.googleCalendar.isReady()) {
+    // Update Todoist task on status change
+    if (updated.calendarEventId && this.todoist.isReady()) {
       const STATUS_LABELS: Record<string, string> = {
         PAYMENT_CONFIRMED: '💰 Pago confirmado',
         PREPARING: '📦 En preparación',
@@ -280,14 +280,17 @@ export class DeliveryService {
       const label = STATUS_LABELS[status] || status;
       const eventTitle = `Entrega #${updated.order?.orderNumber || id.slice(0, 8)} — ${label}`;
 
-      await this.googleCalendar.updateDeliveryEvent(updated.calendarEventId, {
+      await this.todoist.updateDeliveryTask(updated.calendarEventId, {
         summary: eventTitle,
       });
     }
 
-    // Delete calendar event if cancelled
-    if (status === DeliveryStatus.CANCELLED && updated.calendarEventId && this.googleCalendar.isReady()) {
-      await this.googleCalendar.deleteDeliveryEvent(updated.calendarEventId);
+    // Close todoist task if delivered, delete if cancelled
+    if (status === DeliveryStatus.DELIVERED && updated.calendarEventId && this.todoist.isReady()) {
+      await this.todoist.closeDeliveryTask(updated.calendarEventId);
+    }
+    if (status === DeliveryStatus.CANCELLED && updated.calendarEventId && this.todoist.isReady()) {
+      await this.todoist.deleteDeliveryTask(updated.calendarEventId);
     }
 
     return updated;
@@ -347,20 +350,12 @@ export class DeliveryService {
       windowEnd: data.windowEnd,
     });
 
-    // Update Google Calendar event
-    if (updated.calendarEventId && this.googleCalendar.isReady()) {
-      const newDate = new Date(data.deliveryDate);
-      const [startH, startM] = data.windowStart.split(':').map(Number);
-      const [endH, endM] = data.windowEnd.split(':').map(Number);
-      const startTime = new Date(newDate);
-      startTime.setHours(startH, startM, 0, 0);
-      const endTime = new Date(newDate);
-      endTime.setHours(endH, endM, 0, 0);
-
-      await this.googleCalendar.updateDeliveryEvent(updated.calendarEventId, {
+    // Update Todoist task
+    if (updated.calendarEventId && this.todoist.isReady()) {
+      await this.todoist.updateDeliveryTask(updated.calendarEventId, {
         summary: `Entrega #${id.slice(0, 8)} — 🔄 Reagendada`,
-        start: startTime,
-        end: endTime,
+        deliveryDate: data.deliveryDate,
+        windowStart: data.windowStart,
       });
     }
 

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from '
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
-import GoogleCalendarStatus from './GoogleCalendarStatus';
+import TodoistStatus from './TodoistStatus';
 
 type Delivery = {
   id: string;
@@ -203,7 +203,7 @@ export function Calendario({ token }: { token: string }) {
         ))}
       </div>
 
-      <GoogleCalendarStatus />
+      <TodoistStatus />
 
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>

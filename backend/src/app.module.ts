@@ -17,7 +17,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 import { DeliveryModule } from './delivery/delivery.module';
-import { GoogleModule } from './google/google.module';
+import { TodoistModule } from './todoist/todoist.module';
 import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
@@ -38,7 +38,7 @@ import { InventoryModule } from './inventory/inventory.module';
     RemindersModule,
     ReviewsModule,
     PingModule,
-    GoogleModule,
+    TodoistModule,
     DeliveryModule,
     InventoryModule,
   ],

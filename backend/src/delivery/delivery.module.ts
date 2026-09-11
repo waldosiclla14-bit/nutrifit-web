@@ -5,10 +5,10 @@ import { DeliveryService } from './delivery.service';
 import { DeliveryController } from './delivery.controller';
 import { DeliverySeedService } from './delivery-seed.service';
 import { NotificationService } from './notification.service';
-import { GoogleModule } from '../google/google.module';
+import { TodoistModule } from '../todoist/todoist.module';
 
 @Module({
-  imports: [GoogleModule],
+  imports: [TodoistModule],
   controllers: [MetroController, DeliveryController],
   providers: [MetroService, DeliveryService, DeliverySeedService, NotificationService],
   exports: [MetroService, DeliveryService, NotificationService],

@@ -15,8 +15,10 @@ describe('OrdersService', () => {
     productVariant: { findMany: jest.Mock; findUnique: jest.Mock };
     customer: { update: jest.Mock };
     auditLog: { create: jest.Mock };
-    inventoryMovement: { create: jest.Mock };
+    inventoryMovement: { create: jest.Mock; deleteMany: jest.Mock };
     orderItem: { deleteMany: jest.Mock; groupBy: jest.Mock };
+    delivery: { deleteMany: jest.Mock };
+    deliveryAuditLog: { deleteMany: jest.Mock };
     coupon: { updateMany: jest.Mock };
   };
 
@@ -42,8 +44,10 @@ describe('OrdersService', () => {
       },
       customer: { update: jest.fn() },
       auditLog: { create: jest.fn() },
-      inventoryMovement: { create: jest.fn() },
+      inventoryMovement: { create: jest.fn(), deleteMany: jest.fn() },
       orderItem: { deleteMany: jest.fn(), groupBy: jest.fn() },
+      delivery: { deleteMany: jest.fn() },
+      deliveryAuditLog: { deleteMany: jest.fn() },
       coupon: { updateMany: jest.fn() },
     };
 
