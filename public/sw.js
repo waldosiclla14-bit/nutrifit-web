@@ -1,4 +1,4 @@
-const CACHE = 'nutrifit-v1';
+const CACHE = 'nutrifit-v2';
 const PRECACHE = [
   '/',
   '/icons/icon-192.png',

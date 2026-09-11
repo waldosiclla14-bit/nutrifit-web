@@ -31,6 +31,7 @@ import type {
 } from '@/types/admin';
 import { PasswordModal } from '@/components/admin/PasswordModal';
 import { AdminBottomNav } from '@/components/admin/BottomNav';
+import { AdminErrorGuard } from '@/components/admin/ErrorGuard';
 
 const Resumen = lazy(() => import('@/components/admin/Resumen').then(m => ({ default: m.Resumen })));
 const Ordenes = lazy(() => import('@/components/admin/Ordenes').then(m => ({ default: m.Ordenes })));
@@ -90,7 +91,16 @@ function AdminPage() {
 
   const handleSell = useCallback(() => router.push('/pos'), [router]);
 
-  if (!token) return null;
+  if (!token) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="space-y-3 text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-ink border-t-transparent" />
+          <p className="text-sm text-muted">Cargando administración…</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <ConfirmProvider>
       <Dashboard
@@ -301,6 +311,7 @@ function Dashboard({
       </div>
 
       <div className="mt-6">
+        <AdminErrorGuard key={tab}>
         {loading && <TabSkeleton />}
         {!loading && (
           <Suspense fallback={<TabSkeleton />}>
@@ -316,12 +327,15 @@ function Dashboard({
             {tab === 'inventario' && <Inventario token={token} />}
           </Suspense>
         )}
+        </AdminErrorGuard>
       </div>
 
       {showPassword && (
         <PasswordModal token={token} onClose={() => setShowPassword(false)} onChanged={load} />
       )}
-      <AdminBottomNav tabs={tabs} tab={tab} setTab={setTab} />
+      <AdminErrorGuard>
+        <AdminBottomNav tabs={tabs} tab={tab} setTab={setTab} />
+      </AdminErrorGuard>
     </div>
   );
 }
