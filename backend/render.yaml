@@ -3,6 +3,7 @@ services:
     name: nutrifit-api
     runtime: docker
     repo: https://github.com/waldosiclla14-bit/nutrifit-web
+    branch: main
     rootDir: backend
     healthCheckPath: /api/products
     autoDeploy: true
@@ -19,5 +20,38 @@ services:
         sync: false
       - key: SELLER_PASSWORD
         sync: false
+      - key: FRONTEND_URL
+        value: https://nutrifit-web-nu.vercel.app
+      - key: PORT
+        value: 3001
+
+  # ── STAGING: espejo de prod atado a la rama staging ──
+  # Requiere: rama `staging` en GitHub + DATABASE_URL de staging en dashboard.
+  # Ver STAGING.md
+  - type: web
+    name: nutrifit-api-staging
+    runtime: docker
+    repo: https://github.com/waldosiclla14-bit/nutrifit-web
+    branch: staging
+    rootDir: backend
+    healthCheckPath: /api/products
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SELLER_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: NODE_ENV
+        value: development
       - key: PORT
         value: 3001
