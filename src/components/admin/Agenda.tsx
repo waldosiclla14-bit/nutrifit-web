@@ -126,42 +126,6 @@ export function Agenda({
     window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
   };
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        {(['all', 'PENDING', 'DONE'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
-              filter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'
-            }`}
-          >
-            {s === 'all' ? 'Todos' : s === 'PENDING' ? 'Pendientes' : 'Completados'}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={openAdd}
-          className="inline-flex items-center gap-1 rounded-full bg-ink px-4 py-2 text-xs font-bold text-paper transition hover:opacity-90"
-        >
-          <Plus size={14} /> Agregar recordatorio
-        </button>
-      </div>
-      <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
-              <th className="px-4 py-3">Fecha</th>
-              <th className="px-4 py-3">Cliente</th>
-              <th className="px-4 py-3">Recordatorio</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => {
-              const overdue = r.status === 'PENDING' && new Date(r.dueAt).getTime() < Date.now();
   const renderReminderActions = (r: AdminReminder) => (
     <>
       <button
@@ -198,6 +162,42 @@ export function Agenda({
   );
 
   return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {(['all', 'PENDING', 'DONE'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
+              filter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'
+            }`}
+          >
+            {s === 'all' ? 'Todos' : s === 'PENDING' ? 'Pendientes' : 'Completados'}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={openAdd}
+          className="inline-flex items-center gap-1 rounded-full bg-ink px-4 py-2 text-xs font-bold text-paper transition hover:opacity-90"
+        >
+          <Plus size={14} /> Agregar recordatorio
+        </button>
+      </div>
+      <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
+              <th className="px-4 py-3">Fecha</th>
+              <th className="px-4 py-3">Cliente</th>
+              <th className="px-4 py-3">Recordatorio</th>
+              <th className="px-4 py-3">Estado</th>
+              <th className="px-4 py-3">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((r) => {
+              const overdue = r.status === 'PENDING' && new Date(r.dueAt).getTime() < Date.now();
+              return (
                 <tr key={r.id} className="border-b border-line/60 last:border-0">
                   <td className="px-4 py-3 text-xs">
                     {new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })}
