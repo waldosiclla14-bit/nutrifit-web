@@ -44,9 +44,16 @@ async function bootstrap() {
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean);
+    const corsOrigin = (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin) return cb(null, false);
+      if (corsOrigins.includes(origin)) return cb(null, true);
+      // Previews de Vercel (staging y ramas feature): mismo proyecto, requieren auth igual
+      if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return cb(null, true);
+      return cb(null, false);
+    };
     app.use(
       cors({
-        origin: corsOrigins.length > 0 ? corsOrigins : false,
+        origin: corsOrigin,
         credentials: true,
       }),
     );
