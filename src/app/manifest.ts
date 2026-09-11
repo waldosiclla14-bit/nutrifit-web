@@ -15,6 +15,20 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#0B0B0B',
     lang: 'es',
     categories: ['shopping', 'food'],
+    shortcuts: [
+      {
+        name: 'Vender (POS)',
+        short_name: 'Vender',
+        url: '/pos',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+      },
+      {
+        name: 'Órdenes',
+        short_name: 'Órdenes',
+        url: '/admin',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+      },
+    ],
     icons: [
       {
         src: '/icons/icon-192.png',

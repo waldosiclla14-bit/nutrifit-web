@@ -1730,7 +1730,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       {cart.length > 0 && (
         <button
           onClick={scrollToCart}
-          className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink bg-ink px-6 py-3 font-bold text-paper shadow-xl transition hover:scale-105 active:scale-95 lg:hidden"
+          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink bg-ink px-6 py-3 font-bold text-paper shadow-xl transition hover:scale-105 active:scale-95 lg:hidden"
+          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
           <ShoppingCart size={16} />
           <span>{cart.reduce((s, l) => s + l.quantity, 0)} items</span>

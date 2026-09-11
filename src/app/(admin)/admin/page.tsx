@@ -30,6 +30,7 @@ import type {
   AdminStats,
 } from '@/types/admin';
 import { PasswordModal } from '@/components/admin/PasswordModal';
+import { AdminBottomNav } from '@/components/admin/BottomNav';
 
 const Resumen = lazy(() => import('@/components/admin/Resumen').then(m => ({ default: m.Resumen })));
 const Ordenes = lazy(() => import('@/components/admin/Ordenes').then(m => ({ default: m.Ordenes })));
@@ -255,7 +256,7 @@ function Dashboard({
   ];
 
   return (
-    <div className="container-px py-10">
+    <div className="container-px py-10 pb-28 lg:pb-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="section-label">NUTRIFIT ADMIN</p>
@@ -281,7 +282,7 @@ function Dashboard({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -320,6 +321,7 @@ function Dashboard({
       {showPassword && (
         <PasswordModal token={token} onClose={() => setShowPassword(false)} onChanged={load} />
       )}
+      <AdminBottomNav tabs={tabs} tab={tab} setTab={setTab} />
     </div>
   );
 }
