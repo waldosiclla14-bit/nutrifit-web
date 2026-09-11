@@ -10,8 +10,6 @@ export class TodoistController {
   constructor(private todoist: TodoistService) {}
 
   @Get('status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
   async getStatus() {
     const check = await this.todoist.checkConnection();
     return { configured: check.ok, mode: this.todoist.getMode(), reason: check.reason };
