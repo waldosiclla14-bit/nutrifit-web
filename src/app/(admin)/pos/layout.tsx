@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'NUTRIFIT Admin',
+  title: 'NUTRIFIT POS',
   robots: { index: false, follow: false },
-  manifest: '/admin.webmanifest',
+  manifest: '/pos.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'NF Admin',
+    title: 'NF POS',
     statusBarStyle: 'black-translucent',
   },
 };
 
-export default function AdminLayout({
+export default function PosLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return <>{children}</>;
