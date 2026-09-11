@@ -28,6 +28,10 @@ export class GoogleCalendarService implements OnModuleInit {
     // Vía preferida: cuenta de servicio (sin OAuth, sin consentimientos)
     const saEmail = this.config.get<string>('GOOGLE_SERVICE_ACCOUNT_EMAIL');
     const saKey = this.config.get<string>('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY');
+    const calId = this.config.get<string>('GOOGLE_CALENDAR_ID');
+    this.logger.log(
+      `Google env: SA_EMAIL=${saEmail ? 'presente' : 'ausente'} SA_KEY=${saKey ? 'presente' : 'ausente'} CALENDAR_ID=${calId ? 'presente' : 'ausente'}`,
+    );
     if (saEmail && saKey) {
       try {
         const jwt = new JWT({
@@ -133,23 +137,25 @@ export class GoogleCalendarService implements OnModuleInit {
     return this.mode;
   }
 
-  /** Verificación real contra la API: detecta tokens revocados/expirados. */
-  async checkConnection(): Promise<boolean> {
-    if (!this.isReady() || !this.calendar) return false;
+  /** Verificación real contra la API: detecta tokens revocados / sin acceso. */
+  async checkConnection(): Promise<{ ok: boolean; reason: string }> {
+    if (!this.isConfigured || !this.calendar) return { ok: false, reason: 'not_configured' };
+    if (!this.hasUserAuth) return { ok: false, reason: this.mode === 'oauth' ? 'oauth_no_user' : 'not_configured' };
     try {
       if (this.mode === 'service') {
         await this.calendar.calendars.get({ calendarId: this.calendarId });
       } else {
         await this.calendar.calendarList.get({ calendarId: this.calendarId });
       }
-      return true;
+      return { ok: true, reason: 'ok' };
     } catch (e: any) {
       this.logger.warn(`Google Calendar sin acceso: ${e?.message}`);
       if (e?.code === 401 || e?.code === 403 || e?.code === 404) {
         this.hasUserAuth = false;
         await this.prisma.config.deleteMany({ where: { key: TOKENS_KEY } }).catch(() => undefined);
+        return { ok: false, reason: 'no_access' };
       }
-      return false;
+      return { ok: false, reason: 'error' };
     }
   }
 

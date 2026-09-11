@@ -1,19 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import { apiFetch, clearCache } from '@/lib/api';
 import { toast } from '@/lib/feedback';
 
 export default function GoogleCalendarStatus() {
-  const [status, setStatus] = useState<{ configured: boolean; url?: string | null; mode?: string } | null>(null);
+  const [status, setStatus] = useState<{ configured: boolean; url?: string | null; mode?: string; reason?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
+    setLoading(true);
+    clearCache('/google');
     apiFetch('/google/calendar/status')
       .then((res) => setStatus(res))
-      .catch(() => setStatus({ configured: false, url: null }))
+      .catch(() => setStatus({ configured: false, url: null, reason: 'error' }))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const handleConnect = async () => {
     // Ventana sincrónica: evita que el navegador bloquee el popup tras el await
@@ -48,6 +54,16 @@ export default function GoogleCalendarStatus() {
 
   if (!status?.configured) {
     const isService = status?.mode === 'service';
+    const reasonMsg =
+      status?.reason === 'no_access'
+        ? 'Sin acceso al calendario: verifica que esté compartido con la cuenta de servicio y que el ID sea correcto'
+        : status?.reason === 'not_configured'
+          ? 'Faltan variables en Render o el deploy no terminó'
+          : status?.reason === 'oauth_no_user'
+            ? 'Falta autorizar con tu cuenta de Google'
+            : isService
+              ? 'La cuenta de servicio no tiene acceso: comparte el calendario con ella en Google Calendar'
+              : 'Conecta para crear eventos automáticamente';
     return (
       <div className="bg-soft border border-line/20 rounded-xl p-4">
         <div className="flex items-center gap-3">
@@ -56,11 +72,7 @@ export default function GoogleCalendarStatus() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium ink">Google Calendar no conectado</p>
-            <p className="text-xs text-muted">
-              {isService
-                ? 'La cuenta de servicio no tiene acceso: comparte el calendario con ella en Google Calendar'
-                : 'Conecta para crear eventos automáticamente'}
-            </p>
+            <p className="text-xs text-muted">{reasonMsg}</p>
           </div>
           {!isService && (
             <button
@@ -70,8 +82,15 @@ export default function GoogleCalendarStatus() {
               Conectar
             </button>
           )}
+          <button
+            onClick={refresh}
+            className="btn-outline text-xs px-3 py-2 min-h-[36px]"
+            title="Volver a verificar"
+          >
+            Reintentar
+          </button>
         </div>
-        {!isService && (
+        {!isService && status?.reason !== 'oauth_no_user' && (
           <p className="text-xs text-muted/60 mt-3">
             Requiere configurar GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET en el backend
           </p>

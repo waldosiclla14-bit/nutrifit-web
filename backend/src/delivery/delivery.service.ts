@@ -142,7 +142,13 @@ export class DeliveryService {
 
     // Create Google Calendar event if configured
     let calendarEventId: string | null = null;
-    if (this.googleCalendar.isReady() && delivery.station) {
+    if (!this.googleCalendar.isReady()) {
+      this.logger.warn(`Calendar omitido entrega ${delivery.id}: google no listo (modo=${this.googleCalendar.getMode()})`);
+    } else if (!delivery.station) {
+      this.logger.warn(`Calendar omitido entrega ${delivery.id}: sin estación`);
+    } else if (!delivery.deliveryDate) {
+      this.logger.warn(`Calendar omitido entrega ${delivery.id}: sin fecha`);
+    } else {
       calendarEventId = await this.googleCalendar.createDeliveryEvent({
         id: delivery.id,
         orderNumber: delivery.order?.orderNumber,

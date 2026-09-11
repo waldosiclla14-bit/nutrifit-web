@@ -40,7 +40,8 @@ export class GoogleAuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async getStatus() {
-    return { configured: await this.googleCalendar.checkConnection(), mode: this.googleCalendar.getMode() };
+    const check = await this.googleCalendar.checkConnection();
+    return { configured: check.ok, mode: this.googleCalendar.getMode(), reason: check.reason };
   }
 
   @Get('calendar/today')
