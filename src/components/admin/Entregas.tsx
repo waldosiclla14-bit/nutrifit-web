@@ -380,7 +380,7 @@ function DeliveryDetail({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-3xl border border-line bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-line bg-paper p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h3 className="font-display text-lg uppercase">Detalle de Entrega</h3>
           <button onClick={onClose} className="rounded-full p-1 hover:bg-soft"><XCircle size={18} /></button>

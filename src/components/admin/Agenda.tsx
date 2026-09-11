@@ -148,7 +148,7 @@ export function Agenda({
           <Plus size={14} /> Agregar recordatorio
         </button>
       </div>
-      <div className="mt-4 overflow-x-auto rounded-3xl border border-line bg-paper">
+      <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
@@ -162,7 +162,42 @@ export function Agenda({
           <tbody>
             {filtered.map((r) => {
               const overdue = r.status === 'PENDING' && new Date(r.dueAt).getTime() < Date.now();
-              return (
+  const renderReminderActions = (r: AdminReminder) => (
+    <>
+      <button
+        type="button"
+        onClick={() => sendWhatsApp(r)}
+        className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 min-h-[44px]"
+      >
+        <MessageCircle size={12} /> WhatsApp
+      </button>
+      <button
+        type="button"
+        onClick={() => setStatus(r, r.status === 'DONE' ? 'PENDING' : 'DONE')}
+        disabled={busy === r.id}
+        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted disabled:opacity-50 min-h-[44px]"
+      >
+        {r.status === 'DONE' ? 'Reabrir' : 'Completar'}
+      </button>
+      <button
+        type="button"
+        onClick={() => openEdit(r)}
+        className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted min-h-[44px]"
+      >
+        <Pencil size={12} /> Editar
+      </button>
+      <button
+        type="button"
+        onClick={() => remove(r)}
+        disabled={busy === r.id}
+        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50 min-h-[44px]"
+      >
+        <Trash2 size={12} /> Eliminar
+      </button>
+    </>
+  );
+
+  return (
                 <tr key={r.id} className="border-b border-line/60 last:border-0">
                   <td className="px-4 py-3 text-xs">
                     {new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -184,36 +219,7 @@ export function Agenda({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      onClick={() => sendWhatsApp(r)}
-                      className="mr-2 inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50"
-                    >
-                      <MessageCircle size={12} /> WhatsApp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus(r, r.status === 'DONE' ? 'PENDING' : 'DONE')}
-                      disabled={busy === r.id}
-                      className="mr-2 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted disabled:opacity-50"
-                    >
-                      {r.status === 'DONE' ? 'Reabrir' : 'Completar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(r)}
-                      className="mr-2 inline-flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-[11px] font-bold text-muted"
-                    >
-                      <Pencil size={12} /> Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(r)}
-                      disabled={busy === r.id}
-                      className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 disabled:opacity-50"
-                    >
-                      <Trash2 size={12} /> Eliminar
-                    </button>
+                    <div className="flex flex-wrap gap-1.5">{renderReminderActions(r)}</div>
                   </td>
                 </tr>
               );
@@ -227,6 +233,41 @@ export function Agenda({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Cards móvil */}
+      <div className="mt-4 space-y-3 lg:hidden">
+        {filtered.map((r) => {
+          const overdue = r.status === 'PENDING' && new Date(r.dueAt).getTime() < Date.now();
+          return (
+            <div key={r.id} className="rounded-3xl border border-line bg-paper p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{r.title}</p>
+                  <p className="text-[11px] text-muted">
+                    {new Date(r.dueAt).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                  r.status === 'DONE' ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-sky-300 bg-sky-100 text-sky-800'
+                }`}>
+                  {r.status === 'DONE' ? 'Completado' : 'Pendiente'}
+                </span>
+              </div>
+              {overdue && <span className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">Vencido</span>}
+              <p className="mt-1 text-xs text-muted">{r.customerName} · {r.customerPhone}</p>
+              <p className="mt-1 whitespace-pre-line text-xs">{r.message}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 [&>*]:justify-center">
+                {renderReminderActions(r)}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="rounded-3xl border border-line bg-paper px-4 py-10 text-center text-muted">
+            Sin recordatorios.
+          </p>
+        )}
       </div>
 
       {showForm && (

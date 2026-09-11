@@ -40,6 +40,47 @@ export function Clientes({
 
   const segOptions = ['VIP', 'Recurrente', 'Activo', 'Nuevo', 'Dormido'];
 
+  const renderClientActions = (c: AdminCustomer) => (
+    <>
+      <button
+        type="button"
+        onClick={() => openEdit(c)}
+        className="inline-flex items-center gap-1 btn-outline px-3 py-1.5 text-[11px] min-h-[44px]"
+      >
+        <Pencil size={12} /> Editar
+      </button>
+      <div className="inline-flex items-center gap-1">
+        <input
+          type="number"
+          min={1}
+          max={90}
+          value={couponDiscounts[c.id] ?? 10}
+          onChange={(e) => {
+            const v = Math.min(90, Math.max(1, Number(e.target.value) || 10));
+            setCouponDiscounts((prev) => ({ ...prev, [c.id]: v }));
+          }}
+          className="w-12 rounded-full border border-emerald-300 px-2 py-1.5 text-center text-[11px] font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => generateCoupon(c)}
+          disabled={generatingCoupon === c.id}
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50 min-h-[44px]"
+        >
+          <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón'}
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => remove(c)}
+        disabled={deleting === c.id}
+        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
+      >
+        <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
+      </button>
+    </>
+  );
+
   const openAdd = () => {
     setEditing(null);
     setForm({ name: '', phone: '', email: '' });
@@ -166,7 +207,7 @@ export function Clientes({
           </button>
         ))}
       </div>
-      <div className="mt-4 overflow-x-auto rounded-3xl border border-line bg-paper">
+      <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
@@ -197,43 +238,8 @@ export function Clientes({
                   </td>
                    <td className="px-4 py-3 text-xs text-muted">{new Date(c.createdAt).toLocaleDateString('es-CL')}</td>
                         <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(c)}
-                          className="mr-2 inline-flex items-center gap-1 btn-outline px-3 py-1.5 text-[11px] min-h-[44px]"
-                        >
-                          <Pencil size={12} /> Editar
-                        </button>
-                        <div className="mr-2 inline-flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={1}
-                            max={90}
-                            value={couponDiscounts[c.id] ?? 10}
-                            onChange={(e) => {
-                              const v = Math.min(90, Math.max(1, Number(e.target.value) || 10));
-                              setCouponDiscounts((prev) => ({ ...prev, [c.id]: v }));
-                            }}
-                            className="w-12 rounded-full border border-emerald-300 px-2 py-1.5 text-center text-[11px] font-bold text-emerald-700 focus:border-emerald-500 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => generateCoupon(c)}
-                            disabled={generatingCoupon === c.id}
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-300 px-3 py-1.5 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50 min-h-[44px]"
-                          >
-                            <MessageCircle size={12} /> {generatingCoupon === c.id ? '...' : 'Cupón'}
-                          </button>
-                        </div>
-                       <button
-                         type="button"
-                         onClick={() => remove(c)}
-                         disabled={deleting === c.id}
-                        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
-                     >
-                        <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
-                     </button>
-                  </td>
+                        <div className="flex flex-wrap gap-1.5">{renderClientActions(c)}</div>
+                   </td>
                 </tr>
               );
             })}
@@ -246,6 +252,38 @@ export function Clientes({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Cards móvil */}
+      <div className="mt-4 space-y-3 lg:hidden">
+        {filtered.map((c) => {
+          const seg = customerSegment(c);
+          return (
+            <div key={c.id} className="rounded-3xl border border-line bg-paper p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{c.name}</p>
+                  <p className="text-[11px] text-muted">{c.phone}</p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${seg.cls}`}>{seg.label}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 text-sm">
+                <p className="text-xs text-muted">
+                  {c.totalOrders} órdenes · última: {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString('es-CL') : '—'}
+                </p>
+                <p className="shrink-0 font-bold">{formatPrice(c.totalSpent)}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5 [&>*]:justify-center">
+                {renderClientActions(c)}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="rounded-3xl border border-line bg-paper px-4 py-10 text-center text-muted">
+            Sin clientes.
+          </p>
+        )}
       </div>
 
       {showForm && (
