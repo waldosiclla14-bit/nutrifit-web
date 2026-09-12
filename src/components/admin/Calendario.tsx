@@ -203,13 +203,13 @@ export function Calendario({ token }: { token: string }) {
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)}</div>
       ) : view === 'day' ? (
         /* Day view — hourly timeline */
         <DayView deliveries={deliveries} onSelect={setSelected} />
       ) : view === 'week' ? (
-        /* Week view — 7 columns */
-        <div className="grid grid-cols-7 gap-1">
+        /* Week view — responsive grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
           {weekDays.map((d) => {
             const key = d.toISOString().split('T')[0];
             const dayDeliveries = byDate[key] || [];
@@ -228,8 +228,8 @@ export function Calendario({ token }: { token: string }) {
                       className="w-full rounded-lg border border-line px-1.5 py-1 text-left transition hover:border-accent"
                     >
                       <div className="flex items-center gap-1">
-                        <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="text-[10px] font-mono">{del.windowStart || '—'}</span>
+                        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
+                        <span className="text-[12px] font-mono">{del.windowStart || '—'}</span>
                       </div>
                       <p className="truncate text-[10px] font-semibold">{del.order?.orderNumber}</p>
                       <p className="truncate text-[9px] text-muted">{del.station?.name || del.customer?.name}</p>
@@ -265,8 +265,8 @@ export function Calendario({ token }: { token: string }) {
                         onClick={() => setSelected(del)}
                         className="flex w-full items-center gap-1 rounded px-1 text-left hover:bg-soft"
                       >
-                        <span className={`h-1 w-1 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="truncate text-[9px]">{del.windowStart} {del.order?.orderNumber}</span>
+                        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
+                        <span className="text-[11px]">{del.windowStart} {del.order?.orderNumber}</span>
                       </button>
                     ))}
                     {dayDeliveries.length > 3 && <p className="text-center text-[9px] text-muted">+{dayDeliveries.length - 3}</p>}
@@ -280,7 +280,7 @@ export function Calendario({ token }: { token: string }) {
 
       {/* Detail modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-contained" onClick={() => setSelected(null)}>
           <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-line bg-paper p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h4 className="font-display text-sm uppercase">{selected.order?.orderNumber}</h4>
@@ -352,13 +352,13 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
         const hourDeliveries = byHour[h] || [];
         return (
           <div key={h} className="flex border-b border-line">
-            <div className="w-14 shrink-0 py-2 text-right text-xs font-mono text-muted">{`${h.toString().padStart(2, '0')}:00`}</div>
-            <div className="flex-1 min-h-[40px] py-1 pl-2">
+            <div className="w-14 shrink-0 py-3 text-right text-xs font-mono text-muted">{`${h.toString().padStart(2, '0')}:00`}</div>
+            <div className="flex-1 min-h-[48px] py-2 pl-2">
               {hourDeliveries.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => onSelect(d)}
-                  className="mb-1 flex w-full items-center gap-2 rounded-lg border border-line px-2 py-1 text-left transition hover:border-accent"
+                  className="mb-2 flex w-full items-center gap-2 rounded-lg border border-line px-3 py-2 text-left transition hover:border-accent"
                 >
                   <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[d.status] || 'bg-gray-300'}`} />
                   <div className="min-w-0 flex-1">
