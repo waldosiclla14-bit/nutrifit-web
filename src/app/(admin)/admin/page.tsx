@@ -41,6 +41,7 @@ const Agenda = lazy(() => import('@/components/admin/Agenda').then(m => ({ defau
 const Caja = lazy(() => import('@/components/admin/Caja').then(m => ({ default: m.Caja })));
 const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ default: m.Reportes })));
 const Inventario = lazy(() => import('@/components/admin/Inventario').then(m => ({ default: m.Inventario })));
+const Compras = lazy(() => import('@/components/admin/Compras').then(m => ({ default: m.Compras })));
 const Entregas = lazy(() => import('@/components/admin/Entregas').then(m => ({ default: m.Entregas })));
 const Calendario = lazy(() => import('@/components/admin/Calendario').then(m => ({ default: m.Calendario })));
 
@@ -58,7 +59,7 @@ function TabSkeleton() {
   );
 }
 
-type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'calendario' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario';
+type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'calendario' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario' | 'compras';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -255,6 +256,7 @@ function Dashboard({
     { key: 'caja', label: 'Caja', icon: Wallet },
     { key: 'reportes', label: 'Reportes', icon: BarChart3 },
     { key: 'inventario', label: 'Inventario', icon: Boxes },
+    { key: 'compras', label: 'Compras', icon: ShoppingBag },
   ];
 
   return (
@@ -317,6 +319,7 @@ function Dashboard({
             {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
             {tab === 'reportes' && <Reportes token={token} />}
             {tab === 'inventario' && <Inventario token={token} />}
+            {tab === 'compras' && <Compras token={token} />}
           </Suspense>
         )}
         </AdminErrorGuard>

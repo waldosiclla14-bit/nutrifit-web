@@ -193,28 +193,31 @@ model Product {
 }
 
 model ProductVariant {
-  id            String @id @default(uuid())
-  productId     String
-  sku           String @unique
-  variantName   String
-  attributes    Json
-  price         Int?
-  costPrice     Int?    @default(0)
-  imageUrl      String?
-  isActive      Boolean @default(true)
-  stock         Int     @default(0)
-  reservedStock Int     @default(0)
-  lowStockAlert Int     @default(5)
+  id                String   @id @default(uuid())
+  productId         String
+  sku               String @unique
+  variantName       String
+  attributes        Json
+  price             Int?
+  costPrice         Int?    @default(0)       // costo interno de última compra
+  physicalStock     Int     @default(0)       // stock físico interno
+  reservedStock     Int     @default(0)       // reservado para pedidos/ventas
+  publicStock       Int     @default(0)       // stock público visible en landing
+  publicPublished   Boolean @default(false) // controla si stock público es visible
+  imageUrl          String?
+  isActive          Boolean @default(true)
+  lowStockAlert     Int     @default(5)       // umbral de alerta stock bajo
 
-  product            Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  batches            Batch[]
-  orderItems         OrderItem[]
-  inventoryMovements InventoryMovement[]
-  stockAdjustments   StockAdjustment[]
+  product               Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batches               Batch[]
+  orderItems           OrderItem[]
+  inventoryMovements   InventoryMovement[]
+  stockAdjustments     StockAdjustment[]
 
   @@index([productId])
   @@index([isActive])
   @@index([productId, isActive])
+  @@index([isActive, publicPublished])
   @@map("product_variants")
 }
 

@@ -49,7 +49,7 @@ export default function HeroSection() {
   const totalReviews = (whey?.reviews ?? 0) + (creatina?.reviews ?? 0);
   const avgRating =
     whey && creatina ? +((whey.rating + creatina.rating) / 2).toFixed(1) : 4.9;
-  const stockLeft = (whey?.stock ?? 0) + (creatina?.stock ?? 0);
+  const stockLeft = (whey?.publicPublished ? (whey?.publicStock ?? whey?.stock ?? 0) : (whey?.stock ?? 0)) + (creatina?.publicPublished ? (creatina?.publicStock ?? creatina?.stock ?? 0) : (creatina?.stock ?? 0));
 
   const addPack = () => {
     if (!pack) return;

@@ -73,7 +73,7 @@ export default function ProductCard({ product }: { product: Product }) {
               {(product.variants || []).length} sabores
             </span>
           )}
-          <StockUrgency stock={product.stock} />
+          <StockUrgency stock={product.publicPublished ? (product.publicStock ?? product.stock) : product.stock} />
         </div>
       </Link>
 

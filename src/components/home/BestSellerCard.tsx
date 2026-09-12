@@ -48,7 +48,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
               -{discount}%
             </span>
           )}
-          <StockUrgency stock={product.stock} />
+          <StockUrgency stock={product.publicPublished ? (product.publicStock ?? product.stock) : product.stock} />
         </div>
       </Link>
 

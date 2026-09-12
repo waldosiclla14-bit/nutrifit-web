@@ -17,6 +17,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { PurchasesModule } from './purchases/purchases.module';
 import { TodoistModule } from './todoist/todoist.module';
 import { InventoryModule } from './inventory/inventory.module';
 
@@ -41,6 +42,7 @@ import { InventoryModule } from './inventory/inventory.module';
     TodoistModule,
     DeliveryModule,
     InventoryModule,
+    PurchasesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
