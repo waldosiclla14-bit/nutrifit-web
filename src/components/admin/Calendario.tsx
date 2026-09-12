@@ -5,7 +5,6 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from '
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
-import TodoistStatus from './TodoistStatus';
 
 type Delivery = {
   id: string;
@@ -202,8 +201,6 @@ export function Calendario({ token }: { token: string }) {
           <span key={k} className="flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${color}`} />{STATUS_LABEL[k]}</span>
         ))}
       </div>
-
-      <TodoistStatus />
 
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="skeleton h-20 rounded-2xl" />)}</div>
