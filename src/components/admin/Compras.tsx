@@ -38,10 +38,22 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
+const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] as const;
+
 async function detectBarcodeFromImage(imageSource: string): Promise<string | null> {
+  try {
+    const { BarcodeDetector } = await import('barcode-detector');
+    const detector = new BarcodeDetector({ formats: [...BARCODE_FORMATS] as any });
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
+    const barcodes = await detector.detect(img);
+    if (barcodes.length > 0) return barcodes[0].rawValue;
+  } catch {}
+
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
     try {
-      const detector = new (window as any).BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] });
+      const detector = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS });
       const img = new Image();
       img.crossOrigin = 'anonymous';
       await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
@@ -49,21 +61,6 @@ async function detectBarcodeFromImage(imageSource: string): Promise<string | nul
       if (barcodes.length > 0) return barcodes[0].rawValue;
     } catch {}
   }
-
-  try {
-    const { default: JsQR } = await import('jsqr');
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = JsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
-    if (code) return code.data;
-  } catch {}
 
   return null;
 }
@@ -294,7 +291,7 @@ export function Compras({ token }: { token: string }) {
   return (
     <div className="space-y-4">
       <input ref={barcodeScanInputRef} type="file" accept="image/*" capture="environment" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleScanPhoto} aria-hidden="true" />
-      <input ref={batchDocInputRef} type="file" accept="image/*" capture="environment" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleBatchDocChange} aria-hidden="true" />
+      <input ref={batchDocInputRef} type="file" accept="image/*,.pdf" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleBatchDocChange} aria-hidden="true" />
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-[2] order-1">
