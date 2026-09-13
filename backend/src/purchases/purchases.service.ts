@@ -13,6 +13,14 @@ export class PurchasesService implements OnModuleInit {
     } catch {
       this.logger.warn('Could not reset reservedStock on startup');
     }
+    // Ensure purchase table has photoUrl/documentUrl columns
+    try {
+      await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "photoUrl" TEXT`;
+      await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "documentUrl" TEXT`;
+      this.logger.log('Purchase table columns verified');
+    } catch {
+      this.logger.warn('Could not verify purchase table columns');
+    }
   }
 
   async findAll(query: any = {}) {
@@ -78,10 +86,12 @@ export class PurchasesService implements OnModuleInit {
       // 1. Crear registro de compra usando raw SQL
       const purchaseId = 'purchase-' + Date.now();
       const totalCost = data.quantity * data.unitCost;
+      const photoUrl = data.photoUrl || null;
+      const documentUrl = data.documentUrl || null;
 
       await tx.$executeRaw`
-        INSERT INTO "purchase" ("id", "productId", "variantId", "quantity", "unitCost", "totalCost", "supplier", "referenceNumber", "notes", "status", "createdAt", "updatedAt")
-        VALUES (${purchaseId}, ${data.productId}, ${data.variantId}, ${data.quantity}, ${data.unitCost}, ${totalCost}, ${data.supplier || 'NULL'}, ${data.referenceNumber || 'NULL'}, ${data.notes || 'NULL'}, 'pending', now(), now())
+        INSERT INTO "purchase" ("id", "productId", "variantId", "quantity", "unitCost", "totalCost", "supplier", "referenceNumber", "notes", "photoUrl", "documentUrl", "status", "createdAt", "updatedAt")
+        VALUES (${purchaseId}, ${data.productId}, ${data.variantId}, ${data.quantity}, ${data.unitCost}, ${totalCost}, ${data.supplier || null}, ${data.referenceNumber || null}, ${data.notes || null}, ${photoUrl}, ${documentUrl}, 'pending', now(), now())
       `;
 
       // 2. Crear movimiento de inventario tipo PURCHASE
