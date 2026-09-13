@@ -34,13 +34,13 @@ export class StockAdjustmentService {
           continue;
         }
 
-        const previousStock = variant.stock;
+        const previousStock = variant.physicalStock;
         const newStock = Math.max(0, previousStock + adj.quantityDelta);
 
         // Update variant stock
         await tx.productVariant.update({
           where: { id: variant.id },
-          data: { stock: newStock },
+          data: { physicalStock: newStock },
         });
 
         // Create adjustment record

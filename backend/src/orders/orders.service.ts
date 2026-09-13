@@ -413,7 +413,7 @@ export class OrdersService implements OnModuleInit {
         const verified = verifyIds.length
           ? await this.prisma.productVariant.findMany({
               where: { id: { in: verifyIds } },
-              select: { id: true, reservedStock: true, stock: true, variantName: true },
+              select: { id: true, reservedStock: true, physicalStock: true, variantName: true },
             })
           : [];
         const verifiedMap = new Map(verified.map(v => [v.id, v]));
@@ -643,7 +643,7 @@ export class OrdersService implements OnModuleInit {
       const variantsPost = variantIds.length
         ? await this.prisma.productVariant.findMany({
             where: { id: { in: variantIds } },
-            select: { id: true, stock: true, variantName: true, product: { select: { name: true } } },
+            select: { id: true, physicalStock: true, variantName: true, product: { select: { name: true } } },
           })
         : [];
       const variantPostMap = new Map(variantsPost.map(v => [v.id, v]));
@@ -651,10 +651,10 @@ export class OrdersService implements OnModuleInit {
       for (const item of order.items) {
         if (!item.variantId) continue;
         const v = variantPostMap.get(item.variantId);
-        if (markPaid && v && v.stock < 0) {
-          this.logger.error(`Stock negativo post-transacción: ${v.variantName || v.product?.name} = ${v.stock}`);
+        if (markPaid && v && v.physicalStock < 0) {
+          this.logger.error(`Stock negativo post-transacción: ${v.variantName || v.product?.name} = ${v.physicalStock}`);
         }
-        const newStock = v?.stock ?? 0;
+        const newStock = v?.physicalStock ?? 0;
         if (markPaid) {
           this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Venta ${order.orderNumber}`);
         }
@@ -769,14 +769,14 @@ export class OrdersService implements OnModuleInit {
     const confirmVariants = confirmVariantIds.length
       ? await this.prisma.productVariant.findMany({
           where: { id: { in: confirmVariantIds } },
-          select: { id: true, stock: true },
+          select: { id: true, physicalStock: true },
         })
       : [];
     const confirmVariantMap = new Map(confirmVariants.map(v => [v.id, v]));
     for (const item of existing.items) {
       if (!item.variantId) continue;
       const v = confirmVariantMap.get(item.variantId);
-      const newStock = v?.stock ?? 0;
+      const newStock = v?.physicalStock ?? 0;
       this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Pago confirmado ${existing.orderNumber}`);
     }
 

@@ -48,8 +48,8 @@ describe('StockAdjustmentService', () => {
     it('applies positive delta (restock)', async () => {
       const mockTx = {
         productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', stock: 5 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', stock: 15 }),
+          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 5 }),
+          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 15 }),
         },
         stockAdjustment: {
           create: jest.fn().mockResolvedValue({ id: 'sa1' }),
@@ -77,8 +77,8 @@ describe('StockAdjustmentService', () => {
     it('applies negative delta (adjustment)', async () => {
       const mockTx = {
         productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', stock: 10 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', stock: 7 }),
+          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 10 }),
+          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 7 }),
         },
         stockAdjustment: {
           create: jest.fn().mockResolvedValue({ id: 'sa2' }),
@@ -104,8 +104,8 @@ describe('StockAdjustmentService', () => {
     it('clamps stock to 0 (never negative)', async () => {
       const mockTx = {
         productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', stock: 2 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', stock: 0 }),
+          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 2 }),
+          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 0 }),
         },
         stockAdjustment: {
           create: jest.fn().mockResolvedValue({ id: 'sa3' }),
@@ -144,8 +144,8 @@ describe('StockAdjustmentService', () => {
     it('uses first variant if no variantId provided', async () => {
       const mockTx = {
         productVariant: {
-          findFirst: jest.fn().mockResolvedValue({ id: 'v1', stock: 0 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', stock: 10 }),
+          findFirst: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 0 }),
+          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 10 }),
         },
         stockAdjustment: {
           create: jest.fn().mockResolvedValue({ id: 'sa4' }),
