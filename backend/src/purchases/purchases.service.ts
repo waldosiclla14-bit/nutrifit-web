@@ -13,7 +13,55 @@ export class PurchasesService implements OnModuleInit {
     } catch {
       this.logger.warn('Could not reset reservedStock on startup');
     }
-    // Ensure purchase table has photoUrl/documentUrl columns
+    // Create purchase table if it doesn't exist
+    try {
+      await this.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "purchase" (
+          "id" TEXT PRIMARY KEY,
+          "productId" TEXT NOT NULL,
+          "variantId" TEXT,
+          "quantity" INTEGER NOT NULL DEFAULT 1,
+          "unitCost" INTEGER NOT NULL DEFAULT 0,
+          "totalCost" INTEGER NOT NULL DEFAULT 0,
+          "supplier" TEXT,
+          "referenceNumber" TEXT,
+          "notes" TEXT,
+          "photoUrl" TEXT,
+          "documentUrl" TEXT,
+          "status" TEXT NOT NULL DEFAULT 'pending',
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      this.logger.log('Purchase table verified');
+    } catch (e: any) {
+      this.logger.warn(`Could not create purchase table: ${e?.message}`);
+    }
+    // Create inventory_movement table if it doesn't exist
+    try {
+      await this.prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "inventory_movement" (
+          "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          "variantId" TEXT NOT NULL,
+          "type" TEXT NOT NULL,
+          "quantity" INTEGER NOT NULL,
+          "previousStock" INTEGER NOT NULL DEFAULT 0,
+          "newStock" INTEGER NOT NULL DEFAULT 0,
+          "unitCost" INTEGER,
+          "totalCost" INTEGER,
+          "referenceId" TEXT,
+          "referenceType" TEXT,
+          "orderId" TEXT,
+          "userId" TEXT,
+          "notes" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      this.logger.log('InventoryMovement table verified');
+    } catch (e: any) {
+      this.logger.warn(`Could not create inventory_movement table: ${e?.message}`);
+    }
+    // Ensure purchase table has all needed columns (for existing tables)
     try {
       await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "photoUrl" TEXT`;
       await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "documentUrl" TEXT`;
