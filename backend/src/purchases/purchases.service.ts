@@ -155,6 +155,61 @@ export class PurchasesService implements OnModuleInit {
     });
   }
 
+  async createBatch(data: {
+    items: Array<{ productId: string; variantId?: string; quantity: number; unitCost: number; photoUrl?: string; notes?: string }>;
+    supplier?: string;
+    referenceNumber?: string;
+    documentUrl?: string;
+  }) {
+    if (!data.items || data.items.length === 0) {
+      throw new BadRequestException('Debe incluir al menos un producto');
+    }
+
+    const results: Array<{ success: boolean; purchaseId: string; error?: string }> = [];
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of data.items) {
+        try {
+          const purchaseId = 'purchase-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+          const totalCost = item.quantity * item.unitCost;
+          const photoUrl = item.photoUrl || null;
+          const documentUrl = data.documentUrl || null;
+
+          await tx.$executeRaw`
+            INSERT INTO "purchase" ("id", "productId", "variantId", "quantity", "unitCost", "totalCost", "supplier", "referenceNumber", "notes", "photoUrl", "documentUrl", "status", "createdAt", "updatedAt")
+            VALUES (${purchaseId}, ${item.productId}, ${item.variantId || null}, ${item.quantity}, ${item.unitCost}, ${totalCost}, ${data.supplier || null}, ${data.referenceNumber || null}, ${item.notes || null}, ${photoUrl}, ${documentUrl}, 'pending', now(), now())
+          `;
+
+          await tx.$executeRaw`
+            INSERT INTO "inventory_movements" ("id", "variantId", "type", "quantity", "previousStock", "newStock", "notes", "createdAt")
+            VALUES (gen_random_uuid()::text, ${item.variantId || item.productId}, 'PURCHASE', ${item.quantity}, 0, ${item.quantity}, 'Compra de inventario', now())
+          `;
+
+          await tx.$executeRaw`
+            UPDATE "product_variants"
+            SET "stock" = "stock" + ${item.quantity}
+            WHERE "id" = ${item.variantId || item.productId} AND ("stock" + ${item.quantity}) >= 0
+          `;
+
+          results.push({ success: true, purchaseId });
+        } catch (e: any) {
+          results.push({ success: false, purchaseId: '', error: e?.message || 'Error' });
+        }
+      }
+    });
+
+    const succeeded = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    return {
+      success: failed === 0,
+      total: data.items.length,
+      succeeded,
+      failed,
+      results,
+    };
+  }
+
   async updateStatus(id: string, status: 'pending' | 'confirmed' | 'completed' | 'cancelled') {
     const result = await this.prisma.$executeRaw`
       UPDATE "purchase" SET "status" = ${status} WHERE "id" = ${id}

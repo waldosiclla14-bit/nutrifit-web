@@ -64,6 +64,16 @@ export class PurchasesController {
     return this.purchasesService.create(data);
   }
 
+  @Post('batch')
+  async createBatch(@Body() data: {
+    items: Array<{ productId: string; variantId?: string; quantity: number; unitCost: number; photoUrl?: string; notes?: string }>;
+    supplier?: string;
+    referenceNumber?: string;
+    documentUrl?: string;
+  }) {
+    return this.purchasesService.createBatch(data);
+  }
+
   @Patch(':id/status')
   async updateStatus(
     @Param('id') id: string,
