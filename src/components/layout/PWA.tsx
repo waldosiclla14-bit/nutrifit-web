@@ -8,10 +8,30 @@ export default function PWA() {
     if (!('serviceWorker' in navigator)) return;
     if (process.env.NODE_ENV === 'development') return;
 
-    const register = () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+    const register = async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js', {
+          updateViaCache: 'none',
+        });
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              window.location.reload();
+            }
+          });
+        });
+
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        reg.update();
+      } catch {
         // sin SW no afecta al uso normal
-      });
+      }
     };
 
     if (document.readyState === 'complete') {
