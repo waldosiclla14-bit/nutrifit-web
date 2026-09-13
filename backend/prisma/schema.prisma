@@ -202,7 +202,7 @@ model ProductVariant {
   attributes        Json
   price             Int?
   costPrice         Int?    @default(0)       // costo interno de última compra
-  physicalStock     Int     @default(0)       // stock físico interno
+  physicalStock     Int     @default(0) @map("stock")  // stock físico interno
   reservedStock     Int     @default(0)       // reservado para pedidos/ventas
   publicStock       Int     @default(0)       // stock público visible en landing
   publicPublished   Boolean @default(false) // controla si stock público es visible
