@@ -297,9 +297,9 @@ export function Compras({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
-      <input ref={barcodeInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanPhoto} />
-      <input ref={docInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleBatchDocChange} />
-      <input ref={itemPhotoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleItemPhotoChange} />
+      <input ref={barcodeInputRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleScanPhoto} />
+      <input ref={docInputRef} type="file" accept="image/*,.pdf" className="sr-only" onChange={handleBatchDocChange} />
+      <input ref={itemPhotoInputRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleItemPhotoChange} />
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-[2] order-1">
