@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
 import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Scan } from 'lucide-react';
@@ -16,7 +16,6 @@ type ScannedItem = {
   quantity: number;
   unitCost: number;
   photo?: string;
-  document?: string;
 };
 
 type Purchase = {
@@ -38,31 +37,52 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] as const;
-
-async function detectBarcodeFromImage(imageSource: string): Promise<string | null> {
-  try {
-    const { BarcodeDetector } = await import('barcode-detector');
-    const detector = new BarcodeDetector({ formats: [...BARCODE_FORMATS] as any });
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
-    const barcodes = await detector.detect(img);
-    if (barcodes.length > 0) return barcodes[0].rawValue;
-  } catch {}
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = src;
+  });
+}
 
+async function detectBarcodeFromImage(base64: string): Promise<string | null> {
+  // Method 1: Native BarcodeDetector (Chrome, Edge, Safari 15.4+)
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
     try {
-      const detector = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS });
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
+      const detector = new (window as any).BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'],
+      });
+      const img = await loadImage(base64);
       const barcodes = await detector.detect(img);
       if (barcodes.length > 0) return barcodes[0].rawValue;
-    } catch {}
+    } catch (e) { console.warn('Native BarcodeDetector failed:', e); }
   }
 
+  // Method 2: barcode-detector ponyfill (ZXing WASM)
+  try {
+    const mod = await import('barcode-detector');
+    const BD = mod.BarcodeDetector;
+    if (BD) {
+      const detector = new BD({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] as any,
+      });
+      const img = await loadImage(base64);
+      const barcodes = await detector.detect(img);
+      if (barcodes.length > 0) return barcodes[0].rawValue;
+    }
+  } catch (e) { console.warn('barcode-detector ponyfill failed:', e); }
+
   return null;
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function Compras({ token }: { token: string }) {
@@ -70,7 +90,6 @@ export function Compras({ token }: { token: string }) {
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [scanning, setScanning] = useState(false);
   const [lastScanned, setLastScanned] = useState<string>('');
-  const [lookupLoading, setLookupLoading] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [supplier, setSupplier] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -78,8 +97,11 @@ export function Compras({ token }: { token: string }) {
   const [filter, setFilter] = useState({ dateFrom: '', dateTo: '', status: 'all' });
   const [batchDocument, setBatchDocument] = useState<string | null>(null);
   const [batchDocName, setBatchDocName] = useState('');
-  const barcodeScanInputRef = useRef<HTMLInputElement>(null);
-  const batchDocInputRef = useRef<HTMLInputElement>(null);
+
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const itemPhotoIdxRef = useRef<number>(-1);
+  const itemPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const loadPurchases = useCallback(async () => {
     try {
@@ -91,8 +113,6 @@ export function Compras({ token }: { token: string }) {
       setPurchases(res?.data || res || []);
     } catch { setPurchases([]); }
   }, [token, filter]);
-
-  useEffect(() => { loadPurchases(); }, [loadPurchases]);
 
   const addOrUpdateItem = useCallback((code: string, productData: any) => {
     const d = productData;
@@ -126,20 +146,19 @@ export function Compras({ token }: { token: string }) {
 
   const lookupBarcode = useCallback(async (code: string) => {
     if (!code) return;
-    setLookupLoading(true);
     try {
       const res = await apiFetch<any>(`/products/barcode/${code}`, { token });
       if (!res || !res.data) {
         haptic(200);
-        toast.error(`Código ${code} no encontrado`);
+        toast.error(`Codigo ${code} no encontrado`);
         return;
       }
       res.data._type = res.type;
       addOrUpdateItem(code, res.data);
     } catch {
       haptic(200);
-      toast.error('Error al buscar código');
-    } finally { setLookupLoading(false); }
+      toast.error('Error al buscar codigo');
+    }
   }, [token, addOrUpdateItem]);
 
   const handleManualSubmit = useCallback((e: React.FormEvent) => {
@@ -156,22 +175,17 @@ export function Compras({ token }: { token: string }) {
     setScanning(true);
 
     try {
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
+      const base64 = await fileToBase64(file);
       const detected = await detectBarcodeFromImage(base64);
       if (detected) {
         setLastScanned(detected);
+        haptic(50);
         await lookupBarcode(detected);
       } else {
         haptic(200);
-        toast.error('No se detectó código de barras en la imagen');
+        toast.error('No se detecto codigo de barras. Intenta con mejor iluminacion.');
       }
-    } catch {
+    } catch (err) {
       haptic(200);
       toast.error('Error al procesar imagen');
     } finally {
@@ -180,45 +194,38 @@ export function Compras({ token }: { token: string }) {
     }
   }, [lookupBarcode]);
 
-  const captureBatchDocument = useCallback(() => {
-    requestAnimationFrame(() => { batchDocInputRef.current?.click(); });
-  }, []);
-
-  const handleBatchDocChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBatchDocChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBatchDocument(reader.result as string);
+    try {
+      const base64 = await fileToBase64(file);
+      setBatchDocument(base64);
       setBatchDocName(file.name);
       haptic();
-      toast.success('Documento adjuntado a todo el lote');
-    };
-    reader.readAsDataURL(file);
+      toast.success('Documento adjuntado');
+    } catch {
+      toast.error('Error al leer archivo');
+    }
     e.target.value = '';
   }, []);
 
-  const captureItemPhoto = useCallback((idx: number) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        setScannedItems((prev) => {
-          const updated = [...prev];
-          updated[idx].photo = reader.result as string;
-          return updated;
-        });
-        haptic();
-        toast.success('Foto adjunta');
-      };
-      reader.readAsDataURL(file);
-    };
-    requestAnimationFrame(() => input.click());
+  const handleItemPhotoChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const idx = itemPhotoIdxRef.current;
+    if (!file || idx < 0) { e.target.value = ''; return; }
+    try {
+      const base64 = await fileToBase64(file);
+      setScannedItems((prev) => {
+        const updated = [...prev];
+        updated[idx].photo = base64;
+        return updated;
+      });
+      haptic();
+      toast.success('Foto adjunta');
+    } catch {
+      toast.error('Error al leer imagen');
+    }
+    e.target.value = '';
   }, []);
 
   const updateItemQty = (idx: number, delta: number) => {
@@ -273,7 +280,7 @@ export function Compras({ token }: { token: string }) {
       setBatchDocName('');
       loadPurchases();
       haptic(100);
-      toast.success(`${scannedItems.length} compra(s) registrada(s)`);
+      toast.success('Compra(s) registrada(s)');
     } catch (err: any) {
       toast.error(err?.message || 'Error al registrar');
     } finally { setSubmitting(false); }
@@ -290,8 +297,9 @@ export function Compras({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
-      <input ref={barcodeScanInputRef} type="file" accept="image/*" capture="environment" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleScanPhoto} aria-hidden="true" />
-      <input ref={batchDocInputRef} type="file" accept="image/*,.pdf" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleBatchDocChange} aria-hidden="true" />
+      <input ref={barcodeInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScanPhoto} />
+      <input ref={docInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleBatchDocChange} />
+      <input ref={itemPhotoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleItemPhotoChange} />
 
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="flex-[2] order-1">
@@ -299,7 +307,8 @@ export function Compras({ token }: { token: string }) {
 
             <div className="flex items-center gap-2 mb-3">
               <button
-                onClick={() => requestAnimationFrame(() => barcodeScanInputRef.current?.click())}
+                type="button"
+                onClick={() => barcodeInputRef.current?.click()}
                 disabled={scanning}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors min-h-[48px] shrink-0 active:scale-[0.97] ${scanning ? 'bg-accent/50 text-ink animate-pulse' : 'bg-accent text-ink'}`}
               >
@@ -318,7 +327,7 @@ export function Compras({ token }: { token: string }) {
                     inputMode="numeric"
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Código manual o Bluetooth..."
+                    placeholder="Codigo manual o Bluetooth..."
                     className="w-full rounded-xl border border-line pl-3 pr-8 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[48px] font-mono"
                     autoComplete="off"
                   />
@@ -336,16 +345,16 @@ export function Compras({ token }: { token: string }) {
 
             {lastScanned && (
               <div className="mb-3 text-center">
-                <span className="text-[10px] text-muted">Último: <strong className="text-ink font-mono">{lastScanned}</strong></span>
+                <span className="text-[10px] text-muted">Ultimo: <strong className="text-ink font-mono">{lastScanned}</strong></span>
               </div>
             )}
 
             {scannedItems.length === 0 && !scanning && (
               <div className="mb-3 p-6 border-2 border-dashed border-line rounded-xl text-center">
                 <Zap className="h-10 w-10 mx-auto text-accent mb-2" />
-                <p className="text-sm text-ink font-semibold">Recepción rápida</p>
-                <p className="text-xs text-muted mt-1">Toca &quot;Escanear&quot; para abrir la cámara</p>
-                <p className="text-[10px] text-muted mt-1">O ingresa el código manualmente</p>
+                <p className="text-sm text-ink font-semibold">Recepcion rapida</p>
+                <p className="text-xs text-muted mt-1">Toca &quot;Escanear&quot; para abrir la camara</p>
+                <p className="text-[10px] text-muted mt-1">O ingresa el codigo manualmente</p>
               </div>
             )}
 
@@ -356,9 +365,9 @@ export function Compras({ token }: { token: string }) {
                   {batchDocument ? `Documento: ${batchDocName}` : 'Boleta / factura del lote (opcional)'}
                 </span>
                 {batchDocument ? (
-                  <button onClick={() => { setBatchDocument(null); setBatchDocName(''); }} className="text-xs text-red-500 font-semibold min-h-[36px] px-2">Quitar</button>
+                  <button type="button" onClick={() => { setBatchDocument(null); setBatchDocName(''); }} className="text-xs text-red-500 font-semibold min-h-[36px] px-2">Quitar</button>
                 ) : (
-                  <button onClick={captureBatchDocument} className="text-xs text-accent font-semibold min-h-[36px] px-2">Adjuntar</button>
+                  <button type="button" onClick={() => docInputRef.current?.click()} className="text-xs text-accent font-semibold min-h-[36px] px-2">Adjuntar</button>
                 )}
               </div>
             )}
@@ -389,23 +398,30 @@ export function Compras({ token }: { token: string }) {
                       {item.variantName && <p className="text-[10px] text-muted truncate">{item.variantName}</p>}
                     </div>
 
-                    <button onClick={() => captureItemPhoto(idx)} className="h-8 w-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0 active:bg-blue-600 min-h-[36px] min-w-[36px]" title="Foto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        itemPhotoIdxRef.current = idx;
+                        itemPhotoInputRef.current?.click();
+                      }}
+                      className="h-8 w-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0 active:bg-blue-600 min-h-[36px] min-w-[36px]"
+                    >
                       <Camera className="h-3.5 w-3.5" />
                     </button>
 
                     <div className="flex items-center gap-0.5 shrink-0">
-                      <button onClick={() => updateItemQty(idx, -1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
+                      <button type="button" onClick={() => updateItemQty(idx, -1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
-                      <button onClick={() => updateItemQty(idx, 1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
+                      <button type="button" onClick={() => updateItemQty(idx, 1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
 
                     <input type="number" min="0" value={item.unitCost} onChange={(e) => updateItemCost(idx, Number(e.target.value) || 0)} className="w-16 rounded-lg border border-line px-1.5 py-1 text-[11px] text-right focus:outline-none focus:border-accent min-h-[36px] font-mono" placeholder="$" />
                     <span className="text-[10px] font-bold text-accent w-14 text-right shrink-0">${(item.quantity * item.unitCost).toLocaleString()}</span>
-                    <button onClick={() => removeItem(idx)} className="text-red-400 active:text-red-600 shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center">
+                    <button type="button" onClick={() => removeItem(idx)} className="text-red-400 active:text-red-600 shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -424,7 +440,7 @@ export function Compras({ token }: { token: string }) {
                     <span className="text-[10px] text-muted block">{scannedItems.length} producto(s)</span>
                     <span className="text-lg font-bold text-ink">${totalCost.toLocaleString()}</span>
                   </div>
-                  <button onClick={handleSubmit} disabled={submitting} className="btn-accent text-sm min-h-[48px] px-6 active:scale-[0.98] transition-transform">
+                  <button type="button" onClick={handleSubmit} disabled={submitting} className="btn-accent text-sm min-h-[48px] px-6 active:scale-[0.98] transition-transform">
                     {submitting ? 'Registrando...' : 'Recibir todo'}
                   </button>
                 </div>
@@ -450,7 +466,7 @@ export function Compras({ token }: { token: string }) {
                     {p.status}
                   </span>
                   {p.status !== 'cancelled' && (
-                    <button onClick={() => handleDelete(p.id)} className="text-red-400 active:text-red-600 text-xs shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                    <button type="button" onClick={() => handleDelete(p.id)} className="text-red-400 active:text-red-600 text-xs shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center">
                       Anular
                     </button>
                   )}
