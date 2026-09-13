@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
-import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, Image as ImageIcon } from 'lucide-react';
+import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon } from 'lucide-react';
 
 type ScannedItem = {
   productId: string;
@@ -15,8 +15,8 @@ type ScannedItem = {
   lastCost: number;
   quantity: number;
   unitCost: number;
-  photo?: string;       // base64 data URL
-  document?: string;    // base64 data URL
+  photo?: string;
+  document?: string;
 };
 
 type Purchase = {
@@ -34,13 +34,10 @@ type Purchase = {
   documentUrl?: string;
 };
 
-type CameraMode = 'barcode' | 'photo' | 'document' | null;
-
 export function Compras({ token }: { token: string }) {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [cameraMode, setCameraMode] = useState<CameraMode>(null);
-  const [scanning, setScanning] = useState(false);
+  const [barcodeMode, setBarcodeMode] = useState(false);
   const [lastScanned, setLastScanned] = useState<string>('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [supplier, setSupplier] = useState('');
@@ -49,10 +46,11 @@ export function Compras({ token }: { token: string }) {
   const [activeItemIdx, setActiveItemIdx] = useState<number | null>(null);
   const [filter, setFilter] = useState({ dateFrom: '', dateTo: '', status: 'all' });
   const scannerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pendingPhotoFor, setPendingPhotoFor] = useState<number | null>(null);
-  const [pendingDocFor, setPendingDocFor] = useState<number | null>(null);
+  const barcodeContainerRef = useRef<HTMLDivElement>(null);
+  // iOS-safe: separate refs for photo and document, capture set at creation time
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const [pendingTarget, setPendingTarget] = useState<{ idx: number; type: 'photo' | 'document' } | null>(null);
 
   const loadPurchases = useCallback(async () => {
     try {
@@ -106,109 +104,90 @@ export function Compras({ token }: { token: string }) {
     } finally { setLookupLoading(false); }
   }, [token, lookupLoading]);
 
-  const startCamera = useCallback(async (mode: CameraMode) => {
-    setCameraMode(mode);
-    setScanning(true);
-    setLastScanned('');
-
-    if (mode === 'barcode') {
+  // Barcode scanner (html5-qrcode)
+  const toggleBarcodeScanner = useCallback(async () => {
+    if (barcodeMode) {
       try {
-        const { Html5Qrcode } = await import('html5-qrcode');
-        await new Promise((r) => setTimeout(r, 100));
-        if (!containerRef.current) return;
-        const scanner = new Html5Qrcode('camera-container');
-        scannerRef.current = scanner;
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 280, height: 160 } },
-          async (decodedText) => {
-            setLastScanned(decodedText);
-            await lookupBarcode(decodedText);
-          },
-          () => {},
-        );
-      } catch (err: any) {
-        toast.error(err?.message || 'No se pudo acceder a la cámara');
-        setScanning(false);
-        setCameraMode(null);
-      }
-    } else {
-      // photo or document mode — use native file input with capture
-      try {
-        await new Promise((r) => setTimeout(r, 200));
-        if (fileInputRef.current) {
-          fileInputRef.current.setAttribute('capture', mode === 'photo' ? 'environment' : 'environment');
-          fileInputRef.current.click();
-        }
-      } catch {
-        setScanning(false);
-        setCameraMode(null);
-      }
+        if (scannerRef.current?.isRunning) await scannerRef.current.stop();
+        scannerRef.current?.clear();
+      } catch {}
+      setBarcodeMode(false);
+      return;
     }
-  }, [lookupBarcode]);
 
-  const stopCamera = useCallback(async () => {
+    setBarcodeMode(true);
     try {
-      if (scannerRef.current?.isRunning) await scannerRef.current.stop();
-      scannerRef.current?.clear();
-    } catch {}
-    setCameraMode(null);
-    setScanning(false);
-  }, []);
+      const { Html5Qrcode } = await import('html5-qrcode');
+      await new Promise((r) => setTimeout(r, 300));
+      if (!barcodeContainerRef.current) return;
+      const scanner = new Html5Qrcode('barcode-scanner-box');
+      scannerRef.current = scanner;
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 280, height: 160 } },
+        async (decodedText) => {
+          setLastScanned(decodedText);
+          await lookupBarcode(decodedText);
+        },
+        () => {},
+      );
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo acceder a la cámara');
+      setBarcodeMode(false);
+    }
+  }, [barcodeMode, lookupBarcode]);
 
   useEffect(() => {
     return () => { if (scannerRef.current?.isRunning) scannerRef.current.stop().catch(() => {}); };
   }, []);
 
-  const handleFileCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  // iOS-safe photo capture: triggers native camera
+  const capturePhoto = useCallback((idx: number) => {
+    setPendingTarget({ idx, type: 'photo' });
+    // Small delay ensures React has rendered the ref
+    requestAnimationFrame(() => {
+      photoInputRef.current?.click();
+    });
+  }, []);
+
+  // iOS-safe document capture: triggers native camera
+  const captureDocument = useCallback((idx: number) => {
+    setPendingTarget({ idx, type: 'document' });
+    requestAnimationFrame(() => {
+      docInputRef.current?.click();
+    });
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) { setCameraMode(null); setScanning(false); return; }
+    if (!file || !pendingTarget) {
+      setPendingTarget(null);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
-      const isDoc = cameraMode === 'document';
-
-      if (pendingPhotoFor !== null) {
-        // Attaching photo to specific item
-        setScannedItems((prev) => {
-          const updated = [...prev];
-          updated[pendingPhotoFor].photo = base64;
-          return updated;
-        });
-        toast.success('Foto adjuntada al producto');
-        setPendingPhotoFor(null);
-      } else if (pendingDocFor !== null) {
-        // Attaching document to specific item
-        setScannedItems((prev) => {
-          const updated = [...prev];
-          updated[pendingDocFor].document = base64;
-          return updated;
-        });
-        toast.success('Documento adjuntado al producto');
-        setPendingDocFor(null);
-      } else if (activeItemIdx !== null) {
-        // Attaching to active item
-        setScannedItems((prev) => {
-          const updated = [...prev];
-          if (isDoc) {
-            updated[activeItemIdx].document = base64;
-          } else {
-            updated[activeItemIdx].photo = base64;
-          }
-          return updated;
-        });
-        toast.success(isDoc ? 'Documento adjuntado' : 'Foto adjunta');
-      } else {
-        // No active item — store as pending for next scanned item
-        toast.info(isDoc ? 'Documento capturado. Se adjuntará al próximo producto escaneado.' : 'Foto capturada. Se adjuntará al próximo producto escaneado.');
-      }
-      setCameraMode(null);
-      setScanning(false);
+      setScannedItems((prev) => {
+        const updated = [...prev];
+        if (pendingTarget.type === 'photo') {
+          updated[pendingTarget.idx].photo = base64;
+        } else {
+          updated[pendingTarget.idx].document = base64;
+        }
+        return updated;
+      });
+      toast.success(pendingTarget.type === 'photo' ? 'Foto adjunta' : 'Documento adjunto');
+      setPendingTarget(null);
+    };
+    reader.onerror = () => {
+      toast.error('Error al leer archivo');
+      setPendingTarget(null);
     };
     reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
     e.target.value = '';
-  }, [cameraMode, activeItemIdx, pendingPhotoFor, pendingDocFor]);
+  }, [pendingTarget]);
 
   const updateItemQty = (idx: number, delta: number) => {
     setScannedItems((prev) => {
@@ -276,16 +255,30 @@ export function Compras({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Hidden file input for camera capture */}
+      {/* iOS-safe hidden file inputs with capture attribute set at creation time */}
       <input
-        ref={fileInputRef}
+        ref={photoInputRef}
         type="file"
         accept="image/*"
-        className="hidden"
-        onChange={handleFileCapture}
+        capture="environment"
+        className="sr-only"
+        style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }}
+        onChange={handleFileChange}
+        aria-hidden="true"
+      />
+      <input
+        ref={docInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }}
+        onChange={handleFileChange}
+        aria-hidden="true"
       />
 
       <div className="flex flex-col lg:flex-row gap-4">
+        {/* Sidebar */}
         <div className="flex-1 lg:max-w-sm">
           <div className="bg-paper rounded-xl p-4 border border-line">
             <h4 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Filtros</h4>
@@ -311,75 +304,51 @@ export function Compras({ token }: { token: string }) {
             </div>
           </div>
 
-          {/* Quick stats */}
+          {/* Summary card */}
           <div className="bg-paper rounded-xl p-4 border border-line mt-4">
             <h4 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Resumen</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-muted">Productos escaneados</span>
+                <span className="text-muted">Productos</span>
                 <span className="font-bold">{scannedItems.length}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted">Total compras</span>
+                <span className="text-muted">Total</span>
                 <span className="font-bold text-accent">${totalCost.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted">Fotos adjuntas</span>
+                <span className="text-muted">Fotos</span>
                 <span className="font-bold">{scannedItems.filter(i => i.photo).length}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted">Documentos adjuntos</span>
+                <span className="text-muted">Documentos</span>
                 <span className="font-bold">{scannedItems.filter(i => i.document).length}</span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Main content */}
         <div className="flex-[2]">
           <div className="bg-paper rounded-xl p-4 border border-line">
+            {/* Action buttons */}
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-sm uppercase tracking-widest text-muted">Compra rápida</h4>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <button
-                  onClick={() => cameraMode === 'barcode' ? stopCamera() : startCamera('barcode')}
-                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-colors ${cameraMode === 'barcode' ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:bg-accentDeep'}`}
+                  onClick={toggleBarcodeScanner}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-colors min-h-[40px] ${barcodeMode ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:bg-accentDeep'}`}
                 >
-                  <Barcode className="h-4 w-4" />
-                  {cameraMode === 'barcode' ? 'Cerrar' : 'Código'}
-                </button>
-                <button
-                  onClick={() => startCamera('photo')}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-                >
-                  <Camera className="h-4 w-4" />
-                  Foto
-                </button>
-                <button
-                  onClick={() => startCamera('document')}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-purple-500 text-white hover:bg-purple-600 transition-colors"
-                >
-                  <FileText className="h-4 w-4" />
-                  Documento
+                  {barcodeMode ? <X className="h-4 w-4" /> : <Barcode className="h-4 w-4" />}
+                  <span className="hidden sm:inline">{barcodeMode ? 'Cerrar' : 'Código'}</span>
                 </button>
               </div>
             </div>
 
-            {/* Camera viewport */}
-            {cameraMode && (
+            {/* Barcode scanner viewport */}
+            {barcodeMode && (
               <div className="mb-4 relative">
-                {cameraMode === 'barcode' ? (
-                  <div id="camera-container" ref={containerRef} className="w-full rounded-xl overflow-hidden bg-black" style={{ minHeight: 280 }} />
-                ) : (
-                  <div className="w-full rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-line p-8 text-center">
-                    <div className="animate-pulse">
-                      {cameraMode === 'photo' ? <Camera className="h-16 w-16 mx-auto text-blue-400 mb-3" /> : <FileText className="h-16 w-16 mx-auto text-purple-400 mb-3" />}
-                      <p className="text-sm text-muted">
-                        {cameraMode === 'photo' ? 'Abriendo cámara para foto del producto...' : 'Abriendo cámara para documento...'}
-                      </p>
-                      <p className="text-xs text-muted mt-1">Se abrirá el selector de archivos</p>
-                    </div>
-                  </div>
-                )}
+                <div id="barcode-scanner-box" ref={barcodeContainerRef} className="w-full rounded-xl overflow-hidden bg-black" style={{ minHeight: 280 }} />
                 {lookupLoading && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
                     <span className="text-white text-sm font-medium">Buscando...</span>
@@ -393,36 +362,41 @@ export function Compras({ token }: { token: string }) {
               </div>
             )}
 
-            {!cameraMode && (
+            {!barcodeMode && scannedItems.length === 0 && (
               <div className="mb-4 p-6 border-2 border-dashed border-line rounded-xl text-center">
                 <Barcode className="h-10 w-10 mx-auto text-muted mb-2" />
-                <p className="text-sm text-muted">Selecciona una opción de captura arriba</p>
-                <p className="text-xs text-muted mt-1">Código de barras • Foto de producto • Documento/boleta</p>
+                <p className="text-sm text-muted">Toca &quot;Código&quot; para escanear productos</p>
+                <p className="text-xs text-muted mt-1">Después toca en cada producto para agregar foto o documento</p>
               </div>
             )}
 
-            {/* Scanned items list */}
+            {/* Scanned items */}
             {scannedItems.length > 0 && (
               <div className="space-y-2 mb-4">
                 <h5 className="text-xs font-semibold text-muted uppercase">Productos ({scannedItems.length})</h5>
                 {scannedItems.map((item, idx) => (
                   <div
                     key={`${item.productId}-${item.variantId}-${idx}`}
-                    className={`p-3 rounded-xl border transition-colors cursor-pointer ${activeItemIdx === idx ? 'bg-accent/10 border-accent' : 'bg-soft border-line hover:bg-accent/5'}`}
-                    onClick={() => setActiveItemIdx(activeItemIdx === idx ? null : idx)}
+                    className={`p-3 rounded-xl border transition-all ${activeItemIdx === idx ? 'bg-accent/10 border-accent shadow-sm' : 'bg-soft border-line'}`}
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Main row */}
+                    <div
+                      className="flex items-center gap-3"
+                      onClick={() => setActiveItemIdx(activeItemIdx === idx ? null : idx)}
+                    >
                       {/* Thumbnail */}
-                      <div className="w-12 h-12 rounded-lg bg-white border border-line overflow-hidden shrink-0 flex items-center justify-center relative">
+                      <div className="w-12 h-12 rounded-lg bg-white border border-line overflow-hidden shrink-0 relative">
                         {item.photo ? (
                           <img src={item.photo} alt="" className="w-full h-full object-cover" />
                         ) : item.imageUrl ? (
                           <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-[10px] text-muted">IMG</span>
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-[10px] text-muted">IMG</span>
+                          </div>
                         )}
                         {item.photo && (
-                          <span className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full h-4 w-4 flex items-center justify-center">
+                          <span className="absolute -top-0.5 -right-0.5 bg-blue-500 text-white rounded-full h-4 w-4 flex items-center justify-center border border-white">
                             <ImageIcon className="h-2.5 w-2.5" />
                           </span>
                         )}
@@ -435,11 +409,21 @@ export function Compras({ token }: { token: string }) {
                         {item.barcode && <p className="text-[10px] text-muted font-mono">{item.barcode}</p>}
                       </div>
 
-                      {/* Quantity */}
+                      {/* Quantity stepper */}
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => updateItemQty(idx, -1)} className="h-7 w-7 rounded-lg bg-white border border-line flex items-center justify-center hover:bg-soft"><Minus className="h-3 w-3" /></button>
+                        <button
+                          onClick={() => updateItemQty(idx, -1)}
+                          className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[44px] min-w-[44px]"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
                         <span className="w-8 text-center text-xs font-bold">{item.quantity}</span>
-                        <button onClick={() => updateItemQty(idx, 1)} className="h-7 w-7 rounded-lg bg-white border border-line flex items-center justify-center hover:bg-soft"><Plus className="h-3 w-3" /></button>
+                        <button
+                          onClick={() => updateItemQty(idx, 1)}
+                          className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[44px] min-w-[44px]"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
 
                       {/* Cost */}
@@ -449,44 +433,60 @@ export function Compras({ token }: { token: string }) {
                         value={item.unitCost}
                         onChange={(e) => updateItemCost(idx, Number(e.target.value) || 0)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-20 rounded-lg border border-line px-2 py-1 text-xs text-right focus:outline-none focus:border-accent"
+                        className="w-20 rounded-lg border border-line px-2 py-1.5 text-xs text-right focus:outline-none focus:border-accent min-h-[44px]"
                         placeholder="Costo"
                       />
 
                       {/* Total */}
-                      <span className="text-[11px] font-bold text-accent w-16 text-right shrink-0">${(item.quantity * item.unitCost).toLocaleString()}</span>
+                      <span className="text-[11px] font-bold text-accent w-16 text-right shrink-0">
+                        ${(item.quantity * item.unitCost).toLocaleString()}
+                      </span>
 
-                      {/* Remove */}
-                      <button onClick={(e) => { e.stopPropagation(); removeItem(idx); }} className="text-red-400 hover:text-red-600 shrink-0"><Trash2 className="h-4 w-4" /></button>
+                      {/* Delete */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeItem(idx); }}
+                        className="text-red-400 hover:text-red-600 active:text-red-700 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
 
-                    {/* Expanded: photo/document actions */}
+                    {/* Expanded actions */}
                     {activeItemIdx === idx && (
-                      <div className="mt-3 pt-3 border-t border-line flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => { setPendingPhotoFor(idx); startCamera('photo'); }}
-                          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                        >
-                          <Camera className="h-3.5 w-3.5" />
-                          {item.photo ? 'Cambiar foto' : 'Tomar foto'}
-                        </button>
-                        <button
-                          onClick={() => { setPendingDocFor(idx); startCamera('document'); }}
-                          className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          {item.document ? 'Cambiar documento' : 'Escanear documento'}
-                        </button>
-                        {item.photo && (
-                          <span className="text-[10px] text-green-600 font-medium flex items-center gap-1">
-                            <FileImage className="h-3 w-3" /> Foto adjunta
-                          </span>
-                        )}
-                        {item.document && (
-                          <span className="text-[10px] text-purple-600 font-medium flex items-center gap-1">
-                            <FileText className="h-3 w-3" /> Documento adjunto
-                          </span>
-                        )}
+                      <div className="mt-3 pt-3 border-t border-line" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[10px] text-muted mb-2 uppercase font-semibold">Captura</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => capturePhoto(idx)}
+                            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl bg-blue-500 text-white active:bg-blue-600 min-h-[44px] transition-colors"
+                          >
+                            <Camera className="h-4 w-4" />
+                            {item.photo ? 'Cambiar foto' : 'Tomar foto'}
+                          </button>
+                          <button
+                            onClick={() => captureDocument(idx)}
+                            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl bg-purple-500 text-white active:bg-purple-600 min-h-[44px] transition-colors"
+                          >
+                            <FileText className="h-4 w-4" />
+                            {item.document ? 'Cambiar documento' : 'Escanear documento'}
+                          </button>
+                        </div>
+                        {/* Status indicators */}
+                        <div className="flex items-center gap-3 mt-2">
+                          {item.photo && (
+                            <span className="text-[10px] text-blue-600 font-medium flex items-center gap-1">
+                              <FileImage className="h-3 w-3" /> Foto adjunta
+                            </span>
+                          )}
+                          {item.document && (
+                            <span className="text-[10px] text-purple-600 font-medium flex items-center gap-1">
+                              <FileText className="h-3 w-3" /> Documento adjunto
+                            </span>
+                          )}
+                          {!item.photo && !item.document && (
+                            <span className="text-[10px] text-muted">Sin archivos adjuntos</span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -496,19 +496,25 @@ export function Compras({ token }: { token: string }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-line">
                   <div>
                     <label className="block text-xs font-medium text-muted mb-1">Proveedor</label>
-                    <input type="text" value={supplier} onChange={(e) => setSupplier(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:outline-none focus:border-accent" placeholder="Opcional" />
+                    <input type="text" value={supplier} onChange={(e) => setSupplier(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[44px]" placeholder="Opcional" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted mb-1">Nro documento</label>
-                    <input type="text" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2 text-sm focus:outline-none focus:border-accent" placeholder="Boleta, factura..." />
+                    <input type="text" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[44px]" placeholder="Boleta, factura..." />
                   </div>
                 </div>
 
                 {/* Submit */}
                 <div className="flex items-center justify-between pt-3 border-t border-line">
-                  <span className="text-sm text-muted">Total: <strong className="text-ink text-lg">${totalCost.toLocaleString()}</strong></span>
-                  <button onClick={handleSubmit} disabled={submitting} className="btn-accent text-xs min-h-[36px] px-6">
-                    {submitting ? 'Registrando...' : `Recibir compra (${scannedItems.length})`}
+                  <span className="text-sm text-muted">
+                    Total: <strong className="text-ink text-lg">${totalCost.toLocaleString()}</strong>
+                  </span>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    className="btn-accent text-sm min-h-[48px] px-6 active:scale-[0.98] transition-transform"
+                  >
+                    {submitting ? 'Registrando...' : `Recibir (${scannedItems.length})`}
                   </button>
                 </div>
               </div>
@@ -517,20 +523,26 @@ export function Compras({ token }: { token: string }) {
 
           {/* Purchase history */}
           <div className="mt-4 bg-paper rounded-xl p-4 border border-line">
-            <h5 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Historial de compras</h5>
-            <div className="space-y-2 max-h-[400px] overflow-y-contained">
-              {purchases.length === 0 && <p className="text-xs text-muted text-center py-4">No hay compras registradas</p>}
+            <h5 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Historial</h5>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+              {purchases.length === 0 && <p className="text-xs text-muted text-center py-4">No hay compras</p>}
               {purchases.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-line hover:bg-soft transition-colors">
-                  <span className="text-[10px] text-muted shrink-0">{p.createdAt?.slice(0, 10)}</span>
+                <div key={p.id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-line active:bg-soft transition-colors">
+                  <span className="text-[10px] text-muted shrink-0">{p.createdAt?.slice(5, 10)}</span>
                   <span className="text-xs font-medium truncate flex-1">{p.productName}{p.variantName ? ` - ${p.variantName}` : ''}</span>
-                  {p.photoUrl && <FileImage className="h-3.5 w-3.5 text-blue-400 shrink-0" />}
-                  {p.documentUrl && <FileText className="h-3.5 w-3.5 text-purple-400 shrink-0" />}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {p.photoUrl && <FileImage className="h-3.5 w-3.5 text-blue-400" />}
+                    {p.documentUrl && <FileText className="h-3.5 w-3.5 text-purple-400" />}
+                  </div>
                   <span className="text-[10px] text-muted shrink-0">x{p.quantity}</span>
                   <span className="text-[11px] font-bold text-accent shrink-0">${p.totalCost?.toLocaleString()}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${p.status === 'cancelled' ? 'bg-red-100 text-red-600' : p.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>{p.status}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${p.status === 'cancelled' ? 'bg-red-100 text-red-600' : p.status === 'completed' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                    {p.status}
+                  </span>
                   {p.status !== 'cancelled' && (
-                    <button onClick={() => handleDelete(p.id)} className="text-red-400 hover:text-red-600 text-xs shrink-0" title="Anular">Anular</button>
+                    <button onClick={() => handleDelete(p.id)} className="text-red-400 active:text-red-600 text-xs shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                      Anular
+                    </button>
                   )}
                 </div>
               ))}
