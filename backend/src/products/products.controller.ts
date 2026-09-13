@@ -30,6 +30,13 @@ export class ProductsController {
     return this.productsService.findInternal(query);
   }
 
+  @Get('barcode/:code')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  async findByBarcode(@Param('code') code: string) {
+    return this.productsService.findByBarcode(code);
+  }
+
   @Get('featured')
   async findFeatured() {
     const result = await this.productsService.findAll({ featured: true, limit: 20 });

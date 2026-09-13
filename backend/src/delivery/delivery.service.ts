@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DeliveryStatus, DeliveryType, Prisma } from '@prisma/client';
+import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
 
@@ -293,6 +293,13 @@ export class DeliveryService {
       await this.todoist.deleteDeliveryTask(updated.calendarEventId);
     }
 
+    // Auto-complete order when delivery is DELIVERED
+    if (status === DeliveryStatus.DELIVERED && updated.orderId) {
+      this.autoCompleteOrder(updated.orderId).catch((e) =>
+        this.logger.warn(`No se pudo auto-completar orden ${updated.order?.orderNumber}: ${e?.message}`),
+      );
+    }
+
     return updated;
   }
 
@@ -308,6 +315,63 @@ export class DeliveryService {
 
     await this.audit(id, 'ASSIGNED', { assignedTo: delivery.assignedTo }, { assignedTo: userId });
     return updated;
+  }
+
+  private async autoCompleteOrder(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order) return;
+    if (order.status !== OrderStatus.READY && order.status !== OrderStatus.PREPARING) return;
+
+    const writes: Prisma.PrismaPromise<any>[] = [];
+
+    // Mark order as COMPLETED
+    writes.push(
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.DELIVERED, updatedAt: new Date() },
+      }),
+    );
+
+    // Create SALE movements: decrease physicalStock and release reservedStock
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      writes.push(
+        this.prisma.$executeRaw`
+          UPDATE "product_variants"
+          SET "physicalStock" = GREATEST("physicalStock" - ${item.quantity}, 0),
+              "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+          WHERE "id" = ${item.variantId}
+        `,
+      );
+    }
+
+    await this.prisma.$transaction(writes);
+
+    // Log inventory movements post-transaction
+    for (const item of order.items) {
+      if (!item.variantId) continue;
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: item.variantId },
+        select: { physicalStock: true },
+      });
+      const newStock = variant?.physicalStock ?? 0;
+      await this.prisma.inventoryMovement.create({
+        data: {
+          variantId: item.variantId,
+          type: MovementType.SALE,
+          quantity: -item.quantity,
+          previousStock: newStock + item.quantity,
+          newStock,
+          orderId,
+          notes: `Venta completada ${order.orderNumber}`,
+        },
+      });
+    }
+
+    this.logger.log(`Orden ${order.orderNumber} auto-completada por entrega DELIVERED`);
   }
 
   async reschedule(id: string, data: { deliveryDate: string; windowStart: string; windowEnd: string; stationId?: string; meetingPoint?: string }) {

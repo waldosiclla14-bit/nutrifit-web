@@ -84,7 +84,7 @@ export class ProductsService implements OnModuleInit {
             sku: true,
             price: true,
             costPrice: true,
-            stock: true,
+            physicalStock: true,
             reservedStock: true,
             lowStockAlert: true,
             isActive: true,
@@ -113,6 +113,44 @@ export class ProductsService implements OnModuleInit {
       where: { sku },
       include: { product: { include: { category: true, brand: true } } },
     });
+  }
+
+  async findByBarcode(code: string) {
+    // Try product barcode first, then variant barcode
+    const product = await this.prisma.product.findUnique({
+      where: { barcode: code },
+      select: {
+        id: true, name: true, sku: true, barcode: true, imageUrl: true,
+        basePrice: true, costPrice: true,
+        category: { select: { name: true } },
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true, variantName: true, sku: true, barcode: true,
+            price: true, costPrice: true, physicalStock: true, reservedStock: true,
+          },
+        },
+      },
+    });
+    if (product) return { type: 'product' as const, data: product };
+
+    const variant = await this.prisma.productVariant.findUnique({
+      where: { barcode: code },
+      select: {
+        id: true, variantName: true, sku: true, barcode: true,
+        price: true, costPrice: true, physicalStock: true, reservedStock: true,
+        product: {
+          select: {
+            id: true, name: true, sku: true, imageUrl: true,
+            basePrice: true, costPrice: true,
+            category: { select: { name: true } },
+          },
+        },
+      },
+    });
+    if (variant) return { type: 'variant' as const, data: variant };
+
+    return null;
   }
 
   async updateStock(variantId: string, quantity: number) {
@@ -202,7 +240,7 @@ export class ProductsService implements OnModuleInit {
             attributes: v.attributes || undefined,
             price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
             costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
-            stock: v.stock !== undefined ? Math.max(0, Number(v.stock) || 0) : undefined,
+            physicalStock: v.stock !== undefined ? Math.max(0, Number(v.stock) || 0) : undefined,
             lowStockAlert: v.lowStockAlert !== undefined ? Math.max(0, Number(v.lowStockAlert) || 5) : undefined,
             isActive: v.isActive !== undefined ? !!v.isActive : undefined,
           },
@@ -216,7 +254,7 @@ export class ProductsService implements OnModuleInit {
             attributes: {},
             price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
             costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
-            stock: Math.max(0, Number(v.stock) || 0),
+            physicalStock: Math.max(0, Number(v.stock) || 0),
             lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
           },
         });
@@ -270,7 +308,7 @@ export class ProductsService implements OnModuleInit {
     const stock = newStock;
     const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
-      data: { stock },
+      data: { physicalStock: stock },
       include: { product: true },
     });
 
@@ -280,8 +318,8 @@ export class ProductsService implements OnModuleInit {
         action: 'STOCK_ADJUSTED',
         entity: 'ProductVariant',
         entityId: variantId,
-        oldValue: { stock: variant.stock },
-        newValue: { stock, reason },
+        oldValue: { physicalStock: variant.physicalStock },
+        newValue: { physicalStock: stock, reason },
       },
     });
 
@@ -358,7 +396,7 @@ export class ProductsService implements OnModuleInit {
         attributes: {},
         price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
         costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
-        stock: Math.max(0, Number(v.stock) || 0),
+        physicalStock: Math.max(0, Number(v.stock) || 0),
         lowStockAlert: Math.max(0, Number(v.lowStockAlert) || 5),
       });
     }
@@ -491,9 +529,9 @@ export class ProductsService implements OnModuleInit {
 
   async confirmStock(variantId: string, quantity: number) {
     const res = await this.prisma.productVariant.updateMany({
-      where: { id: variantId, stock: { gte: quantity }, reservedStock: { gte: quantity } },
+      where: { id: variantId, physicalStock: { gte: quantity }, reservedStock: { gte: quantity } },
       data: {
-        stock: { decrement: quantity },
+        physicalStock: { decrement: quantity },
         reservedStock: { decrement: quantity },
       },
     });
@@ -506,7 +544,7 @@ export class ProductsService implements OnModuleInit {
   // batches (lotes/FEFO). El panel admin usa GET /products/internal.
   toPublicVariant(v: any) {
     if (!v) return v;
-    const { stock, reservedStock, costPrice, lowStockAlert, batches, ...rest } = v;
+    const { physicalStock, reservedStock, costPrice, lowStockAlert, batches, ...rest } = v;
     if (rest.product) rest.product = this.toPublicProduct(rest.product);
     return rest;
   }

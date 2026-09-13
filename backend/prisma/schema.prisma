@@ -161,6 +161,7 @@ model Brand {
 model Product {
   id                String   @id @default(uuid())
   sku               String   @unique
+  barcode           String?  @unique
   name              String
   slug              String   @unique
   description       String?
@@ -196,6 +197,7 @@ model ProductVariant {
   id                String   @id @default(uuid())
   productId         String
   sku               String @unique
+  barcode           String?  @unique
   variantName       String
   attributes        Json
   price             Int?
@@ -482,10 +484,14 @@ model OrderCounter {
 }
 
 enum MovementType {
+  PURCHASE
   SALE
+  RESERVATION
+  RELEASE
   CANCEL
-  ADJUSTMENT
   RETURN
+  DAMAGE
+  ADJUSTMENT
   RESTOCK
 }
 
