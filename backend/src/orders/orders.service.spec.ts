@@ -249,7 +249,7 @@ describe('OrdersService', () => {
         {
           id: 'v1',
           variantName: '2kg',
-          stock: 5,
+          physicalStock: 5,
           reservedStock: 0,
           price: 30000,
           costPrice: 20000,
@@ -280,7 +280,7 @@ describe('OrdersService', () => {
           {
             id: 'v1',
             variantName: '2kg',
-            stock: 10,
+            physicalStock: 10,
             reservedStock: 0,
             price: 30000,
             costPrice: 20000,
@@ -288,7 +288,7 @@ describe('OrdersService', () => {
           },
         ])
         .mockResolvedValueOnce([
-          { id: 'v1', reservedStock: 2, stock: 10, variantName: '2kg' },
+          { id: 'v1', reservedStock: 2, physicalStock: 10, variantName: '2kg' },
         ]);
       prisma.$transaction.mockResolvedValue([{ id: 'order-1', orderNumber: 'NF-000001' }]);
 
@@ -312,7 +312,7 @@ describe('OrdersService', () => {
         {
           id: 'v1',
           variantName: '2kg',
-          stock: 10,
+          physicalStock: 10,
           reservedStock: 0,
           price: 30000,
           costPrice: 20000,

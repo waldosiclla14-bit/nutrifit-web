@@ -274,7 +274,7 @@ export class OrdersService implements OnModuleInit {
       if (item.variantId) {
         const variant = variantMap.get(item.variantId);
         if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
-        const available = variant.stock - variant.reservedStock;
+        const available = variant.physicalStock - variant.reservedStock;
         if (available < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName} (disponible: ${available})`);
         }
@@ -862,7 +862,7 @@ export class OrdersService implements OnModuleInit {
         const variant = variantMap.get(item.variantId);
         if (!variant) throw new BadRequestException(`Variante ${item.variantId} no existe`);
         const released = oldByVariant.get(item.variantId) || 0;
-        const available = variant.stock + released;
+        const available = variant.physicalStock + released;
         if (available < item.quantity) {
           throw new BadRequestException(`Stock insuficiente para ${variant.variantName}`);
         }

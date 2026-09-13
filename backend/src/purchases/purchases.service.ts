@@ -40,17 +40,13 @@ export class PurchasesService implements OnModuleInit {
     // Create inventory_movement table if it doesn't exist
     try {
       await this.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "inventory_movement" (
+        CREATE TABLE IF NOT EXISTS "inventory_movements" (
           "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
           "variantId" TEXT NOT NULL,
           "type" TEXT NOT NULL,
           "quantity" INTEGER NOT NULL,
           "previousStock" INTEGER NOT NULL DEFAULT 0,
           "newStock" INTEGER NOT NULL DEFAULT 0,
-          "unitCost" INTEGER,
-          "totalCost" INTEGER,
-          "referenceId" TEXT,
-          "referenceType" TEXT,
           "orderId" TEXT,
           "userId" TEXT,
           "notes" TEXT,
@@ -96,11 +92,11 @@ export class PurchasesService implements OnModuleInit {
       this.prisma.$queryRawUnsafe(
         `SELECT 
           "purchase".*,
-          "product"."name" as "productName",
-          "productVariant"."variantName"
+          "products"."name" as "productName",
+          "product_variants"."variantName"
         FROM "purchase"
-        LEFT JOIN "product" ON "purchase"."productId" = "product"."id"
-        LEFT JOIN "product_variant" ON "purchase"."variantId" = "productVariant"."id"
+        LEFT JOIN "products" ON "purchase"."productId" = "products"."id"
+        LEFT JOIN "product_variants" ON "purchase"."variantId" = "product_variants"."id"
         WHERE ${whereSql}
         ORDER BY "purchase"."createdAt" DESC
         OFFSET ${skip} LIMIT ${limit}`
@@ -118,11 +114,11 @@ export class PurchasesService implements OnModuleInit {
     const sql = `
       SELECT 
         "purchase".*,
-        "product"."name" as "productName",
-        "productVariant"."variantName"
+        "products"."name" as "productName",
+        "product_variants"."variantName"
       FROM "purchase"
-      LEFT JOIN "product" ON "purchase"."productId" = "product"."id"
-      LEFT JOIN "product_variant" ON "purchase"."variantId" = "productVariant"."id"
+      LEFT JOIN "products" ON "purchase"."productId" = "products"."id"
+      LEFT JOIN "product_variants" ON "purchase"."variantId" = "product_variants"."id"
       WHERE ${whereSql} AND "purchase"."id" = ${id}
     `;
     const result = await this.prisma.$queryRawUnsafe(sql);
@@ -144,8 +140,8 @@ export class PurchasesService implements OnModuleInit {
 
       // 2. Crear movimiento de inventario tipo PURCHASE
       await tx.$executeRaw`
-        INSERT INTO "inventory_movement" ("id", "variantId", "type", "quantity", "unitCost", "totalCost", "referenceId", "referenceType", "reason", "createdAt")
-        VALUES (gen_random_uuid(), ${data.variantId}, 'PURCHASE', ${data.quantity}, ${data.unitCost}, ${totalCost}, ${purchaseId}, 'purchase', 'Compra de inventario', now())
+        INSERT INTO "inventory_movements" ("id", "variantId", "type", "quantity", "previousStock", "newStock", "notes", "createdAt")
+        VALUES (gen_random_uuid()::text, ${data.variantId}, 'PURCHASE', ${data.quantity}, 0, ${data.quantity}, 'Compra de inventario', now())
       `;
 
       // 3. Aumentar stock físico (physicalStock) en productVariant
