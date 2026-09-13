@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
-import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Search } from 'lucide-react';
+import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Scan } from 'lucide-react';
 
 type ScannedItem = {
   productId: string;
@@ -38,10 +38,40 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
+async function detectBarcodeFromImage(imageSource: string): Promise<string | null> {
+  if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+    try {
+      const detector = new (window as any).BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] });
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
+      const barcodes = await detector.detect(img);
+      if (barcodes.length > 0) return barcodes[0].rawValue;
+    } catch {}
+  }
+
+  try {
+    const { default: JsQR } = await import('jsqr');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageSource; });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = JsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+    if (code) return code.data;
+  } catch {}
+
+  return null;
+}
+
 export function Compras({ token }: { token: string }) {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [barcodeMode, setBarcodeMode] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [lastScanned, setLastScanned] = useState<string>('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -51,11 +81,7 @@ export function Compras({ token }: { token: string }) {
   const [filter, setFilter] = useState({ dateFrom: '', dateTo: '', status: 'all' });
   const [batchDocument, setBatchDocument] = useState<string | null>(null);
   const [batchDocName, setBatchDocName] = useState('');
-  const scannerRef = useRef<any>(null);
-  const barcodeContainerRef = useRef<HTMLDivElement>(null);
-  const manualInputRef = useRef<HTMLInputElement>(null);
-  const scanCooldownRef = useRef(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const barcodeScanInputRef = useRef<HTMLInputElement>(null);
   const batchDocInputRef = useRef<HTMLInputElement>(null);
 
   const loadPurchases = useCallback(async () => {
@@ -102,14 +128,13 @@ export function Compras({ token }: { token: string }) {
   }, []);
 
   const lookupBarcode = useCallback(async (code: string) => {
-    if (!code || lookupLoading) return;
+    if (!code) return;
     setLookupLoading(true);
     try {
       const res = await apiFetch<any>(`/products/barcode/${code}`, { token });
       if (!res || !res.data) {
         haptic(200);
         toast.error(`Código ${code} no encontrado`);
-        setLookupLoading(false);
         return;
       }
       res.data._type = res.type;
@@ -118,7 +143,7 @@ export function Compras({ token }: { token: string }) {
       haptic(200);
       toast.error('Error al buscar código');
     } finally { setLookupLoading(false); }
-  }, [token, lookupLoading, addOrUpdateItem]);
+  }, [token, addOrUpdateItem]);
 
   const handleManualSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -128,49 +153,35 @@ export function Compras({ token }: { token: string }) {
     setManualCode('');
   }, [manualCode, lookupBarcode]);
 
-  const toggleBarcodeScanner = useCallback(async () => {
-    if (barcodeMode) {
-      try {
-        if (scannerRef.current?.isRunning) await scannerRef.current.stop();
-        scannerRef.current?.clear();
-      } catch {}
-      setBarcodeMode(false);
-      return;
-    }
+  const handleScanPhoto = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setScanning(true);
 
-    setBarcodeMode(true);
     try {
-      const { Html5Qrcode } = await import('html5-qrcode');
-      await new Promise((r) => setTimeout(r, 300));
-      if (!barcodeContainerRef.current) return;
-      const scanner = new Html5Qrcode('barcode-scanner-box');
-      scannerRef.current = scanner;
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
-      let lastCode = '';
-      let lastTime = 0;
-
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 280, height: 120 }, aspectRatio: 2.0 },
-        async (decodedText) => {
-          const now = Date.now();
-          if (decodedText === lastCode && now - lastTime < 2000) return;
-          lastCode = decodedText;
-          lastTime = now;
-          setLastScanned(decodedText);
-          await lookupBarcode(decodedText);
-        },
-        () => {},
-      );
-    } catch (err: any) {
-      toast.error(err?.message || 'No se pudo acceder a la cámara');
-      setBarcodeMode(false);
+      const detected = await detectBarcodeFromImage(base64);
+      if (detected) {
+        setLastScanned(detected);
+        await lookupBarcode(detected);
+      } else {
+        haptic(200);
+        toast.error('No se detectó código de barras en la imagen');
+      }
+    } catch {
+      haptic(200);
+      toast.error('Error al procesar imagen');
+    } finally {
+      setScanning(false);
+      e.target.value = '';
     }
-  }, [barcodeMode, lookupBarcode]);
-
-  useEffect(() => {
-    return () => { if (scannerRef.current?.isRunning) scannerRef.current.stop().catch(() => {}); };
-  }, []);
+  }, [lookupBarcode]);
 
   const captureBatchDocument = useCallback(() => {
     requestAnimationFrame(() => { batchDocInputRef.current?.click(); });
@@ -282,34 +293,36 @@ export function Compras({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
+      <input ref={barcodeScanInputRef} type="file" accept="image/*" capture="environment" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleScanPhoto} aria-hidden="true" />
       <input ref={batchDocInputRef} type="file" accept="image/*" capture="environment" className="sr-only" style={{ position: 'absolute', left: '-9999px', opacity: 0, pointerEvents: 'none' }} onChange={handleBatchDocChange} aria-hidden="true" />
 
       <div className="flex flex-col lg:flex-row gap-4">
-        {/* Main content — SCANNER + ITEMS */}
         <div className="flex-[2] order-1">
           <div className="bg-paper rounded-xl p-4 border border-line">
 
-            {/* ── Scanner toggle + manual input ── */}
             <div className="flex items-center gap-2 mb-3">
               <button
-                onClick={toggleBarcodeScanner}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-colors min-h-[44px] shrink-0 ${barcodeMode ? 'bg-red-500 text-white' : 'bg-accent text-ink'}`}
+                onClick={() => requestAnimationFrame(() => barcodeScanInputRef.current?.click())}
+                disabled={scanning}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors min-h-[48px] shrink-0 active:scale-[0.97] ${scanning ? 'bg-accent/50 text-ink animate-pulse' : 'bg-accent text-ink'}`}
               >
-                {barcodeMode ? <X className="h-4 w-4" /> : <Barcode className="h-4 w-4" />}
-                <span className="hidden sm:inline">{barcodeMode ? 'Cerrar' : 'Escanear'}</span>
+                {scanning ? (
+                  <span className="h-4 w-4 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Scan className="h-4 w-4" />
+                )}
+                <span>{scanning ? 'Procesando...' : 'Escanear'}</span>
               </button>
 
-              {/* Manual barcode input — always visible */}
               <form onSubmit={handleManualSubmit} className="flex-1 flex items-center gap-1">
                 <div className="flex-1 relative">
                   <input
-                    ref={manualInputRef}
                     type="text"
                     inputMode="numeric"
                     value={manualCode}
                     onChange={(e) => setManualCode(e.target.value)}
-                    placeholder="Código manual o Bluetooth scanner..."
-                    className="w-full rounded-xl border border-line pl-3 pr-8 py-2 text-sm focus:outline-none focus:border-accent min-h-[44px] font-mono"
+                    placeholder="Código manual o Bluetooth..."
+                    className="w-full rounded-xl border border-line pl-3 pr-8 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[48px] font-mono"
                     autoComplete="off"
                   />
                   {manualCode && (
@@ -318,63 +331,45 @@ export function Compras({ token }: { token: string }) {
                     </button>
                   )}
                 </div>
-                <button type="submit" className="h-[44px] w-[44px] rounded-xl bg-ink text-paper flex items-center justify-center shrink-0 active:scale-95 transition-transform">
-                  <Search className="h-4 w-4" />
+                <button type="submit" className="h-[48px] w-[48px] rounded-xl bg-ink text-paper flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+                  <Barcode className="h-4 w-4" />
                 </button>
               </form>
             </div>
 
-            {/* ── Barcode scanner viewport ── */}
-            {barcodeMode && (
-              <div className="mb-3 relative">
-                <div id="barcode-scanner-box" ref={barcodeContainerRef} className="w-full rounded-xl overflow-hidden bg-black" style={{ minHeight: 200 }} />
-                {lookupLoading && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl">
-                    <span className="text-white text-sm font-medium animate-pulse">Buscando...</span>
-                  </div>
-                )}
-                {lastScanned && (
-                  <div className="mt-1.5 text-center">
-                    <span className="text-[10px] text-muted">Último: <strong className="text-ink font-mono">{lastScanned}</strong></span>
-                  </div>
-                )}
+            {lastScanned && (
+              <div className="mb-3 text-center">
+                <span className="text-[10px] text-muted">Último: <strong className="text-ink font-mono">{lastScanned}</strong></span>
               </div>
             )}
 
-            {/* ── Empty state ── */}
-            {!barcodeMode && scannedItems.length === 0 && (
+            {scannedItems.length === 0 && !scanning && (
               <div className="mb-3 p-6 border-2 border-dashed border-line rounded-xl text-center">
                 <Zap className="h-10 w-10 mx-auto text-accent mb-2" />
                 <p className="text-sm text-ink font-semibold">Recepción rápida</p>
-                <p className="text-xs text-muted mt-1">Escanea barcodes o ingrésalos manualmente</p>
-                <p className="text-[10px] text-muted mt-1">Funciona con escáneres Bluetooth</p>
+                <p className="text-xs text-muted mt-1">Toca &quot;Escanear&quot; para abrir la cámara</p>
+                <p className="text-[10px] text-muted mt-1">O ingresa el código manualmente</p>
               </div>
             )}
 
-            {/* ── Batch document bar ── */}
             {scannedItems.length > 0 && (
               <div className="mb-3 flex items-center gap-2 p-2.5 rounded-xl bg-soft border border-line">
                 <FileText className="h-4 w-4 text-muted shrink-0" />
                 <span className="text-xs text-muted flex-1 truncate">
-                  {batchDocument ? `Documento: ${batchDocName}` : 'Documento del lote (opcional)'}
+                  {batchDocument ? `Documento: ${batchDocName}` : 'Boleta / factura del lote (opcional)'}
                 </span>
                 {batchDocument ? (
                   <button onClick={() => { setBatchDocument(null); setBatchDocName(''); }} className="text-xs text-red-500 font-semibold min-h-[36px] px-2">Quitar</button>
                 ) : (
-                  <button onClick={captureBatchDocument} className="text-xs text-accent font-semibold min-h-[36px] px-2">Adjuntar boleta/factura</button>
+                  <button onClick={captureBatchDocument} className="text-xs text-accent font-semibold min-h-[36px] px-2">Adjuntar</button>
                 )}
               </div>
             )}
 
-            {/* ── Scanned items list ── */}
             {scannedItems.length > 0 && (
               <div className="space-y-1.5 mb-3">
                 {scannedItems.map((item, idx) => (
-                  <div
-                    key={`${item.productId}-${item.variantId}-${idx}`}
-                    className="flex items-center gap-2 p-2.5 rounded-xl bg-soft border border-line"
-                  >
-                    {/* Thumbnail */}
+                  <div key={`${item.productId}-${item.variantId}-${idx}`} className="flex items-center gap-2 p-2.5 rounded-xl bg-soft border border-line">
                     <div className="w-10 h-10 rounded-lg bg-white border border-line overflow-hidden shrink-0 relative">
                       {item.photo ? (
                         <img src={item.photo} alt="" className="w-full h-full object-cover" />
@@ -392,58 +387,28 @@ export function Compras({ token }: { token: string }) {
                       )}
                     </div>
 
-                    {/* Info + actions */}
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold text-ink truncate">{item.productName}</p>
                       {item.variantName && <p className="text-[10px] text-muted truncate">{item.variantName}</p>}
                     </div>
 
-                    {/* Camera quick button */}
-                    <button
-                      onClick={() => captureItemPhoto(idx)}
-                      className="h-8 w-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0 active:bg-blue-600 min-h-[36px] min-w-[36px]"
-                      title="Tomar foto"
-                    >
+                    <button onClick={() => captureItemPhoto(idx)} className="h-8 w-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0 active:bg-blue-600 min-h-[36px] min-w-[36px]" title="Foto">
                       <Camera className="h-3.5 w-3.5" />
                     </button>
 
-                    {/* Quantity stepper */}
                     <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        onClick={() => updateItemQty(idx, -1)}
-                        className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]"
-                      >
+                      <button onClick={() => updateItemQty(idx, -1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
                         <Minus className="h-3 w-3" />
                       </button>
                       <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
-                      <button
-                        onClick={() => updateItemQty(idx, 1)}
-                        className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]"
-                      >
+                      <button onClick={() => updateItemQty(idx, 1)} className="h-8 w-8 rounded-lg bg-white border border-line flex items-center justify-center active:bg-soft min-h-[36px] min-w-[36px]">
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
 
-                    {/* Cost */}
-                    <input
-                      type="number"
-                      min="0"
-                      value={item.unitCost}
-                      onChange={(e) => updateItemCost(idx, Number(e.target.value) || 0)}
-                      className="w-16 rounded-lg border border-line px-1.5 py-1 text-[11px] text-right focus:outline-none focus:border-accent min-h-[36px] font-mono"
-                      placeholder="$"
-                    />
-
-                    {/* Total */}
-                    <span className="text-[10px] font-bold text-accent w-14 text-right shrink-0">
-                      ${(item.quantity * item.unitCost).toLocaleString()}
-                    </span>
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => removeItem(idx)}
-                      className="text-red-400 active:text-red-600 shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
-                    >
+                    <input type="number" min="0" value={item.unitCost} onChange={(e) => updateItemCost(idx, Number(e.target.value) || 0)} className="w-16 rounded-lg border border-line px-1.5 py-1 text-[11px] text-right focus:outline-none focus:border-accent min-h-[36px] font-mono" placeholder="$" />
+                    <span className="text-[10px] font-bold text-accent w-14 text-right shrink-0">${(item.quantity * item.unitCost).toLocaleString()}</span>
+                    <button onClick={() => removeItem(idx)} className="text-red-400 active:text-red-600 shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -451,32 +416,25 @@ export function Compras({ token }: { token: string }) {
               </div>
             )}
 
-            {/* ── Supplier + Reference + Submit ── */}
             {scannedItems.length > 0 && (
               <div className="space-y-3 pt-3 border-t border-line">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input type="text" value={supplier} onChange={(e) => setSupplier(e.target.value)} className="rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[44px]" placeholder="Proveedor (opcional)" />
                   <input type="text" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} className="rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent min-h-[44px]" placeholder="Nro boleta / factura" />
                 </div>
-
                 <div className="flex items-center justify-between">
                   <div className="text-left">
                     <span className="text-[10px] text-muted block">{scannedItems.length} producto(s)</span>
                     <span className="text-lg font-bold text-ink">${totalCost.toLocaleString()}</span>
                   </div>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="btn-accent text-sm min-h-[48px] px-6 active:scale-[0.98] transition-transform"
-                  >
-                    {submitting ? 'Registrando...' : `Recibir todo`}
+                  <button onClick={handleSubmit} disabled={submitting} className="btn-accent text-sm min-h-[48px] px-6 active:scale-[0.98] transition-transform">
+                    {submitting ? 'Registrando...' : 'Recibir todo'}
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── Purchase history ── */}
           <div className="mt-4 bg-paper rounded-xl p-4 border border-line">
             <h5 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Historial</h5>
             <div className="space-y-2 max-h-[400px] overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -505,7 +463,6 @@ export function Compras({ token }: { token: string }) {
           </div>
         </div>
 
-        {/* Sidebar — FILTERS + SUMMARY */}
         <div className="flex-1 lg:max-w-sm order-2">
           <div className="bg-paper rounded-xl p-4 border border-line sticky top-4">
             <h4 className="font-semibold text-sm uppercase tracking-widest text-muted mb-3">Filtros</h4>
