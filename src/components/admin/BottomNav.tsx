@@ -17,7 +17,7 @@ export type AdminTabKey =
   | 'inventario'
   | 'compras';
 
-const SHEET_KEYS: AdminTabKey[] = ['entregas', 'calendario', 'productos', 'clientes', 'agenda', 'caja', 'reportes'];
+const SHEET_KEYS: AdminTabKey[] = ['entregas', 'calendario', 'productos', 'clientes', 'agenda', 'caja', 'reportes', 'compras'];
 
 export function AdminBottomNav({
   tabs,
