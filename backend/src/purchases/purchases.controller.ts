@@ -2,13 +2,17 @@ import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards, Req } from
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { PurchasesService } from './purchases.service';
+import { OCRService } from '../ocr/ocr.service';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { Request } from 'express';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/purchases')
 export class PurchasesController {
-  constructor(private purchasesService: PurchasesService) {}
+  constructor(
+    private purchasesService: PurchasesService,
+    private ocrService: OCRService,
+  ) {}
 
   @Get()
   async findAll(@Query() query: any) {
@@ -86,6 +90,16 @@ export class PurchasesController {
   async createReceipt(@Param('id') id: string, @Req() req: any) {
     const body = await readJsonBody(req);
     return this.purchasesService.createReceipt(id, body, req.user?.id);
+  }
+
+  @Post(':id/ocr')
+  async processOCR(@Param('id') id: string) {
+    return this.purchasesService.processOCR(id, this.ocrService);
+  }
+
+  @Get('alerts')
+  async getAlerts() {
+    return this.purchasesService.getAlerts();
   }
 
   @Patch(':id')

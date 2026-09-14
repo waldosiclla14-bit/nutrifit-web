@@ -542,4 +542,137 @@ export class PurchasesService {
       });
     }
   }
+
+  async processOCR(id: string, ocrService: any) {
+    const purchase = await this.prisma.purchase.findUnique({
+      where: { id },
+      include: { documents: true },
+    });
+    if (!purchase) throw new NotFoundException('Compra no encontrada');
+    if (!purchase.documents || purchase.documents.length === 0) {
+      return { error: 'No hay documentos adjuntos' };
+    }
+
+    const lastDoc = purchase.documents[purchase.documents.length - 1];
+    const docData = await this.getDocumentData(id, lastDoc.id);
+
+    const result = await ocrService.processDocument({
+      base64Data: docData.storagePath,
+      mimeType: lastDoc.mimeType,
+      fileName: lastDoc.fileName,
+    });
+
+    if (!result) return { error: 'OCR no pudo procesar el documento', fallback: true };
+
+    const confidence = this.avgConfidence(result);
+
+    await this.prisma.purchaseDocument.update({
+      where: { id: lastDoc.id },
+      data: {
+        ocrProcessed: true,
+        ocrRawData: result as any,
+        ocrConfidence: confidence,
+      },
+    });
+
+    await this.prisma.purchase.update({
+      where: { id },
+      data: {
+        ocrRawData: result as any,
+        ocrConfidence: confidence,
+      },
+    });
+
+    return { ocr: result, confidence };
+  }
+
+  async getAlerts() {
+    const alerts: Array<{ type: string; severity: string; message: string; purchaseId?: string }> = [];
+
+    const pendingReview = await this.prisma.purchase.findMany({
+      where: { status: 'PENDING_REVIEW' },
+      select: { id: true, purchaseNumber: true, createdAt: true },
+    });
+    for (const p of pendingReview) {
+      alerts.push({
+        type: 'PENDING_REVIEW',
+        severity: 'info',
+        message: `${p.purchaseNumber} pendiente de revision`,
+        purchaseId: p.id,
+      });
+    }
+
+    const partialReceipt = await this.prisma.purchase.findMany({
+      where: { receiptStatus: 'PARTIAL', status: { not: 'CANCELLED' } },
+      select: { id: true, purchaseNumber: true },
+    });
+    for (const p of partialReceipt) {
+      alerts.push({
+        type: 'PARTIAL_RECEIPT',
+        severity: 'warning',
+        message: `${p.purchaseNumber} recepcion parcial`,
+        purchaseId: p.id,
+      });
+    }
+
+    const lowConfidence = await this.prisma.purchaseDocument.findMany({
+      where: { ocrConfidence: { lt: 0.7 }, ocrProcessed: true },
+      include: { purchase: { select: { id: true, purchaseNumber: true } } },
+      take: 10,
+    });
+    for (const doc of lowConfidence) {
+      const purchaseNum = (doc as any).purchase?.purchaseNumber || 'N/A';
+      alerts.push({
+        type: 'LOW_OCR_CONFIDENCE',
+        severity: 'warning',
+        message: `${purchaseNum} - documento con baja confianza OCR (${Math.round((doc.ocrConfidence || 0) * 100)}%)`,
+        purchaseId: (doc as any).purchase?.id,
+      });
+    }
+
+    const costVariants = await this.prisma.productCostHistory.groupBy({
+      by: ['variantId'],
+      _avg: { unitCost: true },
+      _count: true,
+      where: { variantId: { not: null } },
+      having: { unitCost: { _avg: { gt: 0 } } },
+    });
+
+    for (const cv of costVariants) {
+      if (!cv.variantId) continue;
+      const lastTwo = await this.prisma.productCostHistory.findMany({
+        where: { variantId: cv.variantId },
+        orderBy: { purchaseDate: 'desc' },
+        take: 2,
+      });
+      if (lastTwo.length === 2) {
+        const prev = lastTwo[1].unitCost;
+        const curr = lastTwo[0].unitCost;
+        if (prev > 0) {
+          const change = ((curr - prev) / prev) * 100;
+          if (Math.abs(change) > 50) {
+            const variant = await this.prisma.productVariant.findUnique({
+              where: { id: cv.variantId },
+              select: { variantName: true },
+            });
+            alerts.push({
+              type: 'COST_SPIKE',
+              severity: 'critical',
+              message: `${variant?.variantName || cv.variantId}: costo varió ${change > 0 ? '+' : ''}${Math.round(change)}% ($${prev.toLocaleString()} → $${curr.toLocaleString()})`,
+            });
+          }
+        }
+      }
+    }
+
+    return alerts;
+  }
+
+  private avgConfidence(result: any): number {
+    const fields = [result.supplier, result.documentType, result.documentNumber, result.documentDate, result.subtotal, result.tax, result.total];
+    const confidences = fields.filter((f) => f?.confidence > 0).map((f) => f.confidence);
+    const productConfidences = (result.products || []).flatMap((p: any) => [p.name?.confidence, p.quantity?.confidence, p.unitPrice?.confidence].filter((c: any) => c > 0));
+    const all = [...confidences, ...productConfidences];
+    return all.length > 0 ? all.reduce((a: number, b: number) => a + b, 0) / all.length : 0;
+  }
 }

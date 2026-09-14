@@ -94,6 +94,7 @@ export function Compras({ token }: { token: string }) {
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [stats, setStats] = useState({ totalThisMonth: 0, countThisMonth: 0, pendingReceipt: 0, suppliersCount: 0 });
+  const [alerts, setAlerts] = useState<Array<{ type: string; severity: string; message: string; purchaseId?: string }>>([]);
 
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState({ status: '', search: '' });
@@ -152,6 +153,13 @@ export function Compras({ token }: { token: string }) {
     } catch {}
   }, [token]);
 
+  const loadAlerts = useCallback(async () => {
+    try {
+      const res = await apiFetch<any>('/admin/purchases/alerts', { token });
+      if (Array.isArray(res)) setAlerts(res);
+    } catch {}
+  }, [token]);
+
   const loadPurchaseDetail = useCallback(async (id: string) => {
     try {
       const res = await apiFetch<any>(`/admin/purchases/${id}`, { token });
@@ -162,7 +170,7 @@ export function Compras({ token }: { token: string }) {
     } catch { toast.error('Error al cargar detalle'); }
   }, [token]);
 
-  useEffect(() => { loadPurchases(); loadStats(); loadSuppliers(); }, [loadPurchases, loadStats, loadSuppliers]);
+  useEffect(() => { loadPurchases(); loadStats(); loadSuppliers(); loadAlerts(); }, [loadPurchases, loadStats, loadSuppliers, loadAlerts]);
 
   const searchItems = useCallback(async (q: string) => {
     if (!q || q.length < 2) { setItemResults([]); return; }
@@ -791,6 +799,24 @@ export function Compras({ token }: { token: string }) {
           <p className="text-[10px] text-muted">Pendientes recepcion</p>
         </div>
       </div>
+
+      {alerts.length > 0 && (
+        <div className="space-y-1.5">
+          {alerts.slice(0, 5).map((a, i) => (
+            <div key={i} className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs ${
+              a.severity === 'critical' ? 'bg-red-50 border-red-200 text-red-700' :
+              a.severity === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+              'bg-blue-50 border-blue-200 text-blue-700'
+            }`}>
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1">{a.message}</span>
+              {a.purchaseId && (
+                <button onClick={() => loadPurchaseDetail(a.purchaseId!)} className="text-[10px] font-semibold underline shrink-0">Ver</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <div className="flex-1 relative">
