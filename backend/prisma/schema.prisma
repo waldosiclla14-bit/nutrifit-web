@@ -112,13 +112,21 @@ model Address {
 model Supplier {
   id           String      @id @default(uuid())
   name         String
+  rut          String?     @unique
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
   contactInfo  String?
+  contactPerson String?
+  notes        String?
   paymentTerms PaymentTerm @default(CONTADO)
   isActive     Boolean     @default(true)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  products Product[]
+  products  Product[]
+  purchases Purchase[]
 
   @@map("suppliers")
 }
@@ -126,6 +134,212 @@ model Supplier {
 enum PaymentTerm {
   CREDITO
   CONTADO
+}
+
+// ───────────────────────────────────────────────
+// COMPRAS — Enumeraciones
+// ───────────────────────────────────────────────
+
+enum DocumentType {
+  FACTURA
+  BOLETA
+  NOTA_VENTA
+  GUIA_DESPACHO
+  ORDEN_COMPRA
+  OTRO
+}
+
+enum PurchaseStatus {
+  DRAFT
+  PENDING_REVIEW
+  CONFIRMED
+  RECEIVING
+  RECEIVED
+  CANCELLED
+}
+
+enum ReceiptStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+}
+
+// ───────────────────────────────────────────────
+// COMPRAS — Modelos
+// ───────────────────────────────────────────────
+
+model Purchase {
+  id                String         @id @default(uuid())
+  purchaseNumber    String         @unique
+  supplierId        String?
+  status            PurchaseStatus @default(DRAFT)
+
+  documentType      DocumentType?
+  documentNumber    String?
+  documentDate      DateTime?
+  paymentMethod     String?
+  currency          String         @default("CLP")
+
+  subtotal          Int            @default(0)
+  tax               Int            @default(0)
+  discount          Int            @default(0)
+  total             Int            @default(0)
+
+  notes             String?
+  ocrRawData        Json?
+  ocrConfidence     Float?
+  humanCorrections  Json?
+
+  receiptStatus     ReceiptStatus  @default(PENDING)
+  receivedAt        DateTime?
+  confirmedAt       DateTime?
+  confirmedById     String?
+
+  idempotencyKey    String?        @unique
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  supplier          Supplier?      @relation(fields: [supplierId], references: [id])
+  items             PurchaseItem[]
+  documents         PurchaseDocument[]
+  receipts          GoodsReceipt[]
+  costHistory       ProductCostHistory[]
+
+  @@index([status])
+  @@index([supplierId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([purchaseNumber])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id              String   @id @default(uuid())
+  purchaseId      String
+  productId       String?
+  variantId       String?
+
+  productName     String
+  variantName     String?
+  sku             String?
+  barcode         String?
+
+  quantity        Int
+  unitCost        Int
+  discount        Int      @default(0)
+  tax             Int      @default(0)
+  totalCost       Int
+
+  receivedQty     Int      @default(0)
+
+  notes           String?
+  ocrConfidence   Float?
+  ocrRawData      Json?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchase        Purchase         @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product         Product?         @relation(fields: [productId], references: [id])
+  variant         ProductVariant?  @relation(fields: [variantId], references: [id])
+  receiptItems    GoodsReceiptItem[]
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@index([variantId])
+  @@map("purchase_items")
+}
+
+model PurchaseDocument {
+  id              String   @id @default(uuid())
+  purchaseId      String
+  documentType    String
+  fileName        String
+  originalName    String?
+  mimeType        String
+  fileSize        Int
+  storagePath     String
+
+  ocrProcessed    Boolean  @default(false)
+  ocrRawData      Json?
+  ocrConfidence   Float?
+
+  createdAt       DateTime @default(now())
+
+  purchase        Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@map("purchase_documents")
+}
+
+model GoodsReceipt {
+  id              String   @id @default(uuid())
+  purchaseId      String
+  receiptNumber   String   @unique
+  status          ReceiptStatus @default(PENDING)
+
+  notes           String?
+  receivedAt      DateTime @default(now())
+  receivedById    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchase        Purchase          @relation(fields: [purchaseId], references: [id])
+  items           GoodsReceiptItem[]
+
+  @@index([purchaseId])
+  @@index([status])
+  @@index([receivedAt])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id              String   @id @default(uuid())
+  receiptId       String
+  purchaseItemId  String
+  variantId       String?
+
+  expectedQty     Int
+  receivedQty     Int
+  damagedQty      Int      @default(0)
+  notes           String?
+
+  createdAt       DateTime @default(now())
+
+  receipt         GoodsReceipt     @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  purchaseItem    PurchaseItem     @relation(fields: [purchaseItemId], references: [id])
+  variant         ProductVariant?  @relation(fields: [variantId], references: [id])
+
+  @@index([receiptId])
+  @@index([purchaseItemId])
+  @@map("goods_receipt_items")
+}
+
+model ProductCostHistory {
+  id              String   @id @default(uuid())
+  productId       String?
+  variantId       String?
+  purchaseId      String?
+
+  quantity        Int
+  unitCost        Int
+  totalCost       Int
+  previousCost    Int?
+  newAverageCost  Int?
+
+  purchaseDate    DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  product         Product?         @relation(fields: [productId], references: [id])
+  variant         ProductVariant?  @relation(fields: [variantId], references: [id])
+  purchase        Purchase?        @relation(fields: [purchaseId], references: [id])
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([purchaseId])
+  @@index([purchaseDate])
+  @@map("product_cost_history")
 }
 
 // ───────────────────────────────────────────────
@@ -185,6 +399,8 @@ model Product {
   supplier   Supplier?        @relation(fields: [supplierId], references: [id])
   supplierId String?
   stockAdjustments StockAdjustment[]
+  purchaseItems PurchaseItem[]
+  costHistory    ProductCostHistory[]
 
   @@index([isActive])
   @@index([categoryId])
@@ -215,6 +431,9 @@ model ProductVariant {
   orderItems           OrderItem[]
   inventoryMovements   InventoryMovement[]
   stockAdjustments     StockAdjustment[]
+  purchaseItems        PurchaseItem[]
+  goodsReceiptItems    GoodsReceiptItem[]
+  costHistory          ProductCostHistory[]
 
   @@index([productId])
   @@index([isActive])
@@ -485,6 +704,7 @@ model OrderCounter {
 
 enum MovementType {
   PURCHASE
+  PURCHASE_RECEIPT
   SALE
   RESERVATION
   RELEASE
@@ -503,8 +723,11 @@ model InventoryMovement {
   previousStock  Int
   newStock       Int
   orderId        String?
+  purchaseId     String?
+  receiptId      String?
   userId         String?
   notes          String?
+  unitCost       Int?
   createdAt      DateTime     @default(now())
 
   variant ProductVariant @relation(fields: [variantId], references: [id])
@@ -512,6 +735,7 @@ model InventoryMovement {
 
   @@index([variantId])
   @@index([orderId])
+  @@index([purchaseId])
   @@index([createdAt])
   @@index([variantId, createdAt])
   @@map("inventory_movements")
