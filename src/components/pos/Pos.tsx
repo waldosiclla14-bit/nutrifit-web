@@ -729,7 +729,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             }).catch(() => {});
           }
         } catch (deliveryErr: any) {
-          console.error('[POS delivery]', deliveryErr);
           toast.error(`Venta registrada pero error al agendar entrega: ${deliveryErr?.message || 'desconocido'}`);
         }
       }
@@ -826,8 +825,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       await load(false);
     } catch (err: any) {
       if (handleAuthError(err, onLogout)) return;
-      console.error('[POS checkout]', err?.prismaCode ? { prismaCode: err.prismaCode, meta: err.meta, message: err.message } : err);
-      toast.error(err?.message || 'Error al cobrar. Verifica la conexión y vuelve a intentar.');
+      toast.error(err?.message || 'Error al cobrar. Verifica la conexion y vuelve a intentar.');
     } finally {
       setSaving(false);
     }

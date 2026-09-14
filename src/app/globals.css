@@ -6,12 +6,7 @@
   .pb-safe {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
-  .pt-safe {
-    padding-top: max(0.75rem, env(safe-area-inset-top));
-  }
-  .mb-safe {
-    margin-bottom: env(safe-area-inset-bottom);
-  }
+
 }
 
 :root {
@@ -98,10 +93,6 @@
 
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
-  }
-
-  .btn-outline-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green hover:text-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
   }
 
   .chip {

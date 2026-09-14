@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
-import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Scan, Square, Keyboard } from 'lucide-react';
+import { Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Scan } from 'lucide-react';
 
 type ScannedItem = {
   productId: string;

@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Package, Truck, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
-import { toast } from '@/lib/feedback';
 
 interface LowStockProduct {
   variantId: string;

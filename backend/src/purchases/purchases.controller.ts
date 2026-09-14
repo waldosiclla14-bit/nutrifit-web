@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Body, Param, Delete, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Query, Patch, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
 import { PurchasesService } from './purchases.service';
 
 type PurchaseForm = {
@@ -40,6 +42,7 @@ type MovementResponse = {
   createdAt: string;
 };
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/purchases')
 export class PurchasesController {
   constructor(private purchasesService: PurchasesService) {}

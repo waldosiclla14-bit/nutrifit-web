@@ -49,6 +49,11 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       }
     });
     req.on('error', () => fail(new BadRequestException('Error leyendo body')));
-    setTimeout(() => fail(new BadRequestException('Timeout leyendo body')), 15000);
+    const timer = setTimeout(() => fail(new BadRequestException('Timeout leyendo body')), 15000);
+    const clearTimeoutSafe = () => { try { clearTimeout(timer); } catch {} };
+    const origFinish = finish;
+    (finish as any) = (v: any) => { clearTimeoutSafe(); origFinish(v); };
+    const origFail = fail;
+    (fail as any) = (e: Error) => { clearTimeoutSafe(); origFail(e); };
   });
 }
