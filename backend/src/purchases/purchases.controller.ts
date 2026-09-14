@@ -1,46 +1,9 @@
-import { Controller, Get, Post, Body, Param, Delete, Query, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { PurchasesService } from './purchases.service';
-
-type PurchaseForm = {
-  productId: string;
-  variantId?: string;
-  quantity: number;
-  unitCost: number;
-  supplier?: string;
-  referenceNumber?: string;
-  notes?: string;
-};
-
-type PurchaseResponse = {
-  id: string;
-  productId: string;
-  productName: string;
-  variantName?: string;
-  quantity: number;
-  unitCost: number;
-  totalCost: number;
-  supplier?: string;
-  referenceNumber?: string;
-  notes?: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  date: string;
-  createdAt: string;
-};
-
-type MovementResponse = {
-  id: string;
-  productId: string;
-  type: string;
-  quantity: number;
-  unitCost?: number;
-  totalCost?: number;
-  referenceId?: string;
-  referenceType?: string;
-  reason?: string;
-  createdAt: string;
-};
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
+import { Request } from 'express';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/purchases')
@@ -52,9 +15,29 @@ export class PurchasesController {
     return this.purchasesService.findAll(query);
   }
 
+  @Get('stats')
+  async getStats() {
+    return this.purchasesService.getStats();
+  }
+
+  @Get('suppliers')
+  async getSuppliers() {
+    return this.purchasesService.getSuppliers();
+  }
+
+  @Get('check-duplicate')
+  async checkDuplicate(
+    @Query('supplierId') supplierId: string,
+    @Query('documentNumber') documentNumber: string,
+    @Query('total') total: string,
+  ) {
+    const duplicate = await this.purchasesService.checkDuplicate(supplierId, documentNumber, parseInt(total, 10));
+    return { duplicate: !!duplicate, existing: duplicate };
+  }
+
   @Get('options')
   async getOptions() {
-    return this.purchasesService.getProductOptions();
+    return this.purchasesService.getSuppliers();
   }
 
   @Get(':id')
@@ -62,31 +45,52 @@ export class PurchasesController {
     return this.purchasesService.findOne(id);
   }
 
+  @Get(':id/documents')
+  async getDocuments(@Param('id') id: string) {
+    return this.purchasesService.getDocuments(id);
+  }
+
+  @Get(':id/documents/:docId')
+  async getDocumentData(@Param('id') id: string, @Param('docId') docId: string) {
+    return this.purchasesService.getDocumentData(id, docId);
+  }
+
+  @Get(':id/cost-history')
+  async getCostHistory(@Param('id') id: string) {
+    return this.purchasesService.getCostHistory(undefined, undefined);
+  }
+
   @Post()
-  async create(@Body() data: PurchaseForm) {
-    return this.purchasesService.create(data);
+  async create(@Req() req: Request) {
+    const body = await readJsonBody(req);
+    return this.purchasesService.create(body);
   }
 
-  @Post('batch')
-  async createBatch(@Body() data: {
-    items: Array<{ productId: string; variantId?: string; quantity: number; unitCost: number; photoUrl?: string; notes?: string }>;
-    supplier?: string;
-    referenceNumber?: string;
-    documentUrl?: string;
-  }) {
-    return this.purchasesService.createBatch(data);
+  @Post(':id/documents')
+  async addDocument(@Param('id') id: string, @Req() req: Request) {
+    const body = await readJsonBody(req);
+    return this.purchasesService.addDocument(id, body);
   }
 
-  @Patch(':id/status')
-  async updateStatus(
-    @Param('id') id: string,
-    @Body('status') status: 'pending' | 'confirmed' | 'completed' | 'cancelled',
-  ) {
-    return this.purchasesService.updateStatus(id, status);
+  @Post(':id/confirm')
+  async confirm(@Param('id') id: string, @Req() req: any) {
+    return this.purchasesService.confirm(id, req.user?.id);
   }
 
-  @Delete(':id')
-  async delete(@Param('id') id: string) {
-    return this.purchasesService.delete(id);
+  @Post(':id/cancel')
+  async cancel(@Param('id') id: string) {
+    return this.purchasesService.cancel(id);
+  }
+
+  @Post(':id/receipt')
+  async createReceipt(@Param('id') id: string, @Req() req: any) {
+    const body = await readJsonBody(req);
+    return this.purchasesService.createReceipt(id, body, req.user?.id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Req() req: Request) {
+    const body = await readJsonBody(req);
+    return this.purchasesService.update(id, body);
   }
 }

@@ -1,240 +1,545 @@
-import { Injectable, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PurchaseStatus, DocumentType, ReceiptStatus, MovementType } from '@prisma/client';
 
 @Injectable()
-export class PurchasesService implements OnModuleInit {
+export class PurchasesService {
   private readonly logger = new Logger(PurchasesService.name);
   constructor(private prisma: PrismaService) {}
 
-  async onModuleInit() {
-    try {
-      await this.prisma.$executeRaw`UPDATE "product_variants" SET "reservedStock" = 0 WHERE "reservedStock" > 0`;
-      this.logger.log('Reset stale reservedStock to 0');
-    } catch {
-      this.logger.warn('Could not reset reservedStock on startup');
-    }
-    // Create purchase table if it doesn't exist
-    try {
-      await this.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "purchase" (
-          "id" TEXT PRIMARY KEY,
-          "productId" TEXT NOT NULL,
-          "variantId" TEXT,
-          "quantity" INTEGER NOT NULL DEFAULT 1,
-          "unitCost" INTEGER NOT NULL DEFAULT 0,
-          "totalCost" INTEGER NOT NULL DEFAULT 0,
-          "supplier" TEXT,
-          "referenceNumber" TEXT,
-          "notes" TEXT,
-          "photoUrl" TEXT,
-          "documentUrl" TEXT,
-          "status" TEXT NOT NULL DEFAULT 'pending',
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      this.logger.log('Purchase table verified');
-    } catch (e: any) {
-      this.logger.warn(`Could not create purchase table: ${e?.message}`);
-    }
-    // Create inventory_movement table if it doesn't exist
-    try {
-      await this.prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS "inventory_movements" (
-          "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-          "variantId" TEXT NOT NULL,
-          "type" TEXT NOT NULL,
-          "quantity" INTEGER NOT NULL,
-          "previousStock" INTEGER NOT NULL DEFAULT 0,
-          "newStock" INTEGER NOT NULL DEFAULT 0,
-          "orderId" TEXT,
-          "userId" TEXT,
-          "notes" TEXT,
-          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      this.logger.log('InventoryMovement table verified');
-    } catch (e: any) {
-      this.logger.warn(`Could not create inventory_movement table: ${e?.message}`);
-    }
-    // Ensure purchase table has all needed columns (for existing tables)
-    try {
-      await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "photoUrl" TEXT`;
-      await this.prisma.$executeRaw`ALTER TABLE "purchase" ADD COLUMN IF NOT EXISTS "documentUrl" TEXT`;
-      this.logger.log('Purchase table columns verified');
-    } catch {
-      this.logger.warn('Could not verify purchase table columns');
-    }
-  }
-
   async findAll(query: any = {}) {
     const where: any = {};
-    if (query.productId) where.productId = query.productId;
-    if (query.dateFrom) where.createdAt >= new Date(query.dateFrom);
-    if (query.dateTo) where.createdAt <= new Date(query.dateTo);
     if (query.status) where.status = query.status;
+    if (query.supplierId) where.supplierId = query.supplierId;
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
+      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
+    }
+    if (query.search) {
+      where.OR = [
+        { purchaseNumber: { contains: query.search, mode: 'insensitive' } },
+        { documentNumber: { contains: query.search, mode: 'insensitive' } },
+        { notes: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
 
     const page = Math.max(1, parseInt(query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 20));
     const skip = (page - 1) * limit;
 
-    // Build WHERE clause for raw SQL
-    const whereClauses: string[] = ['1=1'];
-    if (query.productId) whereClauses.push(`"productId" = ${query.productId}`);
-    if (query.dateFrom) whereClauses.push(`"createdAt" >= ${new Date(query.dateFrom)}`);
-    if (query.dateTo) whereClauses.push(`"createdAt" <= ${new Date(query.dateTo)}`);
-    if (query.status) whereClauses.push(`"status" = ${query.status}`);
-
-    const whereSql = whereClauses.join(' AND ');
-
     const [data, total] = await Promise.all([
-      // Use $queryRaw with text to avoid template literal issues
-      this.prisma.$queryRawUnsafe(
-        `SELECT 
-          "purchase".*,
-          "products"."name" as "productName",
-          "product_variants"."variantName"
-        FROM "purchase"
-        LEFT JOIN "products" ON "purchase"."productId" = "products"."id"
-        LEFT JOIN "product_variants" ON "purchase"."variantId" = "product_variants"."id"
-        WHERE ${whereSql}
-        ORDER BY "purchase"."createdAt" DESC
-        OFFSET ${skip} LIMIT ${limit}`
-      ),
-      this.prisma.$queryRawUnsafe(
-        `SELECT COUNT(*) as count FROM "purchase" WHERE ${whereSql}`
-      ),
+      this.prisma.purchase.findMany({
+        where,
+        include: {
+          supplier: { select: { id: true, name: true } },
+          items: { select: { id: true, productName: true, quantity: true, unitCost: true, totalCost: true, receivedQty: true } },
+          _count: { select: { items: true, documents: true, receipts: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.purchase.count({ where }),
     ]);
 
     return { data, total, page, limit };
   }
 
   async findOne(id: string) {
-    const whereSql = '1=1';
-    const sql = `
-      SELECT 
-        "purchase".*,
-        "products"."name" as "productName",
-        "product_variants"."variantName"
-      FROM "purchase"
-      LEFT JOIN "products" ON "purchase"."productId" = "products"."id"
-      LEFT JOIN "product_variants" ON "purchase"."variantId" = "product_variants"."id"
-      WHERE ${whereSql} AND "purchase"."id" = ${id}
-    `;
-    const result = await this.prisma.$queryRawUnsafe(sql);
-    return (result as any[])[0] || null;
-  }
-
-  async create(data: any) {
-    return this.prisma.$transaction(async (tx) => {
-      // 1. Crear registro de compra usando raw SQL
-      const purchaseId = 'purchase-' + Date.now();
-      const totalCost = data.quantity * data.unitCost;
-      const photoUrl = data.photoUrl || null;
-      const documentUrl = data.documentUrl || null;
-
-      await tx.$executeRaw`
-        INSERT INTO "purchase" ("id", "productId", "variantId", "quantity", "unitCost", "totalCost", "supplier", "referenceNumber", "notes", "photoUrl", "documentUrl", "status", "createdAt", "updatedAt")
-        VALUES (${purchaseId}, ${data.productId}, ${data.variantId}, ${data.quantity}, ${data.unitCost}, ${totalCost}, ${data.supplier || null}, ${data.referenceNumber || null}, ${data.notes || null}, ${photoUrl}, ${documentUrl}, 'pending', now(), now())
-      `;
-
-      // 2. Crear movimiento de inventario tipo PURCHASE
-      await tx.$executeRaw`
-        INSERT INTO "inventory_movements" ("id", "variantId", "type", "quantity", "previousStock", "newStock", "notes", "createdAt")
-        VALUES (gen_random_uuid()::text, ${data.variantId}, 'PURCHASE', ${data.quantity}, 0, ${data.quantity}, 'Compra de inventario', now())
-      `;
-
-      // 3. Aumentar stock físico (physicalStock) en productVariant
-      await tx.$executeRaw`
-        UPDATE "product_variants"
-        SET "stock" = "stock" + ${data.quantity}
-        WHERE "id" = ${data.variantId || data.productId} AND ("stock" + ${data.quantity}) >= 0
-      `;
-
-      return { success: true, purchaseId };
+    const purchase = await this.prisma.purchase.findUnique({
+      where: { id },
+      include: {
+        supplier: true,
+        items: {
+          include: {
+            product: { select: { id: true, name: true, sku: true } },
+            variant: { select: { id: true, variantName: true, sku: true } },
+          },
+        },
+        documents: true,
+        receipts: {
+          include: {
+            items: {
+              include: {
+                purchaseItem: true,
+                variant: { select: { id: true, variantName: true } },
+              },
+            },
+          },
+          orderBy: { receivedAt: 'desc' },
+        },
+        costHistory: true,
+      },
     });
+    if (!purchase) throw new NotFoundException('Compra no encontrada');
+    return purchase;
   }
 
-  async createBatch(data: {
-    items: Array<{ productId: string; variantId?: string; quantity: number; unitCost: number; photoUrl?: string; notes?: string }>;
-    supplier?: string;
-    referenceNumber?: string;
-    documentUrl?: string;
+  async create(data: {
+    supplierId?: string;
+    documentType?: DocumentType;
+    documentNumber?: string;
+    documentDate?: string;
+    paymentMethod?: string;
+    currency?: string;
+    notes?: string;
+    items: Array<{
+      productId?: string;
+      variantId?: string;
+      productName: string;
+      variantName?: string;
+      sku?: string;
+      barcode?: string;
+      quantity: number;
+      unitCost: number;
+      discount?: number;
+      tax?: number;
+      notes?: string;
+    }>;
   }) {
     if (!data.items || data.items.length === 0) {
       throw new BadRequestException('Debe incluir al menos un producto');
     }
 
-    const results: Array<{ success: boolean; purchaseId: string; error?: string }> = [];
+    const purchaseNumber = await this.generatePurchaseNumber();
 
-    await this.prisma.$transaction(async (tx) => {
-      for (const item of data.items) {
-        try {
-          const purchaseId = 'purchase-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
-          const totalCost = item.quantity * item.unitCost;
-          const photoUrl = item.photoUrl || null;
-          const documentUrl = data.documentUrl || null;
+    const subtotal = data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0);
+    const tax = data.items.reduce((sum, i) => sum + (i.tax || 0), 0);
+    const discount = data.items.reduce((sum, i) => sum + (i.discount || 0), 0);
+    const total = subtotal + tax;
 
-          await tx.$executeRaw`
-            INSERT INTO "purchase" ("id", "productId", "variantId", "quantity", "unitCost", "totalCost", "supplier", "referenceNumber", "notes", "photoUrl", "documentUrl", "status", "createdAt", "updatedAt")
-            VALUES (${purchaseId}, ${item.productId}, ${item.variantId || null}, ${item.quantity}, ${item.unitCost}, ${totalCost}, ${data.supplier || null}, ${data.referenceNumber || null}, ${item.notes || null}, ${photoUrl}, ${documentUrl}, 'pending', now(), now())
-          `;
-
-          await tx.$executeRaw`
-            INSERT INTO "inventory_movements" ("id", "variantId", "type", "quantity", "previousStock", "newStock", "notes", "createdAt")
-            VALUES (gen_random_uuid()::text, ${item.variantId || item.productId}, 'PURCHASE', ${item.quantity}, 0, ${item.quantity}, 'Compra de inventario', now())
-          `;
-
-          await tx.$executeRaw`
-            UPDATE "product_variants"
-            SET "stock" = "stock" + ${item.quantity}
-            WHERE "id" = ${item.variantId || item.productId} AND ("stock" + ${item.quantity}) >= 0
-          `;
-
-          results.push({ success: true, purchaseId });
-        } catch (e: any) {
-          results.push({ success: false, purchaseId: '', error: e?.message || 'Error' });
-        }
-      }
+    const purchase = await this.prisma.purchase.create({
+      data: {
+        purchaseNumber,
+        supplierId: data.supplierId || null,
+        status: 'DRAFT',
+        documentType: data.documentType || null,
+        documentNumber: data.documentNumber || null,
+        documentDate: data.documentDate ? new Date(data.documentDate) : null,
+        paymentMethod: data.paymentMethod || null,
+        currency: data.currency || 'CLP',
+        subtotal,
+        tax,
+        discount,
+        total,
+        notes: data.notes || null,
+        items: {
+          create: data.items.map((item) => ({
+            productId: item.productId || null,
+            variantId: item.variantId || null,
+            productName: item.productName,
+            variantName: item.variantName || null,
+            sku: item.sku || null,
+            barcode: item.barcode || null,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            discount: item.discount || 0,
+            tax: item.tax || 0,
+            totalCost: item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0),
+            receivedQty: 0,
+            notes: item.notes || null,
+          })),
+        },
+      },
+      include: { items: true, supplier: true },
     });
 
-    const succeeded = results.filter((r) => r.success).length;
-    const failed = results.filter((r) => !r.success).length;
+    return purchase;
+  }
+
+  async update(id: string, data: {
+    supplierId?: string;
+    documentType?: DocumentType;
+    documentNumber?: string;
+    documentDate?: string;
+    paymentMethod?: string;
+    notes?: string;
+    items?: Array<{
+      id?: string;
+      productId?: string;
+      variantId?: string;
+      productName: string;
+      variantName?: string;
+      sku?: string;
+      barcode?: string;
+      quantity: number;
+      unitCost: number;
+      discount?: number;
+      tax?: number;
+      notes?: string;
+    }>;
+  }) {
+    const existing = await this.prisma.purchase.findUnique({ where: { id }, include: { items: true } });
+    if (!existing) throw new NotFoundException('Compra no encontrada');
+    if (existing.status !== 'DRAFT' && existing.status !== 'PENDING_REVIEW') {
+      throw new BadRequestException('Solo se pueden editar compras en borrador o pendiente de revision');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      if (data.items) {
+        await tx.purchaseItem.deleteMany({ where: { purchaseId: id } });
+      }
+
+      const subtotal = data.items
+        ? data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0)
+        : existing.subtotal;
+      const tax = data.items
+        ? data.items.reduce((sum, i) => sum + (i.tax || 0), 0)
+        : existing.tax;
+      const discount = data.items
+        ? data.items.reduce((sum, i) => sum + (i.discount || 0), 0)
+        : existing.discount;
+      const total = subtotal + tax;
+
+      const purchase = await tx.purchase.update({
+        where: { id },
+        data: {
+          supplierId: data.supplierId !== undefined ? data.supplierId : undefined,
+          documentType: data.documentType !== undefined ? data.documentType : undefined,
+          documentNumber: data.documentNumber !== undefined ? data.documentNumber : undefined,
+          documentDate: data.documentDate ? new Date(data.documentDate) : undefined,
+          paymentMethod: data.paymentMethod !== undefined ? data.paymentMethod : undefined,
+          notes: data.notes !== undefined ? data.notes : undefined,
+          subtotal,
+          tax,
+          discount,
+          total,
+          status: 'PENDING_REVIEW',
+          items: data.items
+            ? {
+                create: data.items.map((item) => ({
+                  productId: item.productId || null,
+                  variantId: item.variantId || null,
+                  productName: item.productName,
+                  variantName: item.variantName || null,
+                  sku: item.sku || null,
+                  barcode: item.barcode || null,
+                  quantity: item.quantity,
+                  unitCost: item.unitCost,
+                  discount: item.discount || 0,
+                  tax: item.tax || 0,
+                  totalCost: item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0),
+                  receivedQty: 0,
+                  notes: item.notes || null,
+                })),
+              }
+            : undefined,
+        },
+        include: { items: true, supplier: true },
+      });
+
+      return purchase;
+    });
+  }
+
+  async confirm(id: string, userId?: string) {
+    const existing = await this.prisma.purchase.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Compra no encontrada');
+    if (existing.status !== 'PENDING_REVIEW') {
+      throw new BadRequestException('Solo se pueden confirmar compras pendientes de revision');
+    }
+
+    return this.prisma.purchase.update({
+      where: { id },
+      data: {
+        status: 'CONFIRMED',
+        confirmedAt: new Date(),
+        confirmedById: userId || null,
+      },
+    });
+  }
+
+  async cancel(id: string) {
+    const existing = await this.prisma.purchase.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Compra no encontrada');
+    if (existing.status === 'CANCELLED') {
+      throw new BadRequestException('La compra ya esta cancelada');
+    }
+
+    return this.prisma.purchase.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+    });
+  }
+
+  async addDocument(id: string, data: {
+    documentType: string;
+    fileName: string;
+    originalName?: string;
+    mimeType: string;
+    fileSize: number;
+    base64Data: string;
+    ocrRawData?: any;
+    ocrConfidence?: number;
+  }) {
+    const existing = await this.prisma.purchase.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Compra no encontrada');
+
+    return this.prisma.purchaseDocument.create({
+      data: {
+        purchaseId: id,
+        documentType: data.documentType,
+        fileName: data.fileName,
+        originalName: data.originalName || data.fileName,
+        mimeType: data.mimeType,
+        fileSize: data.fileSize,
+        storagePath: data.base64Data,
+        ocrProcessed: !!data.ocrRawData,
+        ocrRawData: data.ocrRawData || null,
+        ocrConfidence: data.ocrConfidence || null,
+      },
+    });
+  }
+
+  async getDocuments(id: string) {
+    return this.prisma.purchaseDocument.findMany({
+      where: { purchaseId: id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        documentType: true,
+        fileName: true,
+        originalName: true,
+        mimeType: true,
+        fileSize: true,
+        ocrProcessed: true,
+        ocrConfidence: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async getDocumentData(id: string, documentId: string) {
+    const doc = await this.prisma.purchaseDocument.findFirst({
+      where: { id: documentId, purchaseId: id },
+    });
+    if (!doc) throw new NotFoundException('Documento no encontrado');
+    return { storagePath: doc.storagePath, ocrRawData: doc.ocrRawData };
+  }
+
+  async createReceipt(id: string, data: {
+    notes?: string;
+    items: Array<{
+      purchaseItemId: string;
+      variantId?: string;
+      receivedQty: number;
+      damagedQty?: number;
+      notes?: string;
+    }>;
+  }, userId?: string) {
+    const existing = await this.prisma.purchase.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!existing) throw new NotFoundException('Compra no encontrada');
+    if (existing.status !== 'CONFIRMED' && existing.status !== 'RECEIVING') {
+      throw new BadRequestException('La compra debe estar confirmada para recibir');
+    }
+
+    const receiptNumber = await this.generateReceiptNumber();
+
+    return this.prisma.$transaction(async (tx) => {
+      const receipt = await tx.goodsReceipt.create({
+        data: {
+          purchaseId: id,
+          receiptNumber,
+          status: 'PENDING',
+          notes: data.notes || null,
+          receivedById: userId || null,
+          items: {
+            create: data.items.map((item) => {
+              const purchaseItem = existing.items.find((pi) => pi.id === item.purchaseItemId);
+              return {
+                purchaseItemId: item.purchaseItemId,
+                variantId: item.variantId || purchaseItem?.variantId || null,
+                expectedQty: purchaseItem?.quantity || 0,
+                receivedQty: item.receivedQty,
+                damagedQty: item.damagedQty || 0,
+                notes: item.notes || null,
+              };
+            }),
+          },
+        },
+        include: { items: true },
+      });
+
+      for (const item of data.items) {
+        const purchaseItem = existing.items.find((pi) => pi.id === item.purchaseItemId);
+        if (!purchaseItem) continue;
+
+        const newReceivedQty = purchaseItem.receivedQty + item.receivedQty;
+        await tx.purchaseItem.update({
+          where: { id: item.purchaseItemId },
+          data: { receivedQty: newReceivedQty },
+        });
+
+        if (purchaseItem.variantId) {
+          const variant = await tx.productVariant.findUnique({ where: { id: purchaseItem.variantId } });
+          if (variant) {
+            const previousStock = variant.physicalStock;
+            const newStock = previousStock + item.receivedQty - item.damagedQty;
+            await tx.productVariant.update({
+              where: { id: purchaseItem.variantId },
+              data: { physicalStock: Math.max(0, newStock) },
+            });
+            await tx.inventoryMovement.create({
+              data: {
+                variantId: purchaseItem.variantId,
+                type: 'PURCHASE_RECEIPT',
+                quantity: item.receivedQty - item.damagedQty,
+                previousStock,
+                newStock: Math.max(0, newStock),
+                purchaseId: id,
+                receiptId: receipt.id,
+                userId: userId || null,
+                unitCost: purchaseItem.unitCost,
+                notes: `Recepcion compra ${existing.purchaseNumber}`,
+              },
+            });
+
+            await this.updateCostHistory(tx, purchaseItem.productId, purchaseItem.variantId, id, item.receivedQty, purchaseItem.unitCost, previousStock);
+          }
+        }
+      }
+
+      const allItemsReceived = existing.items.every(
+        (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) >= pi.quantity,
+      );
+      const anyReceived = existing.items.some(
+        (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) > 0,
+      );
+
+      const receiptStatus = allItemsReceived ? 'COMPLETED' : anyReceived ? 'PARTIAL' : 'PENDING';
+      const purchaseStatus = allItemsReceived ? 'RECEIVED' : 'RECEIVING';
+
+      await tx.goodsReceipt.update({
+        where: { id: receipt.id },
+        data: { status: receiptStatus as any },
+      });
+
+      await tx.purchase.update({
+        where: { id },
+        data: {
+          status: purchaseStatus as any,
+          receiptStatus: receiptStatus as any,
+          receivedAt: anyReceived ? new Date() : existing.receivedAt,
+        },
+      });
+
+      return receipt;
+    });
+  }
+
+  async getCostHistory(productId?: string, variantId?: string) {
+    const where: any = {};
+    if (productId) where.productId = productId;
+    if (variantId) where.variantId = variantId;
+
+    return this.prisma.productCostHistory.findMany({
+      where,
+      include: {
+        purchase: { select: { id: true, purchaseNumber: true } },
+      },
+      orderBy: { purchaseDate: 'desc' },
+      take: 50,
+    });
+  }
+
+  async getSuppliers() {
+    return this.prisma.supplier.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, rut: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async checkDuplicate(supplierId: string, documentNumber: string, total: number) {
+    const existing = await this.prisma.purchase.findFirst({
+      where: {
+        supplierId,
+        documentNumber,
+        total,
+        status: { not: 'CANCELLED' },
+      },
+      select: { id: true, purchaseNumber: true, createdAt: true, total: true },
+    });
+    return existing || null;
+  }
+
+  async getStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalThisMonth, countThisMonth, pendingReceipt, suppliersCount] = await Promise.all([
+      this.prisma.purchase.aggregate({
+        where: { createdAt: { gte: startOfMonth }, status: { not: 'CANCELLED' } },
+        _sum: { total: true },
+      }),
+      this.prisma.purchase.count({
+        where: { createdAt: { gte: startOfMonth }, status: { not: 'CANCELLED' } },
+      }),
+      this.prisma.purchase.count({
+        where: { receiptStatus: { in: ['PENDING', 'PARTIAL'] }, status: { not: 'CANCELLED' } },
+      }),
+      this.prisma.supplier.count({ where: { isActive: true } }),
+    ]);
 
     return {
-      success: failed === 0,
-      total: data.items.length,
-      succeeded,
-      failed,
-      results,
+      totalThisMonth: totalThisMonth._sum.total || 0,
+      countThisMonth,
+      pendingReceipt,
+      suppliersCount,
     };
   }
 
-  async updateStatus(id: string, status: 'pending' | 'confirmed' | 'completed' | 'cancelled') {
-    const result = await this.prisma.$executeRaw`
-      UPDATE "purchase" SET "status" = ${status} WHERE "id" = ${id}
-    `;
-    const affected = Number(result ?? 0);
-    return { affected };
+  private async generatePurchaseNumber(): Promise<string> {
+    const last = await this.prisma.purchase.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { purchaseNumber: true },
+    });
+    const lastNum = last?.purchaseNumber ? parseInt(last.purchaseNumber.replace('COMP-', ''), 10) : 0;
+    return `COMP-${String(lastNum + 1).padStart(6, '0')}`;
   }
 
-  async delete(id: string) {
-    // Anular compra: cambiar estado a cancelled, no restar stock
-    const result = await this.prisma.$executeRaw`
-      UPDATE "purchase" SET "status" = 'cancelled' WHERE "id" = ${id}
-    `;
-    const affected = Number(result ?? 0);
-    return { affected };
+  private async generateReceiptNumber(): Promise<string> {
+    const last = await this.prisma.goodsReceipt.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { receiptNumber: true },
+    });
+    const lastNum = last?.receiptNumber ? parseInt(last.receiptNumber.replace('REC-', ''), 10) : 0;
+    return `REC-${String(lastNum + 1).padStart(6, '0')}`;
   }
 
-  async getProductOptions(): Promise<Array<{value: string; label: string}>> {
-    const variants = (await this.prisma.productVariant.findMany({
-      where: { isActive: true },
-      select: { id: true, variantName: true, sku: true, product: { select: { name: true } } },
-    })) as any[];
-    return variants.map((v) => ({
-      value: v.id,
-      label: (v.product?.name ?? '') + ' - ' + (v.variantName ?? '') + ' (' + (v.sku ?? '') + ')',
-    }));
+  private async updateCostHistory(tx: any, productId: string | null, variantId: string | null, purchaseId: string, quantity: number, unitCost: number, previousStock: number) {
+    const previousCost = variantId
+      ? (await tx.productVariant.findUnique({ where: { id: variantId } }))?.costPrice || 0
+      : 0;
+    const totalNewCost = quantity * unitCost;
+    const totalOldCost = previousStock * previousCost;
+    const newAverageCost = previousStock + quantity > 0
+      ? Math.round((totalOldCost + totalNewCost) / (previousStock + quantity))
+      : unitCost;
+
+    await tx.productCostHistory.create({
+      data: {
+        productId: productId || undefined,
+        variantId: variantId || undefined,
+        purchaseId,
+        quantity,
+        unitCost,
+        totalCost: totalNewCost,
+        previousCost,
+        newAverageCost,
+        purchaseDate: new Date(),
+      },
+    });
+
+    if (variantId) {
+      await tx.productVariant.update({
+        where: { id: variantId },
+        data: { costPrice: newAverageCost },
+      });
+    }
   }
 }
