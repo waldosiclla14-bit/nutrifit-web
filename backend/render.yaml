@@ -22,6 +22,8 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://nutrifit-web-nu.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false
       - key: PORT
         value: 3001
 

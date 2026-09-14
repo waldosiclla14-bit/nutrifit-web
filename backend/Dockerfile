@@ -24,4 +24,4 @@ COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma db push --skip-generate && exec node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate deploy && exec node dist/main"]
