@@ -668,6 +668,162 @@ export class PurchasesService {
     return alerts;
   }
 
+  async matchProducts(ocrProducts: Array<{ name: string; barcode?: string; sku?: string }>) {
+    const results: Array<{
+      ocrName: string;
+      matches: Array<{ productId: string; variantId: string; productName: string; variantName: string; sku: string; confidence: number }>;
+    }> = [];
+
+    for (const ocrProduct of ocrProducts) {
+      const matches: Array<{ productId: string; variantId: string; productName: string; variantName: string; sku: string; confidence: number }> = [];
+
+      if (ocrProduct.barcode) {
+        const byBarcode = await this.prisma.productVariant.findFirst({
+          where: { barcode: ocrProduct.barcode },
+          include: { product: { select: { name: true } } },
+        });
+        if (byBarcode) {
+          matches.push({
+            productId: byBarcode.productId,
+            variantId: byBarcode.id,
+            productName: byBarcode.product.name,
+            variantName: byBarcode.variantName,
+            sku: byBarcode.sku,
+            confidence: 1.0,
+          });
+        }
+      }
+
+      if (matches.length === 0 && ocrProduct.sku) {
+        const bySku = await this.prisma.productVariant.findFirst({
+          where: { sku: ocrProduct.sku },
+          include: { product: { select: { name: true } } },
+        });
+        if (bySku) {
+          matches.push({
+            productId: bySku.productId,
+            variantId: bySku.id,
+            productName: bySku.product.name,
+            variantName: bySku.variantName,
+            sku: bySku.sku,
+            confidence: 0.95,
+          });
+        }
+      }
+
+      if (matches.length === 0) {
+        const normalizedName = ocrProduct.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const keywords = normalizedName.split(/\s+/).filter((w) => w.length > 2);
+
+        if (keywords.length > 0) {
+          const variants = await this.prisma.productVariant.findMany({
+            where: {
+              isActive: true,
+              OR: keywords.map((kw) => ({
+                product: { name: { contains: kw, mode: 'insensitive' } },
+              })),
+            },
+            include: { product: { select: { name: true } } },
+            take: 5,
+          });
+
+          for (const v of variants) {
+            const dbName = v.product.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            const dbWords = dbName.split(/\s+/);
+            const matchingWords = keywords.filter((kw) => dbWords.some((dw) => dw.includes(kw) || kw.includes(dw)));
+            const confidence = matchingWords.length / Math.max(keywords.length, dbWords.length);
+
+            if (confidence >= 0.3) {
+              matches.push({
+                productId: v.productId,
+                variantId: v.id,
+                productName: v.product.name,
+                variantName: v.variantName,
+                sku: v.sku,
+                confidence: Math.round(confidence * 100) / 100,
+              });
+            }
+          }
+
+          matches.sort((a, b) => b.confidence - a.confidence);
+        }
+      }
+
+      results.push({ ocrName: ocrProduct.name, matches: matches.slice(0, 3) });
+    }
+
+    return results;
+  }
+
+  async getReports(query: any = {}) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const where: any = { status: { not: 'CANCELLED' } };
+    if (query.dateFrom) where.createdAt = { ...where.createdAt, gte: new Date(query.dateFrom) };
+    if (query.dateTo) where.createdAt = { ...where.createdAt, lte: new Date(query.dateTo) };
+    if (!query.dateFrom && !query.dateTo) where.createdAt = { gte: startOfMonth };
+
+    const [bySupplier, byProduct, monthlyTrend] = await Promise.all([
+      this.prisma.purchase.groupBy({
+        by: ['supplierId'],
+        where: { ...where, supplierId: { not: null } },
+        _sum: { total: true },
+        _count: true,
+      }),
+      this.prisma.purchaseItem.groupBy({
+        by: ['productId'],
+        where: { purchase: { ...where } },
+        _sum: { totalCost: true, quantity: true },
+        _count: true,
+      }),
+      this.prisma.$queryRaw`
+        SELECT DATE_TRUNC('month', "createdAt") as month,
+               SUM("total") as total,
+               COUNT(*) as count
+        FROM "purchases"
+        WHERE "status" != 'CANCELLED'
+          AND "createdAt" >= ${startOfYear}
+        GROUP BY DATE_TRUNC('month', "createdAt")
+        ORDER BY month ASC
+      `,
+    ]);
+
+    const supplierIds = bySupplier.map((s) => s.supplierId).filter(Boolean);
+    const suppliers = supplierIds.length > 0
+      ? await this.prisma.supplier.findMany({ where: { id: { in: supplierIds as string[] } }, select: { id: true, name: true } })
+      : [];
+    const supplierMap = new Map(suppliers.map((s) => [s.id, s.name]));
+
+    const productIds = byProduct.map((p) => p.productId).filter(Boolean);
+    const products = productIds.length > 0
+      ? await this.prisma.product.findMany({ where: { id: { in: productIds as string[] } }, select: { id: true, name: true } })
+      : [];
+    const productMap = new Map(products.map((p) => [p.id, p.name]));
+
+    return {
+      bySupplier: bySupplier.map((s) => ({
+        supplierId: s.supplierId,
+        supplierName: supplierMap.get(s.supplierId || '') || 'Sin proveedor',
+        total: s._sum.total || 0,
+        count: s._count,
+      })).sort((a, b) => b.total - a.total),
+      byProduct: byProduct.map((p) => ({
+        productId: p.productId,
+        productName: productMap.get(p.productId || '') || 'N/A',
+        totalCost: p._sum.totalCost || 0,
+        quantity: p._sum.quantity || 0,
+        count: p._count,
+      })).sort((a, b) => b.totalCost - a.totalCost).slice(0, 20),
+      monthlyTrend: (monthlyTrend as any[]).map((m) => ({
+        month: m.month?.toISOString?.()?.slice(0, 7) || m.month,
+        total: Number(m.total),
+        count: Number(m.count),
+      })),
+    };
+  }
+
   private avgConfidence(result: any): number {
     const fields = [result.supplier, result.documentType, result.documentNumber, result.documentDate, result.subtotal, result.tax, result.total];
     const confidences = fields.filter((f) => f?.confidence > 0).map((f) => f.confidence);

@@ -6,7 +6,7 @@ import { toast } from '@/lib/feedback';
 import {
   Camera, X, Plus, Minus, Trash2, Barcode, FileImage, FileText, ImageIcon, Zap, Scan,
   Package, CheckCircle, Clock, AlertTriangle, ChevronDown, ChevronRight, Eye, Send,
-  RotateCcw, Search, Filter, FilePlus, Truck, ClipboardCheck, History,
+  RotateCcw, Search, Filter, FilePlus, Truck, ClipboardCheck, History, BarChart3, ArrowLeft,
 } from 'lucide-react';
 
 type PurchaseItem = {
@@ -86,7 +86,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-type View = 'list' | 'create' | 'detail' | 'receipt';
+type View = 'list' | 'create' | 'detail' | 'receipt' | 'reports' | 'docViewer';
 
 export function Compras({ token }: { token: string }) {
   const [view, setView] = useState<View>('list');
@@ -126,6 +126,9 @@ export function Compras({ token }: { token: string }) {
   const [submitting, setSubmitting] = useState(false);
 
   const [receiptItems, setReceiptItems] = useState<Array<{ purchaseItemId: string; receivedQty: number; damagedQty: number; notes: string }>>([]);
+  const [reports, setReports] = useState<any>(null);
+  const [docViewerUrl, setDocViewerUrl] = useState('');
+  const [docViewerName, setDocViewerName] = useState('');
 
   const loadPurchases = useCallback(async () => {
     setLoading(true);
@@ -160,6 +163,24 @@ export function Compras({ token }: { token: string }) {
     } catch {}
   }, [token]);
 
+  const loadReports = useCallback(async () => {
+    try {
+      const res = await apiFetch<any>('/admin/purchases/reports', { token });
+      if (res) setReports(res);
+    } catch {}
+  }, [token]);
+
+  const viewDocument = useCallback(async (purchaseId: string, docId: string, fileName: string) => {
+    try {
+      const res = await apiFetch<any>(`/admin/purchases/${purchaseId}/documents/${docId}`, { token });
+      if (res?.storagePath) {
+        setDocViewerUrl(res.storagePath);
+        setDocViewerName(fileName);
+        setView('docViewer');
+      }
+    } catch { toast.error('Error al cargar documento'); }
+  }, [token]);
+
   const loadPurchaseDetail = useCallback(async (id: string) => {
     try {
       const res = await apiFetch<any>(`/admin/purchases/${id}`, { token });
@@ -171,6 +192,7 @@ export function Compras({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => { loadPurchases(); loadStats(); loadSuppliers(); loadAlerts(); }, [loadPurchases, loadStats, loadSuppliers, loadAlerts]);
+  useEffect(() => { if (view === 'reports') loadReports(); }, [view, loadReports]);
 
   const searchItems = useCallback(async (q: string) => {
     if (!q || q.length < 2) { setItemResults([]); return; }
@@ -651,6 +673,7 @@ export function Compras({ token }: { token: string }) {
                   <span className="flex-1 truncate">{doc.fileName}</span>
                   <span className="text-muted">{(doc.fileSize / 1024).toFixed(0)}KB</span>
                   {doc.ocrProcessed && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+                  <button onClick={() => viewDocument(p.id, doc.id, doc.fileName)} className="text-accent font-semibold underline">Ver</button>
                 </div>
               ))}
             </div>
@@ -772,13 +795,106 @@ export function Compras({ token }: { token: string }) {
     );
   }
 
+  if (view === 'docViewer') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('detail')} className="p-2 rounded-xl hover:bg-soft active:scale-95 transition-all"><ArrowLeft className="h-5 w-5" /></button>
+          <h2 className="text-lg font-bold text-ink truncate">{docViewerName}</h2>
+        </div>
+        <div className="bg-paper rounded-xl border border-line overflow-hidden">
+          {docViewerUrl.startsWith('data:application/pdf') ? (
+            <iframe src={docViewerUrl} className="w-full h-[70vh]" title={docViewerName} />
+          ) : (
+            <img src={docViewerUrl} alt={docViewerName} className="w-full object-contain max-h-[70vh]" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'reports') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-soft active:scale-95 transition-all"><ArrowLeft className="h-5 w-5" /></button>
+          <h2 className="text-lg font-bold text-ink">Reportes de Compras</h2>
+        </div>
+
+        {reports && (
+          <>
+            <div className="bg-paper rounded-xl p-4 border border-line">
+              <h3 className="text-xs font-bold text-muted uppercase tracking-widest mb-3">Por Proveedor</h3>
+              {reports.bySupplier.length === 0 ? (
+                <p className="text-xs text-muted">Sin datos</p>
+              ) : (
+                <div className="space-y-2">
+                  {reports.bySupplier.map((s: any) => (
+                    <div key={s.supplierId} className="flex items-center justify-between text-xs">
+                      <span className="truncate">{s.supplierName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-muted">{s.count} compras</span>
+                        <span className="font-bold text-accent">${s.total.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-paper rounded-xl p-4 border border-line">
+              <h3 className="text-xs font-bold text-muted uppercase tracking-widest mb-3">Productos Mas Comprados</h3>
+              {reports.byProduct.length === 0 ? (
+                <p className="text-xs text-muted">Sin datos</p>
+              ) : (
+                <div className="space-y-2">
+                  {reports.byProduct.slice(0, 10).map((p: any) => (
+                    <div key={p.productId} className="flex items-center justify-between text-xs">
+                      <span className="truncate">{p.productName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-muted">{Number(p.quantity).toLocaleString()} unid.</span>
+                        <span className="font-bold text-ink">${Number(p.totalCost).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {reports.monthlyTrend.length > 0 && (
+              <div className="bg-paper rounded-xl p-4 border border-line">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-widest mb-3">Tendencia Mensual</h3>
+                <div className="space-y-2">
+                  {reports.monthlyTrend.map((m: any) => (
+                    <div key={m.month} className="flex items-center justify-between text-xs">
+                      <span className="text-muted">{m.month}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-muted">{m.count} compras</span>
+                        <span className="font-bold text-accent">${m.total.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="text-lg font-bold text-ink">Compras</h2>
-        <button onClick={() => setView('create')} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl bg-accent text-ink active:scale-[0.97]">
-          <Plus className="h-4 w-4" /> Nueva
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setView('reports')} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl bg-soft border border-line text-ink active:scale-[0.97]">
+            <BarChart3 className="h-4 w-4" /> Reportes
+          </button>
+          <button onClick={() => setView('create')} className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2.5 rounded-xl bg-accent text-ink active:scale-[0.97]">
+            <Plus className="h-4 w-4" /> Nueva
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -102,6 +102,17 @@ export class PurchasesController {
     return this.purchasesService.getAlerts();
   }
 
+  @Get('reports')
+  async getReports(@Query() query: any) {
+    return this.purchasesService.getReports(query);
+  }
+
+  @Post('match-products')
+  async matchProducts(@Req() req: Request) {
+    const body = await readJsonBody(req);
+    return this.purchasesService.matchProducts(body.products || []);
+  }
+
   @Patch(':id')
   async update(@Param('id') id: string, @Req() req: Request) {
     const body = await readJsonBody(req);
