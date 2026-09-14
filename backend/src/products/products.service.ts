@@ -24,6 +24,8 @@ export class ProductsService implements OnModuleInit {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
         { sku: { contains: query.search, mode: 'insensitive' } },
+        { barcode: { contains: query.search } },
+        { variants: { some: { barcode: { contains: query.search } } } },
       ];
     }
 
@@ -59,6 +61,8 @@ export class ProductsService implements OnModuleInit {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
         { sku: { contains: query.search, mode: 'insensitive' } },
+        { barcode: { contains: query.search } },
+        { variants: { some: { barcode: { contains: query.search } } } },
       ];
     }
 

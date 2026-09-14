@@ -197,19 +197,40 @@ export function Compras({ token }: { token: string }) {
   const searchItems = useCallback(async (q: string) => {
     if (!q || q.length < 2) { setItemResults([]); return; }
     try {
-      const res = await apiFetch<any>(`/products?search=${encodeURIComponent(q)}`, { token });
-      const items = (res?.data || res || []).flatMap((p: any) =>
-        (p.variants || []).map((v: any) => ({
-          productId: p.id,
-          variantId: v.id,
-          productName: p.name,
-          variantName: v.variantName,
-          sku: v.sku,
-          barcode: v.barcode,
-          costPrice: v.costPrice || p.costPrice || 0,
-          imageUrl: v.imageUrl || p.imageUrl,
-        }))
-      );
+      let items: any[] = [];
+      if (/^\d{8,14}$/.test(q.trim())) {
+        try {
+          const byBarcode = await apiFetch<any>(`/products/barcode/${q.trim()}`, { token });
+          if (byBarcode?.data) {
+            const p = byBarcode.data;
+            items = (p.variants || []).map((v: any) => ({
+              productId: p.id,
+              variantId: v.id,
+              productName: p.name,
+              variantName: v.variantName,
+              sku: v.sku,
+              barcode: v.barcode,
+              costPrice: v.costPrice || p.costPrice || 0,
+              imageUrl: v.imageUrl || p.imageUrl,
+            }));
+          }
+        } catch {}
+      }
+      if (items.length === 0) {
+        const res = await apiFetch<any>(`/products?search=${encodeURIComponent(q)}`, { token });
+        items = (res?.data || res || []).flatMap((p: any) =>
+          (p.variants || []).map((v: any) => ({
+            productId: p.id,
+            variantId: v.id,
+            productName: p.name,
+            variantName: v.variantName,
+            sku: v.sku,
+            barcode: v.barcode,
+            costPrice: v.costPrice || p.costPrice || 0,
+            imageUrl: v.imageUrl || p.imageUrl,
+          }))
+        );
+      }
       setItemResults(items.slice(0, 10));
     } catch { setItemResults([]); }
   }, [token]);
