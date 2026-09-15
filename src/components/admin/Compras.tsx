@@ -58,12 +58,23 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-let Html5QrcodeConstructor: any = null;
-async function getHtml5Qrcode() {
-  if (Html5QrcodeConstructor) return Html5QrcodeConstructor;
-  const mod = await import('html5-qrcode');
-  Html5QrcodeConstructor = mod.Html5Qrcode;
-  return Html5QrcodeConstructor;
+let BarcodeDetectorCls: any = null;
+async function getBarcodeDetector(): Promise<any> {
+  if (BarcodeDetectorCls) return BarcodeDetectorCls;
+  try {
+    const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
+    BarcodeDetectorCls = BD;
+    return BD;
+  } catch { return null; }
+}
+async function detectFromImage(img: HTMLImageElement): Promise<string | null> {
+  const BD = await getBarcodeDetector();
+  if (!BD) return null;
+  try {
+    const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] });
+    const barcodes = await detector.detect(img);
+    return barcodes.length > 0 ? barcodes[0].rawValue : null;
+  } catch { return null; }
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -364,70 +375,39 @@ export function Compras({ token }: { token: string }) {
     }
   }, [token, form.documentType, loadPurchaseDetail]);
 
-  const scannerRef = useRef<any>(null);
-  const scannerClosedRef = useRef(false);
-
   const openScanner = useCallback(() => {
     scannedOnceRef.current.clear();
-    scannerClosedRef.current = false;
     setShowScanner(true);
-    setScannerStatus('Iniciando camara...');
+    setScannerStatus('Toma una foto del codigo de barras');
   }, []);
 
-  useEffect(() => {
-    if (!showScanner) return;
-    let scanner: any = null;
-
-    const start = async () => {
-      try {
-        const Html5Qrcode = await getHtml5Qrcode();
-        if (scannerClosedRef.current) return;
-        scanner = new Html5Qrcode('compras-barcode-scanner');
-        scannerRef.current = scanner;
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
-          (decodedText: string) => {
-            if (!scannerClosedRef.current && !scannedOnceRef.current.has(decodedText)) {
-              scannedOnceRef.current.add(decodedText);
-              haptic(80);
-              toast.success(`Detectado: ${decodedText}`);
-              scannerClosedRef.current = true;
-              scanner.stop().catch(() => {});
-              scanner.clear().catch(() => {});
-              setShowScanner(false);
-              setItemSearch(decodedText);
-              searchItems(decodedText);
-              setShowItemSearch(true);
-            }
-          },
-          () => {},
-        );
-        setScannerStatus('Apunta al codigo de barras');
-      } catch (err: any) {
-        if (!scannerClosedRef.current) {
-          setScannerStatus(`Error: ${err?.message || 'No se pudo acceder a la camara'}`);
-        }
+  const handleScanFile = async (file: File) => {
+    if (!file) return;
+    setScannerStatus('Analizando imagen...');
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = url;
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+      const code = await detectFromImage(img);
+      URL.revokeObjectURL(url);
+      if (code && !scannedOnceRef.current.has(code)) {
+        scannedOnceRef.current.add(code);
+        haptic(80);
+        toast.success(`Detectado: ${code}`);
+        setShowScanner(false);
+        setItemSearch(code);
+        searchItems(code);
+        setShowItemSearch(true);
+      } else {
+        setScannerStatus('No se detecto barcode. Intenta de nuevo.');
       }
-    };
-
-    start();
-
-    return () => {
-      scannerClosedRef.current = true;
-      if (scanner) {
-        scanner.stop().catch(() => {});
-        scanner.clear().catch(() => {});
-      }
-    };
-  }, [showScanner]);
+    } catch {
+      setScannerStatus('Error al procesar la imagen. Intenta de nuevo.');
+    }
+  };
 
   const stopScanner = useCallback(() => {
-    scannerClosedRef.current = true;
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
-      scannerRef.current.clear().catch(() => {});
-    }
     setShowScanner(false);
   }, []);
 
@@ -456,19 +436,22 @@ export function Compras({ token }: { token: string }) {
   };
 
   if (showScanner) {
+    const scanFileRef = { current: null as HTMLInputElement | null };
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
+          <button onClick={stopScanner} className="p-2 rounded-full bg-black/40 text-white"><X className="h-5 w-5" /></button>
           <span className="text-white text-sm font-semibold">{scannerStatus}</span>
-          <button onClick={stopScanner} className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
-            <X className="h-5 w-5 text-white" />
-          </button>
+          <div className="w-9" />
         </div>
-        <div className="flex-1">
-          <div id="compras-barcode-scanner" className="w-full h-full" />
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-center">
-          <p className="text-white/70 text-xs mb-4">Mantén el barcode dentro del recuadro</p>
+        <input ref={(el) => { scanFileRef.current = el; }} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScanFile(f); e.target.value = ''; }} />
+        <button onClick={() => scanFileRef.current?.click()} className="flex flex-col items-center gap-4">
+          <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/30">
+            <Camera className="h-12 w-12 text-white" />
+          </div>
+          <span className="text-white text-sm">Toca para abrir camara</span>
+        </button>
+        <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
           <button onClick={stopScanner} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
         </div>
       </div>
