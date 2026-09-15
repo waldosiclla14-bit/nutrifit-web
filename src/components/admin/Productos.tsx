@@ -1,12 +1,102 @@
 'use client';
 
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2, X } from 'lucide-react';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2, X, Barcode, Camera } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
+
+const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
+
+function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef(0);
+  const lastDetectRef = useRef(0);
+  const [status, setStatus] = useState('Iniciando camara...');
+  const detectorRef = useRef<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    const start = async () => {
+      try {
+        if ('BarcodeDetector' in window) {
+          try { detectorRef.current = new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS as any }); } catch {}
+        }
+        if (!detectorRef.current) {
+          try {
+            const mod = await import('barcode-detector');
+            const BD = (mod as any)?.BarcodeDetector;
+            if (BD) detectorRef.current = new BD({ formats: BARCODE_FORMATS });
+          } catch {}
+        }
+        if (!detectorRef.current) { setStatus('Escaneo no soportado'); return; }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
+        if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setStatus('Apunta al codigo de barras');
+          loop();
+        }
+      } catch { setStatus('Error: permiso denegado'); }
+    };
+    const loop = () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const detector = detectorRef.current;
+      if (!video || !canvas || !detector) { rafRef.current = requestAnimationFrame(loop); return; }
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
+      const tick = async () => {
+        if (!video.videoWidth || video.paused || video.ended) { rafRef.current = requestAnimationFrame(loop); return; }
+        const now = Date.now();
+        if (now - lastDetectRef.current < 300) { rafRef.current = requestAnimationFrame(loop); return; }
+        lastDetectRef.current = now;
+        try {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          const barcodes = await detector.detect(canvas);
+          if (barcodes.length > 0 && active) {
+            onDetect(barcodes[0].rawValue);
+            return;
+          }
+        } catch {}
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    start();
+    return () => {
+      active = false;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
+    };
+  }, [onDetect]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
+        <button onClick={onClose} className="p-2 rounded-full bg-black/40 text-white"><X className="h-5 w-5" /></button>
+        <span className="text-white text-sm font-semibold">{status}</span>
+        <div className="w-9" />
+      </div>
+      <video ref={videoRef} className="flex-1 w-full object-cover" playsInline muted />
+      <canvas ref={canvasRef} className="hidden" />
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-64 h-32 border-2 border-white/60 rounded-2xl" />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-4 text-center bg-gradient-to-t from-black/70 to-transparent">
+        <p className="text-white/70 text-xs">Mantén el barcode dentro del recuadro</p>
+      </div>
+    </div>
+  );
+}
 
 let xlsxModule: typeof import('xlsx') | null = null;
 async function getXlsx() {
@@ -63,6 +153,7 @@ export function Productos({
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [compactMode, setCompactMode] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [barcodeScannerTarget, setBarcodeScannerTarget] = useState<{ type: 'product' | 'variant'; variantIdx?: number; mode: 'create' | 'edit' } | null>(null);
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
@@ -491,8 +582,28 @@ export function Productos({
     }
   };
 
+  const handleBarcodeScan = useCallback((code: string) => {
+    if (!barcodeScannerTarget) return;
+    if (barcodeScannerTarget.type === 'product') {
+      if (barcodeScannerTarget.mode === 'create') setForm((f) => ({ ...f, barcode: code }));
+      else setEditForm((f) => f ? { ...f, barcode: code } : f);
+    } else {
+      if (barcodeScannerTarget.mode === 'create') setVariant(barcodeScannerTarget.variantIdx!, 'barcode', code);
+      else setEditVariant(barcodeScannerTarget.variantIdx!, 'barcode', code);
+    }
+    setBarcodeScannerTarget(null);
+    toast.success(`Barcode: ${code}`);
+  }, [barcodeScannerTarget]);
+
+  const ScanBtn = ({ type, variantIdx, mode }: { type: 'product' | 'variant'; variantIdx?: number; mode: 'create' | 'edit' }) => (
+    <button type="button" onClick={() => setBarcodeScannerTarget({ type, variantIdx, mode })} className="shrink-0 p-2 rounded-lg bg-soft border border-line text-ink active:scale-95" title="Escanear barcode">
+      <Camera className="h-4 w-4" />
+    </button>
+  );
+
   return (
     <div>
+      {barcodeScannerTarget && <BarcodeScanner onDetect={handleBarcodeScan} onClose={() => setBarcodeScannerTarget(null)} />}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">
           {search || categoryFilter || statusFilter !== 'all'
@@ -576,7 +687,10 @@ export function Productos({
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
-            <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Codigo de barras (EAN-13, UPC-A)" className="input" />
+            <div className="flex items-center gap-1.5">
+              <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Codigo de barras (EAN-13, UPC-A)" className="input flex-1" />
+              <ScanBtn type="product" mode="create" />
+            </div>
             <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría * (ej: Whey Protein)" className="input" />
             <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
@@ -597,7 +711,10 @@ export function Productos({
               <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-8">
                 <input value={v.variantName} onChange={(e) => setVariant(i, 'variantName', e.target.value)} placeholder="Variante (ej: Vainilla 1kg)" className="input md:col-span-2" />
                 <input value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
-                <input value={v.barcode} onChange={(e) => setVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input" />
+                <div className="flex items-center gap-1">
+                  <input value={v.barcode} onChange={(e) => setVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input flex-1" />
+                  <ScanBtn type="variant" variantIdx={i} mode="create" />
+                </div>
                 <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
                 <input value={v.costPrice} onChange={(e) => setVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
                 <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
@@ -832,7 +949,10 @@ export function Productos({
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
               <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
-              <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Codigo de barras" className="input" />
+              <div className="flex items-center gap-1.5">
+                <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Codigo de barras" className="input flex-1" />
+                <ScanBtn type="product" mode="edit" />
+              </div>
               <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />
               <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" />
               <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" className="input" />
@@ -854,7 +974,10 @@ export function Productos({
                 <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-7">
                   <input value={v.variantName} onChange={(e) => setEditVariant(i, 'variantName', e.target.value)} placeholder="Variante" className="input md:col-span-2" />
                   <input value={v.sku} onChange={(e) => setEditVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
-                  <input value={v.barcode} onChange={(e) => setEditVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input" />
+                  <div className="flex items-center gap-1">
+                    <input value={v.barcode} onChange={(e) => setEditVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input flex-1" />
+                    <ScanBtn type="variant" variantIdx={i} mode="edit" />
+                  </div>
                   <input value={v.price} onChange={(e) => setEditVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
                   <input value={v.costPrice} onChange={(e) => setEditVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
                   <div className="flex items-center gap-2">
