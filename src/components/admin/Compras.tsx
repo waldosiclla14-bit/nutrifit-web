@@ -58,23 +58,12 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-let BarcodeDetectorCls: any = null;
-async function getBarcodeDetector(): Promise<any> {
-  if (BarcodeDetectorCls) return BarcodeDetectorCls;
-  try {
-    const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
-    BarcodeDetectorCls = BD;
-    return BD;
-  } catch { return null; }
-}
-async function detectFromImage(img: HTMLImageElement): Promise<string | null> {
-  const BD = await getBarcodeDetector();
-  if (!BD) return null;
-  try {
-    const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] });
-    const barcodes = await detector.detect(img);
-    return barcodes.length > 0 ? barcodes[0].rawValue : null;
-  } catch { return null; }
+let Html5QrcodeCtor: any = null;
+async function getHtml5Qrcode() {
+  if (Html5QrcodeCtor) return Html5QrcodeCtor;
+  const mod = await import('html5-qrcode');
+  Html5QrcodeCtor = mod.Html5Qrcode;
+  return Html5QrcodeCtor;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -84,6 +73,29 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<File> {
+  if (!file.type.startsWith('image/') || file.size < 500000) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    let w = bmp.width, h = bmp.height;
+    if (w > maxDim || h > maxDim) {
+      const ratio = Math.min(maxDim / w, maxDim / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    const blob = await new Promise<Blob>((res) => canvas.toBlob((b) => res(b!), 'image/jpeg', quality));
+    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
 }
 
 type View = 'list' | 'create' | 'detail' | 'receipt' | 'reports' | 'docViewer';
@@ -354,15 +366,16 @@ export function Compras({ token }: { token: string }) {
 
   const handleUploadDocument = useCallback(async (id: string, file: File) => {
     try {
-      const base64 = await fileToBase64(file);
+      const compressed = await compressImage(file);
+      const base64 = await fileToBase64(compressed);
       await apiFetch(`/admin/purchases/${id}/documents`, {
         method: 'POST',
         body: JSON.stringify({
           documentType: form.documentType || 'OTRO',
-          fileName: file.name,
+          fileName: compressed.name,
           originalName: file.name,
-          mimeType: file.type,
-          fileSize: file.size,
+          mimeType: compressed.type,
+          fileSize: compressed.size,
           base64Data: base64,
         }),
         token,
@@ -375,37 +388,85 @@ export function Compras({ token }: { token: string }) {
     }
   }, [token, form.documentType, loadPurchaseDetail]);
 
+  const handleOCR = useCallback(async (purchaseId: string) => {
+    try {
+      toast.info('Procesando OCR...');
+      const res = await apiFetch<any>(`/admin/purchases/${purchaseId}/ocr`, { method: 'POST', token });
+      if (res?.error) {
+        toast.error(res.error);
+      } else if (res?.ocr) {
+        toast.success(`OCR completado (${Math.round((res.confidence || 0) * 100)}% confianza)`);
+        loadPurchaseDetail(purchaseId);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al procesar OCR');
+    }
+  }, [token, loadPurchaseDetail]);
+
   const openScanner = useCallback(() => {
     scannedOnceRef.current.clear();
     setShowScanner(true);
-    setScannerStatus('Toma una foto del codigo de barras');
+    setScannerStatus('Iniciando camara...');
   }, []);
 
-  const handleScanFile = async (file: File) => {
-    if (!file) return;
-    setScannerStatus('Analizando imagen...');
-    try {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.src = url;
-      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
-      const code = await detectFromImage(img);
-      URL.revokeObjectURL(url);
-      if (code && !scannedOnceRef.current.has(code)) {
-        scannedOnceRef.current.add(code);
-        haptic(80);
-        toast.success(`Detectado: ${code}`);
-        setShowScanner(false);
-        setItemSearch(code);
-        searchItems(code);
-        setShowItemSearch(true);
-      } else {
-        setScannerStatus('No se detecto barcode. Intenta de nuevo.');
+  useEffect(() => {
+    if (!showScanner) return;
+    let scanner: any = null;
+    let closed = false;
+
+    const start = async () => {
+      try {
+        const Html5Qrcode = await getHtml5Qrcode();
+        if (closed) return;
+        scanner = new Html5Qrcode('compras-barcode-scanner');
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 280, height: 120 },
+            aspectRatio: 1.5,
+            useBarCodeDetectorIfSupported: false,
+            disableFlip: false,
+          },
+          (decodedText: string) => {
+            if (!closed && !scannedOnceRef.current.has(decodedText)) {
+              scannedOnceRef.current.add(decodedText);
+              closed = true;
+              scanner.stop().catch(() => {});
+              toast.success(`Detectado: ${decodedText}`);
+              setShowScanner(false);
+              setItemSearch(decodedText);
+              searchItems(decodedText);
+              setShowItemSearch(true);
+            }
+          },
+          () => {},
+        );
+        setScannerStatus('Apunta al codigo de barras');
+        try {
+          const el = document.getElementById('compras-barcode-scanner');
+          const video = el?.querySelector('video');
+          if (video) {
+            const stream = video.srcObject as MediaStream;
+            const track = stream?.getVideoTracks()[0];
+            if (track) await track.applyConstraints({ advanced: [{ width: 1280, height: 720, focusMode: 'continuous' }] as any[] });
+          }
+        } catch {}
+      } catch (err: any) {
+        if (!closed) setScannerStatus(`Error: ${err?.message || 'No se pudo acceder a la camara'}`);
       }
-    } catch {
-      setScannerStatus('Error al procesar la imagen. Intenta de nuevo.');
-    }
-  };
+    };
+
+    start();
+
+    return () => {
+      closed = true;
+      if (scanner) {
+        scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
+      }
+    };
+  }, [showScanner]);
 
   const stopScanner = useCallback(() => {
     setShowScanner(false);
@@ -436,22 +497,19 @@ export function Compras({ token }: { token: string }) {
   };
 
   if (showScanner) {
-    const scanFileRef = { current: null as HTMLInputElement | null };
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col">
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
-          <button onClick={stopScanner} className="p-2 rounded-full bg-black/40 text-white"><X className="h-5 w-5" /></button>
           <span className="text-white text-sm font-semibold">{scannerStatus}</span>
-          <div className="w-9" />
+          <button onClick={stopScanner} className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+            <X className="h-5 w-5 text-white" />
+          </button>
         </div>
-        <input ref={(el) => { scanFileRef.current = el; }} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleScanFile(f); e.target.value = ''; }} />
-        <button onClick={() => scanFileRef.current?.click()} className="flex flex-col items-center gap-4">
-          <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/30">
-            <Camera className="h-12 w-12 text-white" />
-          </div>
-          <span className="text-white text-sm">Toca para abrir camara</span>
-        </button>
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+        <div className="flex-1">
+          <div id="compras-barcode-scanner" className="w-full h-full [&>div]:!h-full" />
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-center">
+          <p className="text-white/70 text-xs mb-4">Mantén el barcode dentro del recuadro</p>
           <button onClick={stopScanner} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
         </div>
       </div>
@@ -658,7 +716,11 @@ export function Compras({ token }: { token: string }) {
                   <FileText className="h-4 w-4 text-muted" />
                   <span className="flex-1 truncate">{doc.fileName}</span>
                   <span className="text-muted">{(doc.fileSize / 1024).toFixed(0)}KB</span>
-                  {doc.ocrProcessed && <CheckCircle className="h-3.5 w-3.5 text-green-500" />}
+                  {doc.ocrProcessed ? (
+                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <button onClick={() => handleOCR(p.id)} className="text-accent font-semibold underline whitespace-nowrap">Ejecutar OCR</button>
+                  )}
                   <button onClick={() => viewDocument(p.id, doc.id, doc.fileName)} className="text-accent font-semibold underline">Ver</button>
                 </div>
               ))}

@@ -14,6 +14,9 @@ export class GeminiOCRProvider implements DocumentOCRProvider {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
+    let base64Clean = input.base64Data;
+    if (base64Clean.includes(',')) base64Clean = base64Clean.split(',')[1];
+
     const prompt = `Analiza esta imagen de documento comercial (factura, boleta, nota de venta, etc.) y extrae la siguiente informacion en formato JSON exacto:
 
 {
@@ -40,6 +43,8 @@ Reglas:
 - La fecha debe ser YYYY-MM-DD
 - Solo responde con el JSON, sin texto adicional`;
 
+    this.logger.log(`Calling Gemini API for ${input.fileName} (${input.mimeType})`);
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
@@ -49,7 +54,7 @@ Reglas:
           contents: [{
             parts: [
               { text: prompt },
-              { inlineData: { mimeType: input.mimeType, data: input.base64Data.split(',')[1] || input.base64Data } },
+              { inlineData: { mimeType: input.mimeType, data: base64Clean } },
             ],
           }],
           generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
@@ -59,14 +64,18 @@ Reglas:
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Gemini API error: ${err}`);
+      this.logger.error(`Gemini API error ${response.status}: ${err}`);
+      throw new Error(`Gemini API error ${response.status}: ${err.slice(0, 200)}`);
     }
 
     const data = await response.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    this.logger.log(`Gemini response: ${text.slice(0, 200)}`);
+
+    if (!text) throw new Error('Gemini returned empty response');
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found in Gemini response');
+    if (!jsonMatch) throw new Error(`No JSON found in Gemini response: ${text.slice(0, 200)}`);
 
     const parsed = JSON.parse(jsonMatch[0]);
 

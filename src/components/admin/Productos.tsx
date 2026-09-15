@@ -8,71 +8,86 @@ import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 
-let BarcodeDetectorCls: any = null;
-
-async function getBarcodeDetector(): Promise<any> {
-  if (BarcodeDetectorCls) return BarcodeDetectorCls;
-  try {
-    const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
-    BarcodeDetectorCls = BD;
-    return BD;
-  } catch { return null; }
-}
-
-async function detectFromImage(img: HTMLImageElement): Promise<string | null> {
-  const BD = await getBarcodeDetector();
-  if (!BD) return null;
-  try {
-    const detector = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'] });
-    const barcodes = await detector.detect(img);
-    return barcodes.length > 0 ? barcodes[0].rawValue : null;
-  } catch { return null; }
+let Html5QrcodeCtor: any = null;
+async function getHtml5Qrcode() {
+  if (Html5QrcodeCtor) return Html5QrcodeCtor;
+  const mod = await import('html5-qrcode');
+  Html5QrcodeCtor = mod.Html5Qrcode;
+  return Html5QrcodeCtor;
 }
 
 function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => void; onClose: () => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [status, setStatus] = useState('Toma una foto del codigo de barras');
-  const [processing, setProcessing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<any>(null);
+  const [status, setStatus] = useState('Iniciando camara...');
+  const closedRef = useRef(false);
 
-  const handleFile = async (file: File) => {
-    if (!file) return;
-    setProcessing(true);
-    setStatus('Analizando imagen...');
-    try {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.src = url;
-      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
-      const code = await detectFromImage(img);
-      URL.revokeObjectURL(url);
-      if (code) {
-        onDetect(code);
-      } else {
-        setStatus('No se detecto barcode. Intenta de nuevo con mejor iluminacion.');
-        setProcessing(false);
+  useEffect(() => {
+    let scanner: any = null;
+
+    const start = async () => {
+      try {
+        const Html5Qrcode = await getHtml5Qrcode();
+        if (closedRef.current) return;
+        scanner = new Html5Qrcode(containerRef.current!);
+        scannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 280, height: 120 },
+            aspectRatio: 1.5,
+            useBarCodeDetectorIfSupported: false,
+            disableFlip: false,
+          },
+          (decodedText: string) => {
+            if (!closedRef.current) {
+              closedRef.current = true;
+              scanner.stop().catch(() => {});
+              onDetect(decodedText);
+            }
+          },
+          () => {},
+        );
+        setStatus('Apunta al codigo de barras');
+        try {
+          const video = containerRef.current?.querySelector('video');
+          if (video) {
+            const stream = video.srcObject as MediaStream;
+            const track = stream?.getVideoTracks()[0];
+            if (track) {
+              await track.applyConstraints({ advanced: [{ width: 1280, height: 720, focusMode: 'continuous' }] as any[] });
+            }
+          }
+        } catch {}
+      } catch (err: any) {
+        if (!closedRef.current) {
+          setStatus(`Error: ${err?.message || 'No se pudo acceder a la camara'}`);
+        }
       }
-    } catch {
-      setStatus('Error al procesar la imagen. Intenta de nuevo.');
-      setProcessing(false);
-    }
-  };
+    };
+
+    start();
+
+    return () => {
+      closedRef.current = true;
+      if (scanner) {
+        scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
+      }
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
-        <button onClick={onClose} className="p-2 rounded-full bg-black/40 text-white"><X className="h-5 w-5" /></button>
+        <button onClick={() => { closedRef.current = true; onClose(); }} className="p-2 rounded-full bg-black/40 text-white"><X className="h-5 w-5" /></button>
         <span className="text-white text-sm font-semibold">{status}</span>
         <div className="w-9" />
       </div>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-      <button onClick={() => fileRef.current?.click()} disabled={processing} className="flex flex-col items-center gap-4">
-        <div className="w-32 h-32 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/30">
-          <Camera className="h-12 w-12 text-white" />
-        </div>
-        <span className="text-white text-sm">{processing ? 'Procesando...' : 'Toca para abrir camara'}</span>
-      </button>
-      <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
-        <button onClick={onClose} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
+      <div ref={containerRef} className="flex-1 [&>div]:!h-full" />
+      <div className="absolute bottom-0 left-0 right-0 p-6 text-center bg-gradient-to-t from-black/70 to-transparent">
+        <p className="text-white/70 text-xs">Mantén el barcode dentro del recuadro</p>
       </div>
     </div>
   );
