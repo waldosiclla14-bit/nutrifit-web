@@ -72,6 +72,7 @@ export class ProductsService implements OnModuleInit {
         id: true,
         name: true,
         sku: true,
+        barcode: true,
         basePrice: true,
         costPrice: true,
         description: true,
@@ -86,6 +87,7 @@ export class ProductsService implements OnModuleInit {
             id: true,
             variantName: true,
             sku: true,
+            barcode: true,
             price: true,
             costPrice: true,
             physicalStock: true,
@@ -270,11 +272,19 @@ export class ProductsService implements OnModuleInit {
       }
     }
 
-    return this.prisma.product.update({
-      where: { id },
-      data: productData,
-      include: { category: true, brand: true, variants: true },
-    });
+    try {
+      return await this.prisma.product.update({
+        where: { id },
+        data: productData,
+        include: { category: true, brand: true, variants: true },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const field = err?.meta?.target?.includes('barcode') ? 'codigo de barras' : 'SKU';
+        throw new BadRequestException(`El ${field} ya esta en uso por otro producto`);
+      }
+      throw err;
+    }
   }
 
   async delete(id: string, userId?: string) {
@@ -411,25 +421,33 @@ export class ProductsService implements OnModuleInit {
       });
     }
 
-    return this.prisma.product.create({
-      data: {
-        name,
-        slug,
-        sku,
-        barcode: data.barcode ? String(data.barcode).trim() : null,
-        basePrice: finalBasePrice,
-        costPrice: finalCostPrice,
-        comparePrice: finalComparePrice,
-        description: data.description ? String(data.description) : null,
-        registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
-        categoryId,
-        brandId,
-        supplierId: data.supplierId ? String(data.supplierId) : null,
-        lowStockThreshold: data.lowStockThreshold != null ? Math.max(1, Number(data.lowStockThreshold) || 5) : null,
-        variants: { create: variantCreates },
-      },
-      include: { category: true, brand: true, supplier: true, variants: true },
-    });
+    try {
+      return await this.prisma.product.create({
+        data: {
+          name,
+          slug,
+          sku,
+          barcode: data.barcode ? String(data.barcode).trim() : null,
+          basePrice: finalBasePrice,
+          costPrice: finalCostPrice,
+          comparePrice: finalComparePrice,
+          description: data.description ? String(data.description) : null,
+          registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
+          categoryId,
+          brandId,
+          supplierId: data.supplierId ? String(data.supplierId) : null,
+          lowStockThreshold: data.lowStockThreshold != null ? Math.max(1, Number(data.lowStockThreshold) || 5) : null,
+          variants: { create: variantCreates },
+        },
+        include: { category: true, brand: true, supplier: true, variants: true },
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        const field = err?.meta?.target?.includes('barcode') ? 'codigo de barras' : 'SKU';
+        throw new BadRequestException(`El ${field} ya esta en uso por otro producto`);
+      }
+      throw err;
+    }
   }
 
   private slugify(text: string) {
