@@ -60,21 +60,9 @@ function haptic(ms = 30) {
 
 const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
 
-function getBarcodeDetector(): any | null {
-  if (typeof window === 'undefined') return null;
-  if ('BarcodeDetector' in window) {
-    try { return new (window as any).BarcodeDetector({ formats: BARCODE_FORMATS as any }); } catch {}
-  }
-  return null;
-}
-
-async function loadBarcodeDetectorPolyfill(): Promise<any | null> {
-  try {
-    const mod = await import('barcode-detector');
-    const BD = mod?.BarcodeDetector;
-    if (BD) return new BD({ formats: BARCODE_FORMATS as any });
-  } catch {}
-  return null;
+async function createDetector(): Promise<any> {
+  const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
+  return new BD({ formats: BARCODE_FORMATS as any });
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -102,11 +90,9 @@ export function Compras({ token }: { token: string }) {
   const [showScanner, setShowScanner] = useState(false);
   const [scannerStatus, setScannerStatus] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number>(0);
   const detectorRef = useRef<any>(null);
-  const lastDetectRef = useRef<number>(0);
   const scannedOnceRef = useRef<Set<string>>(new Set());
 
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -385,15 +371,25 @@ export function Compras({ token }: { token: string }) {
     scannedOnceRef.current.clear();
     setShowScanner(true);
     setScannerStatus('Iniciando camara...');
-    detectorRef.current = getBarcodeDetector();
-    if (!detectorRef.current) detectorRef.current = await loadBarcodeDetectorPolyfill();
-    if (!detectorRef.current) { setScannerStatus('Escaneo no soportado'); return; }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
+      detectorRef.current = await createDetector();
+    } catch { setScannerStatus('Escaneo no soportado'); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        await video.play();
+        // iOS workaround: re-apply constraints to force camera reset
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({ width: { ideal: 1024 }, height: { ideal: 768 }, frameRate: { ideal: 30 } });
+          } catch {}
+        }
         setScannerStatus('Apunta al codigo de barras');
         startScanLoop();
       }
@@ -404,36 +400,40 @@ export function Compras({ token }: { token: string }) {
     const video = videoRef.current;
     const detector = detectorRef.current;
     if (!video || !detector) return;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const loop = () => {
       if (!video.videoWidth || video.paused || video.ended || !detectorRef.current) {
         rafRef.current = requestAnimationFrame(loop);
         return;
       }
-      const now = Date.now();
-      if (now - lastDetectRef.current < 250) {
-        rafRef.current = requestAnimationFrame(loop);
-        return;
-      }
-      lastDetectRef.current = now;
-      detector.detect(video).then((barcodes: any[]) => {
-        if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          if (!scannedOnceRef.current.has(code)) {
-            scannedOnceRef.current.add(code);
-            haptic(80);
-            toast.success(`Detectado: ${code}`);
-            stopCamera();
-            setShowScanner(false);
-            setItemSearch(code);
-            searchItems(code);
-            setShowItemSearch(true);
-            return;
+      if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
+      try {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        detector.detect(canvas).then((barcodes: any[]) => {
+          if (barcodes.length > 0) {
+            const code = barcodes[0].rawValue;
+            if (!scannedOnceRef.current.has(code)) {
+              scannedOnceRef.current.add(code);
+              haptic(80);
+              toast.success(`Detectado: ${code}`);
+              stopCamera();
+              setShowScanner(false);
+              setItemSearch(code);
+              searchItems(code);
+              setShowItemSearch(true);
+              return;
+            }
           }
-        }
+          rafRef.current = requestAnimationFrame(loop);
+        }).catch(() => {
+          rafRef.current = requestAnimationFrame(loop);
+        });
+      } catch {
         rafRef.current = requestAnimationFrame(loop);
-      }).catch(() => {
-        rafRef.current = requestAnimationFrame(loop);
-      });
+      }
     };
     rafRef.current = requestAnimationFrame(loop);
   }, []);
@@ -480,12 +480,11 @@ export function Compras({ token }: { token: string }) {
           </button>
         </div>
         <div className="flex-1 flex items-center justify-center overflow-hidden">
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+          <video ref={videoRef} style={{ display: 'inline', width: '100%', height: '100%', objectFit: 'cover' }} playsInline webkit-playsinline="true" muted autoPlay />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-64 h-40 border-2 border-white/60 rounded-xl" />
           </div>
         </div>
-        <canvas ref={canvasRef} className="hidden" />
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-center">
           <p className="text-white/70 text-xs mb-4">Mantén el barcode dentro del recuadro</p>
           <button onClick={() => { stopCamera(); setShowScanner(false); }} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
