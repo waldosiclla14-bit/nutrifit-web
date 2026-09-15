@@ -402,21 +402,20 @@ export function Compras({ token }: { token: string }) {
 
   const startScanLoop = useCallback(() => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
     const detector = detectorRef.current;
-    if (!video || !canvas || !detector) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-    const loop = async () => {
-      if (!video.videoWidth || video.paused || video.ended) { rafRef.current = requestAnimationFrame(loop); return; }
+    if (!video || !detector) return;
+    const loop = () => {
+      if (!video.videoWidth || video.paused || video.ended || !detectorRef.current) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
       const now = Date.now();
-      if (now - lastDetectRef.current < 300) { rafRef.current = requestAnimationFrame(loop); return; }
+      if (now - lastDetectRef.current < 250) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
       lastDetectRef.current = now;
-      try {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        const barcodes = await detector.detect(canvas);
+      detector.detect(video).then((barcodes: any[]) => {
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue;
           if (!scannedOnceRef.current.has(code)) {
@@ -431,8 +430,10 @@ export function Compras({ token }: { token: string }) {
             return;
           }
         }
-      } catch {}
-      rafRef.current = requestAnimationFrame(loop);
+        rafRef.current = requestAnimationFrame(loop);
+      }).catch(() => {
+        rafRef.current = requestAnimationFrame(loop);
+      });
     };
     rafRef.current = requestAnimationFrame(loop);
   }, []);

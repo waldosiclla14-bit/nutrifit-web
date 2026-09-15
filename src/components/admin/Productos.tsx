@@ -12,12 +12,14 @@ const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_
 
 function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef(0);
   const lastDetectRef = useRef(0);
+  const onDetectRef = useRef(onDetect);
   const [status, setStatus] = useState('Iniciando camara...');
   const detectorRef = useRef<any>(null);
+
+  useEffect(() => { onDetectRef.current = onDetect; }, [onDetect]);
 
   useEffect(() => {
     let active = true;
@@ -41,43 +43,41 @@ function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => voi
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
           setStatus('Apunta al codigo de barras');
-          loop();
         }
       } catch { setStatus('Error: permiso denegado'); }
     };
-    const loop = () => {
+
+    const tick = () => {
+      if (!active) return;
       const video = videoRef.current;
-      const canvas = canvasRef.current;
       const detector = detectorRef.current;
-      if (!video || !canvas || !detector) { rafRef.current = requestAnimationFrame(loop); return; }
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
-      const tick = async () => {
-        if (!video.videoWidth || video.paused || video.ended) { rafRef.current = requestAnimationFrame(loop); return; }
+      if (video && detector && video.videoWidth > 0 && !video.paused && !video.ended) {
         const now = Date.now();
-        if (now - lastDetectRef.current < 300) { rafRef.current = requestAnimationFrame(loop); return; }
-        lastDetectRef.current = now;
-        try {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          const barcodes = await detector.detect(canvas);
-          if (barcodes.length > 0 && active) {
-            onDetect(barcodes[0].rawValue);
-            return;
-          }
-        } catch {}
-        rafRef.current = requestAnimationFrame(loop);
-      };
-      rafRef.current = requestAnimationFrame(loop);
+        if (now - lastDetectRef.current >= 250) {
+          lastDetectRef.current = now;
+          detector.detect(video).then((barcodes: any[]) => {
+            if (barcodes.length > 0) {
+              onDetectRef.current(barcodes[0].rawValue);
+              return;
+            }
+            if (active) rafRef.current = requestAnimationFrame(tick);
+          }).catch(() => {
+            if (active) rafRef.current = requestAnimationFrame(tick);
+          });
+          return;
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
     };
-    start();
+
+    start().then(() => { if (active) rafRef.current = requestAnimationFrame(tick); });
+
     return () => {
       active = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
     };
-  }, [onDetect]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
@@ -87,7 +87,6 @@ function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => voi
         <div className="w-9" />
       </div>
       <video ref={videoRef} className="flex-1 w-full object-cover" playsInline muted />
-      <canvas ref={canvasRef} className="hidden" />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-64 h-32 border-2 border-white/60 rounded-2xl" />
       </div>
