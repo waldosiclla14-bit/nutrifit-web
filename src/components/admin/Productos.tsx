@@ -433,6 +433,7 @@ export function Productos({
       const base = {
         producto: p.name,
         sku_producto: p.sku || '',
+        barcode: p.barcode || '',
         categoria: p.category?.name || '',
         marca: p.brand || '',
         precio_base: p.price ?? '',
@@ -442,17 +443,17 @@ export function Productos({
       };
       const vs = p.variants && p.variants.length > 0 ? p.variants : [];
       if (vs.length === 0) {
-        rows.push({ ...base, variante: '', sku_variante: '', precio_variante: '', costo_variante: '', stock: '', alerta_stock: '' });
+        rows.push({ ...base, variante: '', sku_variante: '', barcode_variante: '', precio_variante: '', costo_variante: '', stock: '', alerta_stock: '' });
       } else {
         for (const v of vs) {
-          rows.push({ ...base, variante: v.name, sku_variante: v.sku, precio_variante: v.price ?? '', costo_variante: v.costPrice ?? '', stock: v.stock ?? '', alerta_stock: v.lowStockAlert ?? '' });
+          rows.push({ ...base, variante: v.name, sku_variante: v.sku, barcode_variante: v.barcode || '', precio_variante: v.price ?? '', costo_variante: v.costPrice ?? '', stock: v.stock ?? '', alerta_stock: v.lowStockAlert ?? '' });
         }
       }
     }
     const XLSX = await getXlsx();
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 12 }];
+    ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, ws, 'Productos');
     const d = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `nutrifit-productos-${d}.xlsx`);
@@ -513,6 +514,7 @@ export function Productos({
           .map((r) => ({
             variantName: String(get(r, 'variante') || '').trim(),
             sku: String(get(r, 'sku_variante') || '').trim(),
+            barcode: String(get(r, 'barcode_variante') || '').trim() || undefined,
             price: parseNum(get(r, 'precio_variante')),
             costPrice: parseNum(get(r, 'costo_variante')),
             stock: parseNum(get(r, 'stock')),
@@ -531,6 +533,7 @@ export function Productos({
               body: {
                 name: nameP || existing.name,
                 sku: skuP || undefined,
+                barcode: String(get(first, 'barcode') || '').trim() || undefined,
                 category: String(get(first, 'categoria') || '').trim() || undefined,
                 brand: String(get(first, 'marca') || '').trim() || undefined,
                 basePrice: parseNum(get(first, 'precio_base')),
@@ -548,6 +551,7 @@ export function Productos({
               body: {
                 name: nameP,
                 sku: skuP || undefined,
+                barcode: String(get(first, 'barcode') || '').trim() || undefined,
                 category: String(get(first, 'categoria') || 'Otros').trim(),
                 brand: String(get(first, 'marca') || '').trim() || undefined,
                 basePrice: parseNum(get(first, 'precio_base')),
