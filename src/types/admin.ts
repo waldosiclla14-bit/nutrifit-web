@@ -2,6 +2,7 @@ export type AdminVariant = {
   id: string;
   name: string;
   sku: string;
+  barcode?: string | null;
   price: number;
   costPrice: number;
   stock: number;
@@ -50,6 +51,7 @@ export type AdminProduct = {
   brandName?: string;
   brand?: AdminBrand;
   sku?: string;
+  barcode?: string | null;
   price: number;
   costPrice: number;
   stock?: number;

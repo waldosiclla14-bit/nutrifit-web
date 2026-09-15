@@ -17,6 +17,7 @@ async function getXlsx() {
 type EditProductForm = {
   name: string;
   sku: string;
+  barcode: string;
   category: string;
   brand: string;
   basePrice: string;
@@ -31,6 +32,7 @@ type EditProductForm = {
     id?: string;
     variantName: string;
     sku: string;
+    barcode: string;
     price: string;
     costPrice: string;
     stock: string;
@@ -54,9 +56,9 @@ export function Productos({
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
+  const [form, setForm] = useState({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
   const [formVariants, setFormVariants] = useState([
-    { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
+    { variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const [compactMode, setCompactMode] = useState(true);
@@ -183,6 +185,7 @@ export function Productos({
         body: {
           name: form.name,
           sku: form.sku,
+          barcode: form.barcode || undefined,
           basePrice: Number(form.basePrice) || undefined,
           costPrice: Number(form.costPrice) || undefined,
           comparePrice: Number(form.comparePrice) || undefined,
@@ -197,6 +200,7 @@ export function Productos({
             .map((v) => ({
               variantName: v.variantName,
               sku: v.sku,
+              barcode: v.barcode || undefined,
               price: Number(v.price) || undefined,
               costPrice: Number(v.costPrice) || undefined,
               stock: Number(v.stock) || 0,
@@ -205,8 +209,8 @@ export function Productos({
         },
       });
       setShowForm(false);
-      setForm({ name: '', sku: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
-      setFormVariants([{ variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
+      setForm({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
+      setFormVariants([{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
       await onChanged();
     } catch (err: any) {
       toast.error(err?.message || 'Error al crear el producto.');
@@ -220,6 +224,7 @@ export function Productos({
     setEditForm({
       name: p.name,
       sku: p.sku || '',
+      barcode: p.barcode || '',
       category: p.category?.name || '',
       brand: String(p.brand || ''),
       basePrice: String(p.price ?? ''),
@@ -234,6 +239,7 @@ export function Productos({
         id: v.id,
         variantName: v.name,
         sku: v.sku,
+        barcode: v.barcode || '',
         price: String(v.price ?? ''),
         costPrice: String(v.costPrice ?? 0),
         stock: String(v.stock ?? 0),
@@ -275,6 +281,7 @@ export function Productos({
         body: {
           name: editForm.name,
           sku: editForm.sku,
+          barcode: editForm.barcode || null,
           category: editForm.category,
           brand: editForm.brand,
           basePrice: Number(editForm.basePrice) || undefined,
@@ -288,6 +295,7 @@ export function Productos({
             id: v.id,
             variantName: v.variantName,
             sku: v.sku,
+            barcode: v.barcode || null,
             price: Number(v.price) || undefined,
             costPrice: Number(v.costPrice) || undefined,
             lowStockAlert: Number(v.lowStockAlert) || 5,
@@ -568,6 +576,7 @@ export function Productos({
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
+            <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Codigo de barras (EAN-13, UPC-A)" className="input" />
             <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría * (ej: Whey Protein)" className="input" />
             <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
             <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
@@ -585,9 +594,10 @@ export function Productos({
           <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
           <div className="mt-2 space-y-2">
             {formVariants.map((v, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-7">
+              <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-8">
                 <input value={v.variantName} onChange={(e) => setVariant(i, 'variantName', e.target.value)} placeholder="Variante (ej: Vainilla 1kg)" className="input md:col-span-2" />
                 <input value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
+                <input value={v.barcode} onChange={(e) => setVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input" />
                 <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
                 <input value={v.costPrice} onChange={(e) => setVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
                 <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
@@ -600,7 +610,7 @@ export function Productos({
               </div>
             ))}
           </div>
-          <button onClick={() => setFormVariants((vs) => [...vs, { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }])} className="mt-2 text-xs font-bold text-accent">
+          <button onClick={() => setFormVariants((vs) => [...vs, { variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }])} className="mt-2 text-xs font-bold text-accent">
             + Agregar variante
           </button>
 
@@ -822,6 +832,7 @@ export function Productos({
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
               <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
+              <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Codigo de barras" className="input" />
               <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />
               <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" />
               <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" className="input" />
@@ -840,9 +851,10 @@ export function Productos({
             <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
             <div className="mt-2 space-y-2">
               {editForm.variants.map((v, i) => (
-                <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-6">
+                <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-7">
                   <input value={v.variantName} onChange={(e) => setEditVariant(i, 'variantName', e.target.value)} placeholder="Variante" className="input md:col-span-2" />
                   <input value={v.sku} onChange={(e) => setEditVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
+                  <input value={v.barcode} onChange={(e) => setEditVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input" />
                   <input value={v.price} onChange={(e) => setEditVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
                   <input value={v.costPrice} onChange={(e) => setEditVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
                   <div className="flex items-center gap-2">
@@ -862,7 +874,7 @@ export function Productos({
             </div>
             <button
               onClick={() =>
-                setEditForm((f) => (f ? { ...f, variants: [...f.variants, { variantName: '', sku: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }] } : f))
+                setEditForm((f) => (f ? { ...f, variants: [...f.variants, { variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }] } : f))
               }
               className="mt-2 text-xs font-bold text-accent"
             >

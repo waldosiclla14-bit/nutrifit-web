@@ -745,7 +745,30 @@ export function Compras({ token }: { token: string }) {
             )}
             {p.status === 'CONFIRMED' && (
               <button onClick={() => {
-                setReceiptItems(p.items.map((i) => ({ purchaseItemId: i.id!, receivedQty: i.quantity - i.receivedQty, damagedQty: 0, notes: '' })));
+                const ocrQuantities: Record<string, number> = {};
+                if (p.documents) {
+                  for (const doc of p.documents) {
+                    if (doc.ocrRawData?.products) {
+                      for (const op of doc.ocrRawData.products) {
+                        const name = (op.name?.value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        const qty = Number(op.quantity?.value) || 0;
+                        if (name && qty > 0) ocrQuantities[name] = qty;
+                      }
+                    }
+                  }
+                }
+                setReceiptItems(p.items.map((i) => {
+                  const itemName = `${i.productName} ${i.variantName}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                  let ocrQty = 0;
+                  for (const [key, val] of Object.entries(ocrQuantities)) {
+                    if (itemName.includes(key) || key.includes(itemName.split(' ')[0])) {
+                      ocrQty = val;
+                      break;
+                    }
+                  }
+                  const pending = i.quantity - i.receivedQty;
+                  return { purchaseItemId: i.id!, receivedQty: ocrQty > 0 ? Math.min(ocrQty, pending) : pending, damagedQty: 0, notes: ocrQty > 0 ? 'Auto OCR' : '' };
+                }));
                 setSelectedPurchase(p);
                 setView('receipt');
               }} className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-white">

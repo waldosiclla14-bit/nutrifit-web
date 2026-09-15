@@ -206,6 +206,9 @@ export class ProductsService implements OnModuleInit {
       const sku = String(data.sku).trim().toUpperCase() || existing.sku;
       if (sku !== existing.sku) productData.sku = await this.uniqueSku(sku, 'product');
     }
+    if (data.barcode !== undefined) {
+      productData.barcode = data.barcode ? String(data.barcode).trim() : null;
+    }
     if (data.categoryId !== undefined || data.category !== undefined) {
       const categoryId = await this.resolveCategory(data.categoryId, data.category ?? existing.categoryId);
       if (categoryId) productData.categoryId = categoryId;
@@ -241,6 +244,7 @@ export class ProductsService implements OnModuleInit {
           data: {
             variantName: String(v.variantName || '').trim() || undefined,
             sku: vSku ? await this.uniqueSku(vSku, 'variant', v.id) : undefined,
+            barcode: v.barcode !== undefined ? (v.barcode ? String(v.barcode).trim() : null) : undefined,
             attributes: v.attributes || undefined,
             price: v.price !== undefined && v.price !== '' ? (Number.isNaN(vPrice) ? null : vPrice) : undefined,
             costPrice: v.costPrice !== undefined && v.costPrice !== '' ? (Number.isNaN(vCost) ? 0 : vCost) : undefined,
@@ -255,6 +259,7 @@ export class ProductsService implements OnModuleInit {
             productId: id,
             sku: await this.uniqueSku(vSku || `${existing.sku}-${this.slugify(v.variantName || 'var')}`, 'variant'),
             variantName: String(v.variantName || '').trim() || 'Única',
+            barcode: v.barcode ? String(v.barcode).trim() : null,
             attributes: {},
             price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
             costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
@@ -397,6 +402,7 @@ export class ProductsService implements OnModuleInit {
       variantCreates.push({
         sku: vSku,
         variantName: vName,
+        barcode: v.barcode ? String(v.barcode).trim() : null,
         attributes: {},
         price: !Number.isNaN(vPrice) && vPrice > 0 ? vPrice : null,
         costPrice: !Number.isNaN(vCost) && vCost > 0 ? vCost : 0,
@@ -410,6 +416,7 @@ export class ProductsService implements OnModuleInit {
         name,
         slug,
         sku,
+        barcode: data.barcode ? String(data.barcode).trim() : null,
         basePrice: finalBasePrice,
         costPrice: finalCostPrice,
         comparePrice: finalComparePrice,
