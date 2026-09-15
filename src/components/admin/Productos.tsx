@@ -8,95 +8,60 @@ import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 
-const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
-
-async function createDetector(): Promise<any> {
-  const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
-  return new BD({ formats: BARCODE_FORMATS as any });
+let Html5QrcodeConstructor: any = null;
+async function getHtml5Qrcode() {
+  if (Html5QrcodeConstructor) return Html5QrcodeConstructor;
+  const mod = await import('html5-qrcode');
+  Html5QrcodeConstructor = mod.Html5Qrcode;
+  return Html5QrcodeConstructor;
 }
 
 function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => void; onClose: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef(0);
-  const onDetectRef = useRef(onDetect);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<any>(null);
   const [status, setStatus] = useState('Iniciando camara...');
-
-  useEffect(() => { onDetectRef.current = onDetect; }, [onDetect]);
+  const closedRef = useRef(false);
 
   useEffect(() => {
-    let active = true;
-    let detector: any = null;
-
-    const scan = async () => {
-      if (!active || !detector) return;
-      const video = videoRef.current;
-      if (!video || video.paused || video.ended || !video.videoWidth) {
-        rafRef.current = requestAnimationFrame(scan);
-        return;
-      }
-      try {
-        if (!canvasRef.current) {
-          canvasRef.current = document.createElement('canvas');
-        }
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (ctx) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          const barcodes = await detector.detect(canvas);
-          if (barcodes.length > 0) {
-            onDetectRef.current(barcodes[0].rawValue);
-            return;
-          }
-        }
-      } catch {}
-      rafRef.current = requestAnimationFrame(scan);
-    };
+    let scanner: any = null;
 
     const start = async () => {
       try {
-        detector = await createDetector();
-      } catch {
-        setStatus('Escaneo no soportado en este navegador');
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-        });
-        if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
-        streamRef.current = stream;
-        const video = videoRef.current;
-        if (video) {
-          video.srcObject = stream;
-          await video.play();
-          // iOS workaround: re-apply constraints to force camera reset
-          const track = stream.getVideoTracks()[0];
-          if (track) {
-            try {
-              await track.applyConstraints({
-                width: { ideal: 1024 },
-                height: { ideal: 768 },
-                frameRate: { ideal: 30 },
-              });
-            } catch {}
-          }
-          setStatus('Apunta al codigo de barras');
-          rafRef.current = requestAnimationFrame(scan);
+        const Html5Qrcode = await getHtml5Qrcode();
+        if (closedRef.current) return;
+        scanner = new Html5Qrcode('barcode-scanner-container');
+        scannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.0,
+            disableFlip: false,
+          },
+          (decodedText: string) => {
+            if (!closedRef.current) {
+              onDetect(decodedText);
+            }
+          },
+          () => {},
+        );
+        setStatus('Apunta al codigo de barras');
+      } catch (err: any) {
+        if (!closedRef.current) {
+          setStatus(`Error: ${err?.message || 'No se pudo acceder a la camara'}`);
         }
-      } catch { setStatus('Error: permiso de camara denegado'); }
+      }
     };
 
     start();
 
     return () => {
-      active = false;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
-      canvasRef.current = null;
+      closedRef.current = true;
+      if (scanner) {
+        scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
+      }
     };
   }, []);
 
@@ -107,12 +72,7 @@ function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => voi
         <span className="text-white text-sm font-semibold">{status}</span>
         <div className="w-9" />
       </div>
-      <div className="flex-1 relative" style={{ display: 'inline' }}>
-        <video ref={videoRef} style={{ display: 'inline', width: '100%', height: '100%', objectFit: 'cover' }} playsInline webkit-playsinline="true" muted autoPlay />
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-64 h-32 border-2 border-white/60 rounded-2xl" />
-      </div>
+      <div id="barcode-scanner-container" ref={containerRef} className="flex-1" />
       <div className="absolute bottom-0 left-0 right-0 p-4 text-center bg-gradient-to-t from-black/70 to-transparent">
         <p className="text-white/70 text-xs">Mantén el barcode dentro del recuadro</p>
       </div>

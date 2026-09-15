@@ -58,11 +58,12 @@ function haptic(ms = 30) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-const BARCODE_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'qr_code'];
-
-async function createDetector(): Promise<any> {
-  const { BarcodeDetector: BD } = await import('barcode-detector/ponyfill');
-  return new BD({ formats: BARCODE_FORMATS as any });
+let Html5QrcodeConstructor: any = null;
+async function getHtml5Qrcode() {
+  if (Html5QrcodeConstructor) return Html5QrcodeConstructor;
+  const mod = await import('html5-qrcode');
+  Html5QrcodeConstructor = mod.Html5Qrcode;
+  return Html5QrcodeConstructor;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -89,10 +90,6 @@ export function Compras({ token }: { token: string }) {
 
   const [showScanner, setShowScanner] = useState(false);
   const [scannerStatus, setScannerStatus] = useState('');
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number>(0);
-  const detectorRef = useRef<any>(null);
   const scannedOnceRef = useRef<Set<string>>(new Set());
 
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -367,84 +364,72 @@ export function Compras({ token }: { token: string }) {
     }
   }, [token, form.documentType, loadPurchaseDetail]);
 
-  const openScanner = useCallback(async () => {
+  const scannerRef = useRef<any>(null);
+  const scannerClosedRef = useRef(false);
+
+  const openScanner = useCallback(() => {
     scannedOnceRef.current.clear();
+    scannerClosedRef.current = false;
     setShowScanner(true);
     setScannerStatus('Iniciando camara...');
-    try {
-      detectorRef.current = await createDetector();
-    } catch { setScannerStatus('Escaneo no soportado'); return; }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-      });
-      streamRef.current = stream;
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await video.play();
-        // iOS workaround: re-apply constraints to force camera reset
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          try {
-            await track.applyConstraints({ width: { ideal: 1024 }, height: { ideal: 768 }, frameRate: { ideal: 30 } });
-          } catch {}
-        }
-        setScannerStatus('Apunta al codigo de barras');
-        startScanLoop();
-      }
-    } catch (err: any) { setScannerStatus(`Error: ${err?.message || 'Permiso denegado'}`); }
   }, []);
 
-  const startScanLoop = useCallback(() => {
-    const video = videoRef.current;
-    const detector = detectorRef.current;
-    if (!video || !detector) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const loop = () => {
-      if (!video.videoWidth || video.paused || video.ended || !detectorRef.current) {
-        rafRef.current = requestAnimationFrame(loop);
-        return;
-      }
-      if (!ctx) { rafRef.current = requestAnimationFrame(loop); return; }
+  useEffect(() => {
+    if (!showScanner) return;
+    let scanner: any = null;
+
+    const start = async () => {
       try {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        detector.detect(canvas).then((barcodes: any[]) => {
-          if (barcodes.length > 0) {
-            const code = barcodes[0].rawValue;
-            if (!scannedOnceRef.current.has(code)) {
-              scannedOnceRef.current.add(code);
+        const Html5Qrcode = await getHtml5Qrcode();
+        if (scannerClosedRef.current) return;
+        scanner = new Html5Qrcode('compras-barcode-scanner');
+        scannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 },
+          (decodedText: string) => {
+            if (!scannerClosedRef.current && !scannedOnceRef.current.has(decodedText)) {
+              scannedOnceRef.current.add(decodedText);
               haptic(80);
-              toast.success(`Detectado: ${code}`);
-              stopCamera();
+              toast.success(`Detectado: ${decodedText}`);
+              scannerClosedRef.current = true;
+              scanner.stop().catch(() => {});
+              scanner.clear().catch(() => {});
               setShowScanner(false);
-              setItemSearch(code);
-              searchItems(code);
+              setItemSearch(decodedText);
+              searchItems(decodedText);
               setShowItemSearch(true);
-              return;
             }
-          }
-          rafRef.current = requestAnimationFrame(loop);
-        }).catch(() => {
-          rafRef.current = requestAnimationFrame(loop);
-        });
-      } catch {
-        rafRef.current = requestAnimationFrame(loop);
+          },
+          () => {},
+        );
+        setScannerStatus('Apunta al codigo de barras');
+      } catch (err: any) {
+        if (!scannerClosedRef.current) {
+          setScannerStatus(`Error: ${err?.message || 'No se pudo acceder a la camara'}`);
+        }
       }
     };
-    rafRef.current = requestAnimationFrame(loop);
-  }, []);
 
-  const stopCamera = useCallback(() => {
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }
-    if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
-    if (videoRef.current) { videoRef.current.srcObject = null; }
-  }, []);
+    start();
 
-  useEffect(() => { return () => { stopCamera(); }; }, [stopCamera]);
+    return () => {
+      scannerClosedRef.current = true;
+      if (scanner) {
+        scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
+      }
+    };
+  }, [showScanner]);
+
+  const stopScanner = useCallback(() => {
+    scannerClosedRef.current = true;
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {});
+      scannerRef.current.clear().catch(() => {});
+    }
+    setShowScanner(false);
+  }, []);
 
   const statusColor = (s: string) => {
     switch (s) {
@@ -475,19 +460,16 @@ export function Compras({ token }: { token: string }) {
       <div className="fixed inset-0 z-[100] bg-black flex flex-col">
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/70 to-transparent">
           <span className="text-white text-sm font-semibold">{scannerStatus}</span>
-          <button onClick={() => { stopCamera(); setShowScanner(false); }} className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+          <button onClick={stopScanner} className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
             <X className="h-5 w-5 text-white" />
           </button>
         </div>
-        <div className="flex-1 flex items-center justify-center overflow-hidden">
-          <video ref={videoRef} style={{ display: 'inline', width: '100%', height: '100%', objectFit: 'cover' }} playsInline webkit-playsinline="true" muted autoPlay />
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-64 h-40 border-2 border-white/60 rounded-xl" />
-          </div>
+        <div className="flex-1">
+          <div id="compras-barcode-scanner" className="w-full h-full" />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent text-center">
           <p className="text-white/70 text-xs mb-4">Mantén el barcode dentro del recuadro</p>
-          <button onClick={() => { stopCamera(); setShowScanner(false); }} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
+          <button onClick={stopScanner} className="px-6 py-3 rounded-xl bg-white/20 text-white text-sm font-semibold">Cancelar</button>
         </div>
       </div>
     );
