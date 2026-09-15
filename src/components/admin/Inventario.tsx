@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { AdminInventoryMovement } from '@/types/admin';
-import { Package, ArrowDown, ArrowUp, RotateCcw, Settings } from 'lucide-react';
+import { Package, ArrowDown, ArrowUp, RotateCcw, Settings, AlertTriangle, TrendingDown, DollarSign } from 'lucide-react';
 
 const TYPE_LABELS: Record<string, string> = {
   SALE: 'Venta',
@@ -32,6 +32,7 @@ export function Inventario({ token }: { token: string }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
+  const [summary, setSummary] = useState<{ lowStockCount: number; totalProducts: number; totalValue: number; recentReturns: number } | null>(null);
   const limit = 30;
 
   const load = useCallback(async () => {
@@ -52,9 +53,26 @@ export function Inventario({ token }: { token: string }) {
     }
   }, [token, page, typeFilter]);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const [lowStock, inventoryValue, recentReturns] = await Promise.all([
+        apiFetch<any>('/products/low-stock', { token }).catch(() => []),
+        apiFetch<any>('/products/inventory-value', { token }).catch(() => ({ totalValue: 0 })),
+        apiFetch<any>('/products/inventory-movements?type=RETURN&limit=100', { token }).catch(() => ({ data: [] })),
+      ]);
+      setSummary({
+        lowStockCount: Array.isArray(lowStock) ? lowStock.length : 0,
+        totalProducts: 0,
+        totalValue: inventoryValue?.totalValue || 0,
+        recentReturns: recentReturns?.data?.length || 0,
+      });
+    } catch {}
+  }, [token]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadSummary();
+  }, [load, loadSummary]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -62,10 +80,36 @@ export function Inventario({ token }: { token: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-ink flex items-center gap-2">
-          <Package size={20} /> Kardex de Inventario
+          <Package size={20} /> Inventario
         </h2>
         <span className="text-xs text-muted">{total} movimientos</span>
       </div>
+
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-paper rounded-xl p-3 border border-line text-center">
+            <div className="flex items-center justify-center mb-1">
+              <DollarSign className="h-4 w-4 text-accent" />
+            </div>
+            <p className="text-lg font-bold text-accent">${summary.totalValue.toLocaleString()}</p>
+            <p className="text-[10px] text-muted">Valor inventario</p>
+          </div>
+          <div className="bg-paper rounded-xl p-3 border border-line text-center">
+            <div className="flex items-center justify-center mb-1">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </div>
+            <p className="text-lg font-bold text-amber-500">{summary.lowStockCount}</p>
+            <p className="text-[10px] text-muted">Stock bajo</p>
+          </div>
+          <div className="bg-paper rounded-xl p-3 border border-line text-center">
+            <div className="flex items-center justify-center mb-1">
+              <RotateCcw className="h-4 w-4 text-blue-500" />
+            </div>
+            <p className="text-lg font-bold text-blue-500">{summary.recentReturns}</p>
+            <p className="text-[10px] text-muted">Devoluciones recientes</p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
