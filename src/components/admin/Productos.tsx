@@ -179,7 +179,7 @@ export function Productos({
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((p) => {
-        const hay = `${p.name} ${p.sku || ''} ${p.brand || ''} ${p.brandName || ''} ${p.supplier?.name || ''} ${p.category?.name || ''}`.toLowerCase();
+        const hay = `${p.name} ${p.sku || ''} ${p.brandName || (typeof p.brand === 'object' && p.brand ? p.brand.name : '') || ''} ${p.supplier?.name || ''} ${p.category?.name || ''} ${p.barcode || ''}`.toLowerCase();
         return hay.includes(q);
       });
     }
@@ -312,7 +312,7 @@ export function Productos({
       sku: p.sku || '',
       barcode: p.barcode || '',
       category: p.category?.name || '',
-      brand: String(p.brand || ''),
+      brand: typeof p.brand === 'object' && p.brand ? p.brand.id : String(p.brand || ''),
       basePrice: String(p.price ?? ''),
       costPrice: String(p.costPrice ?? 0),
       comparePrice: String(p.comparePrice ?? ''),

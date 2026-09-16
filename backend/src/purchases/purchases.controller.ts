@@ -1,12 +1,15 @@
 import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Role } from '@prisma/client';
 import { PurchasesService } from './purchases.service';
 import { OCRService } from '../ocr/ocr.service';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { Request } from 'express';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.SELLER)
 @Controller('admin/purchases')
 export class PurchasesController {
   constructor(
@@ -60,8 +63,8 @@ export class PurchasesController {
   }
 
   @Get(':id/cost-history')
-  async getCostHistory(@Param('id') id: string) {
-    return this.purchasesService.getCostHistory(undefined, undefined);
+  async getCostHistory(@Param('id') id: string, @Query('variantId') variantId?: string) {
+    return this.purchasesService.getCostHistory(id, variantId);
   }
 
   @Post()

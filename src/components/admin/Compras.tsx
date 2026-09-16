@@ -290,7 +290,7 @@ export function Compras({ token }: { token: string }) {
     try {
       const res = await apiFetch<any>('/admin/purchases', {
         method: 'POST',
-        body: JSON.stringify({
+        body: {
           ...form,
           supplierId: form.supplierId || null,
           items: formItems.map((i) => ({
@@ -305,7 +305,7 @@ export function Compras({ token }: { token: string }) {
             discount: i.discount || 0,
             tax: i.tax || 0,
           })),
-        }),
+        },
         token,
       });
       haptic(80);
@@ -631,7 +631,7 @@ export function Compras({ token }: { token: string }) {
                     <input type="number" min="1" value={item.quantity} onChange={(e) => updateFormItem(idx, 'quantity', parseInt(e.target.value, 10) || 1)} className="w-10 text-center text-xs font-bold border-0 bg-transparent" />
                     <button type="button" onClick={() => updateFormItem(idx, 'quantity', item.quantity + 1)} className="h-7 w-7 rounded-lg bg-white border border-line flex items-center justify-center"><Plus className="h-3 w-3" /></button>
                   </div>
-                  <input type="number" min="0" value={item.unitCost} onChange={(e) => updateFormItem(idx, 'unitCost', parseInt(e.target.value, 10) || 0)} className="w-16 rounded-lg border border-line px-1.5 py-1 text-[11px] text-right focus:outline-none focus:border-accent font-mono" placeholder="$" />
+                  <input type="number" min="0" value={item.unitCost} onChange={(e) => updateFormItem(idx, 'unitCost', parseFloat(e.target.value) || 0)} className="w-16 rounded-lg border border-line px-1.5 py-1 text-[11px] text-right focus:outline-none focus:border-accent font-mono" placeholder="$" />
                   <span className="text-[10px] font-bold text-accent w-14 text-right shrink-0">${item.totalCost.toLocaleString()}</span>
                   <button type="button" onClick={() => removeFormItem(idx)} className="text-red-400 active:text-red-600 shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>

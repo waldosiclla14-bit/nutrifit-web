@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as crypto from 'crypto';
 import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
@@ -117,7 +118,7 @@ export class DeliveryService {
       }
     }
 
-    const deliveryCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const deliveryCode = crypto.randomInt(1000, 9999).toString();
 
     const delivery = await this.prisma.delivery.create({
       data: {

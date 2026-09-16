@@ -8,10 +8,31 @@ export class ProductsService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      await this.prisma.$executeRaw`UPDATE "product_variants" SET "reservedStock" = 0 WHERE "reservedStock" > 0`;
-      this.logger.log('Reset stale reservedStock to 0');
+      const staleVariants = await this.prisma.productVariant.findMany({
+        where: { reservedStock: { gt: 0 } },
+        select: { id: true, reservedStock: true },
+      });
+      if (staleVariants.length === 0) return;
+
+      for (const v of staleVariants) {
+        const activeReservations = await this.prisma.orderItem.aggregate({
+          where: {
+            variantId: v.id,
+            order: { status: { in: ['PENDING', 'CONFIRMED'] } },
+          },
+          _sum: { quantity: true },
+        });
+        const actualReserved = activeReservations._sum.quantity || 0;
+        if (actualReserved !== v.reservedStock) {
+          await this.prisma.productVariant.update({
+            where: { id: v.id },
+            data: { reservedStock: actualReserved },
+          });
+          this.logger.log(`Reconciled reservedStock for ${v.id}: ${v.reservedStock} → ${actualReserved}`);
+        }
+      }
     } catch {
-      this.logger.warn('Could not reset reservedStock on startup');
+      this.logger.warn('Could not reconcile reservedStock on startup');
     }
   }
 
