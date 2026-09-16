@@ -879,7 +879,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   return (
-    <div className="container-px py-8">
+    <div className="container-px py-8" style={{ touchAction: 'manipulation' }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="section-label">PUNTO DE VENTA</p>
@@ -1197,7 +1197,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6">
+        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6 lg:max-h-[80vh]">
           <p className="flex items-center gap-2 font-display text-lg uppercase">
             <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>

@@ -32,6 +32,9 @@ export function Inventario({ token }: { token: string }) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [summary, setSummary] = useState<{ lowStockCount: number; totalProducts: number; totalValue: number; recentReturns: number } | null>(null);
   const limit = 30;
 
@@ -40,6 +43,9 @@ export function Inventario({ token }: { token: string }) {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (typeFilter) params.set('type', typeFilter);
+      if (searchTerm) params.set('search', searchTerm);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       const res = await apiFetch<{ data: AdminInventoryMovement[]; total: number }>(
         `/products/inventory-movements?${params}`,
         { token },
@@ -51,7 +57,7 @@ export function Inventario({ token }: { token: string }) {
     } finally {
       setLoading(false);
     }
-  }, [token, page, typeFilter]);
+  }, [token, page, typeFilter, searchTerm, dateFrom, dateTo]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -114,7 +120,29 @@ export function Inventario({ token }: { token: string }) {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        {['', 'SALE', 'CANCEL', 'ADJUSTMENT', 'RETURN'].map((t) => (
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+          placeholder="Buscar producto..."
+          className="input text-xs min-h-[36px] max-w-[200px]"
+        />
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+          className="input text-xs min-h-[36px] max-w-[150px]"
+          title="Desde"
+        />
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+          className="input text-xs min-h-[36px] max-w-[150px]"
+          title="Hasta"
+        />
+        <div className="h-6 w-px bg-line" />
+        {['', 'SALE', 'CANCEL', 'ADJUSTMENT', 'RETURN', 'PURCHASE_RECEIPT'].map((t) => (
           <button
             key={t}
             onClick={() => { setTypeFilter(t); setPage(1); }}
@@ -124,7 +152,7 @@ export function Inventario({ token }: { token: string }) {
                 : 'border-line text-muted hover:text-ink'
             }`}
           >
-            {t ? TYPE_LABELS[t] : 'Todos'}
+            {t ? TYPE_LABELS[t] || t : 'Todos'}
           </button>
         ))}
       </div>

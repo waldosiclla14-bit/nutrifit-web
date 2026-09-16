@@ -263,6 +263,11 @@ export function Productos({
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
+    const invalidVariant = formVariants.find((v) => !v.variantName.trim() && !v.sku.trim() && !v.barcode.trim());
+    if (invalidVariant) {
+      toast.error('Cada variante necesita nombre, SKU o código de barras.');
+      return;
+    }
     const ok = await confirm({ title: 'Crear producto', message: `Crear producto "${form.name}"?`, confirmLabel: 'Crear' });
     if (!ok) return;
     setSubmitting(true);

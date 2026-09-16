@@ -242,20 +242,31 @@ export function Compras({ token }: { token: string }) {
   }, [token]);
 
   const addItemToForm = (item: any) => {
-    setFormItems((prev) => [...prev, {
-      productId: item.productId,
-      variantId: item.variantId,
-      productName: item.productName,
-      variantName: item.variantName,
-      sku: item.sku,
-      barcode: item.barcode,
-      quantity: 1,
-      unitCost: item.costPrice || 0,
-      discount: 0,
-      tax: 0,
-      totalCost: item.costPrice || 0,
-      receivedQty: 0,
-    }]);
+    setFormItems((prev) => {
+      const key = `${item.productId || ''}-${item.variantId || ''}-${item.sku || ''}`;
+      const existing = prev.findIndex((i) => {
+        const eKey = `${i.productId || ''}-${i.variantId || ''}-${i.sku || ''}`;
+        return eKey === key;
+      });
+      if (existing >= 0) {
+        toast.info(`Producto ya existe. Cantidad incrementada.`);
+        return prev.map((i, idx) => idx === existing ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, {
+        productId: item.productId,
+        variantId: item.variantId,
+        productName: item.productName,
+        variantName: item.variantName,
+        sku: item.sku,
+        barcode: item.barcode,
+        quantity: 1,
+        unitCost: item.costPrice || 0,
+        discount: 0,
+        tax: 0,
+        totalCost: item.costPrice || 0,
+        receivedQty: 0,
+      }];
+    });
     setShowItemSearch(false);
     setItemSearch('');
     setItemResults([]);
