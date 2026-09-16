@@ -182,6 +182,9 @@ export class ProductsService implements OnModuleInit {
 
   async updateStock(variantId: string, quantity: number) {
     if (!Number.isSafeInteger(quantity)) throw new BadRequestException('Cantidad de stock inválida');
+    const variant = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+    if (!variant) throw new NotFoundException('Variante no encontrada');
+    const previousStock = variant.physicalStock;
     const res: any = await this.prisma.$executeRaw`
       UPDATE "product_variants"
       SET "stock" = "stock" + ${quantity}
@@ -189,6 +192,20 @@ export class ProductsService implements OnModuleInit {
     `;
     const affected = Number(res?.count ?? res ?? 0);
     if (affected === 0) throw new BadRequestException('Stock insuficiente');
+    // Create InventoryMovement for audit trail
+    if (quantity !== 0) {
+      const updated = await this.prisma.productVariant.findUnique({ where: { id: variantId } });
+      await this.prisma.inventoryMovement.create({
+        data: {
+          variantId,
+          type: quantity > 0 ? 'RESTOCK' : 'ADJUSTMENT',
+          quantity: Math.abs(quantity),
+          previousStock,
+          newStock: updated?.physicalStock ?? previousStock + quantity,
+          notes: `Ajuste manual: ${quantity > 0 ? '+' : ''}${quantity}`,
+        },
+      });
+    }
     return this.prisma.productVariant.findUnique({ where: { id: variantId } });
   }
 
@@ -346,11 +363,28 @@ export class ProductsService implements OnModuleInit {
       throw new BadRequestException('El nuevo stock no puede ser menor que el stock reservado');
     }
     const stock = newStock;
+    const previousStock = variant.physicalStock;
+    const delta = stock - previousStock;
     const updated = await this.prisma.productVariant.update({
       where: { id: variantId },
       data: { physicalStock: stock },
       include: { product: true },
     });
+
+    // Create InventoryMovement for audit trail
+    if (delta !== 0) {
+      await this.prisma.inventoryMovement.create({
+        data: {
+          variantId,
+          type: delta > 0 ? 'RESTOCK' : 'ADJUSTMENT',
+          quantity: Math.abs(delta),
+          previousStock,
+          newStock: stock,
+          userId: userId || null,
+          notes: reason,
+        },
+      });
+    }
 
     await this.prisma.auditLog.create({
       data: {
@@ -358,7 +392,7 @@ export class ProductsService implements OnModuleInit {
         action: 'STOCK_ADJUSTED',
         entity: 'ProductVariant',
         entityId: variantId,
-        oldValue: { physicalStock: variant.physicalStock },
+        oldValue: { physicalStock: previousStock },
         newValue: { physicalStock: stock, reason },
       },
     });

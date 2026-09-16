@@ -367,24 +367,29 @@ export class DeliveryService {
     await this.prisma.$transaction(writes);
 
     // Log inventory movements post-transaction
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-      const variant = await this.prisma.productVariant.findUnique({
-        where: { id: item.variantId },
-        select: { physicalStock: true },
-      });
-      const newStock = variant?.physicalStock ?? 0;
-      await this.prisma.inventoryMovement.create({
-        data: {
-          variantId: item.variantId,
-          type: MovementType.SALE,
-          quantity: -item.quantity,
-          previousStock: newStock + item.quantity,
-          newStock,
-          orderId,
-          notes: `Venta completada ${order.orderNumber}`,
-        },
-      });
+    // ONLY create SALE movement if stock was actually deducted (alreadyPaid=false).
+    // When alreadyPaid=true, the SALE movement was already created at payment time
+    // (by confirmPayment or updateStatus PAID), so we skip to avoid duplicates.
+    if (!alreadyPaid) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        const variant = await this.prisma.productVariant.findUnique({
+          where: { id: item.variantId },
+          select: { physicalStock: true },
+        });
+        const newStock = variant?.physicalStock ?? 0;
+        await this.prisma.inventoryMovement.create({
+          data: {
+            variantId: item.variantId,
+            type: MovementType.SALE,
+            quantity: -item.quantity,
+            previousStock: newStock + item.quantity,
+            newStock,
+            orderId,
+            notes: `Venta completada ${order.orderNumber}`,
+          },
+        });
+      }
     }
 
     this.logger.log(`Orden ${order.orderNumber} auto-completada por entrega DELIVERED`);

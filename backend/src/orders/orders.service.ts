@@ -947,6 +947,21 @@ export class OrdersService implements OnModuleInit {
     const results = await this.prisma.$transaction(writes);
     const updated = results[results.length - 1];
 
+    // Log inventory movements for paid order edits (stock was physically changed)
+    if (isPaid) {
+      for (const [vid, qty] of oldByVariant) {
+        const v = await this.prisma.productVariant.findUnique({ where: { id: vid }, select: { physicalStock: true } });
+        const newStock = v?.physicalStock ?? 0;
+        this.logInventoryMovement(vid, MovementType.CANCEL, qty, newStock - qty, newStock, id, userId, `Edición orden ${existing.orderNumber} (devolución)`);
+      }
+      for (const item of data.items) {
+        if (!item.variantId) continue;
+        const v = await this.prisma.productVariant.findUnique({ where: { id: item.variantId }, select: { physicalStock: true } });
+        const newStock = v?.physicalStock ?? 0;
+        this.logInventoryMovement(item.variantId, MovementType.SALE, -item.quantity, newStock + item.quantity, newStock, id, userId, `Edición orden ${existing.orderNumber}`);
+      }
+    }
+
     await this.prisma.auditLog.create({
       data: {
         userId,
