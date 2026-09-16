@@ -54,9 +54,7 @@ type Purchase = {
 
 type Supplier = { id: string; name: string; rut?: string };
 
-function haptic(ms = 30) {
-  try { navigator.vibrate?.(ms); } catch {}
-}
+import { haptic } from '@/lib/haptic';
 
 let Html5QrcodeCtor: any = null;
 async function getHtml5Qrcode() {
@@ -545,10 +543,13 @@ export function Compras({ token }: { token: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Proveedor</label>
-              <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent">
-                <option value="">Sin proveedor</option>
-                {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <div className="flex gap-1">
+                <select value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })} className="flex-1 rounded-xl border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-accent">
+                  <option value="">Sin proveedor</option>
+                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <button onClick={() => toast.info('Crear proveedor desde Productos > Proveedores')} className="shrink-0 rounded-xl border border-line px-2 text-xs font-bold text-accent hover:bg-accent/5" title="Nuevo proveedor">+</button>
+              </div>
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Tipo documento</label>

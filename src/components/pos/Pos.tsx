@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { haptic } from '@/lib/haptic';
 import {
   Banknote,
   CalendarDays,
@@ -759,6 +760,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         pago: payment === 'EFECTIVO' && pago >= total ? pago : undefined,
         vuelto: payment === 'EFECTIVO' && pago >= total ? pago - total : undefined,
       });
+      haptic(80);
       toast.success(paidNow ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`);
       if (mode === 'METRO') {
         // Get deliveryCode from the delivery result if available

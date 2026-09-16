@@ -83,6 +83,7 @@ function MoneyTooltip({ active, payload, label }: any) {
 export function SalesArea({ data }: { data: { date: string; total: number; profit: number }[] }) {
   const gid = useId();
   const rows = data.map((d) => ({ ...d, label: d.date.slice(5) }));
+  if (rows.length === 0) return <div className="flex h-64 items-center justify-center text-sm text-muted">Sin datos de ventas.</div>;
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -142,6 +143,7 @@ export function PayDonut({ data, colors = CHART_PALETTE }: { data: { label: stri
 /* ── Barras por hora (pico destacado) ───────────────────────── */
 export function HourBars({ data, peakHour }: { data: { hour: number; total: number }[]; peakHour: number }) {
   const rows = data.map((h) => ({ ...h, label: `${h.hour}:00` }));
+  if (rows.length === 0) return <div className="flex h-32 items-center justify-center text-sm text-muted">Sin datos.</div>;
   return (
     <div className="h-32 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -171,6 +173,7 @@ export function HourBars({ data, peakHour }: { data: { hour: number; total: numb
 
 /* ── Barras horizontales animadas (top productos) ───────────── */
 export function TopBars({ items }: { items: { label: string; sub: string; value: number; max: number }[] }) {
+  if (items.length === 0) return <p className="text-sm text-muted">Sin datos de productos.</p>;
   return (
     <div className="space-y-3">
       {items.map((it, i) => (
