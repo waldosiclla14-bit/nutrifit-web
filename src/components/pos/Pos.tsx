@@ -304,6 +304,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       } else if (e.key === 'F4' && cart.length > 0 && !saving) {
         e.preventDefault();
         scrollToCart();
+      } else if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && e.target === document.body) {
+        e.preventDefault();
+        resetSaleForm();
       }
     };
     window.addEventListener('keydown', onKey);

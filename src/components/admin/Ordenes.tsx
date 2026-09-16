@@ -183,6 +183,32 @@ export function Ordenes({
             {STATUS_LABEL[s]} · {statusCounts[s] || 0}
           </button>
         ))}
+        <button
+          onClick={() => {
+            const header = 'Pedido,Cliente,Fecha,Método,Estado,Subtotal,Descuento,Envío,Total';
+            const rows = filtered.map(o => [
+              o.orderNumber,
+              o.customerName || o.customer?.name || '',
+              new Date(o.createdAt).toLocaleString('es-CL'),
+              o.paymentMethod || '',
+              STATUS_LABEL[o.status] || o.status,
+              o.subtotal,
+              o.discount,
+              o.shippingCost,
+              o.total,
+            ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob(['\uFEFF' + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ordenes-${statusFilter || 'todas'}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-bold text-muted transition hover:text-ink"
+        >
+          CSV
+        </button>
       </div>
       <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
         <table className="w-full min-w-[760px] text-left text-sm">
