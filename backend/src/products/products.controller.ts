@@ -76,6 +76,13 @@ export class ProductsController {
       if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
       if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
     }
+    if (query.search) {
+      where.variant = {
+        product: {
+          name: { contains: query.search, mode: 'insensitive' },
+        },
+      };
+    }
     const page = Math.max(1, parseInt(query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
     const [data, total] = await Promise.all([

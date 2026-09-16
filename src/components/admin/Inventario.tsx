@@ -10,6 +10,12 @@ const TYPE_LABELS: Record<string, string> = {
   CANCEL: 'Cancelación',
   ADJUSTMENT: 'Ajuste',
   RETURN: 'Devolución',
+  PURCHASE: 'Compra',
+  PURCHASE_RECEIPT: 'Recepción compra',
+  RESERVATION: 'Reserva',
+  RELEASE: 'Liberación',
+  DAMAGE: 'Daño',
+  RESTOCK: 'Reposición',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -17,6 +23,12 @@ const TYPE_COLORS: Record<string, string> = {
   CANCEL: 'text-emerald-600 bg-emerald-50',
   ADJUSTMENT: 'text-amber-600 bg-amber-50',
   RETURN: 'text-blue-600 bg-blue-50',
+  PURCHASE: 'text-green-600 bg-green-50',
+  PURCHASE_RECEIPT: 'text-green-700 bg-green-100',
+  RESERVATION: 'text-purple-600 bg-purple-50',
+  RELEASE: 'text-gray-600 bg-gray-50',
+  DAMAGE: 'text-red-700 bg-red-100',
+  RESTOCK: 'text-teal-600 bg-teal-50',
 };
 
 const TYPE_ICONS: Record<string, any> = {
@@ -24,6 +36,12 @@ const TYPE_ICONS: Record<string, any> = {
   CANCEL: ArrowUp,
   ADJUSTMENT: Settings,
   RETURN: RotateCcw,
+  PURCHASE: Package,
+  PURCHASE_RECEIPT: Package,
+  RESERVATION: AlertTriangle,
+  RELEASE: RotateCcw,
+  DAMAGE: AlertTriangle,
+  RESTOCK: ArrowUp,
 };
 
 export function Inventario({ token }: { token: string }) {
