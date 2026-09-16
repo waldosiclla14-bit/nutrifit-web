@@ -255,7 +255,11 @@ export function Resumen({
     return segments;
   }, [segments]);
 
-  if (!stats) return null;
+  if (!stats) return (
+    <div className="flex items-center justify-center py-20">
+      <p className="text-muted text-sm">Error al cargar datos del dashboard.</p>
+    </div>
+  );
 
   const growthTxtFor = (v: number, suffix: string) =>
     stats.todaySales === 0 && v === 0 && suffix === 'vs ayer'

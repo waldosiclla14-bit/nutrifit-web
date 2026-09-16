@@ -118,7 +118,7 @@ export function Entregas({ token }: { token: string }) {
       setDeliveries(delRes?.data || delRes || []);
       if (statsRes) setStats(statsRes);
     } catch (err: any) {
-      if (handleAuthError(err, () => {})) return;
+      if (handleAuthError(err, () => { localStorage.removeItem('admin_token'); window.location.href = '/login'; })) return;
       toast.error('Error al cargar entregas');
     } finally {
       setLoading(false);

@@ -35,11 +35,10 @@ export class DeliveryService {
       if (query.dateFrom) where.deliveryDate.gte = new Date(query.dateFrom);
       if (query.dateTo) where.deliveryDate.lte = new Date(query.dateTo);
     }
-    if (query.line) {
-      where.station = { line: query.line };
-    }
-    if (query.commune) {
-      where.station = { commune: query.commune };
+    if (query.line || query.commune) {
+      where.station = {};
+      if (query.line) where.station.line = query.line;
+      if (query.commune) where.station.commune = query.commune;
     }
 
     const include = {

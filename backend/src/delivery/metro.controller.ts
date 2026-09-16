@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -32,7 +32,7 @@ export class MetroController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Query() data: any) {
+  update(@Param('id') id: string, @Body() data: any) {
     return this.metroService.update(id, data);
   }
 }

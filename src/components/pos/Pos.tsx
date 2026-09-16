@@ -860,7 +860,22 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   const printReceipt = () => {
     if (!receipt) return;
-    window.print();
+    const receiptEl = document.getElementById('pos-receipt-area');
+    if (!receiptEl) { window.print(); return; }
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) { window.print(); return; }
+    printWindow.document.write(`<html><head><title>Boleta ${receipt.orderNumber}</title><style>
+      body{font-family:monospace;font-size:12px;padding:16px;max-width:300px;margin:0 auto}
+      .flex{display:flex}.justify-between{justify-content:space-between}.items-center{align-items:center}
+      .gap-2{gap:8px}.mt-3{margin-top:12px}.mt-1{margin-top:4px}.mb-2{margin-bottom:8px}
+      .text-xs{font-size:11px}.text-sm{font-size:13px}.font-bold{font-weight:700}.font-semibold{font-weight:600}
+      .uppercase{text-transform:uppercase}.text-center{text-align:center}.border-t{border-top:1px dashed #ccc;padding-top:8px}
+      .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    </style></head><body>${receiptEl.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   };
 
   return (
@@ -1002,7 +1017,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               </button>
             </div>
           </div>
-          <div className="mt-4 rounded-2xl border border-line bg-soft/50 p-5">
+          <div id="pos-receipt-area" className="mt-4 rounded-2xl border border-line bg-soft/50 p-5">
             <div className="flex items-center justify-between">
               <p className="font-display text-sm uppercase">{STORE_NAME}</p>
               <p className="text-[11px] text-muted">{formatDateTimeShort(receipt.at)}</p>

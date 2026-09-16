@@ -55,14 +55,15 @@ export function Inventario({ token }: { token: string }) {
 
   const loadSummary = useCallback(async () => {
     try {
-      const [lowStock, inventoryValue, recentReturns] = await Promise.all([
+      const [lowStock, inventoryValue, recentReturns, productsList] = await Promise.all([
         apiFetch<any>('/products/low-stock', { token }).catch(() => []),
         apiFetch<any>('/products/inventory-value', { token }).catch(() => ({ totalValue: 0 })),
         apiFetch<any>('/products/inventory-movements?type=RETURN&limit=100', { token }).catch(() => ({ data: [] })),
+        apiFetch<any[]>('/products/internal', { token }).catch(() => []),
       ]);
       setSummary({
         lowStockCount: Array.isArray(lowStock) ? lowStock.length : 0,
-        totalProducts: 0,
+        totalProducts: Array.isArray(productsList) ? productsList.length : 0,
         totalValue: inventoryValue?.totalValue || 0,
         recentReturns: recentReturns?.data?.length || 0,
       });

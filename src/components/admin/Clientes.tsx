@@ -164,6 +164,7 @@ export function Clientes({
         },
       );
       const phone = customer.phone.replace(/\D/g, '');
+      const phoneWithCountry = phone.startsWith('56') ? phone : `56${phone}`;
       const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 días';
       const discountExample = Math.round(30000 * (discountPercent / 100));
       const message = [
@@ -177,7 +178,7 @@ export function Clientes({
         'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
         webFooter(),
       ].join('\n');
-      window.open(`https://wa.me/56${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
       await onChanged();
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo generar el cupón.');

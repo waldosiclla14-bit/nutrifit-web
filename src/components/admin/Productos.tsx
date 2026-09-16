@@ -289,7 +289,7 @@ export function Productos({
               barcode: v.barcode || undefined,
               price: Number(v.price) || undefined,
               costPrice: Number(v.costPrice) || undefined,
-              stock: Number(v.stock) || 0,
+              stock: Math.max(0, Number(v.stock) || 0),
               lowStockAlert: Number(v.lowStockAlert) || 5,
             })),
         },
