@@ -95,9 +95,13 @@ export function Clientes({
 
   const save = async () => {
     const name = form.name.trim();
-    const phone = form.phone.trim();
-    if (name.length < 2 || phone.length < 6) {
-      toast.error('Ingresa nombre y teléfono válidos.');
+    const phone = form.phone.trim().replace(/\D/g, '');
+    if (name.length < 2) {
+      toast.error('El nombre debe tener al menos 2 caracteres.');
+      return;
+    }
+    if (phone.length < 8 || phone.length > 12) {
+      toast.error('Ingresa un teléfono válido (8-12 dígitos).');
       return;
     }
     setSaving(true);

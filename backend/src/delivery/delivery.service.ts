@@ -237,7 +237,7 @@ export class DeliveryService {
       include: { station: true, order: true },
     });
 
-    await this.audit(id, 'STATUS_CHANGED', { status: delivery.status }, { status });
+    await this.audit(id, 'STATUS_CHANGED', { status: delivery.status }, { status }, userId);
 
     // Send WhatsApp notification to customer
     if (updated.order?.customerPhone) {
@@ -324,6 +324,7 @@ export class DeliveryService {
     });
     if (!order) return;
     if (order.status !== OrderStatus.READY && order.status !== OrderStatus.PREPARING) return;
+    const alreadyPaid = order.paymentStatus === 'CONFIRMED';
 
     const writes: Prisma.PrismaPromise<any>[] = [];
 
@@ -336,16 +337,31 @@ export class DeliveryService {
     );
 
     // Create SALE movements: decrease physicalStock and release reservedStock
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-      writes.push(
-        this.prisma.$executeRaw`
-          UPDATE "product_variants"
-          SET "physicalStock" = GREATEST("physicalStock" - ${item.quantity}, 0),
-              "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
-          WHERE "id" = ${item.variantId}
-        `,
-      );
+    // Only deduct stock if not already paid (avoid double deduction)
+    if (!alreadyPaid) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.$executeRaw`
+            UPDATE "product_variants"
+            SET "physicalStock" = GREATEST("physicalStock" - ${item.quantity}, 0),
+                "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+            WHERE "id" = ${item.variantId}
+          `,
+        );
+      }
+    } else {
+      // Already paid — only release reserved stock
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.$executeRaw`
+            UPDATE "product_variants"
+            SET "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+            WHERE "id" = ${item.variantId}
+          `,
+        );
+      }
     }
 
     await this.prisma.$transaction(writes);

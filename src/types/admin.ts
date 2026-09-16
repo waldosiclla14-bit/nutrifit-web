@@ -27,6 +27,12 @@ export type AdminOrder = {
   metroStation?: string;
   deliveryDay?: string;
   deliveryTime?: string;
+  deliveryTimeEnd?: string;
+  shippingAddress?: string;
+  notes?: string;
+  discountCode?: string | null;
+  couponId?: string | null;
+  itemCount?: number;
   createdAt: string;
   customerName?: string;
   customerPhone?: string;
@@ -48,6 +54,7 @@ export type AdminOrder = {
 export type AdminProduct = {
   id: string;
   name: string;
+  slug?: string;
   brandName?: string;
   brand?: AdminBrand;
   sku?: string;
@@ -59,6 +66,9 @@ export type AdminProduct = {
   comparePrice?: number | null;
   description?: string | null;
   registroIsp?: string | null;
+  imageUrl?: string | null;
+  images?: any[];
+  tags?: string[];
   category?: { id: string; name: string } | null;
   variants?: AdminVariant[];
   supplierId?: string | null;
@@ -71,6 +81,10 @@ export type AdminCustomer = {
   name: string;
   phone: string;
   email: string | null;
+  address?: string | null;
+  city?: string | null;
+  notes?: string | null;
+  tags?: string[];
   totalSpent: number;
   totalOrders: number;
   createdAt: string;
@@ -161,6 +175,9 @@ export type AdminCashRegister = {
   finalAmount: number | null;
   expectedAmount: number | null;
   diff: number | null;
+  transactionCount?: number;
+  cashIn?: number;
+  cashOut?: number;
   openedBy?: { name: string } | null;
 };
 
@@ -175,7 +192,7 @@ export type AdminInventoryValue = {
 export type AdminInventoryMovement = {
   id: string;
   variantId: string;
-  type: 'SALE' | 'CANCEL' | 'ADJUSTMENT' | 'RETURN';
+  type: 'SALE' | 'CANCEL' | 'ADJUSTMENT' | 'RETURN' | 'PURCHASE' | 'PURCHASE_RECEIPT' | 'RESERVATION' | 'RELEASE' | 'DAMAGE' | 'RESTOCK';
   quantity: number;
   previousStock: number;
   newStock: number;
@@ -193,9 +210,12 @@ export type AdminInventoryMovement = {
 export type AdminSupplier = {
   id: string;
   name: string;
+  rut?: string | null;
   contactName: string | null;
   phone: string | null;
   email: string | null;
+  address?: string | null;
+  website?: string | null;
   paymentTerms: string | null;
   active: boolean;
   createdAt: string;

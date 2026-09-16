@@ -1,11 +1,21 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PurchaseStatus, DocumentType, ReceiptStatus, MovementType } from '@prisma/client';
 
 @Injectable()
-export class PurchasesService {
+export class PurchasesService implements OnModuleInit {
   private readonly logger = new Logger(PurchasesService.name);
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      await this.prisma.$executeRaw`CREATE TABLE IF NOT EXISTS "purchase_counters" ("id" INTEGER PRIMARY KEY DEFAULT 1, "current" INTEGER NOT NULL DEFAULT 0)`;
+      await this.prisma.$executeRaw`CREATE TABLE IF NOT EXISTS "receipt_counters" ("id" INTEGER PRIMARY KEY DEFAULT 1, "current" INTEGER NOT NULL DEFAULT 0)`;
+      this.logger.log('Purchase/receipt counter tables ensured');
+    } catch {
+      this.logger.warn('Could not ensure counter tables');
+    }
+  }
 
   async findAll(query: any = {}) {
     const where: any = {};
@@ -494,21 +504,19 @@ export class PurchasesService {
   }
 
   private async generatePurchaseNumber(): Promise<string> {
-    const last = await this.prisma.purchase.findFirst({
-      orderBy: { createdAt: 'desc' },
-      select: { purchaseNumber: true },
-    });
-    const lastNum = last?.purchaseNumber ? parseInt(last.purchaseNumber.replace('COMP-', ''), 10) : 0;
-    return `COMP-${String(lastNum + 1).padStart(6, '0')}`;
+    await this.prisma.$executeRaw`INSERT INTO "purchase_counters" ("id", "current") VALUES (1, 0) ON CONFLICT DO NOTHING`;
+    const rows = await this.prisma.$queryRaw<{ next: number }[]>`
+      UPDATE "purchase_counters" SET "current" = "current" + 1 WHERE "id" = 1 RETURNING "current" AS "next"
+    `;
+    return `COMP-${String(rows[0].next).padStart(6, '0')}`;
   }
 
   private async generateReceiptNumber(): Promise<string> {
-    const last = await this.prisma.goodsReceipt.findFirst({
-      orderBy: { createdAt: 'desc' },
-      select: { receiptNumber: true },
-    });
-    const lastNum = last?.receiptNumber ? parseInt(last.receiptNumber.replace('REC-', ''), 10) : 0;
-    return `REC-${String(lastNum + 1).padStart(6, '0')}`;
+    await this.prisma.$executeRaw`INSERT INTO "receipt_counters" ("id", "current") VALUES (1, 0) ON CONFLICT DO NOTHING`;
+    const rows = await this.prisma.$queryRaw<{ next: number }[]>`
+      UPDATE "receipt_counters" SET "current" = "current" + 1 WHERE "id" = 1 RETURNING "current" AS "next"
+    `;
+    return `REC-${String(rows[0].next).padStart(6, '0')}`;
   }
 
   private async updateCostHistory(tx: any, productId: string | null, variantId: string | null, purchaseId: string, quantity: number, unitCost: number, previousStock: number) {

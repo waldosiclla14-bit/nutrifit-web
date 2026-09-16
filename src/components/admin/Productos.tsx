@@ -263,6 +263,8 @@ export function Productos({
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
+    const ok = await confirm({ title: 'Crear producto', message: `Crear producto "${form.name}"?`, confirmLabel: 'Crear' });
+    if (!ok) return;
     setSubmitting(true);
     try {
       await apiFetch('/products', {

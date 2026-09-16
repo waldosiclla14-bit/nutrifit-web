@@ -71,7 +71,25 @@ export function Ordenes({
           Marcar pagado
         </button>
       )}
-      {o.status === 'PAID' && (
+      {o.status === 'PAID' && o.deliveryType !== 'LOCAL' && (
+        <button
+          disabled={busyId === o.id}
+          onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'SHIPPED' } }), o.id, 'Orden enviada.')}
+          className="rounded-full bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
+        >
+          Enviar
+        </button>
+      )}
+      {o.status === 'PAID' && o.deliveryType === 'LOCAL' && (
+        <button
+          disabled={busyId === o.id}
+          onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'DELIVERED' } }), o.id, 'Orden marcada como entregada.')}
+          className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50 min-h-[44px]"
+        >
+          Entregado
+        </button>
+      )}
+      {o.status === 'SHIPPED' && (
         <button
           disabled={busyId === o.id}
           onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'DELIVERED' } }), o.id, 'Orden marcada como entregada.')}
