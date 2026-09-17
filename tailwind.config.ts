@@ -10,8 +10,10 @@ const config: Config = {
         soft: 'rgb(var(--soft) / <alpha-value>)',
         soft2: 'rgb(var(--soft-2) / <alpha-value>)',
         muted: 'rgb(var(--muted) / <alpha-value>)',
+        'muted-foreground': 'rgb(var(--muted-foreground) / <alpha-value>)',
         line: 'var(--line)',
         accent: 'rgb(var(--accent) / <alpha-value>)',
+        'accent-foreground': 'rgb(var(--accent-foreground) / <alpha-value>)',
         accentDeep: 'rgb(var(--accent-deep) / <alpha-value>)',
         dark: '#0B0B0B',
         sport: {
