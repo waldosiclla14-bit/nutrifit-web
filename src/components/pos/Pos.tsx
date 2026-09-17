@@ -192,7 +192,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const confirm = useConfirm();
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('all');
   const [discountPct, setDiscountPct] = useState(0);
   const [discountMode, setDiscountMode] = useState<'percent' | 'amount'>('percent');
   const [discountAmountInput, setDiscountAmountInput] = useState(0);
@@ -406,20 +405,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   const filtered = useMemo(() => {
     let list = products;
-    if (category !== 'all') list = list.filter((p) => p.category?.name === category);
     const q = query.trim().toLowerCase();
     if (q) list = list.filter((p) => `${p.name} ${p.brand?.name || ''} ${p.sku || ''}`.toLowerCase().includes(q));
     return list;
-  }, [products, query, category]);
-
-  const categories = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const p of products) {
-      const name = p.category?.name;
-      if (name) map.set(name, (map.get(name) || 0) + 1);
-    }
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
-  }, [products]);
+  }, [products, query]);
 
   const addToCart = (p: ApiProduct, variantId: string | null) => {
     const v = variantId ? p.variants?.find((x) => x.id === variantId) : null;
@@ -1139,25 +1128,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               </button>
             )}
           </div>
-          {categories.length > 0 && (
-            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <button
-                onClick={() => setCategory('all')}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted hover:border-ink hover:text-ink'}`}
-              >
-                Todos ({products.length})
-              </button>
-              {categories.map(([name, count]) => (
-                <button
-                  key={name}
-                  onClick={() => setCategory(name)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${category === name ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted hover:border-ink hover:text-ink'}`}
-                >
-                  {name} ({count})
-                </button>
-              ))}
-            </div>
-          )}
           {loading ? (
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
