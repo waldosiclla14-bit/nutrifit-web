@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { formatTime12 } from '@/lib/admin/format';
 import { toast } from '@/lib/feedback';
 
 type Delivery = {
@@ -230,7 +229,7 @@ export function Calendario({ token }: { token: string }) {
                     >
                       <div className="flex items-center gap-1">
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="text-[12px] font-mono">{formatTime12(del.windowStart)}</span>
+                        <span className="text-[12px] font-mono">{del.windowStart || '—'}</span>
                       </div>
                       <p className="truncate text-[10px] font-semibold">{del.order?.orderNumber}</p>
                       <p className="truncate text-[9px] text-muted">{del.station?.name || del.customer?.name}</p>
@@ -267,7 +266,7 @@ export function Calendario({ token }: { token: string }) {
                         className="flex w-full items-center gap-1 rounded px-1 text-left hover:bg-soft"
                       >
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="text-[11px]">{formatTime12(del.windowStart)} {del.order?.orderNumber}</span>
+                        <span className="text-[11px]">{del.windowStart} {del.order?.orderNumber}</span>
                       </button>
                     ))}
                     {dayDeliveries.length > 3 && <p className="text-center text-[9px] text-muted">+{dayDeliveries.length - 3}</p>}
@@ -289,7 +288,7 @@ export function Calendario({ token }: { token: string }) {
             </div>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center gap-2"><User size={14} className="text-muted" />{selected.customer?.name || selected.order?.customerName}</div>
-              <div className="flex items-center gap-2"><Clock size={14} className="text-muted" />{formatTime12(selected.windowStart)}–{formatTime12(selected.windowEnd)}</div>
+              <div className="flex items-center gap-2"><Clock size={14} className="text-muted" />{selected.windowStart}–{selected.windowEnd}</div>
               {selected.station && (
                 <div className="flex items-center gap-2"><MapPin size={14} className="text-muted" />{selected.station.name} ({selected.station.line})</div>
               )}
@@ -363,7 +362,7 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
                 >
                   <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[d.status] || 'bg-gray-300'}`} />
                   <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold">{formatTime12(d.windowStart)}–{formatTime12(d.windowEnd)}</span>
+                    <span className="text-xs font-bold">{d.windowStart}–{d.windowEnd}</span>
                     <span className="ml-2 text-xs">{d.order?.orderNumber}</span>
                     <span className="ml-2 text-[10px] text-muted truncate">{d.station?.name || d.customer?.name}</span>
                   </div>

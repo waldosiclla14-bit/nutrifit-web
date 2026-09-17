@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
-import { formatTime12 } from '@/lib/admin/format';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import NotificationButton from './NotificationButton';
@@ -203,7 +202,7 @@ export function Entregas({ token }: { token: string }) {
             d.station?.line || '',
             d.station?.commune || '',
             d.deliveryDate ? new Date(d.deliveryDate).toLocaleDateString('es-CL') : '',
-            `${formatTime12(d.windowStart)}–${formatTime12(d.windowEnd)}`,
+            `${d.windowStart}–${d.windowEnd}`,
             d.deliveryCode,
             STATUS_LABELS[d.status] || d.status,
             d.meetingPoint || '',
@@ -246,7 +245,7 @@ export function Entregas({ token }: { token: string }) {
               {filtered.map((d) => (
                 <tr key={d.id} className="border-b border-line last:border-0 hover:bg-soft/30">
                   <td className="px-3 py-2 font-mono text-xs">
-                    {formatTime12(d.windowStart)}{d.windowEnd ? `–${formatTime12(d.windowEnd)}` : ''}
+                    {d.windowStart || '—'}{d.windowEnd ? `–${d.windowEnd}` : ''}
                   </td>
                   <td className="px-3 py-2 font-bold">{d.order?.orderNumber || '—'}</td>
                   <td className="px-3 py-2">{d.customer?.name || d.order?.customerName || '—'}</td>
@@ -420,7 +419,7 @@ function DeliveryDetail({
             <Row label="Dirección" value={delivery.address} />
           )}
           <Row label="Fecha" value={delivery.deliveryDate ? new Date(delivery.deliveryDate).toLocaleDateString('es-CL') : '—'} />
-          <Row label="Horario" value={delivery.windowStart ? `${formatTime12(delivery.windowStart)}–${formatTime12(delivery.windowEnd)}` : '—'} />
+          <Row label="Horario" value={delivery.windowStart ? `${delivery.windowStart}–${delivery.windowEnd || ''}` : '—'} />
           <Row label="Punto" value={delivery.meetingPoint || '—'} />
           <Row label="Estado" value={<span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[delivery.status] || ''}`}>{STATUS_LABELS[delivery.status] || delivery.status}</span>} />
           {delivery.order?.total != null && <Row label="Total pedido" value={`$${Number(delivery.order.total).toLocaleString()}`} />}

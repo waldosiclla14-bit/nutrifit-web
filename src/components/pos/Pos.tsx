@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { haptic } from '@/lib/haptic';
-import { formatTime12 } from '@/lib/admin/format';
 import {
   Banknote,
   CalendarDays,
@@ -825,7 +824,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         delLines.push('');
         delLines.push('*ENVÍO A DOMICILIO:*');
         delLines.push(`📅 ${deliveryDay}`);
-        delLines.push(`⏰ ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}`);
+        delLines.push(`⏰ ${deliveryTime}${deliveryTimeEnd ? ` – ${deliveryTimeEnd}` : ''} hrs`);
         delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
         delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
@@ -885,42 +884,49 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   return (
-    <div className="container-px py-6 lg:py-8" style={{ touchAction: 'manipulation' }}>
-      {/* ─── Header ─── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="container-px py-8" style={{ touchAction: 'manipulation' }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="section-label">PUNTO DE VENTA</p>
-          <h1 className="mt-1 font-display text-xl tracking-wide sm:text-2xl">
+          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">
             {mode === 'LOCAL' ? 'Cobrar en local' : 'Venta con entrega en metro'}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex overflow-hidden rounded-full border border-line bg-paper">
-            {([
-              { key: 'LOCAL', icon: <Store size={13} />, label: 'Local' },
-              { key: 'METRO', icon: <CalendarDays size={13} />, label: 'Metro' },
-              { key: 'DELIVERY', icon: <span className="text-xs">🏠</span>, label: 'Domicilio' },
-            ] as const).map((m) => (
-              <button
-                key={m.key}
-                onClick={() => { setMode(m.key); if (m.key !== 'LOCAL') { setShippingInput(1000); setPaymentReceived(false); } else { setShippingInput(0); setPaymentReceived(true); } }}
-                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold transition ${mode === m.key ? 'bg-ink text-paper' : 'text-muted hover:text-ink'}`}
-              >
-                {m.icon} {m.label}
-              </button>
-            ))}
+            <button
+              onClick={() => { setMode('LOCAL'); setShippingInput(0); setPaymentReceived(true); }}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              <Store size={14} /> Local
+            </button>
+            <button
+              onClick={() => { setMode('METRO'); setShippingInput(1000); setPaymentReceived(false); }}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              <CalendarDays size={14} /> Metro
+            </button>
+            <button
+              onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); }}
+              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
+            >
+              🏠 Domicilio
+            </button>
           </div>
           {cash?.status === 'OPEN' ? (
-            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-xs">Caja abierta</span>
+            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800">Caja abierta</span>
           ) : (
-            <button onClick={openRegister} className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-ink transition hover:brightness-110">
+            <button onClick={openRegister} className="btn-accent px-4 py-2 text-xs">
               Abrir caja
             </button>
           )}
-          <button onClick={() => setShowCash((v) => !v)} className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${showCash ? 'border-ink bg-ink text-paper' : 'border-line text-muted hover:border-ink'}`}>
-            <Wallet size={13} /> {showCash ? 'Ocultar' : 'Caja'}
+          <button
+            onClick={() => setShowCash((v) => !v)}
+            className={`btn-outline px-4 py-2 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
+          >
+            <Wallet size={14} /> {showCash ? 'Ocultar resumen' : 'Resumen de caja'}
           </button>
-          <button onClick={onLogout} className="rounded-full border border-line px-3 py-1.5 text-xs font-bold text-muted transition hover:border-red-300 hover:text-red-600">
+          <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
             Salir
           </button>
         </div>
@@ -1112,7 +1118,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         </div>
       )}
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px]">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
         <div>
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -1130,10 +1136,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             )}
           </div>
           {categories.length > 0 && (
-            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="mt-3 flex flex-wrap gap-1.5">
               <button
                 onClick={() => setCategory('all')}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+                className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
               >
                 Todos
               </button>
@@ -1141,7 +1147,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <button
                   key={c}
                   onClick={() => setCategory(c)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition ${category === c ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === c ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
                 >
                   {c}
                 </button>
@@ -1149,45 +1155,44 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
           {loading ? (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="skeleton h-28 rounded-2xl" />
+                <div key={i} className="skeleton h-32 rounded-3xl" />
               ))}
             </div>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((p) => {
                 const variants = p.variants?.filter((v) => v.active) || [];
                 const list = variants.length > 0 ? variants : [{ id: null as string | null, name: '', sku: p.sku || '', price: p.price, stock: p.stock ?? 999 }];
-                const totalStock = list.reduce((s: number, v: any) => s + Math.max(0, v.stock ?? 0), 0);
-                const isOutOfStock = totalStock <= 0;
                 return (
-                  <div key={p.id} className={`group rounded-2xl border border-line bg-paper p-2.5 transition ${isOutOfStock ? 'opacity-40 pointer-events-none' : 'hover:border-accent/50 hover:shadow-sm'}`}>
-                    <div className="flex items-start justify-between gap-1.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-bold text-ink leading-tight">{p.name}</p>
-                        <p className="truncate text-[10px] text-muted">{p.brand?.name}</p>
-                      </div>
-                      {!isOutOfStock && (
-                        <span className="shrink-0 rounded-full bg-accent/10 px-1.5 py-px text-[9px] font-bold text-accent">{totalStock}</span>
-                      )}
-                    </div>
-                    <div className="mt-1.5 space-y-0.5">
-                      {list.map((v: any) => {
-                        const vStock = v.stock ?? 0;
-                        const vOutOfStock = vStock <= 0;
-                        return (
-                          <button
-                            key={v.id ?? p.id}
-                            onClick={() => addToCart(p, v.id)}
-                            disabled={vOutOfStock}
-                            className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left transition ${vOutOfStock ? 'bg-red-50/60 opacity-50' : 'bg-soft/40 hover:bg-accent/10 active:scale-[0.98]'}`}
-                          >
-                            <span className="truncate text-[10px] font-medium text-ink">{v.name || 'Único'}</span>
-                            <span className="ml-1.5 shrink-0 text-[11px] font-extrabold text-accent tabular-nums">{formatPrice(v.price)}</span>
-                          </button>
-                        );
-                      })}
+                  <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
+                    <p className="font-bold text-ink">{p.name}</p>
+                    <p className="text-xs text-muted">{p.brand?.name}</p>
+                    <div className="mt-3 space-y-1.5">
+                      {list.map((v: any) => (
+                        <button
+                          key={v.id ?? p.id}
+                          onClick={() => addToCart(p, v.id)}
+                          disabled={v.stock != null && v.stock <= 0}
+                          className="flex w-full items-center justify-between rounded-2xl border border-line bg-soft/50 px-3 py-2 text-left transition hover:border-accent disabled:opacity-40"
+                        >
+                          <span className="text-xs font-semibold">
+                            {v.name || 'Sin variante'}
+                            {v.stock != null && v.stock <= 0 ? (
+                              <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
+                            ) : (
+                              <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
+                            )}
+                          </span>
+                          <span className="flex flex-col items-end">
+                            <span className="text-sm font-bold">{formatPrice(v.price)}</span>
+                            <span className={`text-[10px] font-semibold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
+                              margen {marginOf(v.price, v.costPrice)}%
+                            </span>
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 );
@@ -1197,77 +1202,90 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit space-y-3 overflow-y-auto rounded-2xl border border-line bg-paper p-3 lg:sticky lg:top-4 lg:max-h-[85vh]">
-          {/* Cart Header */}
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide">
-              <ShoppingCart size={15} /> Carrito
-            </p>
-            {cart.length > 0 && (
-              <span className="rounded-full bg-ink px-2 py-0.5 text-[10px] font-bold text-paper tabular-nums">
-                {cart.reduce((s, l) => s + l.quantity, 0)} items
-              </span>
-            )}
-          </div>
-
-          {/* Cart Lines */}
-          <div className="max-h-[35vh] space-y-1 overflow-y-auto">
+        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6 lg:max-h-[80vh]">
+          <p className="flex items-center gap-2 font-display text-lg uppercase">
+            <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
+          </p>
+          {cart.length > 0 && (
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
+              <span className="text-xs font-semibold text-muted">{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
+              <span className="font-display text-lg">{formatPrice(total)}</span>
+            </div>
+          )}
+          <div className="mt-2 max-h-[40vh] space-y-2 overflow-y-auto">
             {cart.map((l) => (
-              <div key={lineKey(l)} className="flex items-center gap-1 rounded-xl bg-soft/40 px-2 py-1.5">
+              <div key={lineKey(l)} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[11px] font-bold text-ink">{l.productName}</p>
-                  {l.variantName && <p className="truncate text-[9px] text-muted">{l.variantName}</p>}
+                  <p className="truncate text-xs font-bold">{l.productName}</p>
+                  {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
+                  <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
+                  <p className="text-[10px] text-muted">Stock: {l.stock ?? '—'}</p>
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95">
-                  <Minus size={10} />
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
+                  <Minus size={14} />
                 </button>
-                <span className="w-5 text-center text-[11px] font-bold tabular-nums">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95 disabled:opacity-30">
-                  <Plus size={10} />
+                <span className="w-8 text-center text-sm font-bold">{l.quantity}</span>
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
+                  <Plus size={14} />
                 </button>
-                <span className="w-14 text-right text-[10px] font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
-                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600">
-                  <Trash2 size={10} />
+                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
+                  <Trash2 size={14} />
                 </button>
               </div>
             ))}
-            {cart.length === 0 && <p className="py-4 text-center text-xs text-muted">Carrito vacío</p>}
+            {cart.length === 0 && <p className="py-6 text-center text-xs text-muted">Carrito vacío.</p>}
           </div>
 
-          {/* Action Buttons */}
           {cart.length > 0 && (
-            <div className="flex gap-1.5">
-              <button onClick={pauseSale} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-line py-1.5 text-[11px] font-bold text-muted transition hover:border-ink hover:text-ink">
-                <Pause size={11} /> Pausar
+            <div className="mt-3 flex gap-2">
+              <button onClick={pauseSale} className="btn-outline flex-1 px-3 py-2 text-xs">
+                <Pause size={13} /> Pausar venta
               </button>
-              <button onClick={cancelSale} className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-line py-1.5 text-[11px] font-bold text-red-500 transition hover:border-red-300 hover:bg-red-50">
-                <X size={11} /> Cancelar
+              <button onClick={cancelSale} className="btn-outline flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
+                <X size={13} /> Cancelar venta
               </button>
             </div>
           )}
 
-          {/* Holds */}
           {holds.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted">En espera</p>
+            <div className="mt-4 space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Ventas en espera</p>
               {holds.map((h, i) => (
-                <div key={h.id} className="flex items-center gap-1.5 rounded-xl border border-accent/20 bg-accent/5 px-2 py-1.5">
+                <div key={h.id} className="flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/5 p-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold">{i + 1}. {formatPrice(h.total)}</p>
-                    <p className="truncate text-[9px] text-muted">{h.customerName || 'Sin cliente'} · {h.lines.length} items</p>
+                    <p className="text-xs font-bold">Venta {i + 1} · {formatPrice(h.total)}</p>
+                    <p className="truncate text-[11px] text-muted">
+                      {h.customerName || 'Sin cliente'} · {h.lines.length} {h.lines.length === 1 ? 'item' : 'items'}
+                    </p>
+                    {h.lines.length > 0 && (
+                      <p className="truncate text-[10px] text-muted/70">
+                        {h.lines.slice(0, 2).map((l) => `${l.productName}${l.quantity > 1 ? ` ×${l.quantity}` : ''}`).join(', ')}
+                        {h.lines.length > 2 ? ` +${h.lines.length - 2} más` : ''}
+                      </p>
+                    )}
                   </div>
-                  <button onClick={() => resumeHold(h)} className="rounded-full border border-line p-1 transition hover:border-accent"><Play size={10} /></button>
-                  <button onClick={() => deleteHold(h)} className="rounded-full p-1 text-red-400 transition hover:bg-red-50"><Trash2 size={10} /></button>
+                  <button onClick={() => resumeHold(h)} title="Retomar venta" className="rounded-full border border-line bg-paper p-1.5 hover:border-accent">
+                    <Play size={13} />
+                  </button>
+                  <button onClick={() => deleteHold(h)} title="Eliminar venta en espera" className="rounded-full p-1.5 text-red-500">
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Customer + Payment */}
-          <div className="space-y-2 border-t border-line pt-3">
-            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Cliente (F2)" className="input py-1.5 text-xs" />
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono" inputMode="tel" maxLength={12} className="input py-1.5 text-xs" />
-            <select value={payment} onChange={(e) => { const val = e.target.value; setPayment(val); if (val !== 'MIXTO') { setMixedCash(0); setMixedTransfer(0); } }} className="input py-1.5 text-xs">
+          <div className="mt-4 space-y-2">
+            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
+            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+            <select value={payment} onChange={(e) => {
+              const val = e.target.value;
+              setPayment(val);
+              if (val !== 'MIXTO') {
+                setMixedCash(0);
+                setMixedTransfer(0);
+              }
+            }} className="input">
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA_MANUAL">Tarjeta</option>
@@ -1315,16 +1333,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           </div>
 
           {showCashPay && (
-            <div className="rounded-xl border border-line bg-soft/30 p-2.5 space-y-2">
-              <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-muted">
-                <Banknote size={11} /> Efectivo
+            <div className="mt-3 rounded-2xl border border-line bg-soft/40 p-4">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
+                <Banknote size={13} /> Pago en efectivo
               </p>
-              <div className="grid grid-cols-3 gap-1">
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
                 {tenders.map((t) => (
                   <button
                     key={t}
                     onClick={() => setPago(t)}
-                    className={`rounded-lg border px-1.5 py-1.5 text-[10px] font-bold transition active:scale-95 ${
+                    className={`min-h-[44px] rounded-full border px-3 py-2 text-xs font-bold transition active:scale-95 ${
                       pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'
                     }`}
                   >
@@ -1332,8 +1350,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-1.5">
-                <label htmlFor="pago-input" className="shrink-0 text-[10px] font-semibold text-muted">Paga con</label>
+              <div className="mt-3 flex items-center gap-2">
+                <label htmlFor="pago-input" className="shrink-0 text-xs font-semibold text-muted">
+                  Paga con
+                </label>
                 <input
                   id="pago-input"
                   type="number"
@@ -1342,26 +1362,32 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   value={pago || ''}
                   onChange={(e) => setPago(Math.max(0, Number(e.target.value) || 0))}
                   placeholder="0"
-                  className="input w-full py-1 text-xs"
+                  className="input w-full text-sm"
                 />
               </div>
               {cashShort ? (
-                <p className="text-[10px] font-bold text-red-500">Faltan {formatPrice(total - pago)}</p>
+                <p className="mt-2 text-sm font-bold text-red-500">Faltan {formatPrice(total - pago)}</p>
               ) : (
                 pago > 0 && (
                   pago > total
-                    ? <p className="text-[10px] font-bold text-emerald-600">Vuelto: {formatPrice(pago - total)}</p>
-                    : pago === total && <p className="text-[10px] font-bold text-muted">Pago exacto</p>
+                    ? <p className="mt-2 text-sm font-bold text-emerald-600">Vuelto: {formatPrice(pago - total)}</p>
+                    : pago === total && <p className="mt-2 text-sm font-bold text-muted">Pago exacto</p>
                 )
               )}
             </div>
           )}
 
           {mode === 'METRO' && (
-            <div className="rounded-xl border border-line bg-soft/30 p-2.5 space-y-2">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold text-ink">
-                <span>🚇</span> Entrega en metro
-              </p>
+            <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm">🚇</span>
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-ink leading-tight">Entrega en metro</p>
+                  <p className="text-[11px] text-muted">Retira tu pedido en la estación y horario que elijas</p>
+                </div>
+              </div>
               <div className="mt-3 space-y-2">
                 {/* Line selector pills */}
                 <div>
@@ -1676,32 +1702,32 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
 
-          <div className="border-t border-line pt-2 space-y-1">
-            <div className="flex justify-between text-[11px] text-muted">
+          <div className="mt-4 border-t border-line pt-3 text-sm">
+            <div className="flex justify-between text-muted">
               <span>Subtotal</span>
-              <span className="tabular-nums">{formatPrice(subtotal)}</span>
+              <span>{formatPrice(subtotal)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between text-[11px] text-red-500">
+              <div className="flex justify-between text-red-500">
                 <span>Descuento ({discountMode === 'percent' ? `-${discountPct}%` : `-${formatPrice(discountAmount)}`})</span>
-                <span className="tabular-nums">-{formatPrice(discountAmount)}</span>
+                <span>-{formatPrice(discountAmount)}</span>
               </div>
             )}
             {shippingCost > 0 && (
-              <div className="flex justify-between text-[11px] text-muted">
-                <span>Envío</span>
-                <span className="tabular-nums">{formatPrice(shippingCost)}</span>
+              <div className="flex justify-between text-muted">
+                <span>Envío (metro)</span>
+                <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
-            <div className="flex items-center justify-between rounded-xl bg-ink px-3 py-2">
-              <span className="text-xs font-semibold text-paper/70">Total</span>
-              <span className="text-xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="text-sm font-semibold text-muted">Total</span>
+              <span className="font-display text-2xl">{formatPrice(total)}</span>
             </div>
           </div>
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={`mt-2 w-full rounded-xl py-2.5 text-xs font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+            className={cx('btn-accent mt-3 w-full', showCashPay && cashShort && 'opacity-50')}
           >
             {saving
               ? 'Procesando…'
@@ -1728,12 +1754,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       {cart.length > 0 && (
         <button
           onClick={scrollToCart}
-          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ink bg-ink px-4 py-2 text-xs font-bold text-paper shadow-lg transition hover:scale-105 active:scale-95 lg:hidden"
-          style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink bg-ink px-6 py-3 font-bold text-paper shadow-xl transition hover:scale-105 active:scale-95 lg:hidden"
+          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
-          <ShoppingCart size={14} />
-          <span>{cart.reduce((s, l) => s + l.quantity, 0)}</span>
-          <span className="border-l border-paper/30 pl-2">{formatPrice(total)}</span>
+          <ShoppingCart size={16} />
+          <span>{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
+          <span className="border-l border-paper/30 pl-3">{formatPrice(total)}</span>
         </button>
       )}
     </div>

@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useConfirm } from '@/lib/feedback';
 import { STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL } from '@/lib/admin/constants';
-import { waLink, formatTime12 } from '@/lib/admin/format';
+import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
 import { PaymentModal } from './PaymentModal';
 import { EditOrderModal } from './EditOrderModal';
@@ -222,7 +222,7 @@ export function Ordenes({
                       <p>Metro {o.metroLine}</p>
                       <p className="text-muted">{o.metroStation}</p>
                       {o.deliveryDay && <p className="text-muted">Día: {o.deliveryDay}</p>}
-                      {o.deliveryTime && <p className="text-muted">Hora: {formatTime12(o.deliveryTime)}</p>}
+                      {o.deliveryTime && <p className="text-muted">Hora: {o.deliveryTime}</p>}
                     </>
                   ) : (
                     <span className="text-muted">Retiro tienda</span>
@@ -276,7 +276,7 @@ export function Ordenes({
             <p className="mt-1 text-xs text-muted">
               {o.customer?.phone || ''}
               {o.deliveryType === 'METRO' ? ` · Metro ${o.metroLine || ''} ${o.metroStation || ''}` : ' · Retiro tienda'}
-              {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${formatTime12(o.deliveryTime)}` : ''}
+              {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${o.deliveryTime}` : ''}
             </p>
             <p className="mt-1 text-xs text-muted">
               {PAYMENT_LABEL[o.paymentMethod || ''] || 'Pago'} · {o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}
