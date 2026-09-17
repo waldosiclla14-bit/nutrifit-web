@@ -8,6 +8,9 @@ import { useConfirm } from '@/lib/feedback';
 import { STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL } from '@/lib/admin/constants';
 import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { PaymentModal } from './PaymentModal';
 import { EditOrderModal } from './EditOrderModal';
 
@@ -192,93 +195,93 @@ export function Ordenes({
           CSV
         </button>
       </div>
-      <div className="mt-4 hidden overflow-x-auto rounded-3xl border border-line bg-paper lg:block">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-[11px] uppercase tracking-widest text-muted">
-              <th className="px-4 py-3">Pedido</th>
-              <th className="px-4 py-3">Cliente</th>
-              <th className="px-4 py-3">Entrega</th>
-              <th className="px-4 py-3">Total</th>
-              <th className="px-4 py-3">Pago</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card lg:block">
+        <Table>
+          <TableHeader>
+            <TableRow className="text-[11px] uppercase tracking-widest text-muted-foreground">
+              <TableHead>Pedido</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Entrega</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Pago</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.slice(0, visibleCount).map((o) => (
-              <tr key={o.id} className="border-b border-line/60 last:border-0">
-                <td className="px-4 py-3">
-                  <p className="font-bold text-ink truncate">{o.orderNumber}</p>
-                  <p className="text-[11px] text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
-                </td>
-                <td className="px-4 py-3">
+              <TableRow key={o.id}>
+                <TableCell>
+                  <p className="font-bold text-foreground truncate">{o.orderNumber}</p>
+                  <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
+                </TableCell>
+                <TableCell>
                   <p className="font-semibold truncate">{o.customer?.name || '—'}</p>
-                  <p className="text-[11px] text-muted">{o.customer?.phone || ''}</p>
-                </td>
-                <td className="px-4 py-3 text-xs">
+                  <p className="text-[11px] text-muted-foreground">{o.customer?.phone || ''}</p>
+                </TableCell>
+                <TableCell className="text-xs">
                   {o.deliveryType === 'METRO' ? (
                     <>
                       <p>Metro {o.metroLine}</p>
-                      <p className="text-muted">{o.metroStation}</p>
-                      {o.deliveryDay && <p className="text-muted">Día: {o.deliveryDay}</p>}
-                      {o.deliveryTime && <p className="text-muted">Hora: {o.deliveryTime}</p>}
+                      <p className="text-muted-foreground">{o.metroStation}</p>
+                      {o.deliveryDay && <p className="text-muted-foreground">Día: {o.deliveryDay}</p>}
+                      {o.deliveryTime && <p className="text-muted-foreground">Hora: {o.deliveryTime}</p>}
                     </>
                   ) : (
-                    <span className="text-muted">Retiro tienda</span>
+                    <span className="text-muted-foreground">Retiro tienda</span>
                   )}
-                </td>
-                <td className="px-4 py-3 font-bold">{formatPrice(o.total)}</td>
-                <td className="px-4 py-3 text-xs">
+                </TableCell>
+                <TableCell className="font-bold">{formatPrice(o.total)}</TableCell>
+                <TableCell className="text-xs">
                   <p>{PAYMENT_LABEL[o.paymentMethod || ''] || '—'}</p>
-                  <p className="text-muted">{o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${STATUS_STYLE[o.status] || 'border-line bg-soft text-muted'}`}>
+                  <p className="text-muted-foreground">{o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}</p>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={o.status === 'DELIVERED' ? 'default' : o.status === 'CANCELLED' ? 'destructive' : 'secondary'}>
                     {STATUS_LABEL[o.status] || o.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
+                  </Badge>
+                </TableCell>
+                <TableCell>
                   <div className="flex flex-wrap gap-1.5">
                     {renderActions(o)}
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-muted">
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                   Sin órdenes.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Cards móvil */}
       <div className="mt-4 space-y-3 lg:hidden">
         {filtered.slice(0, visibleCount).map((o) => (
-          <div key={o.id} className="rounded-3xl border border-line bg-paper p-4">
+          <div key={o.id} className="rounded-xl border border-line bg-card p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate font-bold text-ink">{o.orderNumber}</p>
-                <p className="text-[11px] text-muted">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
+                <p className="truncate font-bold text-foreground">{o.orderNumber}</p>
+                <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
               </div>
-              <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${STATUS_STYLE[o.status] || 'border-line bg-soft text-muted'}`}>
+              <Badge variant={o.status === 'DELIVERED' ? 'default' : o.status === 'CANCELLED' ? 'destructive' : 'secondary'}>
                 {STATUS_LABEL[o.status] || o.status}
-              </span>
+              </Badge>
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 text-sm">
               <p className="truncate font-semibold">{o.customer?.name || '—'}</p>
               <p className="shrink-0 font-bold">{formatPrice(o.total)}</p>
             </div>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               {o.customer?.phone || ''}
               {o.deliveryType === 'METRO' ? ` · Metro ${o.metroLine || ''} ${o.metroStation || ''}` : ' · Retiro tienda'}
               {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${o.deliveryTime}` : ''}
             </p>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               {PAYMENT_LABEL[o.paymentMethod || ''] || 'Pago'} · {o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 [&>*]:justify-center">
@@ -287,7 +290,7 @@ export function Ordenes({
           </div>
         ))}
         {filtered.length === 0 && (
-          <p className="rounded-3xl border border-line bg-paper px-4 py-10 text-center text-muted">
+          <p className="rounded-xl border border-line bg-card px-4 py-10 text-center text-muted-foreground">
             Sin órdenes.
           </p>
         )}
@@ -295,12 +298,13 @@ export function Ordenes({
 
       {visibleCount < filtered.length && (
         <div className="mt-3">
-          <button
+          <Button
+            variant="outline"
+            className="w-full"
             onClick={() => setVisibleCount((c) => c + 50)}
-            className="w-full rounded-full border border-line bg-paper px-4 py-2.5 text-sm font-bold text-ink transition hover:bg-soft"
           >
             Cargar más ({filtered.length - visibleCount} restantes)
-          </button>
+          </Button>
         </div>
       )}
 
