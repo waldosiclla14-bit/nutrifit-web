@@ -28,6 +28,10 @@ import type {
   AdminProduct,
   AdminStats,
 } from '@/types/admin';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { PasswordModal } from '@/components/admin/PasswordModal';
 import { AdminBottomNav } from '@/components/admin/BottomNav';
 import { AdminErrorGuard } from '@/components/admin/ErrorGuard';
@@ -242,22 +246,18 @@ function Dashboard({
           <h1 className="mt-1 font-display text-xl sm:text-2xl tracking-wide">Gestión de la tienda</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={onSell}
-            className="btn-accent px-3 py-1.5 text-xs"
-            title="Vender con entrega o en local"
-          >
+          <Button variant="default" size="sm" onClick={onSell}>
             <ShoppingCart size={13} /> Vender
-          </button>
-          <button onClick={load} className="btn-outline px-3 py-1.5 text-xs" title="Actualizar">
+          </Button>
+          <Button variant="outline" size="sm" onClick={load}>
             <RefreshCw size={13} /> Actualizar
-          </button>
-          <button onClick={() => setShowPassword(true)} className="btn-outline px-3 py-1.5 text-xs" title="Cambiar contraseña">
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowPassword(true)}>
             <KeyRound size={13} /> Contraseña
-          </button>
-          <button onClick={onLogout} className="btn-outline px-3 py-1.5 text-xs">
+          </Button>
+          <Button variant="outline" size="sm" onClick={onLogout}>
             <LogOut size={13} /> Salir
-          </button>
+          </Button>
         </div>
       </div>
 
