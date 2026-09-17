@@ -260,33 +260,33 @@ function Dashboard({
   ];
 
   return (
-    <div className="container-px py-10 pb-28 lg:pb-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="container-px py-4 sm:py-6 lg:py-10 pb-28 lg:pb-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-label">NUTRIFIT ADMIN</p>
-          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">Gestión de la tienda</h1>
+          <h1 className="mt-1 font-display text-xl sm:text-2xl tracking-wide">Gestión de la tienda</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={onSell}
-            className="btn-accent px-4 py-2 text-xs min-h-[44px]"
+            className="btn-accent px-3 py-1.5 text-xs"
             title="Vender con entrega o en local"
           >
-            <ShoppingCart size={14} /> Vender
+            <ShoppingCart size={13} /> Vender
           </button>
-          <button onClick={load} className="btn-outline px-4 py-2 text-xs min-h-[44px]" title="Actualizar">
-            <RefreshCw size={14} /> Actualizar
+          <button onClick={load} className="btn-outline px-3 py-1.5 text-xs" title="Actualizar">
+            <RefreshCw size={13} /> Actualizar
           </button>
-          <button onClick={() => setShowPassword(true)} className="btn-outline px-4 py-2 text-xs min-h-[44px]" title="Cambiar contraseña">
-            <KeyRound size={14} /> Contraseña
+          <button onClick={() => setShowPassword(true)} className="btn-outline px-3 py-1.5 text-xs" title="Cambiar contraseña">
+            <KeyRound size={13} /> Contraseña
           </button>
-          <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs min-h-[44px]">
-            <LogOut size={14} /> Salir
+          <button onClick={onLogout} className="btn-outline px-3 py-1.5 text-xs">
+            <LogOut size={13} /> Salir
           </button>
         </div>
       </div>
 
-      <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
+      <div className="mt-4 hidden flex-wrap gap-1.5 lg:flex">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -294,11 +294,11 @@ function Dashboard({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
                 active ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted hover:text-ink'
               }`}
             >
-              <Icon size={15} /> {t.label}
+              <Icon size={13} /> {t.label}
             </button>
           );
         })}

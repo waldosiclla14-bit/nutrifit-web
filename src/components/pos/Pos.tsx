@@ -884,31 +884,31 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   return (
-    <div className="container-px py-8" style={{ touchAction: 'manipulation' }}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="container-px py-4 sm:py-6 lg:py-8" style={{ touchAction: 'manipulation' }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-label">PUNTO DE VENTA</p>
-          <h1 className="mt-1 font-display text-2xl uppercase tracking-wide">
+          <h1 className="mt-1 font-display text-xl sm:text-2xl tracking-wide">
             {mode === 'LOCAL' ? 'Cobrar en local' : 'Venta con entrega en metro'}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="flex overflow-hidden rounded-full border border-line bg-paper">
             <button
               onClick={() => { setMode('LOCAL'); setShippingInput(0); setPaymentReceived(true); }}
-              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              <Store size={14} /> Local
+              <Store size={13} /> Local
             </button>
             <button
               onClick={() => { setMode('METRO'); setShippingInput(1000); setPaymentReceived(false); }}
-              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              <CalendarDays size={14} /> Metro
+              <CalendarDays size={13} /> Metro
             </button>
             <button
               onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); }}
-              className={`flex items-center gap-1.5 px-4 py-2 font-bold transition min-h-[40px] ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               🏠 Domicilio
             </button>
@@ -916,17 +916,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           {cash?.status === 'OPEN' ? (
             <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800">Caja abierta</span>
           ) : (
-            <button onClick={openRegister} className="btn-accent px-4 py-2 text-xs">
+            <button onClick={openRegister} className="btn-accent px-3 py-1.5 text-xs">
               Abrir caja
             </button>
           )}
           <button
             onClick={() => setShowCash((v) => !v)}
-            className={`btn-outline px-4 py-2 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
+            className={`btn-outline px-3 py-1.5 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
           >
-            <Wallet size={14} /> {showCash ? 'Ocultar resumen' : 'Resumen de caja'}
+            <Wallet size={13} /> {showCash ? 'Ocultar' : 'Caja'}
           </button>
-          <button onClick={onLogout} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onLogout} className="btn-outline px-3 py-1.5 text-xs">
             Salir
           </button>
         </div>
@@ -1118,7 +1118,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         </div>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px]">
         <div>
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -1155,42 +1155,37 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
           {loading ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="skeleton h-32 rounded-3xl" />
+                <div key={i} className="skeleton h-28 rounded-2xl" />
               ))}
             </div>
           ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {filtered.map((p) => {
                 const variants = p.variants?.filter((v) => v.active) || [];
                 const list = variants.length > 0 ? variants : [{ id: null as string | null, name: '', sku: p.sku || '', price: p.price, stock: p.stock ?? 999 }];
                 return (
-                  <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
-                    <p className="font-bold text-ink">{p.name}</p>
-                    <p className="text-xs text-muted">{p.brand?.name}</p>
-                    <div className="mt-3 space-y-1.5">
+                  <div key={p.id} className="rounded-2xl border border-line bg-paper p-3 transition hover:border-accent/50 hover:shadow-sm">
+                    <p className="truncate font-bold text-sm text-ink">{p.name}</p>
+                    <p className="truncate text-xs text-muted">{p.brand?.name}</p>
+                    <div className="mt-2 space-y-1">
                       {list.map((v: any) => (
                         <button
                           key={v.id ?? p.id}
                           onClick={() => addToCart(p, v.id)}
                           disabled={v.stock != null && v.stock <= 0}
-                          className="flex w-full items-center justify-between rounded-2xl border border-line bg-soft/50 px-3 py-2 text-left transition hover:border-accent disabled:opacity-40"
+                          className="flex w-full items-center justify-between rounded-xl border border-line bg-soft/30 px-2.5 py-1.5 text-left transition hover:border-accent active:scale-[0.98] disabled:opacity-40"
                         >
-                          <span className="text-xs font-semibold">
+                          <span className="truncate text-xs font-semibold">
                             {v.name || 'Sin variante'}
                             {v.stock != null && v.stock <= 0 ? (
                               <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
                             ) : (
-                              <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
+                              <span className="ml-1 text-[10px] font-normal text-muted">({Math.max(0, v.stock ?? 0)})</span>
                             )}
                           </span>
-                          <span className="flex flex-col items-end">
-                            <span className="text-sm font-bold">{formatPrice(v.price)}</span>
-                            <span className={`text-[10px] font-semibold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
-                              margen {marginOf(v.price, v.costPrice)}%
-                            </span>
-                          </span>
+                          <span className="ml-2 shrink-0 text-sm font-bold text-accent tabular-nums">{formatPrice(v.price)}</span>
                         </button>
                       ))}
                     </div>
@@ -1202,34 +1197,33 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6 lg:max-h-[80vh]">
+        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-2xl border border-line bg-paper p-4 lg:sticky lg:top-6 lg:max-h-[80vh]">
           <p className="flex items-center gap-2 font-display text-lg uppercase">
             <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
           {cart.length > 0 && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
               <span className="text-xs font-semibold text-muted">{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
-              <span className="font-display text-lg">{formatPrice(total)}</span>
+              <span className="font-display text-lg font-extrabold">{formatPrice(total)}</span>
             </div>
           )}
-          <div className="mt-2 max-h-[40vh] space-y-2 overflow-y-auto">
+          <div className="mt-2 max-h-[40vh] space-y-1.5 overflow-y-auto">
             {cart.map((l) => (
-              <div key={lineKey(l)} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
+              <div key={lineKey(l)} className="flex items-center gap-1.5 rounded-xl border border-line bg-soft/30 px-2 py-1.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold">{l.productName}</p>
-                  {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
-                  <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
-                  <p className="text-[10px] text-muted">Stock: {l.stock ?? '—'}</p>
+                  <p className="truncate text-[11px] font-bold text-ink">{l.productName}</p>
+                  {l.variantName && <p className="truncate text-[10px] text-muted">{l.variantName}</p>}
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
-                  <Minus size={14} />
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95">
+                  <Minus size={12} />
                 </button>
-                <span className="w-8 text-center text-sm font-bold">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
-                  <Plus size={14} />
+                <span className="w-6 text-center text-xs font-bold tabular-nums">{l.quantity}</span>
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95 disabled:opacity-40">
+                  <Plus size={12} />
                 </button>
-                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
-                  <Trash2 size={14} />
+                <span className="w-14 text-right text-[11px] font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
+                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
+                  <Trash2 size={11} />
                 </button>
               </div>
             ))}
@@ -1719,15 +1713,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted">Total</span>
-              <span className="font-display text-2xl">{formatPrice(total)}</span>
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-ink px-3 py-2">
+              <span className="text-sm font-semibold text-paper/70">Total</span>
+              <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={cx('btn-accent mt-3 w-full', showCashPay && cashShort && 'opacity-50')}
+            className={`mt-3 w-full rounded-xl py-2.5 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
           >
             {saving
               ? 'Procesando…'
@@ -1754,12 +1748,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       {cart.length > 0 && (
         <button
           onClick={scrollToCart}
-          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink bg-ink px-6 py-3 font-bold text-paper shadow-xl transition hover:scale-105 active:scale-95 lg:hidden"
-          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ink bg-ink px-4 py-2 text-xs font-bold text-paper shadow-lg transition hover:scale-105 active:scale-95 lg:hidden"
+          style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
-          <ShoppingCart size={16} />
-          <span>{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
-          <span className="border-l border-paper/30 pl-3">{formatPrice(total)}</span>
+          <ShoppingCart size={14} />
+          <span>{cart.reduce((s, l) => s + l.quantity, 0)}</span>
+          <span className="border-l border-paper/30 pl-2">{formatPrice(total)}</span>
         </button>
       )}
     </div>
