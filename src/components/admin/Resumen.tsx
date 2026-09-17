@@ -13,6 +13,8 @@ import type {
   AdminReport,
   AdminSegments,
 } from '@/types/admin';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { CountUp, HourBars, SalesArea, Spark, TopBars } from './charts';
 import { GoalEditor } from './GoalEditor';
 import LowStockBySupplier from './LowStockBySupplier';
@@ -364,20 +366,26 @@ export function Resumen({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="relative rounded-3xl border border-line bg-paper p-6">
-            <c.Icon className="absolute right-5 top-5 h-5 w-5 text-accent/70" />
-            <p className="pr-10 text-xs font-semibold uppercase tracking-widest text-muted">{c.label}</p>
-            <p className="mt-2 font-display text-3xl uppercase">
-              {c.raw !== undefined && c.fmt ? <CountUp value={c.raw} format={c.fmt} /> : c.value}
-            </p>
-            <p className="mt-1 text-xs text-muted">{c.sub}</p>
-            {c.spark && c.spark.length > 1 ? (
-              <div className="mt-2">
-                <Spark data={c.spark} />
+          <Card key={c.label} className="relative overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{c.label}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <p className="font-display text-3xl uppercase">
+                  {c.raw !== undefined && c.fmt ? <CountUp value={c.raw} format={c.fmt} /> : c.value}
+                </p>
+                <c.Icon className="h-5 w-5 text-primary/70" />
               </div>
-            ) : null}
-            <p className={`mt-1 text-[11px] font-semibold ${c.extraCls}`}>{c.extra}</p>
-          </div>
+              <p className="mt-1 text-xs text-muted-foreground">{c.sub}</p>
+              {c.spark && c.spark.length > 1 ? (
+                <div className="mt-2">
+                  <Spark data={c.spark} />
+                </div>
+              ) : null}
+              <p className={`mt-1 text-[11px] font-semibold ${c.extraCls}`}>{c.extra}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
