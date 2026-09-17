@@ -7,6 +7,13 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 :root {
