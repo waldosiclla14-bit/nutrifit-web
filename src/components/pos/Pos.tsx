@@ -1137,10 +1137,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             )}
           </div>
           {categories.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               <button
                 onClick={() => setCategory('all')}
-                className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition ${category === 'all' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
               >
                 Todos
               </button>
@@ -1148,7 +1148,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <button
                   key={c}
                   onClick={() => setCategory(c)}
-                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${category === c ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition ${category === c ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
                 >
                   {c}
                 </button>
