@@ -5,7 +5,7 @@ import { MessageCircle, Pencil, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { useConfirm } from '@/lib/feedback';
-import { STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL } from '@/lib/admin/constants';
+import { STATUS_LABEL, PAYMENT_LABEL } from '@/lib/admin/constants';
 import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

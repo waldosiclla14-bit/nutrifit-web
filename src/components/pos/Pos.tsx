@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice, cx, uid } from '@/lib/utils';
+import { formatPrice, uid } from '@/lib/utils';
 import { buildDeliveryOrderMessage, openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
@@ -1987,7 +1987,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
                   </div>
                   <button
-                    onClick={() => { checkout(); setShowMobileCart(false); }}
+                    onClick={async () => { await checkout(); if (cart.length === 0 || receipt) setShowMobileCart(false); }}
                     disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
                     className={`mt-3 w-full rounded-xl py-3 text-base font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
                   >
