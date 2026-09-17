@@ -422,6 +422,7 @@ function DeliveryDetail({
           <Row label="Horario" value={delivery.windowStart ? `${delivery.windowStart}–${delivery.windowEnd || ''}` : '—'} />
           <Row label="Punto" value={delivery.meetingPoint || '—'} />
           <Row label="Estado" value={<span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[delivery.status] || ''}`}>{STATUS_LABELS[delivery.status] || delivery.status}</span>} />
+          {delivery.order?.total != null && <Row label="Total pedido" value={`$${Number(delivery.order.total).toLocaleString()}`} />}
           {delivery.notes && <Row label="Notas" value={delivery.notes} />}
 
           {/* Code verification */}

@@ -1219,6 +1219,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <p className="truncate text-xs font-bold">{l.productName}</p>
                   {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
                   <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
+                  <p className="text-[10px] text-muted">Stock: {l.stock ?? '—'}</p>
                 </div>
                 <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
                   <Minus size={14} />
