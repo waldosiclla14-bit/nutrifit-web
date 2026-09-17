@@ -1169,10 +1169,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 const totalStock = list.reduce((s: number, v: any) => s + Math.max(0, v.stock ?? 0), 0);
                 const isOutOfStock = totalStock <= 0;
                 return (
-                  <div key={p.id} className={`rounded-3xl border border-line bg-paper p-4 transition ${isOutOfStock ? 'opacity-45 pointer-events-none' : ''}`}>
-                    <p className="font-bold text-ink">{p.name}</p>
-                    <p className="text-xs text-muted">{p.brand?.name}</p>
-                    <div className="mt-3 space-y-1.5">
+                  <div key={p.id} className={`rounded-3xl border border-line bg-paper p-3 transition ${isOutOfStock ? 'opacity-45 pointer-events-none' : 'hover:shadow-md'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-sm text-ink">{p.name}</p>
+                        <p className="truncate text-[11px] text-muted">{p.brand?.name}</p>
+                      </div>
+                      {!isOutOfStock && (
+                        <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">{totalStock} uds</span>
+                      )}
+                    </div>
+                    <div className="mt-2 space-y-1">
                       {list.map((v: any) => {
                         const vStock = v.stock ?? 0;
                         const vOutOfStock = vStock <= 0;
@@ -1181,21 +1188,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             key={v.id ?? p.id}
                             onClick={() => addToCart(p, v.id)}
                             disabled={vOutOfStock}
-                            className={`flex w-full items-center justify-between rounded-2xl border border-line px-3 py-2 text-left transition hover:border-accent disabled:opacity-40 ${vOutOfStock ? 'bg-red-50/50' : 'bg-soft/50'}`}
+                            className={`flex w-full items-center justify-between rounded-xl border px-2.5 py-1.5 text-left transition ${vOutOfStock ? 'border-red-200 bg-red-50/50 opacity-50' : 'border-line bg-soft/30 hover:border-accent active:scale-[0.98]'}`}
                           >
-                            <span className="text-xs font-semibold">
-                              {v.name || 'Sin variante'}
-                              {vOutOfStock ? (
-                                <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
-                              ) : (
-                                <span className="ml-1 rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold text-accent">{vStock} uds</span>
-                              )}
-                            </span>
-                            <span className="flex flex-col items-end gap-1">
-                              <span className="text-base font-extrabold text-accent">{formatPrice(v.price)}</span>
-                              <span className="text-[10px] text-muted">{v.name || p.name}</span>
-                              {v.name && <span className="text-[10px] text-muted">{p.name}</span>}
-                            </span>
+                            <div className="min-w-0 flex-1">
+                              {v.name && <p className="truncate text-[11px] font-medium text-ink">{v.name}</p>}
+                              {vOutOfStock && <span className="text-[9px] font-bold text-red-500">Sin stock</span>}
+                            </div>
+                            <span className="ml-2 shrink-0 text-sm font-extrabold text-accent tabular-nums">{formatPrice(v.price)}</span>
                           </button>
                         );
                       })}
@@ -1208,34 +1207,33 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-3xl border border-line bg-paper p-5 lg:sticky lg:top-6 lg:max-h-[80vh]">
+        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-3xl border border-line bg-paper p-4 lg:sticky lg:top-6 lg:max-h-[80vh]">
           <p className="flex items-center gap-2 font-display text-lg uppercase">
             <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
           {cart.length > 0 && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
               <span className="text-xs font-semibold text-muted">{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
-              <span className="font-display text-lg">{formatPrice(total)}</span>
+              <span className="font-display text-lg font-extrabold">{formatPrice(total)}</span>
             </div>
           )}
-          <div className="mt-2 max-h-[40vh] space-y-2 overflow-y-auto">
+          <div className="mt-2 max-h-[40vh] space-y-1.5 overflow-y-auto">
             {cart.map((l) => (
-              <div key={lineKey(l)} className="flex items-center gap-2 rounded-2xl border border-line bg-soft/50 p-2.5">
+              <div key={lineKey(l)} className="flex items-center gap-1.5 rounded-xl border border-line bg-soft/30 px-2 py-1.5">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold">{l.productName}</p>
-                  {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
-                  <p className="text-[11px] font-semibold">{formatPrice(l.unitPrice)}</p>
-                  <p className="text-[10px] text-muted">Stock: {l.stock ?? '—'}</p>
+                  <p className="truncate text-[11px] font-bold text-ink">{l.productName}</p>
+                  {l.variantName && <p className="truncate text-[10px] text-muted">{l.variantName}</p>}
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95">
-                  <Minus size={14} />
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95">
+                  <Minus size={12} />
                 </button>
-                <span className="w-8 text-center text-sm font-bold">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line transition hover:border-ink active:scale-95 disabled:opacity-40">
-                  <Plus size={14} />
+                <span className="w-6 text-center text-xs font-bold tabular-nums">{l.quantity}</span>
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95 disabled:opacity-40">
+                  <Plus size={12} />
                 </button>
-                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-red-500 transition hover:bg-red-50 active:scale-95">
-                  <Trash2 size={14} />
+                <span className="w-16 text-right text-[11px] font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
+                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
+                  <Trash2 size={11} />
                 </button>
               </div>
             ))}
@@ -1725,15 +1723,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
-            <div className="mt-1 flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted">Total</span>
-              <span className="font-display text-2xl">{formatPrice(total)}</span>
+            <div className="mt-2 flex items-center justify-between rounded-xl bg-ink px-3 py-2">
+              <span className="text-sm font-semibold text-paper/70">Total</span>
+              <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={cx('btn-accent mt-3 w-full', showCashPay && cashShort && 'opacity-50')}
+            className={`mt-3 w-full rounded-2xl py-3.5 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
           >
             {saving
               ? 'Procesando…'
