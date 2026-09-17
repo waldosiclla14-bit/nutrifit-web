@@ -234,6 +234,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [holds, setHolds] = useState<Hold[]>([]);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
   const [showCash, setShowCash] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const [report, setReport] = useState<AdminReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [metroLines, setMetroLines] = useState<{ line: string; lineName: string; stations: string[] }[]>([]);
@@ -895,41 +896,41 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             {mode === 'LOCAL' ? 'Cobrar en local' : 'Venta con entrega en metro'}
           </h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs">
           <div className="flex overflow-hidden rounded-full border border-line bg-paper">
             <button
               onClick={() => { setMode('LOCAL'); setShippingInput(0); setPaymentReceived(true); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1 px-2.5 py-1.5 font-bold transition sm:px-3 ${mode === 'LOCAL' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              <Store size={13} /> Local
+              <Store size={13} /> <span className="hidden sm:inline">Local</span>
             </button>
             <button
               onClick={() => { setMode('METRO'); setShippingInput(1000); setPaymentReceived(false); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1 px-2.5 py-1.5 font-bold transition sm:px-3 ${mode === 'METRO' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              <CalendarDays size={13} /> Metro
+              <CalendarDays size={13} /> <span className="hidden sm:inline">Metro</span>
             </button>
             <button
               onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 font-bold transition ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
+              className={`flex items-center gap-1 px-2.5 py-1.5 font-bold transition sm:px-3 ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              🏠 Domicilio
+              🏠 <span className="hidden sm:inline">Domicilio</span>
             </button>
           </div>
           {cash?.status === 'OPEN' ? (
-            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[10px]">Caja abierta</span>
+            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[11px]">Caja abierta</span>
           ) : (
-            <button onClick={openRegister} className="btn-accent px-2.5 py-1 text-[10px]">
+            <button onClick={openRegister} className="btn-accent px-2.5 py-1 text-xs">
               Abrir caja
             </button>
           )}
           <button
             onClick={() => setShowCash((v) => !v)}
-            className={`btn-outline px-2.5 py-1 text-[10px] ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
+            className={`btn-outline px-2.5 py-1 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
           >
-            <Wallet size={11} /> {showCash ? 'Ocultar' : 'Caja'}
+            <Wallet size={12} /> {showCash ? 'Ocultar' : 'Caja'}
           </button>
-          <button onClick={onLogout} className="btn-outline px-2.5 py-1 text-[10px]">
+          <button onClick={onLogout} className="btn-outline px-2.5 py-1 text-xs">
             Salir
           </button>
         </div>
@@ -1121,7 +1122,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         </div>
       )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
         <div>
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -1170,15 +1171,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 const list = variants.length > 0 ? variants : [{ id: null as string | null, name: '', sku: p.sku || '', price: p.price, stock: p.stock ?? 999 }];
                 return (
                   <div key={p.id} className="rounded-xl border border-line bg-paper p-2.5 transition hover:border-accent/50 hover:shadow-sm">
-                    <p className="truncate font-bold text-[13px] text-ink">{p.name}</p>
-                    <p className="truncate text-[11px] text-muted">{p.brand?.name}</p>
-                    <div className="mt-2 space-y-1">
+                    <p className="truncate font-bold text-sm text-ink">{p.name}</p>
+                    <p className="truncate text-xs text-muted">{p.brand?.name}</p>
+                    <div className="mt-1.5 space-y-1">
                       {list.map((v: any) => (
                         <button
                           key={v.id ?? p.id}
                           onClick={() => addToCart(p, v.id)}
                           disabled={v.stock != null && v.stock <= 0}
-                          className="flex w-full items-center justify-between rounded-xl border border-line bg-soft/30 px-2.5 py-1.5 text-left transition hover:border-accent active:scale-[0.98] disabled:opacity-40"
+                          className="flex w-full items-center justify-between rounded-lg border border-line bg-soft/30 px-2 py-1.5 text-left transition hover:border-accent active:scale-[0.98] disabled:opacity-40"
                         >
                           <span className="truncate text-xs font-semibold">
                             {v.name || 'Sin variante'}
@@ -1200,9 +1201,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit max-h-[65vh] overflow-y-auto rounded-xl border border-line bg-paper p-3 lg:sticky lg:top-4 lg:max-h-[80vh]">
-          <p className="flex items-center gap-2 font-display text-base uppercase">
-            <ShoppingCart size={16} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
+        <div ref={cartRef} className="hidden lg:block h-fit max-h-[80vh] overflow-y-auto rounded-xl border border-line bg-paper p-4 lg:sticky lg:top-4">
+          <p className="flex items-center gap-2 font-display text-lg uppercase">
+            <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
           {cart.length > 0 && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
@@ -1272,9 +1273,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
 
-          <div className="mt-2 space-y-1.5">
-            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input !py-2 !text-xs" />
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input !py-2 !text-xs" />
+          <div className="mt-2 space-y-2">
+            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
+            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
             <select value={payment} onChange={(e) => {
               const val = e.target.value;
               setPayment(val);
@@ -1282,7 +1283,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 setMixedCash(0);
                 setMixedTransfer(0);
               }
-            }} className="input !py-2 !text-xs">
+            }} className="input">
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA_MANUAL">Tarjeta</option>
@@ -1699,7 +1700,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
 
-          <div className="mt-3 border-t border-line pt-2 text-sm">
+          <div className="mt-3 border-t border-line pt-3 text-sm">
             <div className="flex justify-between text-muted">
               <span>Subtotal</span>
               <span>{formatPrice(subtotal)}</span>
@@ -1716,7 +1717,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
-            <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-3 py-1.5">
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-3 py-2">
               <span className="text-sm font-semibold text-paper/70">Total</span>
               <span className="font-display text-xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
             </div>
@@ -1724,7 +1725,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={`mt-2 w-full rounded-lg py-2 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+            className={`mt-2 w-full rounded-lg py-2.5 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
           >
             {saving
               ? 'Procesando…'
@@ -1748,16 +1749,278 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         </div>
       </div>
 
-      {cart.length > 0 && (
+      {/* Mobile floating cart bar */}
+      {cart.length > 0 && !showMobileCart && (
         <button
-          onClick={scrollToCart}
-          className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-ink bg-ink px-4 py-2 text-xs font-bold text-paper shadow-lg transition hover:scale-105 active:scale-95 lg:hidden"
+          onClick={() => setShowMobileCart(true)}
+          className="fixed left-0 right-0 z-50 mx-3 flex items-center justify-between rounded-xl border border-ink bg-ink px-4 py-3 text-sm font-bold text-paper shadow-lg transition active:scale-[0.98] lg:hidden"
           style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
-          <ShoppingCart size={14} />
-          <span>{cart.reduce((s, l) => s + l.quantity, 0)}</span>
-          <span className="border-l border-paper/30 pl-2">{formatPrice(total)}</span>
+          <div className="flex items-center gap-2">
+            <ShoppingCart size={16} />
+            <span>{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="font-display text-lg">{formatPrice(total)}</span>
+            <span className="rounded-full bg-paper/20 px-3 py-1 text-xs font-bold">Cobrar →</span>
+          </div>
         </button>
+      )}
+
+      {/* Mobile cart drawer */}
+      {showMobileCart && (
+        <div className="fixed inset-0 z-50 lg:hidden" style={{ touchAction: 'manipulation' }}>
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMobileCart(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[92vh] overflow-y-auto rounded-t-2xl bg-paper shadow-xl" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-paper px-4 py-3">
+              <p className="flex items-center gap-2 font-display text-base uppercase">
+                <ShoppingCart size={16} /> Venta
+              </p>
+              <button onClick={() => setShowMobileCart(false)} className="rounded-full border border-line p-1.5">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-4 py-3">
+              {/* Cart items */}
+              <div className="max-h-[25vh] space-y-1 overflow-y-auto">
+                {cart.map((l) => (
+                  <div key={lineKey(l)} className="flex items-center gap-1.5 rounded-lg border border-line bg-soft/30 px-2.5 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-ink">{l.productName}</p>
+                      {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
+                    </div>
+                    <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95">
+                      <Minus size={13} />
+                    </button>
+                    <span className="w-7 text-center text-sm font-bold tabular-nums">{l.quantity}</span>
+                    <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95 disabled:opacity-40">
+                      <Plus size={13} />
+                    </button>
+                    <span className="w-16 text-right text-xs font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
+                    <button onClick={() => setQty(lineKey(l), 0)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                {cart.length === 0 && <p className="py-8 text-center text-sm text-muted">Carrito vacío.</p>}
+              </div>
+
+              {cart.length > 0 && (
+                <div className="mt-2 flex gap-2">
+                  <button onClick={pauseSale} className="btn-outline flex-1 px-3 py-2 text-xs">
+                    <Pause size={12} /> Pausar
+                  </button>
+                  <button onClick={cancelSale} className="btn-outline flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
+                    <X size={12} /> Cancelar
+                  </button>
+                </div>
+              )}
+
+              {/* Holds */}
+              {holds.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted">Ventas en espera</p>
+                  {holds.map((h, i) => (
+                    <div key={h.id} className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold">Venta {i + 1} · {formatPrice(h.total)}</p>
+                        <p className="truncate text-[11px] text-muted">{h.customerName || 'Sin cliente'} · {h.lines.length} items</p>
+                      </div>
+                      <button onClick={() => resumeHold(h)} className="rounded-full border border-line bg-paper p-1.5"><Play size={12} /></button>
+                      <button onClick={() => deleteHold(h)} className="rounded-full p-1.5 text-red-500"><Trash2 size={12} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Customer */}
+              <div className="mt-3 space-y-2">
+                <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="input" />
+                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+                <select value={payment} onChange={(e) => { const val = e.target.value; setPayment(val); if (val !== 'MIXTO') { setMixedCash(0); setMixedTransfer(0); } }} className="input">
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                  <option value="TARJETA_MANUAL">Tarjeta</option>
+                  <option value="MIXTO">Mixto</option>
+                </select>
+                {payment === 'MIXTO' && (
+                  <div className="rounded-xl border border-line bg-soft/40 p-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-semibold text-muted">Efectivo ($)</label>
+                        <input type="number" min={0} step={100} value={mixedCash || ''} onChange={(e) => setMixedCash(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-xs mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-muted">Transferencia ($)</label>
+                        <input type="number" min={0} step={100} value={mixedTransfer || ''} onChange={(e) => setMixedTransfer(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-xs mt-1" />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted">Total: {formatPrice(mixedCash + mixedTransfer)} / {formatPrice(total)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Cash payment (LOCAL) */}
+              {showCashPay && (
+                <div className="mt-3 rounded-xl border border-line bg-soft/40 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted">
+                    <Banknote size={12} /> Pago en efectivo
+                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    {tenders.map((t) => (
+                      <button key={t} onClick={() => setPago(t)} className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}>
+                        {formatPrice(t)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="shrink-0 text-xs font-semibold text-muted">Paga con</span>
+                    <input id="pago-input-m" type="number" min={0} step={100} value={pago || ''} onChange={(e) => setPago(Math.max(0, Number(e.target.value) || 0))} placeholder="0" className="input w-full text-sm" />
+                  </div>
+                  {cashShort ? (
+                    <p className="mt-1.5 text-sm font-bold text-red-500">Faltan {formatPrice(total - pago)}</p>
+                  ) : (
+                    pago > 0 && (
+                      pago > total
+                        ? <p className="mt-1.5 text-sm font-bold text-emerald-600">Vuelto: {formatPrice(pago - total)}</p>
+                        : pago === total && <p className="mt-1.5 text-sm font-bold text-muted">Pago exacto</p>
+                    )
+                  )}
+                </div>
+              )}
+
+              {/* Metro / Delivery options (mobile) */}
+              {mode === 'METRO' && (
+                <div className="mt-3 rounded-xl border border-line bg-soft/40 p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">🚇 Entrega en metro</p>
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input type="text" value={stationSearch} onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }} placeholder="Buscar estación..." className="input pl-9" />
+                      {stationResults.length > 0 && !selectedStationId && (
+                        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-paper shadow-lg">
+                          {stationResults.slice(0, 10).map((s) => (
+                            <button key={s.id} onClick={() => { setSelectedStationId(s.id); setMetroStation(s.name); setMetroLine(s.line); setSelectedStationCommune(s.commune); setSelectedMeetingPoint(s.defaultMeetingPoint || 'Acceso principal'); setStationSearch(s.name); setStationResults([]); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-soft border-b border-line/30 last:border-0">
+                              <span className="w-2 h-2 rounded-full" style={{ background: LINE_COLORS[s.line] || '#666' }} />
+                              <span className="font-semibold">{s.name}</span>
+                              <span className="text-[11px] text-muted ml-auto">{s.commune}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {selectedStationId && (
+                      <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-1.5">
+                        <p className="text-sm font-bold">{metroStation}</p>
+                      </div>
+                    )}
+                    <input type="date" value={deliveryDay} min={todayISO()} onChange={(e) => setDeliveryDay(e.target.value)} className="input" />
+                    {slots.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-1">
+                        {slots.filter((s) => s.available).slice(0, 8).map((s) => (
+                          <button key={s.start} type="button" onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${deliveryTime === s.start ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-paper text-muted'}`}>
+                            {s.start} <span className="text-[10px]">({s.count}/{s.max})</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <select value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input">
+                        {TIME_SLOTS.map((t) => (<option key={t} value={t}>{t} hrs</option>))}
+                      </select>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted">Envío ($)</span>
+                      <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-sm" />
+                    </div>
+                    <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold">
+                      <input type="checkbox" checked={paymentReceived} onChange={(e) => setPaymentReceived(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
+                      Ya recibí el pago
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {mode === 'DELIVERY' && (
+                <div className="mt-3 rounded-xl border border-line bg-soft/40 p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">🏠 Envío a Domicilio</p>
+                  <div className="space-y-2">
+                    <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Dirección completa" className="input" />
+                    <input type="date" value={deliveryDay} min={todayISO()} onChange={(e) => setDeliveryDay(e.target.value)} className="input" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="time" value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input" />
+                      <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} placeholder="Envío $" className="input text-sm" />
+                    </div>
+                    <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold">
+                      <input type="checkbox" checked={paymentReceived} onChange={(e) => setPaymentReceived(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
+                      Ya recibí el pago
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Discount */}
+              {cart.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-muted">Descuento</p>
+                    <div className="flex rounded-full border border-line">
+                      <button onClick={() => { setDiscountMode('percent'); setDiscountAmountInput(0); }} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${discountMode === 'percent' ? 'bg-ink text-white' : 'text-muted'}`}>%</button>
+                      <button onClick={() => { setDiscountMode('amount'); setDiscountPct(0); }} className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${discountMode === 'amount' ? 'bg-ink text-white' : 'text-muted'}`}>$</button>
+                    </div>
+                  </div>
+                  {discountMode === 'percent' ? (
+                    <div className="mt-2 grid grid-cols-5 gap-1.5">
+                      {[0, 5, 10, 15, 20].map((pct) => (
+                        <button key={pct} onClick={() => setDiscountPct(pct)} className={`min-h-[44px] rounded-full border px-2 py-2 text-sm font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}>
+                          {pct === 0 ? '0%' : `-${pct}%`}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm font-bold text-muted">$</span>
+                      <input type="number" min={0} max={subtotal} step={100} value={discountAmountInput || ''} onChange={(e) => setDiscountAmountInput(Math.min(subtotal, Math.max(0, Number(e.target.value) || 0)))} placeholder="0" className="input w-full text-sm" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Totals + Checkout */}
+              {cart.length > 0 && (
+                <div className="mt-3 border-t border-line pt-3">
+                  <div className="flex justify-between text-sm text-muted">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(subtotal)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-red-500">
+                      <span>Descuento</span>
+                      <span>-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  {shippingCost > 0 && (
+                    <div className="flex justify-between text-sm text-muted">
+                      <span>Envío</span>
+                      <span>{formatPrice(shippingCost)}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-4 py-2">
+                    <span className="text-sm font-semibold text-paper/70">Total</span>
+                    <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
+                  </div>
+                  <button
+                    onClick={() => { checkout(); setShowMobileCart(false); }}
+                    disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
+                    className={`mt-3 w-full rounded-xl py-3 text-base font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+                  >
+                    {saving ? 'Procesando…' : `Cobrar ${formatPrice(total)}`}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
