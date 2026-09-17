@@ -239,11 +239,11 @@ function Dashboard({
   ];
 
   return (
-    <div className="container-px py-4 sm:py-6 lg:py-10 pb-28 lg:pb-10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="container-px py-3 sm:py-5 pb-28 lg:pb-10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="section-label">NUTRIFIT ADMIN</p>
-          <h1 className="mt-1 font-display text-xl sm:text-2xl tracking-wide">Gestión de la tienda</h1>
+          <p className="section-label text-[10px] sm:text-xs">NUTRIFIT ADMIN</p>
+          <h1 className="mt-0.5 font-display text-lg sm:text-xl tracking-wide">Gestión de la tienda</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="default" size="sm" onClick={onSell}>
@@ -261,7 +261,7 @@ function Dashboard({
         </div>
       </div>
 
-      <div className="mt-4 hidden flex-wrap gap-1.5 lg:flex">
+      <div className="mt-3 hidden flex-wrap gap-1 lg:flex">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -279,7 +279,7 @@ function Dashboard({
         })}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <AdminErrorGuard key={tab}>
         {loading && <TabSkeleton />}
         {!loading && (

@@ -887,11 +887,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   return (
-    <div className="container-px py-4 sm:py-6 lg:py-8" style={{ touchAction: 'manipulation' }}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="container-px py-3 sm:py-4 lg:py-5" style={{ touchAction: 'manipulation' }}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="section-label">PUNTO DE VENTA</p>
-          <h1 className="mt-1 font-display text-xl sm:text-2xl tracking-wide">
+          <p className="section-label text-[10px] sm:text-xs">PUNTO DE VENTA</p>
+          <h1 className="mt-0.5 font-display text-lg sm:text-xl tracking-wide">
             {mode === 'LOCAL' ? 'Cobrar en local' : 'Venta con entrega en metro'}
           </h1>
         </div>
@@ -917,26 +917,26 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </button>
           </div>
           {cash?.status === 'OPEN' ? (
-            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800">Caja abierta</span>
+            <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[10px]">Caja abierta</span>
           ) : (
-            <button onClick={openRegister} className="btn-accent px-3 py-1.5 text-xs">
+            <button onClick={openRegister} className="btn-accent px-2.5 py-1 text-[10px]">
               Abrir caja
             </button>
           )}
           <button
             onClick={() => setShowCash((v) => !v)}
-            className={`btn-outline px-3 py-1.5 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
+            className={`btn-outline px-2.5 py-1 text-[10px] ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
           >
-            <Wallet size={13} /> {showCash ? 'Ocultar' : 'Caja'}
+            <Wallet size={11} /> {showCash ? 'Ocultar' : 'Caja'}
           </button>
-          <button onClick={onLogout} className="btn-outline px-3 py-1.5 text-xs">
+          <button onClick={onLogout} className="btn-outline px-2.5 py-1 text-[10px]">
             Salir
           </button>
         </div>
       </div>
 
       {showCash && (
-        <div className="mt-4 rounded-3xl border border-line bg-paper p-5">
+        <div className="mt-3 rounded-xl border border-line bg-paper p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 font-display text-lg uppercase">
               <Wallet size={18} className="text-accent" /> Resumen de caja del día
@@ -1002,7 +1002,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       )}
 
       {receipt && (
-        <div className="mt-4 rounded-3xl border border-line bg-paper p-5">
+        <div className="mt-3 rounded-xl border border-line bg-paper p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 font-display text-lg uppercase">
               <Receipt size={18} className="text-accent" /> Boleta {receipt.orderNumber}
@@ -1097,7 +1097,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       )}
 
       {saleMsg && salePhone && (
-        <div className="mt-4 rounded-3xl border border-accent/30 bg-paper p-5">
+        <div className="mt-3 rounded-xl border border-accent/30 bg-paper p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 font-display text-lg uppercase tracking-wide text-ink">
               <MessageCircle size={18} className="text-emerald-600" />
@@ -1121,7 +1121,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         </div>
       )}
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px]">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
         <div>
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -1169,9 +1169,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 const variants = p.variants?.filter((v) => v.active) || [];
                 const list = variants.length > 0 ? variants : [{ id: null as string | null, name: '', sku: p.sku || '', price: p.price, stock: p.stock ?? 999 }];
                 return (
-                  <div key={p.id} className="rounded-2xl border border-line bg-paper p-3 transition hover:border-accent/50 hover:shadow-sm">
-                    <p className="truncate font-bold text-sm text-ink">{p.name}</p>
-                    <p className="truncate text-xs text-muted">{p.brand?.name}</p>
+                  <div key={p.id} className="rounded-xl border border-line bg-paper p-2.5 transition hover:border-accent/50 hover:shadow-sm">
+                    <p className="truncate font-bold text-[13px] text-ink">{p.name}</p>
+                    <p className="truncate text-[11px] text-muted">{p.brand?.name}</p>
                     <div className="mt-2 space-y-1">
                       {list.map((v: any) => (
                         <button
@@ -1200,9 +1200,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
         </div>
 
-        <div ref={cartRef} className="h-fit max-h-[70vh] overflow-y-auto rounded-2xl border border-line bg-paper p-4 lg:sticky lg:top-6 lg:max-h-[80vh]">
-          <p className="flex items-center gap-2 font-display text-lg uppercase">
-            <ShoppingCart size={18} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
+        <div ref={cartRef} className="h-fit max-h-[65vh] overflow-y-auto rounded-xl border border-line bg-paper p-3 lg:sticky lg:top-4 lg:max-h-[80vh]">
+          <p className="flex items-center gap-2 font-display text-base uppercase">
+            <ShoppingCart size={16} /> Venta{receipt ? ` ${receipt.orderNumber}` : ''}
           </p>
           {cart.length > 0 && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
@@ -1210,9 +1210,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <span className="font-display text-lg font-extrabold">{formatPrice(total)}</span>
             </div>
           )}
-          <div className="mt-2 max-h-[40vh] space-y-1.5 overflow-y-auto">
+          <div className="mt-1.5 max-h-[35vh] space-y-1 overflow-y-auto">
             {cart.map((l) => (
-              <div key={lineKey(l)} className="flex items-center gap-1.5 rounded-xl border border-line bg-soft/30 px-2 py-1.5">
+              <div key={lineKey(l)} className="flex items-center gap-1 rounded-lg border border-line bg-soft/30 px-2 py-1">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[11px] font-bold text-ink">{l.productName}</p>
                   {l.variantName && <p className="truncate text-[10px] text-muted">{l.variantName}</p>}
@@ -1272,9 +1272,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
 
-          <div className="mt-4 space-y-2">
-            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+          <div className="mt-2 space-y-1.5">
+            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input !py-2 !text-xs" />
+            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input !py-2 !text-xs" />
             <select value={payment} onChange={(e) => {
               const val = e.target.value;
               setPayment(val);
@@ -1282,7 +1282,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 setMixedCash(0);
                 setMixedTransfer(0);
               }
-            }} className="input">
+            }} className="input !py-2 !text-xs">
               <option value="EFECTIVO">Efectivo</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="TARJETA_MANUAL">Tarjeta</option>
@@ -1642,9 +1642,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
 
           {cart.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-3">
               <div className="flex items-center gap-2">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Descuento</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Descuento</p>
                 <div className="flex rounded-full border border-line">
                   <button
                     onClick={() => { setDiscountMode('percent'); setDiscountAmountInput(0); }}
@@ -1699,7 +1699,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </div>
           )}
 
-          <div className="mt-4 border-t border-line pt-3 text-sm">
+          <div className="mt-3 border-t border-line pt-2 text-sm">
             <div className="flex justify-between text-muted">
               <span>Subtotal</span>
               <span>{formatPrice(subtotal)}</span>
@@ -1716,15 +1716,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
-            <div className="mt-2 flex items-center justify-between rounded-xl bg-ink px-3 py-2">
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-3 py-1.5">
               <span className="text-sm font-semibold text-paper/70">Total</span>
-              <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
+              <span className="font-display text-xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={`mt-3 w-full rounded-xl py-2.5 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+            className={`mt-2 w-full rounded-lg py-2 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
           >
             {saving
               ? 'Procesando…'
