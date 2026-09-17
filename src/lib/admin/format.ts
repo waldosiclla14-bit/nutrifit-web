@@ -2,6 +2,19 @@ import { STATUS_LABEL } from './constants';
 import { webFooter } from '@/lib/whatsapp';
 import type { AdminOrder } from '@/types/admin';
 
+/** Convert "14:30" → "2:30 PM", "09:00" → "9:00 AM" */
+export function formatTime12(time24: string | null | undefined): string {
+  if (!time24) return '—';
+  const match = time24.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return time24;
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m} ${suffix}`;
+}
+
 export function waLink(order: AdminOrder) {
   const phone = (order.customer?.phone || '').replace(/\D/g, '');
   const msg = encodeURIComponent(

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { haptic } from '@/lib/haptic';
+import { formatTime12 } from '@/lib/admin/format';
 import {
   Banknote,
   CalendarDays,
@@ -824,7 +825,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         delLines.push('');
         delLines.push('*ENVÍO A DOMICILIO:*');
         delLines.push(`📅 ${deliveryDay}`);
-        delLines.push(`⏰ ${deliveryTime}${deliveryTimeEnd ? ` – ${deliveryTimeEnd}` : ''} hrs`);
+        delLines.push(`⏰ ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}`);
         delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
         delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
@@ -1165,34 +1166,39 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               {filtered.map((p) => {
                 const variants = p.variants?.filter((v) => v.active) || [];
                 const list = variants.length > 0 ? variants : [{ id: null as string | null, name: '', sku: p.sku || '', price: p.price, stock: p.stock ?? 999 }];
+                const totalStock = list.reduce((s: number, v: any) => s + Math.max(0, v.stock ?? 0), 0);
+                const isOutOfStock = totalStock <= 0;
                 return (
-                  <div key={p.id} className="rounded-3xl border border-line bg-paper p-4">
+                  <div key={p.id} className={`rounded-3xl border border-line bg-paper p-4 transition ${isOutOfStock ? 'opacity-45 pointer-events-none' : ''}`}>
                     <p className="font-bold text-ink">{p.name}</p>
                     <p className="text-xs text-muted">{p.brand?.name}</p>
                     <div className="mt-3 space-y-1.5">
-                      {list.map((v: any) => (
-                        <button
-                          key={v.id ?? p.id}
-                          onClick={() => addToCart(p, v.id)}
-                          disabled={v.stock != null && v.stock <= 0}
-                          className="flex w-full items-center justify-between rounded-2xl border border-line bg-soft/50 px-3 py-2 text-left transition hover:border-accent disabled:opacity-40"
-                        >
-                          <span className="text-xs font-semibold">
-                            {v.name || 'Sin variante'}
-                            {v.stock != null && v.stock <= 0 ? (
-                              <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
-                            ) : (
-                              <span className="ml-1 font-normal text-muted">({Math.max(0, v.stock ?? 0)} uds)</span>
-                            )}
-                          </span>
-                          <span className="flex flex-col items-end">
-                            <span className="text-sm font-bold">{formatPrice(v.price)}</span>
-                            <span className={`text-[10px] font-semibold ${marginOf(v.price, v.costPrice) >= 35 ? 'text-emerald-600' : marginOf(v.price, v.costPrice) >= 15 ? 'text-accent' : 'text-red-500'}`}>
-                              margen {marginOf(v.price, v.costPrice)}%
+                      {list.map((v: any) => {
+                        const vStock = v.stock ?? 0;
+                        const vOutOfStock = vStock <= 0;
+                        return (
+                          <button
+                            key={v.id ?? p.id}
+                            onClick={() => addToCart(p, v.id)}
+                            disabled={vOutOfStock}
+                            className={`flex w-full items-center justify-between rounded-2xl border border-line px-3 py-2 text-left transition hover:border-accent disabled:opacity-40 ${vOutOfStock ? 'bg-red-50/50' : 'bg-soft/50'}`}
+                          >
+                            <span className="text-xs font-semibold">
+                              {v.name || 'Sin variante'}
+                              {vOutOfStock ? (
+                                <span className="ml-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-600">Sin stock</span>
+                              ) : (
+                                <span className="ml-1 rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold text-accent">{vStock} uds</span>
+                              )}
                             </span>
-                          </span>
-                        </button>
-                      ))}
+                            <span className="flex flex-col items-end gap-1">
+                              <span className="text-base font-extrabold text-accent">{formatPrice(v.price)}</span>
+                              <span className="text-[10px] text-muted">{v.name || p.name}</span>
+                              {v.name && <span className="text-[10px] text-muted">{p.name}</span>}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
