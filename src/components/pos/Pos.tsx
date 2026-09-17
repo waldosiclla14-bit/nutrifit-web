@@ -64,9 +64,16 @@ const LINE_COLORS: Record<string, string> = {
   L4A: '#00AEEF', L5: '#00A651', L6: '#92278F',
 };
 
+function formatTime12(time24: string): string {
+  const [h, m] = time24.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 const TIME_PERIODS = {
-  manana: { label: 'Mañana · 08–12', start: 8, end: 12 },
-  tarde: { label: 'Tarde · 12–18', start: 12, end: 18 },
+  manana: { label: 'Mañana · 8 AM–12 PM', start: 8, end: 12 },
+  tarde: { label: 'Tarde · 12–6 PM', start: 12, end: 18 },
   noche: { label: 'Noche · 18–22', start: 18, end: 22 },
 } as const;
 
@@ -817,7 +824,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         delLines.push('');
         delLines.push('*ENVÍO A DOMICILIO:*');
         delLines.push(`📅 ${deliveryDay}`);
-        delLines.push(`⏰ ${deliveryTime}${deliveryTimeEnd ? ` – ${deliveryTimeEnd}` : ''} hrs`);
+        delLines.push(`⏰ ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}`);
         delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
         delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
@@ -1508,7 +1515,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                               } ${!s.available ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft'}`}
                             >
                               <span className={`font-mono text-[13px] tracking-wide ${deliveryTime === s.start ? 'text-accent font-semibold' : ''}`}>
-                                {s.start}
+                                {formatTime12(s.start)}
                               </span>
                               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
                                 full ? 'bg-soft text-muted' : partial ? 'bg-amber-50 text-amber-700' : 'bg-accent/10 text-accent'
@@ -1526,7 +1533,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     setDeliveryTimeEnd(computeEndTime(e.target.value));
                   }} className="input">
                     {TIME_SLOTS.map((t) => (
-                      <option key={t} value={t}>{t} hrs</option>
+                      <option key={t} value={t}>{formatTime12(t)}</option>
                     ))}
                   </select>
                 )}
@@ -1890,13 +1897,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <div className="grid grid-cols-2 gap-1">
                         {slots.filter((s) => s.available).slice(0, 8).map((s) => (
                           <button key={s.start} type="button" onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${deliveryTime === s.start ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-paper text-muted'}`}>
-                            {s.start} <span className="text-[10px]">({s.count}/{s.max})</span>
+                            {formatTime12(s.start)} <span className="text-[10px]">({s.count}/{s.max})</span>
                           </button>
                         ))}
                       </div>
                     ) : (
                       <select value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input">
-                        {TIME_SLOTS.map((t) => (<option key={t} value={t}>{t} hrs</option>))}
+                        {TIME_SLOTS.map((t) => (<option key={t} value={t}>{formatTime12(t)}</option>))}
                       </select>
                     )}
                     <div className="flex items-center gap-2">
