@@ -11,13 +11,12 @@ export type AdminTabKey =
   | 'calendario'
   | 'productos'
   | 'clientes'
-  | 'agenda'
   | 'caja'
   | 'reportes'
   | 'inventario'
   | 'compras';
 
-const SHEET_KEYS: AdminTabKey[] = ['entregas', 'calendario', 'productos', 'clientes', 'agenda', 'caja', 'reportes', 'compras'];
+const SHEET_KEYS: AdminTabKey[] = ['entregas', 'calendario', 'productos', 'clientes', 'caja', 'reportes', 'compras'];
 
 export function AdminBottomNav({
   tabs,

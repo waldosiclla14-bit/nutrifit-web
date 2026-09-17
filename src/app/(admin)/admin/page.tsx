@@ -26,7 +26,6 @@ import type {
   AdminInventoryValue,
   AdminOrder,
   AdminProduct,
-  AdminReminder,
   AdminStats,
 } from '@/types/admin';
 import { PasswordModal } from '@/components/admin/PasswordModal';
@@ -37,7 +36,6 @@ const Resumen = lazy(() => import('@/components/admin/Resumen').then(m => ({ def
 const Ordenes = lazy(() => import('@/components/admin/Ordenes').then(m => ({ default: m.Ordenes })));
 const Productos = lazy(() => import('@/components/admin/Productos').then(m => ({ default: m.Productos })));
 const Clientes = lazy(() => import('@/components/admin/Clientes').then(m => ({ default: m.Clientes })));
-const Agenda = lazy(() => import('@/components/admin/Agenda').then(m => ({ default: m.Agenda })));
 const Caja = lazy(() => import('@/components/admin/Caja').then(m => ({ default: m.Caja })));
 const Reportes = lazy(() => import('@/components/admin/Reportes').then(m => ({ default: m.Reportes })));
 const Inventario = lazy(() => import('@/components/admin/Inventario').then(m => ({ default: m.Inventario })));
@@ -59,7 +57,7 @@ function TabSkeleton() {
   );
 }
 
-type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'calendario' | 'productos' | 'clientes' | 'agenda' | 'caja' | 'reportes' | 'inventario' | 'compras';
+type TabKey = 'resumen' | 'ordenes' | 'entregas' | 'calendario' | 'productos' | 'clientes' | 'caja' | 'reportes' | 'inventario' | 'compras';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -126,7 +124,6 @@ function Dashboard({
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
-  const [reminders, setReminders] = useState<AdminReminder[]>([]);
   const [cash, setCash] = useState<AdminCashRegister | null>(null);
   const [inventory, setInventory] = useState<AdminInventoryValue | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -171,27 +168,6 @@ function Dashboard({
       } else if (t === 'clientes') {
         const res = await apiFetch<any>('/customers?page=1&limit=50', { token });
         setCustomers(res?.data || res || []);
-      } else if (t === 'agenda') {
-        const [r, cRes] = await Promise.all([
-          apiFetch<AdminReminder[]>('/reminders', { token }).catch(() => []),
-          apiFetch<any>('/customers?page=1&limit=50', { token }).catch(() => ({ data: [] })),
-        ]);
-        const c = cRes?.data || cRes || [];
-        setReminders(
-          (r || []).map((x: any) => ({
-            id: x.id,
-            customerId: x.customerId,
-            customerName: x.customer?.name || '',
-            customerPhone: x.customer?.phone || '',
-            title: x.title,
-            message: x.message,
-            dueAt: x.dueAt,
-            status: x.status,
-            sentAt: x.sentAt,
-            createdAt: x.createdAt,
-          })),
-        );
-        setCustomers(c || []);
       } else if (t === 'caja') {
         const cr = await apiFetch<any | null>('/cash-register/current', { token });
         setCash(
@@ -252,7 +228,6 @@ function Dashboard({
     { key: 'calendario', label: 'Calendario', icon: CalendarDays },
     { key: 'productos', label: 'Productos', icon: Boxes },
     { key: 'clientes', label: 'Clientes', icon: Users },
-    { key: 'agenda', label: 'Agenda', icon: CalendarDays },
     { key: 'caja', label: 'Caja', icon: Wallet },
     { key: 'reportes', label: 'Reportes', icon: BarChart3 },
     { key: 'inventario', label: 'Inventario', icon: Boxes },
@@ -315,7 +290,6 @@ function Dashboard({
             {tab === 'calendario' && <Calendario token={token} />}
             {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
             {tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
-            {tab === 'agenda' && <Agenda customers={customers} reminders={reminders} token={token} onChanged={refreshTab} />}
             {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
             {tab === 'reportes' && <Reportes token={token} />}
             {tab === 'inventario' && <Inventario token={token} />}
