@@ -53,14 +53,25 @@ type Stats = {
   byLine: { line: string; lineName: string; count: number }[];
 };
 
+function weekBounds(): { from: string; to: string } {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { from: iso(monday), to: iso(sunday) };
+}
+
 export function Entregas({ token }: { token: string }) {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterLine, setFilterLine] = useState('');
-  const [filterDateFrom, setFilterDateFrom] = useState(new Date().toISOString().split('T')[0]);
-  const [filterDateTo, setFilterDateTo] = useState(new Date().toISOString().split('T')[0]);
+  const [week] = useState(weekBounds);
+  const [filterDateFrom, setFilterDateFrom] = useState(week.from);
+  const [filterDateTo, setFilterDateTo] = useState(week.to);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);

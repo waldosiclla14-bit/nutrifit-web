@@ -591,6 +591,13 @@ export function Productos({
           <button onClick={exportExcel} className="btn-outline px-3 py-2 text-xs">
             Exportar {filteredProducts.length < products.length ? `(${filteredProducts.length})` : ''}
           </button>
+          <button
+            onClick={() => setCompactMode((c) => !c)}
+            className="btn-outline px-3 py-2 text-xs"
+            title={compactMode ? 'Vista detallada' : 'Vista compacta'}
+          >
+            {compactMode ? '📋 Compacta' : '📊 Detalle'}
+          </button>
           <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
             {showForm ? 'Cancelar' : '+ Nuevo'}
           </button>
@@ -685,13 +692,6 @@ export function Productos({
                     if (totalStock === 0) return <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">Sin stock</span>;
                     return null;
                   })()}
-                  <button
-                    onClick={() => setCompactMode(!compactMode)}
-                    className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-1 text-[10px] text-muted hover:border-accent min-h-[36px]"
-                    title={compactMode ? 'Vista detallada' : 'Vista compacta'}
-                  >
-                    {compactMode ? '📋' : '📊'}
-                  </button>
                   <button
                     onClick={() => openEdit(p)}
                     className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-2 text-[11px] font-bold text-ink hover:border-accent min-h-[44px]"
