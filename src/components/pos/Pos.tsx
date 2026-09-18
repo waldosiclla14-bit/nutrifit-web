@@ -71,12 +71,6 @@ function formatTime12(time24: string): string {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-const TIME_PERIODS = {
-  manana: { label: 'Mañana · 9 AM–12 PM', start: 9, end: 12 },
-  tarde: { label: 'Tarde · 12–6 PM', start: 12, end: 18 },
-  noche: { label: 'Noche · 6–10 PM', start: 18, end: 22 },
-} as const;
-
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
 
@@ -220,12 +214,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
   const [slots, setSlots] = useState<DeliverySlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<'manana' | 'tarde' | 'noche'>(() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'manana';
-    if (h < 18) return 'tarde';
-    return 'noche';
-  });
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
   const [mixedCash, setMixedCash] = useState(0);
@@ -890,6 +878,67 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     printWindow.close();
   };
 
+  // Compact metro schedule picker (date + 12h slot select + editable hour, all in one block)
+  const renderMetroSchedule = () => {
+    const hasSlots = slots.length > 0;
+    const options = hasSlots
+      ? slots
+      : TIME_SLOTS.map((t) => ({ start: t, end: computeEndTime(t), available: true, count: 0, max: 0 }));
+    const isCustom = !options.some((s) => s.start === deliveryTime);
+    return (
+      <div className="space-y-2">
+        <input
+          type="date"
+          value={deliveryDay}
+          min={todayISO()}
+          onChange={(e) => setDeliveryDay(e.target.value)}
+          className="input"
+        />
+        {slotsLoading ? (
+          <div className="flex items-center gap-2 py-2 text-xs text-muted">
+            <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
+          </div>
+        ) : (
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <select
+              value={deliveryTime}
+              onChange={(e) => {
+                const v = e.target.value;
+                const slot = slots.find((s) => s.start === v);
+                setDeliveryTime(v);
+                setDeliveryTimeEnd(slot ? slot.end : computeEndTime(v));
+              }}
+              className="input min-w-0"
+              aria-label="Horario de entrega"
+            >
+              {isCustom && <option value={deliveryTime}>✏️ {formatTime12(deliveryTime)}</option>}
+              {options.map((s) => (
+                <option key={s.start} value={s.start} disabled={!s.available}>
+                  {formatTime12(s.start)}
+                  {hasSlots ? (s.available ? (s.count > 0 ? ` · ${s.count}/${s.max}` : ' · libre') : ' · lleno') : ''}
+                </option>
+              ))}
+            </select>
+            <input
+              type="time"
+              min="09:00"
+              max="21:30"
+              step={1800}
+              value={deliveryTime}
+              onChange={(e) => handleCustomTime(e.target.value)}
+              className="input w-[118px] text-sm"
+              aria-label="Hora personalizada"
+              title="Hora personalizada (9 AM – 10 PM)"
+            />
+          </div>
+        )}
+        <p className="text-xs font-semibold text-accent">
+          ✔ {formatTime12(deliveryTime)}{deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="container-px py-3 sm:py-4 lg:py-5" style={{ touchAction: 'manipulation' }}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1466,99 +1515,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 )}
 
                 {/* Date */}
-                <input
-                  type="date"
-                  value={deliveryDay}
-                  min={todayISO()}
-                  onChange={(e) => setDeliveryDay(e.target.value)}
-                  className="input"
-                />
-
-                {/* Time slots */}
-                {slotsLoading ? (
-                  <div className="flex items-center gap-2 py-2 text-xs text-muted">
-                    <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
-                  </div>
-                ) : slots.length > 0 ? (
-                  <>
-                    {/* Period tabs */}
-                    <div className="flex gap-1 p-0.5 bg-soft rounded-xl">
-                      {(Object.entries(TIME_PERIODS) as [string, { label: string; start: number; end: number }][]).map(([key, period]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setTimePeriod(key as 'manana' | 'tarde' | 'noche')}
-                          className={`flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition ${
-                            timePeriod === key
-                              ? 'bg-paper text-ink shadow-sm'
-                              : 'text-muted hover:text-ink'
-                          }`}
-                        >
-                          {period.label}
-                        </button>
-                      ))}
-                    </div>
-                    {/* Slots grid */}
-                    <div className="grid grid-cols-2 gap-px bg-line/30 rounded-xl border border-line overflow-hidden max-h-[200px] overflow-y-auto">
-                      {slots
-                        .filter((s) => {
-                          const h = parseInt(s.start.split(':')[0], 10);
-                          const p = TIME_PERIODS[timePeriod];
-                          return h >= p.start && h < p.end;
-                        })
-                        .map((s) => {
-                          const full = s.count >= s.max;
-                          const partial = s.count > 0 && !full;
-                          return (
-                            <button
-                              key={s.start}
-                              type="button"
-                              disabled={!s.available}
-                              onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }}
-                              className={`flex items-center justify-between px-2.5 py-2 bg-paper text-xs transition border-l-[3px] ${
-                                deliveryTime === s.start
-                                  ? 'bg-accent/5 border-l-accent'
-                                  : 'border-l-transparent'
-                              } ${!s.available ? 'opacity-50 cursor-not-allowed' : 'hover:bg-soft'}`}
-                            >
-                              <span className={`font-mono text-[13px] tracking-wide ${deliveryTime === s.start ? 'text-accent font-semibold' : ''}`}>
-                                {formatTime12(s.start)}
-                              </span>
-                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                                full ? 'bg-soft text-muted' : partial ? 'bg-amber-50 text-amber-700' : 'bg-accent/10 text-accent'
-                              }`}>
-                                {full ? 'Sin cupo' : `${s.count}/${s.max}`}
-                              </span>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </>
-                ) : (
-                  <select value={deliveryTime} onChange={(e) => {
-                    setDeliveryTime(e.target.value);
-                    setDeliveryTimeEnd(computeEndTime(e.target.value));
-                  }} className="input">
-                    {TIME_SLOTS.map((t) => (
-                      <option key={t} value={t}>{formatTime12(t)}</option>
-                    ))}
-                  </select>
-                )}
-
-                {/* Custom hour (editable 9 AM – 10 PM) */}
-                <div className="flex items-center gap-2">
-                  <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
-                  <input
-                    type="time"
-                    min="09:00"
-                    max="21:30"
-                    step={1800}
-                    value={deliveryTime}
-                    onChange={(e) => handleCustomTime(e.target.value)}
-                    className="input w-full text-sm"
-                  />
-                  <span className="shrink-0 text-xs font-bold text-accent">{formatTime12(deliveryTime)}</span>
-                </div>
+                {renderMetroSchedule()}
 
                 {/* Meeting point */}
                 {selectedStationId && (
@@ -1914,33 +1871,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         <p className="text-sm font-bold">{metroStation}</p>
                       </div>
                     )}
-                    <input type="date" value={deliveryDay} min={todayISO()} onChange={(e) => setDeliveryDay(e.target.value)} className="input" />
-                    {slots.length > 0 ? (
-                      <div className="grid max-h-[180px] grid-cols-2 gap-1 overflow-y-auto">
-                        {slots.filter((s) => s.available).map((s) => (
-                          <button key={s.start} type="button" onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${deliveryTime === s.start ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-paper text-muted'}`}>
-                            {formatTime12(s.start)} <span className="text-[10px]">({s.count}/{s.max})</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <select value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input">
-                        {TIME_SLOTS.map((t) => (<option key={t} value={t}>{formatTime12(t)}</option>))}
-                      </select>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
-                      <input
-                        type="time"
-                        min="09:00"
-                        max="21:30"
-                        step={1800}
-                        value={deliveryTime}
-                        onChange={(e) => handleCustomTime(e.target.value)}
-                        className="input w-full text-sm"
-                      />
-                      <span className="shrink-0 text-xs font-bold text-accent">{formatTime12(deliveryTime)}</span>
-                    </div>
+                    {renderMetroSchedule()}
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-muted">Envío ($)</span>
                       <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-sm" />
