@@ -1,6 +1,6 @@
 'use client';
 
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
@@ -21,10 +21,8 @@ import { ConfirmProvider, toast } from '@/lib/feedback';
 import { mapApiProduct, handleAuthError } from '@/lib/admin/helpers';
 import type {
   AdminCashRegister,
-  AdminCustomer,
   AdminGoals,
   AdminInventoryValue,
-  AdminOrder,
   AdminProduct,
   AdminStats,
 } from '@/types/admin';
@@ -122,12 +120,9 @@ function Dashboard({
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [goals, setGoals] = useState<AdminGoals | null>(null);
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [cash, setCash] = useState<AdminCashRegister | null>(null);
   const [inventory, setInventory] = useState<AdminInventoryValue | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const loadTab = useCallback(async (t: string, silent = false) => {
@@ -160,15 +155,9 @@ function Dashboard({
         apiFetch<AdminInventoryValue>('/products/inventory-value', { token })
           .then(setInventory)
           .catch(() => {});
-      } else if (t === 'ordenes') {
-        const res = await apiFetch<any>('/orders?page=1&limit=50', { token });
-        setOrders(res?.data || res || []);
       } else if (t === 'productos') {
         const p = await apiFetch<any[]>('/products/internal', { token });
         setProducts((p || []).map(mapApiProduct));
-      } else if (t === 'clientes') {
-        const res = await apiFetch<any>('/customers?page=1&limit=50', { token });
-        setCustomers(res?.data || res || []);
       } else if (t === 'caja') {
         const cr = await apiFetch<any | null>('/cash-register/current', { token });
         setCash(
@@ -205,22 +194,6 @@ function Dashboard({
   useEffect(() => {
     loadTab(tab);
   }, [loadTab, tab]);
-
-  const tabRef = useRef(tab);
-  tabRef.current = tab;
-
-  const act = useCallback(async (fn: () => Promise<any>, id: string, successMsg?: string) => {
-    setBusyId(id);
-    try {
-      await fn();
-      if (successMsg) toast.success(successMsg);
-      await loadTab(tabRef.current, true);
-    } catch (err: any) {
-      toast.error(err?.message || 'Error en la operación.');
-    } finally {
-      setBusyId(null);
-    }
-  }, [loadTab]);
 
   const tabs: { key: TabKey; label: string; icon: any }[] = [
     { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
@@ -282,11 +255,11 @@ function Dashboard({
         {!loading && (
           <Suspense fallback={<TabSkeleton />}>
             {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
-            {tab === 'ordenes' && <Ordenes orders={orders} token={token} busyId={busyId} act={act} />}
+            {tab === 'ordenes' && <Ordenes token={token} />}
             {tab === 'entregas' && <Entregas token={token} />}
             {tab === 'calendario' && <Calendario token={token} />}
             {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
-            {tab === 'clientes' && <Clientes customers={customers} token={token} onChanged={refreshTab} />}
+            {tab === 'clientes' && <Clientes token={token} />}
             {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
             {tab === 'reportes' && <Reportes token={token} />}
             {tab === 'inventario' && <Inventario token={token} />}

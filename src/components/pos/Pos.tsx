@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice, uid } from '@/lib/utils';
+import { formatPrice, formatTime12, uid } from '@/lib/utils';
 import { buildDeliveryOrderMessage, openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
@@ -54,13 +54,6 @@ const LINE_COLORS: Record<string, string> = {
   L1: '#DA291C', L2: '#FFC72C', L3: '#6F4E37', L4: '#0033A0',
   L4A: '#00AEEF', L5: '#00A651', L6: '#92278F',
 };
-
-function formatTime12(time24: string): string {
-  const [h, m] = time24.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
-}
 
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';

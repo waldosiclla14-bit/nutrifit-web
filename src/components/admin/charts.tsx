@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, formatTime12 } from '@/lib/utils';
 
 export const CHART_GREEN = '#5DD62C';
 export const CHART_ORANGE = '#F97316';
@@ -142,7 +142,7 @@ export function PayDonut({ data, colors = CHART_PALETTE }: { data: { label: stri
 
 /* ── Barras por hora (pico destacado) ───────────────────────── */
 export function HourBars({ data, peakHour }: { data: { hour: number; total: number }[]; peakHour: number }) {
-  const rows = data.map((h) => ({ ...h, label: `${h.hour}:00` }));
+  const rows = data.map((h) => ({ ...h, label: formatTime12(`${String(h.hour).padStart(2, '0')}:00`) }));
   if (rows.length === 0) return <div className="flex h-32 items-center justify-center text-sm text-muted">Sin datos.</div>;
   return (
     <div className="h-32 w-full">

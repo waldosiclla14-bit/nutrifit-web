@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Pencil, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
-import { useConfirm } from '@/lib/feedback';
+import { formatPrice, formatTime12 } from '@/lib/utils';
+import { toast, useConfirm } from '@/lib/feedback';
+import { handleAuthError } from '@/lib/admin/helpers';
 import { STATUS_LABEL, PAYMENT_LABEL } from '@/lib/admin/constants';
 import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
@@ -14,27 +15,85 @@ import { Badge } from '@/components/ui/badge';
 import { PaymentModal } from './PaymentModal';
 import { EditOrderModal } from './EditOrderModal';
 
-export function Ordenes({
-  orders,
-  token,
-  busyId,
-  act,
-}: {
-  orders: AdminOrder[];
-  token: string;
-  busyId: string | null;
-  act: (fn: () => Promise<any>, id: string, successMsg?: string) => void;
-}) {
+const PAGE_LIMIT = 50;
+
+export function Ordenes({ token }: { token: string }) {
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentOrder, setPaymentOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
-  const [visibleCount, setVisibleCount] = useState(50);
   const confirm = useConfirm();
+  const pageRef = useRef(1);
+
+  const logout = useCallback(() => {
+    window.location.href = '/login?next=/admin';
+  }, []);
+
+  const loadPage = useCallback(
+    async (p: number, append: boolean) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const res = await apiFetch<any>(`/orders?page=${p}&limit=${PAGE_LIMIT}`, { token });
+        const data: AdminOrder[] = res?.data || res || [];
+        setOrders((prev) => (append ? [...prev, ...data] : data));
+        setTotal(typeof res?.total === 'number' ? res.total : data.length);
+        pageRef.current = p;
+        setPage(p);
+      } catch (err: any) {
+        if (handleAuthError(err, logout)) return;
+        toast.error(err?.message || 'Error al cargar órdenes.');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [token, logout],
+  );
+
+  const reloadAll = useCallback(async () => {
+    try {
+      const pages = pageRef.current;
+      const all: AdminOrder[] = [];
+      let t = 0;
+      for (let p = 1; p <= pages; p++) {
+        const res = await apiFetch<any>(`/orders?page=${p}&limit=${PAGE_LIMIT}`, { token });
+        all.push(...(res?.data || res || []));
+        if (typeof res?.total === 'number') t = res.total;
+      }
+      setOrders(all);
+      setTotal(t);
+    } catch (err: any) {
+      if (handleAuthError(err, logout)) return;
+      toast.error(err?.message || 'Error al cargar órdenes.');
+    }
+  }, [token, logout]);
 
   useEffect(() => {
-    setVisibleCount(50);
-  }, [query, statusFilter]);
+    loadPage(1, false);
+  }, [loadPage]);
+
+  const act = useCallback(
+    async (fn: () => Promise<any>, id: string, successMsg?: string) => {
+      setBusyId(id);
+      try {
+        await fn();
+        if (successMsg) toast.success(successMsg);
+        await reloadAll();
+      } catch (err: any) {
+        toast.error(err?.message || 'Error en la operación.');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [reloadAll],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -144,6 +203,15 @@ export function Ordenes({
     </>
   );
 
+  if (loading && orders.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="skeleton h-10 w-full rounded-xl" />
+        <div className="skeleton h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
@@ -182,7 +250,7 @@ export function Ordenes({
               o.shippingCost,
               o.total,
             ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-            const blob = new Blob(['\uFEFF' + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob([String.fromCharCode(0xFEFF) + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -209,7 +277,7 @@ export function Ordenes({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.slice(0, visibleCount).map((o) => (
+            {filtered.map((o) => (
               <TableRow key={o.id}>
                 <TableCell>
                   <p className="font-bold text-foreground truncate">{o.orderNumber}</p>
@@ -225,7 +293,7 @@ export function Ordenes({
                       <p>Metro {o.metroLine}</p>
                       <p className="text-muted-foreground">{o.metroStation}</p>
                       {o.deliveryDay && <p className="text-muted-foreground">Día: {o.deliveryDay}</p>}
-                      {o.deliveryTime && <p className="text-muted-foreground">Hora: {o.deliveryTime}</p>}
+                      {o.deliveryTime && <p className="text-muted-foreground">Hora: {formatTime12(o.deliveryTime)}</p>}
                     </>
                   ) : (
                     <span className="text-muted-foreground">Retiro tienda</span>
@@ -261,7 +329,7 @@ export function Ordenes({
 
       {/* Cards móvil */}
       <div className="mt-4 space-y-3 lg:hidden">
-        {filtered.slice(0, visibleCount).map((o) => (
+        {filtered.map((o) => (
           <div key={o.id} className="rounded-xl border border-line bg-card p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -279,7 +347,7 @@ export function Ordenes({
             <p className="mt-1 text-xs text-muted-foreground">
               {o.customer?.phone || ''}
               {o.deliveryType === 'METRO' ? ` · Metro ${o.metroLine || ''} ${o.metroStation || ''}` : ' · Retiro tienda'}
-              {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${o.deliveryTime}` : ''}
+              {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${formatTime12(o.deliveryTime)}` : ''}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {PAYMENT_LABEL[o.paymentMethod || ''] || 'Pago'} · {o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}
@@ -296,14 +364,15 @@ export function Ordenes({
         )}
       </div>
 
-      {visibleCount < filtered.length && (
+      {orders.length < total && (
         <div className="mt-3">
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => setVisibleCount((c) => c + 50)}
+            disabled={loadingMore}
+            onClick={() => loadPage(pageRef.current + 1, true)}
           >
-            Cargar más ({filtered.length - visibleCount} restantes)
+            {loadingMore ? 'Cargando…' : `Cargar más (${total - orders.length} restantes)`}
           </Button>
         </div>
       )}
@@ -336,7 +405,10 @@ export function Ordenes({
           token={token}
           busy={busyId === editOrder.id}
           onClose={() => setEditOrder(null)}
-          onSaved={() => setEditOrder(null)}
+          onSaved={async () => {
+            setEditOrder(null);
+            await reloadAll();
+          }}
         />
       )}
     </div>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ShoppingBag, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, formatTime12 } from '@/lib/utils';
 import { progressPct, stockLevel } from '@/lib/admin/format';
 import { toast } from '@/lib/feedback';
 import type {
@@ -525,7 +525,7 @@ export function Resumen({
               </div>
               {peakHour.total > 0 ? (
                 <p className="mt-2 text-xs text-muted">
-                  Pico: <b className="text-accent">{peakHour.hour}:00</b> · {formatPrice(peakHour.total)}
+                  Pico: <b className="text-accent">{formatTime12(`${String(peakHour.hour).padStart(2, '0')}:00`)}</b> · {formatPrice(peakHour.total)}
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-muted">Sin ventas en el período.</p>

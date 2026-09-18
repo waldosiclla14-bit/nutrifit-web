@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 
 type Delivery = {
@@ -229,7 +229,7 @@ export function Calendario({ token }: { token: string }) {
                     >
                       <div className="flex items-center gap-1">
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="text-[12px] font-mono">{del.windowStart || '—'}</span>
+                        <span className="text-[12px] font-mono">{del.windowStart ? formatTime12(del.windowStart) : '—'}</span>
                       </div>
                       <p className="truncate text-[10px] font-semibold">{del.order?.orderNumber}</p>
                       <p className="truncate text-[9px] text-muted">{del.station?.name || del.customer?.name}</p>
@@ -266,7 +266,7 @@ export function Calendario({ token }: { token: string }) {
                         className="flex w-full items-center gap-1 rounded px-1 text-left hover:bg-soft"
                       >
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
-                        <span className="text-[11px]">{del.windowStart} {del.order?.orderNumber}</span>
+                        <span className="text-[11px]">{del.windowStart ? formatTime12(del.windowStart) : ''} {del.order?.orderNumber}</span>
                       </button>
                     ))}
                     {dayDeliveries.length > 3 && <p className="text-center text-[9px] text-muted">+{dayDeliveries.length - 3}</p>}
@@ -288,7 +288,7 @@ export function Calendario({ token }: { token: string }) {
             </div>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center gap-2"><User size={14} className="text-muted" />{selected.customer?.name || selected.order?.customerName}</div>
-              <div className="flex items-center gap-2"><Clock size={14} className="text-muted" />{selected.windowStart}–{selected.windowEnd}</div>
+              <div className="flex items-center gap-2"><Clock size={14} className="text-muted" />{selected.windowStart ? formatTime12(selected.windowStart) : '—'}–{selected.windowEnd ? formatTime12(selected.windowEnd) : ''}</div>
               {selected.station && (
                 <div className="flex items-center gap-2"><MapPin size={14} className="text-muted" />{selected.station.name} ({selected.station.line})</div>
               )}
@@ -352,7 +352,7 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
         const hourDeliveries = byHour[h] || [];
         return (
           <div key={h} className="flex border-b border-line">
-            <div className="w-14 shrink-0 py-3 text-right text-xs font-mono text-muted">{`${h.toString().padStart(2, '0')}:00`}</div>
+            <div className="w-14 shrink-0 py-3 text-right text-xs font-mono text-muted">{(() => { const p = h >= 12 ? 'PM' : 'AM'; const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h; return `${h12} ${p}`; })()}</div>
             <div className="flex-1 min-h-[48px] py-2 pl-2">
               {hourDeliveries.map((d) => (
                 <button
@@ -362,7 +362,7 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
                 >
                   <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[d.status] || 'bg-gray-300'}`} />
                   <div className="min-w-0 flex-1">
-                    <span className="text-xs font-bold">{d.windowStart}–{d.windowEnd}</span>
+                    <span className="text-xs font-bold">{d.windowStart ? formatTime12(d.windowStart) : '—'}–{d.windowEnd ? formatTime12(d.windowEnd) : ''}</span>
                     <span className="ml-2 text-xs">{d.order?.orderNumber}</span>
                     <span className="ml-2 text-[10px] text-muted truncate">{d.station?.name || d.customer?.name}</span>
                   </div>

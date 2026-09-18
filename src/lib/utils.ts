@@ -22,6 +22,14 @@ export function formatPrice(amount: number) {
   }
 }
 
+export function formatTime12(time24: string): string {
+  const [h, m] = time24.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return time24;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 export function slugify(value: string) {
   return value
     .toLowerCase()

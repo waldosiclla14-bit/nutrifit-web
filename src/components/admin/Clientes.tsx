@@ -1,23 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { toast, useConfirm } from '@/lib/feedback';
+import { handleAuthError } from '@/lib/admin/helpers';
 import { webFooter } from '@/lib/whatsapp';
 import { customerSegment } from '@/lib/admin/segment';
 import type { AdminCustomer } from '@/types/admin';
 
-export function Clientes({
-  customers,
-  token,
-  onChanged,
-}: {
-  customers: AdminCustomer[];
-  token: string;
-  onChanged: () => Promise<void>;
-}) {
+const PAGE_LIMIT = 50;
+
+export function Clientes({ token }: { token: string }) {
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState('');
   const [segFilter, setSegFilter] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -28,6 +28,55 @@ export function Clientes({
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [saving, setSaving] = useState(false);
   const confirm = useConfirm();
+  const pageRef = useRef(1);
+
+  const logout = useCallback(() => {
+    window.location.href = '/login?next=/admin';
+  }, []);
+
+  const loadPage = useCallback(
+    async (p: number, append: boolean) => {
+      if (append) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const res = await apiFetch<any>(`/customers?page=${p}&limit=${PAGE_LIMIT}`, { token });
+        const data: AdminCustomer[] = res?.data || res || [];
+        setCustomers((prev) => (append ? [...prev, ...data] : data));
+        setTotal(typeof res?.total === 'number' ? res.total : data.length);
+        pageRef.current = p;
+        setPage(p);
+      } catch (err: any) {
+        if (handleAuthError(err, logout)) return;
+        toast.error(err?.message || 'Error al cargar clientes.');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [token, logout],
+  );
+
+  const reloadAll = useCallback(async () => {
+    try {
+      const pages = pageRef.current;
+      const all: AdminCustomer[] = [];
+      let t = 0;
+      for (let p = 1; p <= pages; p++) {
+        const res = await apiFetch<any>(`/customers?page=${p}&limit=${PAGE_LIMIT}`, { token });
+        all.push(...(res?.data || res || []));
+        if (typeof res?.total === 'number') t = res.total;
+      }
+      setCustomers(all);
+      setTotal(t);
+    } catch (err: any) {
+      if (handleAuthError(err, logout)) return;
+      toast.error(err?.message || 'Error al cargar clientes.');
+    }
+  }, [token, logout]);
+
+  useEffect(() => {
+    loadPage(1, false);
+  }, [loadPage]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return customers.filter((c) => {
@@ -39,6 +88,15 @@ export function Clientes({
   }, [customers, query, segFilter]);
 
   const segOptions = ['VIP', 'Recurrente', 'Activo', 'Nuevo', 'Dormido'];
+
+  if (loading && customers.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="skeleton h-10 w-full rounded-xl" />
+        <div className="skeleton h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   const renderClientActions = (c: AdminCustomer) => (
     <>
@@ -114,7 +172,7 @@ export function Clientes({
       }
       setShowForm(false);
       setEditing(null);
-      await onChanged();
+      await reloadAll();
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo guardar el cliente.');
     } finally {
@@ -134,7 +192,7 @@ export function Clientes({
     setDeleting(customer.id);
     try {
       await apiFetch(`/customers/${customer.id}`, { method: 'DELETE', token });
-      await onChanged();
+      await reloadAll();
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo eliminar el cliente.');
     } finally {
@@ -183,7 +241,7 @@ export function Clientes({
         webFooter(),
       ].join('\n');
       window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-      await onChanged();
+      await reloadAll();
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo generar el cupón.');
     } finally {
@@ -290,6 +348,19 @@ export function Clientes({
           </p>
         )}
       </div>
+
+      {customers.length < total && (
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => loadPage(pageRef.current + 1, true)}
+            className="btn-outline w-full px-4 py-2.5 text-xs disabled:opacity-50"
+          >
+            {loadingMore ? 'Cargando…' : `Cargar más (${total - customers.length} restantes)`}
+          </button>
+        </div>
+      )}
 
       {showForm && (
         <div
