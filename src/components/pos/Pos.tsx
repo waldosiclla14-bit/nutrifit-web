@@ -423,11 +423,31 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
   }
 
-  function handleCustomTime(value: string): void {
-    if (!value) return;
-    const clamped = value < '10:00' ? '10:00' : value > '22:00' ? '22:00' : value;
-    setDeliveryTime(clamped);
-    setDeliveryTimeEnd(computeEndTime(clamped));
+  function splitTime12(time24: string): { h: number; m: number; period: 'AM' | 'PM' } {
+    const [h, m] = time24.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return { h: h12, m, period };
+  }
+
+  function toTime24(h12: number, m: number, period: 'AM' | 'PM'): string {
+    const h = period === 'AM' ? (h12 === 12 ? 0 : h12) : h12 === 12 ? 12 : h12 + 12;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function handleTime12Part(part: 'h' | 'm' | 'period', value: number | string): void {
+    const cur = splitTime12(deliveryTime);
+    let h = cur.h;
+    let m = cur.m;
+    let p = cur.period;
+    if (part === 'h') h = Math.min(12, Math.max(1, Number(value) || 1));
+    if (part === 'm') m = Math.min(59, Math.max(0, Number(value) || 0));
+    if (part === 'period') p = value as 'AM' | 'PM';
+    let t = toTime24(h, m, p);
+    if (t < '10:00') t = '10:00';
+    if (t > '22:00') t = '22:00';
+    setDeliveryTime(t);
+    setDeliveryTimeEnd(computeEndTime(t));
   }
   const discountAmount = useMemo(() => {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
@@ -848,8 +868,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     printWindow.close();
   };
 
-  // Metro schedule picker: single editable hour (10 AM - 10 PM, 12h format)
+  // Metro schedule picker: single editable 12h hour (10 AM - 10 PM)
   const renderMetroSchedule = () => {
+    const t12 = splitTime12(deliveryTime);
     return (
       <div className="space-y-2">
         <input
@@ -859,18 +880,39 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           onChange={(e) => setDeliveryDay(e.target.value)}
           className="input"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
           <input
-            type="time"
-            min="10:00"
-            max="22:00"
-            step={1800}
-            value={deliveryTime}
-            onChange={(e) => handleCustomTime(e.target.value)}
-            className="input w-full text-sm"
-            aria-label="Hora de entrega"
+            type="number"
+            min={1}
+            max={12}
+            value={t12.h}
+            onChange={(e) => handleTime12Part('h', e.target.value)}
+            className="input w-14 px-1 text-center text-sm"
+            aria-label="Hora (1-12)"
           />
+          <span className="shrink-0 font-bold text-muted">:</span>
+          <input
+            type="number"
+            min={0}
+            max={59}
+            value={t12.m}
+            onChange={(e) => handleTime12Part('m', e.target.value)}
+            className="input w-14 px-1 text-center text-sm"
+            aria-label="Minutos"
+          />
+          <div className="flex shrink-0 overflow-hidden rounded-full border border-line">
+            {(['AM', 'PM'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => handleTime12Part('period', p)}
+                className={`px-2.5 py-2 text-xs font-bold transition ${t12.period === p ? 'bg-ink text-paper' : 'bg-paper text-muted'}`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
         <p className="text-xs font-semibold text-accent">
           ✔ {formatTime12(deliveryTime)}{deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}
