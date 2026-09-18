@@ -530,7 +530,7 @@ export class DeliveryService {
 
   async getSlots(date: string, stationId?: string) {
     const settings = await this.getSettings();
-    const startTime = (settings.delivery_start_time as string) || '09:00';
+    const startTime = (settings.delivery_start_time as string) || '10:00';
     const endTime = (settings.delivery_end_time as string) || '22:00';
     const interval = (settings.slot_interval_minutes as number) || 30;
     const maxPerSlot = (settings.maximum_orders_per_slot as number) || 10;

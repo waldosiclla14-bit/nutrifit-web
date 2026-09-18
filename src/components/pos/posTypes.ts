@@ -49,8 +49,8 @@ export const PAYMENT_LABELS: Record<string, string> = {
   MERCADOPAGO_MANUAL: 'Mercado Pago',
 };
 
-export const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
-  const h = 9 + Math.floor(i / 2);
+export const TIME_SLOTS = Array.from({ length: 24 }, (_, i) => {
+  const h = 10 + Math.floor(i / 2);
   const m = i % 2 === 0 ? '00' : '30';
   return `${String(h).padStart(2, '0')}:${m}`;
 });

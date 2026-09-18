@@ -33,7 +33,6 @@ import {
   CartLine,
   CashRegister,
   PAYMENT_LABELS,
-  TIME_SLOTS,
   lineKey,
   tomorrowISO,
   todayISO,
@@ -49,14 +48,6 @@ type MetroStation = {
   latitude: number;
   longitude: number;
   defaultMeetingPoint: string | null;
-};
-
-type DeliverySlot = {
-  start: string;
-  end: string;
-  available: boolean;
-  count: number;
-  max: number;
 };
 
 const LINE_COLORS: Record<string, string> = {
@@ -212,8 +203,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
-  const [slots, setSlots] = useState<DeliverySlot[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
   const [mixedCash, setMixedCash] = useState(0);
@@ -266,24 +255,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     }, 300);
     return () => { clearTimeout(timer); cancelled = true; };
   }, [stationSearch, mode, token, lineFilter]);
-
-  // Load time slots when date or station changes
-  useEffect(() => {
-    if (mode !== 'METRO' || !deliveryDay) return;
-    setSlotsLoading(true);
-    const params = new URLSearchParams({ date: deliveryDay });
-    if (selectedStationId) params.set('stationId', selectedStationId);
-    apiFetch<DeliverySlot[]>(`/deliveries/slots?${params}`, { token })
-      .then((s) => {
-        setSlots(s);
-        if (s.length > 0 && !s.find((sl) => sl.start === deliveryTime)) {
-          const firstAvailable = s.find((sl) => sl.available);
-          if (firstAvailable) setDeliveryTime(firstAvailable.start);
-        }
-      })
-      .catch(() => setSlots([]))
-      .finally(() => setSlotsLoading(false));
-  }, [mode, deliveryDay, selectedStationId, token]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -454,7 +425,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   function handleCustomTime(value: string): void {
     if (!value) return;
-    const clamped = value < '09:00' ? '09:00' : value > '21:30' ? '21:30' : value;
+    const clamped = value < '10:00' ? '10:00' : value > '22:00' ? '22:00' : value;
     setDeliveryTime(clamped);
     setDeliveryTimeEnd(computeEndTime(clamped));
   }
@@ -498,7 +469,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setDeliveryDay(tomorrowISO());
     setDeliveryTime('11:00');
     setDeliveryTimeEnd('11:30');
-    setSlots([]);
     setShippingInput(1000);
     setMixedCash(0);
     setMixedTransfer(0);
@@ -878,13 +848,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     printWindow.close();
   };
 
-  // Compact metro schedule picker (date + 12h slot select + editable hour, all in one block)
+  // Metro schedule picker: single editable hour (10 AM - 10 PM, 12h format)
   const renderMetroSchedule = () => {
-    const hasSlots = slots.length > 0;
-    const options = hasSlots
-      ? slots
-      : TIME_SLOTS.map((t) => ({ start: t, end: computeEndTime(t), available: true, count: 0, max: 0 }));
-    const isCustom = !options.some((s) => s.start === deliveryTime);
     return (
       <div className="space-y-2">
         <input
@@ -894,44 +859,19 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           onChange={(e) => setDeliveryDay(e.target.value)}
           className="input"
         />
-        {slotsLoading ? (
-          <div className="flex items-center gap-2 py-2 text-xs text-muted">
-            <RefreshCw size={12} className="animate-spin" /> Cargando horarios...
-          </div>
-        ) : (
-          <div className="grid grid-cols-[1fr_auto] gap-2">
-            <select
-              value={deliveryTime}
-              onChange={(e) => {
-                const v = e.target.value;
-                const slot = slots.find((s) => s.start === v);
-                setDeliveryTime(v);
-                setDeliveryTimeEnd(slot ? slot.end : computeEndTime(v));
-              }}
-              className="input min-w-0"
-              aria-label="Horario de entrega"
-            >
-              {isCustom && <option value={deliveryTime}>✏️ {formatTime12(deliveryTime)}</option>}
-              {options.map((s) => (
-                <option key={s.start} value={s.start} disabled={!s.available}>
-                  {formatTime12(s.start)}
-                  {hasSlots ? (s.available ? (s.count > 0 ? ` · ${s.count}/${s.max}` : ' · libre') : ' · lleno') : ''}
-                </option>
-              ))}
-            </select>
-            <input
-              type="time"
-              min="09:00"
-              max="21:30"
-              step={1800}
-              value={deliveryTime}
-              onChange={(e) => handleCustomTime(e.target.value)}
-              className="input w-[118px] text-sm"
-              aria-label="Hora personalizada"
-              title="Hora personalizada (9 AM – 10 PM)"
-            />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
+          <input
+            type="time"
+            min="10:00"
+            max="22:00"
+            step={1800}
+            value={deliveryTime}
+            onChange={(e) => handleCustomTime(e.target.value)}
+            className="input w-full text-sm"
+            aria-label="Hora de entrega"
+          />
+        </div>
         <p className="text-xs font-semibold text-accent">
           ✔ {formatTime12(deliveryTime)}{deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}
         </p>
