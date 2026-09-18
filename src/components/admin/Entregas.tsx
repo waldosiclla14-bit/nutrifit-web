@@ -16,6 +16,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
+import { DELIVERY_STATUS_LABEL, DELIVERY_STATUS_PILL } from '@/lib/admin/deliveryStatus';
 import NotificationButton from './NotificationButton';
 
 type Station = { id: string; name: string; line: string; lineName: string; commune: string };
@@ -50,42 +51,6 @@ type Stats = {
   byStatus: Record<string, number>;
   topStations: { station: Station | null; count: number }[];
   byLine: { line: string; lineName: string; count: number }[];
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  CREATED: 'bg-gray-100 text-gray-700',
-  PAYMENT_CONFIRMED: 'bg-blue-100 text-blue-700',
-  PREPARING: 'bg-yellow-100 text-yellow-700',
-  READY: 'bg-orange-100 text-orange-700',
-  SCHEDULED: 'bg-purple-100 text-purple-700',
-  CONFIRMATION_PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-emerald-100 text-emerald-700',
-  IN_ROUTE: 'bg-cyan-100 text-cyan-700',
-  ARRIVED: 'bg-indigo-100 text-indigo-700',
-  DELIVERED: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-  RESCHEDULED: 'bg-orange-100 text-orange-700',
-  CUSTOMER_UNAVAILABLE: 'bg-rose-100 text-rose-700',
-  NOT_DELIVERED: 'bg-red-100 text-red-700',
-  INCIDENT: 'bg-red-100 text-red-700',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  CREATED: 'Creado',
-  PAYMENT_CONFIRMED: 'Pago confirmado',
-  PREPARING: 'Preparando',
-  READY: 'Listo',
-  SCHEDULED: 'Programado',
-  CONFIRMATION_PENDING: 'Pendiente confirmación',
-  CONFIRMED: 'Confirmado',
-  IN_ROUTE: 'En ruta',
-  ARRIVED: 'Llegó',
-  DELIVERED: 'Entregado',
-  CANCELLED: 'Cancelado',
-  RESCHEDULED: 'Reprogramado',
-  CUSTOMER_UNAVAILABLE: 'Cliente no disponible',
-  NOT_DELIVERED: 'No entregado',
-  INCIDENT: 'Incidencia',
 };
 
 export function Entregas({ token }: { token: string }) {
@@ -131,7 +96,7 @@ export function Entregas({ token }: { token: string }) {
     setUpdating(id);
     try {
       await apiFetch(`/deliveries/${id}/status`, { method: 'PATCH', token, body: { status } });
-      toast.success(`Estado actualizado a ${STATUS_LABELS[status] || status}`);
+      toast.success(`Estado actualizado a ${DELIVERY_STATUS_LABEL[status] || status}`);
       loadData();
       setSelectedDelivery(null);
     } catch (err: any) {
@@ -183,7 +148,7 @@ export function Entregas({ token }: { token: string }) {
         </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input text-sm">
           <option value="">Todos los estados</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
+          {Object.entries(DELIVERY_STATUS_LABEL).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
@@ -204,7 +169,7 @@ export function Entregas({ token }: { token: string }) {
             d.deliveryDate ? new Date(d.deliveryDate).toLocaleDateString('es-CL') : '',
             `${d.windowStart ? formatTime12(d.windowStart) : ''}–${d.windowEnd ? formatTime12(d.windowEnd) : ''}`,
             d.deliveryCode,
-            STATUS_LABELS[d.status] || d.status,
+            DELIVERY_STATUS_LABEL[d.status] || d.status,
             d.meetingPoint || '',
           ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
           const blob = new Blob(['\uFEFF' + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
@@ -257,8 +222,8 @@ export function Entregas({ token }: { token: string }) {
                   </td>
                   <td className="px-3 py-2 hidden md:table-cell text-xs text-muted">{d.station?.line || '—'}</td>
                   <td className="px-3 py-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[d.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {STATUS_LABELS[d.status] || d.status}
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${DELIVERY_STATUS_PILL[d.status] || 'bg-gray-100 text-gray-700'}`}>
+                      {DELIVERY_STATUS_LABEL[d.status] || d.status}
                     </span>
                   </td>
                   <td className="px-3 py-2">
@@ -369,7 +334,7 @@ function DeliveryDetail({
       const body: any = { status };
       if (notes.trim()) body.notes = notes.trim();
       await apiFetch(`/deliveries/${delivery.id}/status`, { method: 'PATCH', token, body });
-      toast.success(`Estado actualizado a ${STATUS_LABELS[status] || status}`);
+      toast.success(`Estado actualizado a ${DELIVERY_STATUS_LABEL[status] || status}`);
       onUpdated();
       onClose();
       setNotes('');
@@ -421,7 +386,7 @@ function DeliveryDetail({
           <Row label="Fecha" value={delivery.deliveryDate ? new Date(delivery.deliveryDate).toLocaleDateString('es-CL') : '—'} />
           <Row label="Horario" value={delivery.windowStart ? `${formatTime12(delivery.windowStart)}–${delivery.windowEnd ? formatTime12(delivery.windowEnd) : ''}` : '—'} />
           <Row label="Punto" value={delivery.meetingPoint || '—'} />
-          <Row label="Estado" value={<span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_COLORS[delivery.status] || ''}`}>{STATUS_LABELS[delivery.status] || delivery.status}</span>} />
+          <Row label="Estado" value={<span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${DELIVERY_STATUS_PILL[delivery.status] || ''}`}>{DELIVERY_STATUS_LABEL[delivery.status] || delivery.status}</span>} />
           {delivery.order?.total != null && <Row label="Total pedido" value={`$${Number(delivery.order.total).toLocaleString()}`} />}
           {delivery.notes && <Row label="Notas" value={delivery.notes} />}
 

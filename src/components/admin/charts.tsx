@@ -105,7 +105,7 @@ export function SalesArea({ data }: { data: { date: string; total: number; profi
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 11, fill: '#64748B' }}
-            tickFormatter={(v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+            tickFormatter={(v: number) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
           />
           <Tooltip content={<MoneyTooltip />} />
           <Area type="monotone" dataKey="total" name="Ventas" stroke={CHART_GREEN} strokeWidth={2.5} fill={`url(#${gid}-v)`} />

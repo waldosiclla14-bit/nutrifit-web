@@ -372,7 +372,7 @@ export function Resumen({
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <p className="font-display text-3xl uppercase">
+                <p className="font-display text-3xl uppercase tabular-nums">
                   {c.raw !== undefined && c.fmt ? <CountUp value={c.raw} format={c.fmt} /> : c.value}
                 </p>
                 <c.Icon className="h-5 w-5 text-primary/70" />
@@ -398,7 +398,7 @@ export function Resumen({
           </span>
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <p className="font-display text-3xl uppercase">{report ? formatPrice(report.totalSales) : '—'}</p>
+          <p className="font-display text-3xl uppercase tabular-nums">{report ? formatPrice(report.totalSales) : '—'}</p>
           {loading ? (
             <span className="text-sm text-muted">Cargando…</span>
           ) : report ? (
@@ -437,19 +437,19 @@ export function Resumen({
           <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-sm text-muted">Invertido (costo)</p>
-              <p className="mt-1 font-display text-2xl uppercase">{formatPrice(inventory.totalCost)}</p>
+              <p className="mt-1 font-display text-2xl uppercase tabular-nums">{formatPrice(inventory.totalCost)}</p>
             </div>
             <div>
               <p className="text-sm text-muted">Valor a precio venta</p>
-              <p className="mt-1 font-display text-2xl uppercase">{formatPrice(inventory.totalRetail)}</p>
+              <p className="mt-1 font-display text-2xl uppercase tabular-nums">{formatPrice(inventory.totalRetail)}</p>
             </div>
             <div>
               <p className="text-sm text-muted">Utilidad potencial</p>
-              <p className="mt-1 font-display text-2xl uppercase text-emerald-600">{formatPrice(inventory.potentialProfit)}</p>
+              <p className="mt-1 font-display text-2xl uppercase tabular-nums text-emerald-600">{formatPrice(inventory.potentialProfit)}</p>
             </div>
             <div>
               <p className="text-sm text-muted">Unidades</p>
-              <p className="mt-1 font-display text-2xl uppercase">{inventory.totalItems}</p>
+              <p className="mt-1 font-display text-2xl uppercase tabular-nums">{inventory.totalItems}</p>
               <p className="mt-1 text-[11px] text-muted">Margen promedio {inventory.avgMargin}%</p>
             </div>
           </div>

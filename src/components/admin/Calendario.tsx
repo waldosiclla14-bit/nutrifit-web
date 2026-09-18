@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from '
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
+import { DELIVERY_STATUS_DOT, DELIVERY_STATUS_LABEL } from '@/lib/admin/deliveryStatus';
 
 type Delivery = {
   id: string;
@@ -17,42 +18,6 @@ type Delivery = {
   order: { orderNumber: string; total: number; customerName: string };
   customer: { name: string; phone: string };
   station: { name: string; line: string; lineName: string; commune: string } | null;
-};
-
-const STATUS_DOT: Record<string, string> = {
-  CREATED: 'bg-gray-400',
-  PAYMENT_CONFIRMED: 'bg-blue-400',
-  PREPARING: 'bg-yellow-400',
-  READY: 'bg-orange-400',
-  SCHEDULED: 'bg-purple-400',
-  CONFIRMATION_PENDING: 'bg-amber-400',
-  CONFIRMED: 'bg-emerald-400',
-  IN_ROUTE: 'bg-cyan-400',
-  ARRIVED: 'bg-indigo-400',
-  DELIVERED: 'bg-green-500',
-  CANCELLED: 'bg-red-400',
-  RESCHEDULED: 'bg-violet-400',
-  CUSTOMER_UNAVAILABLE: 'bg-orange-300',
-  NOT_DELIVERED: 'bg-red-300',
-  INCIDENT: 'bg-red-500',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  CREATED: 'Creado',
-  PAYMENT_CONFIRMED: 'Pago',
-  PREPARING: 'Preparando',
-  READY: 'Listo',
-  SCHEDULED: 'Programado',
-  CONFIRMATION_PENDING: 'Pendiente',
-  CONFIRMED: 'Confirmado',
-  IN_ROUTE: 'En ruta',
-  ARRIVED: 'Llegó',
-  DELIVERED: 'Entregado',
-  CANCELLED: 'Cancelado',
-  RESCHEDULED: 'Reprogramado',
-  CUSTOMER_UNAVAILABLE: 'Cliente no disponible',
-  NOT_DELIVERED: 'No entregado',
-  INCIDENT: 'Incidente',
 };
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -197,8 +162,8 @@ export function Calendario({ token }: { token: string }) {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-[10px] font-semibold text-muted">
-        {Object.entries(STATUS_DOT).filter(([k]) => !['CREATED', 'PAYMENT_CONFIRMED', 'PREPARING', 'READY'].includes(k)).map(([k, color]) => (
-          <span key={k} className="flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${color}`} />{STATUS_LABEL[k]}</span>
+        {Object.entries(DELIVERY_STATUS_DOT).filter(([k]) => !['CREATED', 'PAYMENT_CONFIRMED', 'PREPARING', 'READY'].includes(k)).map(([k, color]) => (
+          <span key={k} className="flex items-center gap-1"><span className={`h-2 w-2 rounded-full ${color}`} />{DELIVERY_STATUS_LABEL[k]}</span>
         ))}
       </div>
 
@@ -228,7 +193,7 @@ export function Calendario({ token }: { token: string }) {
                       className="w-full rounded-lg border border-line px-1.5 py-1 text-left transition hover:border-accent"
                     >
                       <div className="flex items-center gap-1">
-                        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
+                        <span className={`h-2 w-2 rounded-full ${DELIVERY_STATUS_DOT[del.status] || 'bg-gray-300'}`} />
                         <span className="text-[12px] font-mono">{del.windowStart ? formatTime12(del.windowStart) : '—'}</span>
                       </div>
                       <p className="truncate text-[10px] font-semibold">{del.order?.orderNumber}</p>
@@ -265,7 +230,7 @@ export function Calendario({ token }: { token: string }) {
                         onClick={() => setSelected(del)}
                         className="flex w-full items-center gap-1 rounded px-1 text-left hover:bg-soft"
                       >
-                        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[del.status] || 'bg-gray-300'}`} />
+                        <span className={`h-2 w-2 rounded-full ${DELIVERY_STATUS_DOT[del.status] || 'bg-gray-300'}`} />
                         <span className="text-[11px]">{del.windowStart ? formatTime12(del.windowStart) : ''} {del.order?.orderNumber}</span>
                       </button>
                     ))}
@@ -294,8 +259,8 @@ export function Calendario({ token }: { token: string }) {
               )}
               {selected.meetingPoint && <p className="text-xs text-muted">Punto: {selected.meetingPoint}</p>}
               <div className="flex items-center gap-2">
-                <span className={`h-2 w-2 rounded-full ${STATUS_DOT[selected.status] || 'bg-gray-300'}`} />
-                <span className="text-xs font-semibold">{STATUS_LABEL[selected.status] || selected.status}</span>
+                <span className={`h-2 w-2 rounded-full ${DELIVERY_STATUS_DOT[selected.status] || 'bg-gray-300'}`} />
+                <span className="text-xs font-semibold">{DELIVERY_STATUS_LABEL[selected.status] || selected.status}</span>
               </div>
               <p className="text-xs text-muted">Código: <span className="font-mono font-bold">{selected.deliveryCode}</span></p>
               <p className="text-right font-bold">{formatPrice(selected.order?.total || 0)}</p>
@@ -360,7 +325,7 @@ function DayView({ deliveries, onSelect }: { deliveries: Delivery[]; onSelect: (
                   onClick={() => onSelect(d)}
                   className="mb-2 flex w-full items-center gap-2 rounded-lg border border-line px-3 py-2 text-left transition hover:border-accent"
                 >
-                  <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[d.status] || 'bg-gray-300'}`} />
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${DELIVERY_STATUS_DOT[d.status] || 'bg-gray-300'}`} />
                   <div className="min-w-0 flex-1">
                     <span className="text-xs font-bold">{d.windowStart ? formatTime12(d.windowStart) : '—'}–{d.windowEnd ? formatTime12(d.windowEnd) : ''}</span>
                     <span className="ml-2 text-xs">{d.order?.orderNumber}</span>

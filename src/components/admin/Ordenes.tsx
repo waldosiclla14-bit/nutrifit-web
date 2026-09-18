@@ -11,7 +11,7 @@ import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { OrderStatusBadge } from './OrderStatusBadge';
 import { PaymentModal } from './PaymentModal';
 import { EditOrderModal } from './EditOrderModal';
 
@@ -299,15 +299,13 @@ export function Ordenes({ token }: { token: string }) {
                     <span className="text-muted-foreground">Retiro tienda</span>
                   )}
                 </TableCell>
-                <TableCell className="font-bold">{formatPrice(o.total)}</TableCell>
+                <TableCell className="font-bold tabular-nums">{formatPrice(o.total)}</TableCell>
                 <TableCell className="text-xs">
                   <p>{PAYMENT_LABEL[o.paymentMethod || ''] || '—'}</p>
                   <p className="text-muted-foreground">{o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}</p>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={o.status === 'DELIVERED' ? 'default' : o.status === 'CANCELLED' ? 'destructive' : 'secondary'}>
-                    {STATUS_LABEL[o.status] || o.status}
-                  </Badge>
+                  <OrderStatusBadge status={o.status} />
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1.5">
@@ -336,13 +334,11 @@ export function Ordenes({ token }: { token: string }) {
                 <p className="truncate font-bold text-foreground">{o.orderNumber}</p>
                 <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
               </div>
-              <Badge variant={o.status === 'DELIVERED' ? 'default' : o.status === 'CANCELLED' ? 'destructive' : 'secondary'}>
-                {STATUS_LABEL[o.status] || o.status}
-              </Badge>
+              <OrderStatusBadge status={o.status} />
             </div>
             <div className="mt-2 flex items-center justify-between gap-2 text-sm">
               <p className="truncate font-semibold">{o.customer?.name || '—'}</p>
-              <p className="shrink-0 font-bold">{formatPrice(o.total)}</p>
+              <p className="shrink-0 font-bold tabular-nums">{formatPrice(o.total)}</p>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {o.customer?.phone || ''}
