@@ -79,16 +79,15 @@ export function Inventario({ token }: { token: string }) {
 
   const loadSummary = useCallback(async () => {
     try {
-      const [lowStock, inventoryValue, recentReturns, productsList] = await Promise.all([
+      const [lowStock, inventoryValue, recentReturns] = await Promise.all([
         apiFetch<any>('/products/low-stock', { token }).catch(() => []),
-        apiFetch<any>('/products/inventory-value', { token }).catch(() => ({ totalValue: 0 })),
+        apiFetch<any>('/products/inventory-value', { token }).catch(() => null),
         apiFetch<any>('/products/inventory-movements?type=RETURN&limit=100', { token }).catch(() => ({ data: [] })),
-        apiFetch<any[]>('/products/internal', { token }).catch(() => []),
       ]);
       setSummary({
         lowStockCount: Array.isArray(lowStock) ? lowStock.length : 0,
-        totalProducts: Array.isArray(productsList) ? productsList.length : 0,
-        totalValue: inventoryValue?.totalValue || 0,
+        totalProducts: inventoryValue?.totalItems ?? 0,
+        totalValue: inventoryValue?.totalCost ?? 0,
         recentReturns: recentReturns?.data?.length || 0,
       });
     } catch {}
@@ -117,7 +116,7 @@ export function Inventario({ token }: { token: string }) {
               <DollarSign className="h-4 w-4 text-accent" />
             </div>
             <p className="text-lg font-bold text-accent">${summary.totalValue.toLocaleString()}</p>
-            <p className="text-[10px] text-muted">Valor inventario</p>
+            <p className="text-[10px] text-muted">Costo inventario</p>
           </div>
           <div className="bg-paper rounded-xl p-3 border border-line text-center">
             <div className="flex items-center justify-center mb-1">

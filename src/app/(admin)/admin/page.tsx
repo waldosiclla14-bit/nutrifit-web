@@ -29,9 +29,6 @@ import type {
   AdminStats,
 } from '@/types/admin';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { PasswordModal } from '@/components/admin/PasswordModal';
 import { AdminBottomNav } from '@/components/admin/BottomNav';
 import { AdminErrorGuard } from '@/components/admin/ErrorGuard';
