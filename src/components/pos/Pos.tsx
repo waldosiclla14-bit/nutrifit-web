@@ -72,9 +72,9 @@ function formatTime12(time24: string): string {
 }
 
 const TIME_PERIODS = {
-  manana: { label: 'Mañana · 8 AM–12 PM', start: 8, end: 12 },
+  manana: { label: 'Mañana · 9 AM–12 PM', start: 9, end: 12 },
   tarde: { label: 'Tarde · 12–6 PM', start: 12, end: 18 },
-  noche: { label: 'Noche · 18–22', start: 18, end: 22 },
+  noche: { label: 'Noche · 6–10 PM', start: 18, end: 22 },
 } as const;
 
 const STORE_NAME = 'NutriFit';
@@ -462,6 +462,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     const endH = h + Math.floor(endM / 60);
     if (endH > 23) return '23:59';
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
+  }
+
+  function handleCustomTime(value: string): void {
+    if (!value) return;
+    const clamped = value < '09:00' ? '09:00' : value > '21:30' ? '21:30' : value;
+    setDeliveryTime(clamped);
+    setDeliveryTimeEnd(computeEndTime(clamped));
   }
   const discountAmount = useMemo(() => {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
@@ -1538,6 +1545,21 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   </select>
                 )}
 
+                {/* Custom hour (editable 9 AM – 10 PM) */}
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
+                  <input
+                    type="time"
+                    min="09:00"
+                    max="21:30"
+                    step={1800}
+                    value={deliveryTime}
+                    onChange={(e) => handleCustomTime(e.target.value)}
+                    className="input w-full text-sm"
+                  />
+                  <span className="shrink-0 text-xs font-bold text-accent">{formatTime12(deliveryTime)}</span>
+                </div>
+
                 {/* Meeting point */}
                 {selectedStationId && (
                   <div className="text-[11px] text-muted flex items-center gap-1">
@@ -1894,8 +1916,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     )}
                     <input type="date" value={deliveryDay} min={todayISO()} onChange={(e) => setDeliveryDay(e.target.value)} className="input" />
                     {slots.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-1">
-                        {slots.filter((s) => s.available).slice(0, 8).map((s) => (
+                      <div className="grid max-h-[180px] grid-cols-2 gap-1 overflow-y-auto">
+                        {slots.filter((s) => s.available).map((s) => (
                           <button key={s.start} type="button" onClick={() => { setDeliveryTime(s.start); setDeliveryTimeEnd(s.end); }} className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${deliveryTime === s.start ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-paper text-muted'}`}>
                             {formatTime12(s.start)} <span className="text-[10px]">({s.count}/{s.max})</span>
                           </button>
@@ -1906,6 +1928,19 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         {TIME_SLOTS.map((t) => (<option key={t} value={t}>{formatTime12(t)}</option>))}
                       </select>
                     )}
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
+                      <input
+                        type="time"
+                        min="09:00"
+                        max="21:30"
+                        step={1800}
+                        value={deliveryTime}
+                        onChange={(e) => handleCustomTime(e.target.value)}
+                        className="input w-full text-sm"
+                      />
+                      <span className="shrink-0 text-xs font-bold text-accent">{formatTime12(deliveryTime)}</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-muted">Envío ($)</span>
                       <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-sm" />
