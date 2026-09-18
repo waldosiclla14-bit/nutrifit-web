@@ -1,5 +1,5 @@
 import type { OrderItem } from '@/types';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, formatTime12 } from '@/lib/utils';
 
 const SITE_URL = 'https://nutrifit-web-nu.vercel.app';
 
@@ -150,7 +150,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push('');
   lines.push('*ENTREGA AGENDADA:*');
   lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
-  lines.push(`⏰ ${m.deliveryTime} hrs`);
+  lines.push(`⏰ ${formatTime12(m.deliveryTime)}${m.deliveryTimeEnd ? ` – ${formatTime12(m.deliveryTimeEnd)}` : ''}`);
   lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
   if (m.meetingPoint) {
     lines.push(`📍 Punto de encuentro: *${m.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
