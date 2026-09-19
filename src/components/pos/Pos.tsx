@@ -20,6 +20,7 @@ import {
   Trash2,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12, uid } from '@/lib/utils';
@@ -116,6 +117,7 @@ type Hold = {
   deliveryAddress: string;
   shippingInput: number;
   paymentReceived: boolean;
+  quickSale: boolean;
   discountPct: number;
   discountMode: 'percent' | 'amount';
   discountAmountInput: number;
@@ -210,6 +212,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
+  const [quickSale, setQuickSale] = useState(false);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [timePeriod, setTimePeriod] = useState<'manana' | 'tarde' | 'noche'>(() => {
     const h = new Date().getHours();
@@ -449,6 +452,50 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
   }
 
+  // spec §5 — single payment select encodes method + received (no separate checkbox)
+  type PayOption = 'EFECTIVO' | 'TRANSFER_PAGADA' | 'TRANSFER_PENDIENTE' | 'TARJETA_MANUAL' | 'MIXTO';
+
+  function currentPayOption(): PayOption {
+    if (payment === 'TRANSFERENCIA') return paymentReceived ? 'TRANSFER_PAGADA' : 'TRANSFER_PENDIENTE';
+    if (payment === 'TARJETA_MANUAL') return 'TARJETA_MANUAL';
+    if (payment === 'MIXTO') return 'MIXTO';
+    return 'EFECTIVO';
+  }
+
+  function applyPayOption(opt: PayOption): void {
+    const receivedNow = mode === 'LOCAL';
+    if (opt === 'TRANSFER_PAGADA') {
+      setPayment('TRANSFERENCIA');
+      setPaymentReceived(true);
+    } else if (opt === 'TRANSFER_PENDIENTE') {
+      setPayment('TRANSFERENCIA');
+      setPaymentReceived(false);
+    } else if (opt === 'TARJETA_MANUAL') {
+      setPayment('TARJETA_MANUAL');
+      setPaymentReceived(receivedNow);
+    } else if (opt === 'MIXTO') {
+      setPayment('MIXTO');
+      setPaymentReceived(receivedNow);
+    } else {
+      setPayment('EFECTIVO');
+      setPaymentReceived(receivedNow);
+    }
+    if (opt !== 'MIXTO') {
+      setMixedCash(0);
+      setMixedTransfer(0);
+    }
+  }
+
+  function payOptions(): { value: PayOption; label: string }[] {
+    return [
+      { value: 'EFECTIVO', label: mode === 'LOCAL' ? 'Efectivo' : 'Efectivo (contra entrega)' },
+      { value: 'TRANSFER_PAGADA', label: 'Transferencia (pagada)' },
+      { value: 'TRANSFER_PENDIENTE', label: 'Transferencia (contra entrega)' },
+      { value: 'TARJETA_MANUAL', label: 'Tarjeta' },
+      { value: 'MIXTO', label: 'Mixto' },
+    ];
+  }
+
   const discountAmount = useMemo(() => {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
     return Math.round((subtotal * discountPct) / 100);
@@ -517,6 +564,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       deliveryAddress,
       shippingInput,
       paymentReceived,
+      quickSale,
       discountPct,
       discountMode,
       discountAmountInput,
@@ -546,6 +594,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setDeliveryAddress(h.deliveryAddress || '');
     setShippingInput(h.shippingInput ?? 1000);
     setPaymentReceived(h.paymentReceived || false);
+    setQuickSale(h.quickSale || false);
     setDiscountPct(h.discountPct || 0);
     setDiscountMode(h.discountMode || 'percent');
     setDiscountAmountInput(h.discountAmountInput || 0);
@@ -616,11 +665,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       return;
     }
     if (!customerName.trim() || !customerPhone.trim()) {
-      toast.error('Ingresa nombre y teléfono del cliente.');
-      if (!customerName.trim()) customerNameRef.current?.focus();
-      else document.querySelector<HTMLInputElement>('[placeholder="Teléfono"]')?.focus();
-      return;
+      if (!(quickSale && mode !== 'DELIVERY')) {
+        toast.error('Ingresa nombre y teléfono del cliente.');
+        if (!customerName.trim()) customerNameRef.current?.focus();
+        else document.querySelector<HTMLInputElement>('[placeholder="Teléfono"]')?.focus();
+        return;
+      }
     }
+    // Venta rápida (spec §4.9): cliente genérico reutilizable — el backend
+    // lo fusiona por teléfono, así todas las ventas rápidas caen en "Mostrador".
+    const qName = customerName.trim() || 'Mostrador';
+    const qPhone = customerPhone.trim() || '000000';
     if (mode === 'METRO' && (!selectedStationId || !deliveryDay || !deliveryTime)) {
       toast.error('Selecciona estación, fecha y horario de entrega.');
       return;
@@ -649,7 +704,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       const customer = await apiFetch<{ id: string }>('/customers', {
         method: 'POST',
         token,
-        body: { name: customerName.trim(), phone: customerPhone.trim() },
+        body: { name: qName, phone: qPhone },
       });
       const order = await apiFetch<{ id: string; orderNumber: string }>('/orders', {
         method: 'POST',
@@ -657,8 +712,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         body: {
           idempotencyKey,
           customerId: customer.id,
-          customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
+          customerName: qName,
+          customerPhone: qPhone,
           deliveryType: mode === 'METRO' ? 'METRO' : mode === 'DELIVERY' ? 'ENVIO_DOMICILIO' : 'RETIRO_TIENDA',
           metroLine: mode === 'METRO' ? metroLine : undefined,
           metroStation: mode === 'METRO' ? metroStation : undefined,
@@ -730,8 +785,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       setReceipt({
         orderNumber: order.orderNumber,
         at: new Date().toISOString(),
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
+        customerName: qName,
+        customerPhone: qPhone,
         lines: cart.map((l) => ({
           productName: l.productName,
           variantName: l.variantName,
@@ -758,11 +813,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           deliveryCodeVal = delRes?.deliveryCode || '';
         } catch {}
 
-        setSalePhone(customerPhone.trim());
+        setSalePhone(qPhone);
         setSaleMsg(
           buildDeliveryOrderMessage({
-            name: customerName.trim(),
-            phone: customerPhone.trim(),
+            name: qName,
+            phone: qPhone,
             orderNumber: order.orderNumber,
             items: cart.map((l) => ({
               productName: l.productName,
@@ -786,12 +841,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           }),
         );
       } else if (mode === 'DELIVERY') {
-        setSalePhone(customerPhone.trim());
+        setSalePhone(qPhone);
         const delLines: string[] = [];
         delLines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
         delLines.push('─'.repeat(24));
         delLines.push('');
-        delLines.push(`Hola ${customerName.trim()} 👋`);
+        delLines.push(`Hola ${qName} 👋`);
         delLines.push(`Tu pedido ${order.orderNumber} quedó registrado con envío a domicilio.`);
         delLines.push('');
         delLines.push('*PRODUCTOS:*');
@@ -946,12 +1001,20 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <CalendarDays size={13} /> <span className="hidden sm:inline">Metro</span>
             </button>
             <button
-              onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); }}
+              onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); setQuickSale(false); }}
               className={`flex items-center gap-1 px-2.5 py-1.5 font-bold transition sm:px-3 ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
               🏠 <span className="hidden sm:inline">Domicilio</span>
             </button>
           </div>
+          <button
+            onClick={() => { if (mode !== 'DELIVERY') setQuickSale((v) => !v); }}
+            disabled={mode === 'DELIVERY'}
+            title={mode === 'DELIVERY' ? 'No disponible en envío a domicilio' : 'Oculta datos no esenciales'}
+            className={`flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-bold transition disabled:opacity-40 ${quickSale ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted'}`}
+          >
+            <Zap size={13} /> Rápida
+          </button>
           {cash?.status === 'OPEN' ? (
             <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[11px]">Caja abierta</span>
           ) : (
@@ -970,6 +1033,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           </button>
         </div>
       </div>
+
+      {quickSale && (
+        <div className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--accent-bg)] px-3 py-2 text-[13px] font-medium text-[var(--accent-text)]">
+          <Zap size={14} className="shrink-0" />
+          Venta rápida activa{mode === 'LOCAL' ? ': sin datos de cliente.' : ': nombre y teléfono opcionales.'}
+        </div>
+      )}
 
       {showCash && (
         <div className="mt-3 rounded-xl border border-line bg-paper p-4">
@@ -1234,11 +1304,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <p className="truncate text-[11px] font-bold text-ink">{l.productName}</p>
                   {l.variantName && <p className="truncate text-[10px] text-muted">{l.variantName}</p>}
                 </div>
-                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95">
+                <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="ds-stepper-btn" aria-label="Quitar uno">
                   <Minus size={12} />
                 </button>
-                <span className="w-6 text-center text-xs font-bold tabular-nums">{l.quantity}</span>
-                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink transition hover:border-ink active:scale-95 disabled:opacity-40">
+                <span className="w-6 text-center text-xs font-medium tabular-nums">{l.quantity}</span>
+                <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="ds-stepper-btn" aria-label="Agregar uno">
                   <Plus size={12} />
                 </button>
                 <span className="w-14 text-right text-[11px] font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
@@ -1290,20 +1360,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           )}
 
           <div className="mt-2 space-y-2">
-            <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente (F2)" className="input" />
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
-            <select value={payment} onChange={(e) => {
-              const val = e.target.value;
-              setPayment(val);
-              if (val !== 'MIXTO') {
-                setMixedCash(0);
-                setMixedTransfer(0);
-              }
-            }} className="input">
-              <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Transferencia</option>
-              <option value="TARJETA_MANUAL">Tarjeta</option>
-              <option value="MIXTO">Mixto</option>
+            {!(quickSale && mode === 'LOCAL') && (
+              <>
+                <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={quickSale ? 'Nombre del cliente (opcional)' : 'Nombre del cliente (F2)'} className="input" />
+                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'Teléfono (opcional)' : 'Teléfono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+              </>
+            )}
+            <select value={currentPayOption()} onChange={(e) => applyPayOption(e.target.value as PayOption)} className="input">
+              {payOptions().map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
             </select>
             {payment === 'MIXTO' && (
               <div className="rounded-2xl border border-line bg-soft/40 p-3 space-y-2">
@@ -1357,7 +1423,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     key={t}
                     onClick={() => setPago(t)}
                     className={`min-h-[44px] rounded-full border px-3 py-2 text-xs font-bold transition active:scale-95 ${
-                      pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'
+                      pago === t ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted hover:border-ink'
                     }`}
                   >
                     {formatPrice(t)}
@@ -1518,15 +1584,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     className="input w-full text-sm"
                   />
                 </div>
-                <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={paymentReceived}
-                    onChange={(e) => setPaymentReceived(e.target.checked)}
-                    className="h-4 w-4 accent-emerald-600"
-                  />
-                  Ya recibí el pago ({PAYMENT_LABELS[payment] ?? payment})
-                </label>
               </div>
             </div>
           )}
@@ -1568,15 +1625,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     />
                   </div>
                 </div>
-                <label className="flex items-center gap-2 rounded-xl border border-line bg-paper px-3 py-2 text-xs font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={paymentReceived}
-                    onChange={(e) => setPaymentReceived(e.target.checked)}
-                    className="h-4 w-4 accent-emerald-600"
-                  />
-                  Ya recibí el pago ({PAYMENT_LABELS[payment] ?? payment})
-                </label>
               </div>
             </div>
           )}
@@ -1606,7 +1654,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     <button
                       key={pct}
                       onClick={() => setDiscountPct(pct)}
-                      className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}
+                      className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${discountPct === pct ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted hover:border-ink'}`}
                     >
                       {pct === 0 ? '0%' : `-${pct}%`}
                     </button>
@@ -1664,7 +1712,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           <button
             onClick={checkout}
             disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-            className={`mt-2 w-full rounded-lg py-2.5 text-sm font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+            className={`ds-btn-primary mt-2 w-full py-2.5 text-sm uppercase tracking-wide ${showCashPay && cashShort ? 'bg-red-500 text-white' : ''}`}
           >
             {saving
               ? 'Procesando…'
@@ -1729,12 +1777,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <p className="truncate text-xs font-bold text-ink">{l.productName}</p>
                       {l.variantName && <p className="truncate text-[11px] text-muted">{l.variantName}</p>}
                     </div>
-                    <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95">
-                      <Minus size={13} />
+                    <button onClick={() => setQty(lineKey(l), l.quantity - 1)} className="ds-stepper-btn" aria-label="Quitar uno">
+                      <Minus size={12} />
                     </button>
-                    <span className="w-7 text-center text-sm font-bold tabular-nums">{l.quantity}</span>
-                    <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-ink transition active:scale-95 disabled:opacity-40">
-                      <Plus size={13} />
+                    <span className="w-7 text-center text-sm font-medium tabular-nums">{l.quantity}</span>
+                    <button onClick={() => setQty(lineKey(l), l.quantity + 1)} disabled={l.quantity >= l.stock} className="ds-stepper-btn" aria-label="Agregar uno">
+                      <Plus size={12} />
                     </button>
                     <span className="w-16 text-right text-xs font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
                     <button onClick={() => setQty(lineKey(l), 0)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
@@ -1775,13 +1823,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
               {/* Customer */}
               <div className="mt-3 space-y-2">
-                <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="input" />
-                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Teléfono (ej: 9 1234 5678)" inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
-                <select value={payment} onChange={(e) => { const val = e.target.value; setPayment(val); if (val !== 'MIXTO') { setMixedCash(0); setMixedTransfer(0); } }} className="input">
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="TRANSFERENCIA">Transferencia</option>
-                  <option value="TARJETA_MANUAL">Tarjeta</option>
-                  <option value="MIXTO">Mixto</option>
+                {!(quickSale && mode === 'LOCAL') && (
+                  <>
+                    <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={quickSale ? 'Nombre del cliente (opcional)' : 'Nombre del cliente'} className="input" />
+                    <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'Teléfono (opcional)' : 'Teléfono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+                  </>
+                )}
+                <select value={currentPayOption()} onChange={(e) => applyPayOption(e.target.value as PayOption)} className="input">
+                  {payOptions().map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
                 {payment === 'MIXTO' && (
                   <div className="rounded-xl border border-line bg-soft/40 p-3 space-y-2">
@@ -1808,7 +1859,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   </p>
                   <div className="mt-2 grid grid-cols-3 gap-1.5">
                     {tenders.map((t) => (
-                      <button key={t} onClick={() => setPago(t)} className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${pago === t ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}>
+                      <button key={t} onClick={() => setPago(t)} className={`min-h-[44px] rounded-full border px-2 py-2 text-xs font-bold transition active:scale-95 ${pago === t ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted hover:border-ink'}`}>
                         {formatPrice(t)}
                       </button>
                     ))}
@@ -1859,10 +1910,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <span className="text-xs font-semibold text-muted">Envío ($)</span>
                       <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-sm" />
                     </div>
-                    <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold">
-                      <input type="checkbox" checked={paymentReceived} onChange={(e) => setPaymentReceived(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
-                      Ya recibí el pago
-                    </label>
                   </div>
                 </div>
               )}
@@ -1877,10 +1924,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <input type="time" value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input" />
                       <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} placeholder="Envío $" className="input text-sm" />
                     </div>
-                    <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold">
-                      <input type="checkbox" checked={paymentReceived} onChange={(e) => setPaymentReceived(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
-                      Ya recibí el pago
-                    </label>
                   </div>
                 </div>
               )}
@@ -1898,7 +1941,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   {discountMode === 'percent' ? (
                     <div className="mt-2 grid grid-cols-5 gap-1.5">
                       {[0, 5, 10, 15, 20].map((pct) => (
-                        <button key={pct} onClick={() => setDiscountPct(pct)} className={`min-h-[44px] rounded-full border px-2 py-2 text-sm font-bold transition active:scale-95 ${discountPct === pct ? 'border-accent bg-accent text-ink' : 'border-line bg-paper text-muted hover:border-ink'}`}>
+                        <button key={pct} onClick={() => setDiscountPct(pct)} className={`min-h-[44px] rounded-full border px-2 py-2 text-sm font-bold transition active:scale-95 ${discountPct === pct ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted hover:border-ink'}`}>
                           {pct === 0 ? '0%' : `-${pct}%`}
                         </button>
                       ))}
@@ -1938,7 +1981,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <button
                     onClick={async () => { await checkout(); if (cart.length === 0 || receipt) setShowMobileCart(false); }}
                     disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
-                    className={`mt-3 w-full rounded-xl py-3 text-base font-extrabold uppercase tracking-wide transition active:scale-[0.98] disabled:opacity-50 ${showCashPay && cashShort ? 'bg-red-500 text-white' : 'bg-accent text-ink hover:brightness-110'}`}
+                    className={`ds-btn-primary mt-3 w-full py-3 text-base uppercase tracking-wide ${showCashPay && cashShort ? 'bg-red-500 text-white' : ''}`}
                   >
                     {saving ? 'Procesando…' : `Cobrar ${formatPrice(total)}`}
                   </button>
