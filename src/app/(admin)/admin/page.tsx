@@ -6,10 +6,7 @@ import {
   BarChart3,
   Boxes,
   CalendarDays,
-  KeyRound,
   LayoutDashboard,
-  LogOut,
-  RefreshCw,
   ShoppingBag,
   ShoppingCart,
   Truck,
@@ -26,7 +23,7 @@ import {
   ShieldCheck,
   Building,
 } from 'lucide-react';
-import { apiFetch, clearSessionCookie, clearToken, getToken } from '@/lib/api';
+import { apiFetch, clearSessionCookie, clearToken, getSessionUser, getToken } from '@/lib/api';
 import { ConfirmProvider, toast } from '@/lib/feedback';
 import { mapApiProduct, handleAuthError } from '@/lib/admin/helpers';
 import type {
@@ -134,6 +131,22 @@ export default function AdminPage() {
   );
 }
 
+function mapCash(cr: any): AdminCashRegister | null {
+  return cr
+    ? {
+        id: cr.id,
+        status: cr.isOpen ? 'OPEN' : 'CLOSED',
+        openedAt: cr.openedAt,
+        closedAt: cr.closedAt,
+        initialAmount: cr.initialAmount,
+        finalAmount: cr.finalAmount,
+        expectedAmount: cr.expectedAmount,
+        diff: cr.difference,
+        openedBy: cr.openedBy,
+      }
+    : null;
+}
+
 function Dashboard({
   token,
   tab,
@@ -166,47 +179,19 @@ function Dashboard({
             apiFetch<any | null>('/cash-register/current', { token }),
             apiFetch<AdminGoals>('/config/goals', { token }),
           ]);
-          setStats(s);
-          setCash(
-            cr
-              ? {
-                  id: cr.id,
-                  status: cr.isOpen ? 'OPEN' : 'CLOSED',
-                  openedAt: cr.openedAt,
-                  closedAt: cr.closedAt,
-                  initialAmount: cr.initialAmount,
-                  finalAmount: cr.finalAmount,
-                  expectedAmount: cr.expectedAmount,
-                  diff: cr.difference,
-                  openedBy: cr.openedBy,
-                }
-              : null,
-          );
-          setGoals(g);
+        setStats(s);
+        setCash(mapCash(cr));
+        setGoals(g);
           apiFetch<AdminInventoryValue>('/products/inventory-value', { token })
             .then(setInventory)
             .catch(() => {});
         } else if (t === 'productos') {
           const p = await apiFetch<any[]>('/products/internal', { token });
           setProducts((p || []).map(mapApiProduct));
-        } else if (t === 'caja') {
-          const cr = await apiFetch<any | null>('/cash-register/current', { token });
-          setCash(
-            cr
-              ? {
-                  id: cr.id,
-                  status: cr.isOpen ? 'OPEN' : 'CLOSED',
-                  openedAt: cr.openedAt,
-                  closedAt: cr.closedAt,
-                  initialAmount: cr.initialAmount,
-                  finalAmount: cr.finalAmount,
-                  expectedAmount: cr.expectedAmount,
-                  diff: cr.difference,
-                  openedBy: cr.openedBy,
-                }
-              : null,
-          );
-        }
+      } else if (t === 'caja') {
+        const cr = await apiFetch<any | null>('/cash-register/current', { token });
+        setCash(mapCash(cr));
+      }
       } catch (err: any) {
         if (handleAuthError(err, onLogout)) {
           clearToken();
@@ -227,6 +212,16 @@ function Dashboard({
   useEffect(() => {
     loadTab(tab);
   }, [loadTab, tab]);
+
+  // Cash badge for the header — independent of the active tab
+  useEffect(() => {
+    apiFetch<any | null>('/cash-register/current', { token })
+      .then((cr) => setCash(mapCash(cr)))
+      .catch(() => {});
+  }, [token]);
+
+  const userName =
+    getSessionUser()?.email?.split('@')[0] || 'Equipo';
 
   const navGroups = [
     {
@@ -282,36 +277,26 @@ function Dashboard({
             >
               <Menu size={18} />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sport-green text-black font-black text-sm shadow-sm">
                 N
               </span>
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-display text-base tracking-wide uppercase text-ink">
-                    NUTRIFIT <span className="text-sport-green">BUSINESS OS</span>
-                  </span>
-                  <span className="rounded-md bg-sport-green/10 border border-sport-green/30 px-1.5 py-0.2 text-[9px] font-extrabold text-sport-green hidden sm:inline">
-                    v1.1
-                  </span>
+                <p className="text-[17px] font-medium leading-tight text-ink">Hola, {userName}</p>
+                <div className="mt-0.5">
+                  {cash?.status === 'OPEN' ? (
+                    <span className="ds-badge ds-badge-success">Caja abierta</span>
+                  ) : (
+                    <span className="ds-badge ds-badge-muted">Caja cerrada</span>
+                  )}
                 </div>
-                <p className="text-[10px] text-muted hidden sm:block">Plataforma Unificada CRM + ERP + POS + OMS</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <Button variant="default" size="sm" onClick={onSell} className="bg-sport-green text-black font-extrabold hover:bg-sport-greenLight">
-              <ShoppingCart size={13} /> <span className="hidden sm:inline">Cobrar en</span> POS
-            </Button>
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw size={13} /> <span className="hidden md:inline">Actualizar</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowPassword(true)} className="hidden sm:flex">
-              <KeyRound size={13} />
-            </Button>
-            <Button variant="outline" size="sm" onClick={onLogout} title="Cerrar sesión">
-              <LogOut size={13} />
+              <ShoppingCart size={13} /> Cobrar en POS
             </Button>
           </div>
         </div>
@@ -440,7 +425,7 @@ function Dashboard({
                 {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
                 {tab === 'reportes' && <Reportes token={token} />}
                 {tab === 'ia' && <IaCopilot token={token} />}
-                {tab === 'configuracion' && <Configuracion token={token} />}
+                {tab === 'configuracion' && <Configuracion token={token} onRefresh={load} onPassword={() => setShowPassword(true)} onLogout={onLogout} />}
               </Suspense>
             )}
           </AdminErrorGuard>

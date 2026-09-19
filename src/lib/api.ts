@@ -179,6 +179,19 @@ export function getToken(): string | null {
   }
 }
 
+export function getSessionUser(): { email?: string; role?: string } | null {
+  const t = getToken();
+  if (!t) return null;
+  try {
+    const payload = JSON.parse(
+      atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+    );
+    return { email: payload.email, role: payload.role };
+  } catch {
+    return null;
+  }
+}
+
 export function setToken(token: string) {
   if (typeof window === 'undefined') return;
   try {

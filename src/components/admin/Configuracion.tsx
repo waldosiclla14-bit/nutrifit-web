@@ -10,11 +10,24 @@ import {
   Users,
   Smartphone,
   Check,
+  RefreshCw,
+  KeyRound,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/feedback';
 
-export function Configuracion({ token }: { token: string }) {
+export function Configuracion({
+  token,
+  onRefresh,
+  onPassword,
+  onLogout,
+}: {
+  token: string;
+  onRefresh?: () => void;
+  onPassword?: () => void;
+  onLogout?: () => void;
+}) {
   const [businessName, setBusinessName] = useState('NutriFit Chile');
   const [whatsapp, setWhatsapp] = useState('+56923883826');
   const [minFreeShipping, setMinFreeShipping] = useState('30000');
@@ -123,6 +136,25 @@ export function Configuracion({ token }: { token: string }) {
                 Repartidor Metro / Logística
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Sesión */}
+        <div className="rounded-3xl border border-line bg-paper p-5 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 border-b border-line pb-3">
+            <Shield size={16} className="text-sport-green" />
+            <h3 className="font-display text-base uppercase tracking-wide text-ink">Sesión</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <button type="button" onClick={onRefresh} className="ds-btn-secondary px-3 py-2.5 text-[13px]">
+              <RefreshCw size={14} /> Actualizar datos
+            </button>
+            <button type="button" onClick={onPassword} className="ds-btn-secondary px-3 py-2.5 text-[13px]">
+              <KeyRound size={14} /> Cambiar contraseña
+            </button>
+            <button type="button" onClick={onLogout} className="ds-btn-secondary px-3 py-2.5 text-[13px]">
+              <LogOut size={14} /> Cerrar sesión
+            </button>
           </div>
         </div>
 
