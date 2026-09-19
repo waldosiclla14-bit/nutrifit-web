@@ -85,7 +85,7 @@ export function Productos({
 
   useEffect(() => {
     apiFetch<AdminSupplier[]>('/suppliers', { token })
-      .then((data) => setSuppliers(Array.isArray(data) ? data.filter((s) => s.active) : []))
+      .then((data) => setSuppliers(Array.isArray(data) ? data.filter((s) => s.isActive !== false) : []))
       .catch(() => {});
   }, [token]);
 

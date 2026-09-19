@@ -211,12 +211,13 @@ export type AdminSupplier = {
   id: string;
   name: string;
   rut?: string | null;
-  contactName: string | null;
+  contactPerson?: string | null;
   phone: string | null;
   email: string | null;
   address?: string | null;
-  website?: string | null;
+  city?: string | null;
   paymentTerms: string | null;
-  active: boolean;
+  isActive: boolean;
   createdAt: string;
+  _count?: { products: number };
 };
