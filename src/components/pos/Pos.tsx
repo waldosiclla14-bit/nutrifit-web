@@ -1305,7 +1305,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           {cart.length > 0 && (
             <div className="mt-3 flex items-center justify-between rounded-xl bg-soft/70 px-3 py-2">
               <span className="text-xs font-semibold text-muted">{cart.reduce((s, l) => s + l.quantity, 0)} items</span>
-              <span className="font-display text-lg font-extrabold">{formatPrice(total)}</span>
+              <span className="text-lg font-bold tabular-nums">{formatPrice(total)}</span>
             </div>
           )}
           <div className="mt-1.5 max-h-[35vh] space-y-1 overflow-y-auto">
@@ -1717,7 +1717,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             )}
             <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-3 py-2">
               <span className="text-sm font-semibold text-paper/70">Total</span>
-              <span className="font-display text-xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
+              <span className="text-xl font-bold text-paper tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
           <button
@@ -1987,7 +1987,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   )}
                   <div className="mt-2 flex items-center justify-between rounded-lg bg-ink px-4 py-2">
                     <span className="text-sm font-semibold text-paper/70">Total</span>
-                    <span className="font-display text-2xl font-extrabold text-paper tabular-nums">{formatPrice(total)}</span>
+                    <span className="text-2xl font-bold text-paper tabular-nums">{formatPrice(total)}</span>
                   </div>
                   <button
                     onClick={async () => { await checkout(); if (cart.length === 0 || receipt) setShowMobileCart(false); }}

@@ -314,7 +314,7 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
   return (
     <div className="rounded-2xl border border-line bg-paper p-4">
       <div className={`flex items-center gap-2 ${color}`}>{icon}<span className="text-xs font-bold uppercase tracking-wider">{label}</span></div>
-      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-2xl font-bold tabular-nums">{value}</p>
     </div>
   );
 }

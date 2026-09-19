@@ -79,6 +79,11 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Bebas only ships weight 400 — never synthesize faux-bold (smears glyphs on iOS) */
+  .font-display {
+    font-synthesis-weight: none;
+  }
+
   body {
     @apply bg-sport-bg font-sans text-sport-text;
   }
