@@ -33,6 +33,7 @@ import {
   CartLine,
   CashRegister,
   PAYMENT_LABELS,
+  TIME_SLOTS,
   lineKey,
   tomorrowISO,
   todayISO,
@@ -57,6 +58,19 @@ const LINE_COLORS: Record<string, string> = {
 
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
+
+// spec §4.7.1 — fixed 30-min delivery windows, 8 AM – 10 PM
+const TIME_PERIODS = {
+  manana: { label: 'Mañana', start: 8, end: 12 },
+  tarde: { label: 'Tarde', start: 12, end: 18 },
+  noche: { label: 'Noche', start: 18, end: 22 },
+} as const;
+
+type TimeSlot = {
+  start: string;
+  end: string;
+  available: boolean;
+};
 
 type ReceiptLine = {
   productName: string;
@@ -196,6 +210,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [timePeriod, setTimePeriod] = useState<'manana' | 'tarde' | 'noche'>(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'manana';
+    if (h < 18) return 'tarde';
+    return 'noche';
+  });
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [shippingInput, setShippingInput] = useState(1000);
   const [mixedCash, setMixedCash] = useState(0);
@@ -248,6 +269,18 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     }, 300);
     return () => { clearTimeout(timer); cancelled = true; };
   }, [stationSearch, mode, token, lineFilter]);
+
+  // Delivery window availability for the selected date (fallback: all windows open)
+  useEffect(() => {
+    if (mode !== 'METRO' || !deliveryDay) return;
+    let cancelled = false;
+    const params = new URLSearchParams({ date: deliveryDay });
+    if (selectedStationId) params.set('stationId', selectedStationId);
+    apiFetch<TimeSlot[]>(`/deliveries/slots?${params}`, { token })
+      .then((s) => { if (!cancelled) setSlots(Array.isArray(s) ? s : []); })
+      .catch(() => { if (!cancelled) setSlots([]); });
+    return () => { cancelled = true; };
+  }, [mode, deliveryDay, selectedStationId, token]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -416,32 +449,6 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
   }
 
-  function splitTime12(time24: string): { h: number; m: number; period: 'AM' | 'PM' } {
-    const [h, m] = time24.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return { h: h12, m, period };
-  }
-
-  function toTime24(h12: number, m: number, period: 'AM' | 'PM'): string {
-    const h = period === 'AM' ? (h12 === 12 ? 0 : h12) : h12 === 12 ? 12 : h12 + 12;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  }
-
-  function handleTime12Part(part: 'h' | 'm' | 'period', value: number | string): void {
-    const cur = splitTime12(deliveryTime);
-    let h = cur.h;
-    let m = cur.m;
-    let p = cur.period;
-    if (part === 'h') h = Math.min(12, Math.max(1, Number(value) || 1));
-    if (part === 'm') m = Math.min(59, Math.max(0, Number(value) || 0));
-    if (part === 'period') p = value as 'AM' | 'PM';
-    let t = toTime24(h, m, p);
-    if (t < '10:00') t = '10:00';
-    if (t > '22:00') t = '22:00';
-    setDeliveryTime(t);
-    setDeliveryTimeEnd(computeEndTime(t));
-  }
   const discountAmount = useMemo(() => {
     if (discountMode === 'amount') return Math.min(subtotal, Math.max(0, discountAmountInput));
     return Math.round((subtotal * discountPct) / 100);
@@ -861,9 +868,18 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     printWindow.close();
   };
 
-  // Metro schedule picker: single editable 12h hour (10 AM - 10 PM)
+  // Metro schedule picker (spec §4.7.1): fixed 30-min window chips, 8 AM – 10 PM.
+  // Selecting a chip IS the confirmation — no extra confirm step.
   const renderMetroSchedule = () => {
-    const t12 = splitTime12(deliveryTime);
+    const base: TimeSlot[] =
+      slots.length > 0
+        ? slots
+        : TIME_SLOTS.map((t) => ({ start: t, end: computeEndTime(t), available: true }));
+    const period = TIME_PERIODS[timePeriod];
+    const inPeriod = base.filter((s) => {
+      const h = parseInt(s.start.split(':')[0], 10);
+      return h >= period.start && h < period.end;
+    });
     return (
       <div className="space-y-2">
         <input
@@ -871,45 +887,37 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           value={deliveryDay}
           min={todayISO()}
           onChange={(e) => setDeliveryDay(e.target.value)}
-          className="input"
+          className="ds-input"
+          aria-label="Fecha de entrega"
         />
-        <div className="flex items-center gap-1.5">
-          <span className="shrink-0 text-xs font-semibold text-muted">Hora</span>
-          <input
-            type="number"
-            min={1}
-            max={12}
-            value={t12.h}
-            onChange={(e) => handleTime12Part('h', e.target.value)}
-            className="input w-14 px-1 text-center text-sm"
-            aria-label="Hora (1-12)"
-          />
-          <span className="shrink-0 font-bold text-muted">:</span>
-          <input
-            type="number"
-            min={0}
-            max={59}
-            value={t12.m}
-            onChange={(e) => handleTime12Part('m', e.target.value)}
-            className="input w-14 px-1 text-center text-sm"
-            aria-label="Minutos"
-          />
-          <div className="flex shrink-0 overflow-hidden rounded-full border border-line">
-            {(['AM', 'PM'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => handleTime12Part('period', p)}
-                className={`px-2.5 py-2 text-xs font-bold transition ${t12.period === p ? 'bg-ink text-paper' : 'bg-paper text-muted'}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+          {(Object.keys(TIME_PERIODS) as (keyof typeof TIME_PERIODS)[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTimePeriod(k)}
+              className={`ds-chip ${timePeriod === k ? 'ds-chip-active' : ''}`}
+            >
+              {TIME_PERIODS[k].label}
+            </button>
+          ))}
         </div>
-        <p className="text-xs font-semibold text-accent">
-          ✔ {formatTime12(deliveryTime)}{deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}
-        </p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {inPeriod.map((s) => (
+            <button
+              key={s.start}
+              type="button"
+              disabled={!s.available}
+              onClick={() => {
+                setDeliveryTime(s.start);
+                setDeliveryTimeEnd(s.end);
+              }}
+              className={`ds-chip justify-center ${deliveryTime === s.start ? 'ds-chip-active' : ''}`}
+            >
+              {formatTime12(s.start)}
+            </button>
+          ))}
+        </div>
       </div>
     );
   };

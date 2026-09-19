@@ -41,10 +41,31 @@
   --accent-foreground: 240 5.9% 10%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 5.9% 90%;
+  --border: rgba(0, 0, 0, 0.08);
   --input: 240 5.9% 90%;
   --ring: 84 80% 55%;
   --radius: 0.5rem;
+
+  /* spec §2 — semantic design tokens (POS/Admin redesign) */
+  --surface-page: #F7F7F5;
+  --surface-card: #FFFFFF;
+  --surface-muted: #F1F1EE;
+  --text-primary: #17171A;
+  --text-secondary: #6B6B66;
+  --text-muted: #9C9C96;
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --fill-primary: #17171A;
+  --on-primary: #FFFFFF;
+  --success-bg: #EAF3DE;
+  --success-text: #3B6D11;
+  --warning-bg: #FAEEDA;
+  --warning-text: #854F0B;
+  --danger-bg: #FCEBEB;
+  --danger-text: #A32D2D;
+  --accent-bg: #E6F1FB;
+  --accent-text: #185FA5;
+  --radius-control: 8px;
+  --radius-card: 12px;
 }
 
 @layer base {
@@ -164,6 +185,137 @@
   .reveal.js.is-visible {
     opacity: 1;
     transform: translateY(0);
+  }
+
+  /* ── spec §4 — reusable POS/Admin components (ds-* namespace) ── */
+  .ds-page {
+    background: var(--surface-page);
+    color: var(--text-primary);
+  }
+
+  .ds-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--fill-primary);
+    color: var(--on-primary);
+    border-radius: var(--radius-control);
+    font-weight: 500;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .ds-btn-primary:active { transform: scale(0.98); }
+  .ds-btn-primary:disabled { opacity: 0.5; }
+
+  .ds-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    border-radius: var(--radius-control);
+    font-weight: 500;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .ds-btn-secondary:active { transform: scale(0.98); }
+  .ds-btn-secondary:disabled { opacity: 0.5; }
+
+  .ds-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--surface-muted);
+    color: var(--text-primary);
+    border: 1px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+  }
+  .ds-chip-active {
+    background: var(--fill-primary);
+    color: var(--on-primary);
+  }
+  .ds-chip:disabled {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  .ds-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .ds-badge-success { background: var(--success-bg); color: var(--success-text); }
+  .ds-badge-warning { background: var(--warning-bg); color: var(--warning-text); }
+  .ds-badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+  .ds-badge-accent { background: var(--accent-bg); color: var(--accent-text); }
+  .ds-badge-muted { background: var(--surface-muted); color: var(--text-secondary); }
+
+  .ds-card {
+    background: var(--surface-card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+  .ds-card-action-warning { border: 0.5px solid var(--warning-text); }
+  .ds-card-action-danger { border: 0.5px solid var(--danger-text); }
+
+  .ds-input {
+    width: 100%;
+    background: var(--surface-card);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--radius-control);
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .ds-input:focus { border-color: var(--text-primary); }
+  .ds-input::placeholder { color: var(--text-muted); }
+
+  .ds-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .ds-stepper-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-card);
+    color: var(--text-primary);
+    transition: transform 0.1s ease;
+  }
+  .ds-stepper-btn:active { transform: scale(0.95); }
+  .ds-stepper-btn:disabled { opacity: 0.4; }
+
+  .ds-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: var(--radius-control);
+    background: var(--surface-muted);
+    color: var(--text-primary);
   }
 }
 

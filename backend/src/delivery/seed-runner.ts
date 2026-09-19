@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = [
   { key: 'minimum_notice_minutes', value: 60 },
   { key: 'default_delivery_duration', value: 30 },
   { key: 'maximum_orders_per_slot', value: 10 },
-  { key: 'delivery_start_time', value: '10:00' },
+  { key: 'delivery_start_time', value: '08:00' },
   { key: 'delivery_end_time', value: '22:00' },
   { key: 'slot_interval_minutes', value: 30 },
   { key: 'reminder_before_minutes', value: 60 },

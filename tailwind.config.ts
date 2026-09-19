@@ -27,7 +27,7 @@ const config: Config = {
           greenLight: '#7AE84E',
           orange: '#F97316',
         },
-        border: 'hsl(var(--border))',
+        border: 'var(--border)',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
