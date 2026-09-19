@@ -264,9 +264,9 @@ function Dashboard({
   const allTabs = navGroups.flatMap((g) => g.items);
 
   return (
-    <div className="min-h-screen bg-surface pb-28 lg:pb-8">
+    <div className="min-h-dvh bg-surface pb-28 lg:pb-8">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur px-4 py-2.5 sm:px-6">
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur px-4 py-2.5 sm:px-6 pt-safe">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button

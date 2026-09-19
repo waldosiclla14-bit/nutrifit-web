@@ -245,7 +245,7 @@ export function Calendario({ token }: { token: string }) {
 
       {/* Detail modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-contained" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto" onClick={() => setSelected(null)}>
           <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-line bg-paper p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h4 className="font-display text-sm uppercase">{selected.order?.orderNumber}</h4>
