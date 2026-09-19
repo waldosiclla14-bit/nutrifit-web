@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle, FilePlus, FileText, RotateCcw, Send, Truck, X } from 'lucide-react';
+import { Camera, CheckCircle, FilePlus, FileText, RotateCcw, Send, Truck, X } from 'lucide-react';
 import type { Purchase } from './types';
 import { statusColor, statusLabel } from './helpers';
 
@@ -12,6 +12,7 @@ export function PurchaseDetail({
   onCancel,
   onStartReceipt,
   onAttachDoc,
+  onTakePhoto,
   onOCR,
   onViewDoc,
 }: {
@@ -22,6 +23,7 @@ export function PurchaseDetail({
   onCancel: (id: string) => void;
   onStartReceipt: () => void;
   onAttachDoc: () => void;
+  onTakePhoto: () => void;
   onOCR: (id: string) => void;
   onViewDoc: (purchaseId: string, docId: string, name: string) => void;
 }) {
@@ -197,10 +199,16 @@ export function PurchaseDetail({
             </button>
           )}
           <button
+            onClick={onTakePhoto}
+            className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-ink text-paper"
+          >
+            <Camera className="h-3.5 w-3.5" /> Tomar foto
+          </button>
+          <button
             onClick={onAttachDoc}
             className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-soft border border-line"
           >
-            <FilePlus className="h-3.5 w-3.5" /> Adjuntar doc
+            <FilePlus className="h-3.5 w-3.5" /> Adjuntar
           </button>
         </div>
       </div>

@@ -38,6 +38,7 @@ export function Compras({ token }: { token: string }) {
   const [showScanner, setShowScanner] = useState(false);
 
   const docInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<PurchaseFormState>({ ...EMPTY_PURCHASE_FORM });
   const [formItems, setFormItems] = useState<PurchaseItem[]>([]);
@@ -491,7 +492,7 @@ export function Compras({ token }: { token: string }) {
 
   return (
     <>
-      {/* Hidden file input always mounted so "Adjuntar doc" works from any view */}
+      {/* Hidden file inputs always mounted so attach actions work from any view */}
       <input
         ref={docInputRef}
         type="file"
@@ -499,7 +500,25 @@ export function Compras({ token }: { token: string }) {
         className="sr-only"
         onChange={async (e) => {
           const file = e.target.files?.[0];
-          if (file && selectedPurchase) await handleUploadDocument(selectedPurchase.id, file);
+          if (file && selectedPurchase) {
+            await handleUploadDocument(selectedPurchase.id, file);
+            await handleOCR(selectedPurchase.id);
+          }
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (file && selectedPurchase) {
+            await handleUploadDocument(selectedPurchase.id, file);
+            await handleOCR(selectedPurchase.id);
+          }
           e.target.value = '';
         }}
       />
@@ -559,6 +578,7 @@ export function Compras({ token }: { token: string }) {
           onCancel={handleCancel}
           onStartReceipt={() => startReceipt(selectedPurchase)}
           onAttachDoc={() => docInputRef.current?.click()}
+          onTakePhoto={() => photoInputRef.current?.click()}
           onOCR={handleOCR}
           onViewDoc={viewDocument}
         />
