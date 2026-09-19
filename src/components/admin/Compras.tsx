@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { haptic } from '@/lib/haptic';
@@ -36,9 +36,6 @@ export function Compras({ token }: { token: string }) {
   const [filter, setFilter] = useState({ status: '', search: '' });
 
   const [showScanner, setShowScanner] = useState(false);
-
-  const docInputRef = useRef<HTMLInputElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<PurchaseFormState>({ ...EMPTY_PURCHASE_FORM });
   const [formItems, setFormItems] = useState<PurchaseItem[]>([]);
@@ -490,39 +487,19 @@ export function Compras({ token }: { token: string }) {
     [selectedPurchase],
   );
 
+  // Called directly by the overlay file inputs in the detail view, so the
+  // tap lands on the input itself (iOS blocks programmatic .click()).
+  const handleDocFile = useCallback(
+    async (file: File) => {
+      if (!selectedPurchase) return;
+      await handleUploadDocument(selectedPurchase.id, file);
+      await handleOCR(selectedPurchase.id);
+    },
+    [selectedPurchase, handleUploadDocument, handleOCR],
+  );
+
   return (
     <>
-      {/* Hidden file inputs always mounted so attach actions work from any view */}
-      <input
-        ref={docInputRef}
-        type="file"
-        accept="image/*,.pdf"
-        className="sr-only"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (file && selectedPurchase) {
-            await handleUploadDocument(selectedPurchase.id, file);
-            await handleOCR(selectedPurchase.id);
-          }
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="sr-only"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (file && selectedPurchase) {
-            await handleUploadDocument(selectedPurchase.id, file);
-            await handleOCR(selectedPurchase.id);
-          }
-          e.target.value = '';
-        }}
-      />
-
       {showScanner && (
         <BarcodeScanner onDetect={handleBarcodeDetected} onClose={() => setShowScanner(false)} />
       )}
@@ -577,8 +554,8 @@ export function Compras({ token }: { token: string }) {
           onConfirm={handleConfirm}
           onCancel={handleCancel}
           onStartReceipt={() => startReceipt(selectedPurchase)}
-          onAttachDoc={() => docInputRef.current?.click()}
-          onTakePhoto={() => photoInputRef.current?.click()}
+          onPhotoFile={handleDocFile}
+          onDocFile={handleDocFile}
           onOCR={handleOCR}
           onViewDoc={viewDocument}
         />

@@ -11,8 +11,8 @@ export function PurchaseDetail({
   onConfirm,
   onCancel,
   onStartReceipt,
-  onAttachDoc,
-  onTakePhoto,
+  onPhotoFile,
+  onDocFile,
   onOCR,
   onViewDoc,
 }: {
@@ -22,8 +22,8 @@ export function PurchaseDetail({
   onConfirm: (id: string) => void;
   onCancel: (id: string) => void;
   onStartReceipt: () => void;
-  onAttachDoc: () => void;
-  onTakePhoto: () => void;
+  onPhotoFile: (file: File) => void;
+  onDocFile: (file: File) => void;
   onOCR: (id: string) => void;
   onViewDoc: (purchaseId: string, docId: string, name: string) => void;
 }) {
@@ -198,18 +198,33 @@ export function PurchaseDetail({
               <X className="h-3.5 w-3.5" /> Anular
             </button>
           )}
-          <button
-            onClick={onTakePhoto}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-ink text-paper"
-          >
+          <label className="relative flex cursor-pointer items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-ink text-paper overflow-hidden">
             <Camera className="h-3.5 w-3.5" /> Tomar foto
-          </button>
-          <button
-            onClick={onAttachDoc}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-soft border border-line"
-          >
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="absolute inset-0 cursor-pointer opacity-0"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onPhotoFile(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <label className="relative flex cursor-pointer items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-soft border border-line overflow-hidden">
             <FilePlus className="h-3.5 w-3.5" /> Adjuntar
-          </button>
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              className="absolute inset-0 cursor-pointer opacity-0"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onDocFile(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
       </div>
     </div>

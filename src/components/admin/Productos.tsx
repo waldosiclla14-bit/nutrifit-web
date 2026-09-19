@@ -66,7 +66,6 @@ export function Productos({
   const [importing, setImporting] = useState(false);
   const [barcodeScannerTarget, setBarcodeScannerTarget] = useState<{ type: 'product' | 'variant'; variantIdx?: number; mode: 'create' | 'edit' } | null>(null);
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -572,22 +571,21 @@ export function Productos({
           >
             {sortDir === 'asc' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) {
-                handleImportFile(f);
-                e.target.value = '';
-              }
-            }}
-          />
-          <button onClick={() => fileRef.current?.click()} disabled={importing} className="btn-outline px-3 py-2 text-xs disabled:opacity-50">
+          <label className={`relative inline-flex cursor-pointer items-center btn-outline px-3 py-2 text-xs ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
             {importing ? 'Importando…' : 'Importar'}
-          </button>
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="absolute inset-0 cursor-pointer opacity-0"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  handleImportFile(f);
+                  e.target.value = '';
+                }
+              }}
+            />
+          </label>
           <button onClick={exportExcel} className="btn-outline px-3 py-2 text-xs">
             Exportar {filteredProducts.length < products.length ? `(${filteredProducts.length})` : ''}
           </button>
