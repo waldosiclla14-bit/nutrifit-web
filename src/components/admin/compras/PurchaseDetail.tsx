@@ -150,7 +150,7 @@ export function PurchaseDetail({
                     {r.items.map((ri: any) => (
                       <p key={ri.id} className="text-muted">
                         {ri.purchaseItem?.productName}: {ri.receivedQty}/{ri.expectedQty}
-                        {ri.damagedQty > 0 && <span className="text-red-500"> ({ri.damagedQty} danado)</span>}
+                        {ri.damagedQty > 0 && <span className="text-red-500"> ({ri.damagedQty} dañado)</span>}
                       </p>
                     ))}
                   </div>

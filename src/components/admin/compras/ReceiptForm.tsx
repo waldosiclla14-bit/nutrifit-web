@@ -22,7 +22,7 @@ export function ReceiptForm({
         <button onClick={onBack} className="text-muted">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="text-lg font-bold text-ink">Recepcion - {p.purchaseNumber}</h2>
+        <h2 className="text-lg font-bold text-ink">Recepción - {p.purchaseNumber}</h2>
       </div>
 
       <div className="bg-paper rounded-xl p-4 border border-line">
@@ -51,7 +51,7 @@ export function ReceiptForm({
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-[10px] text-muted">Danados</label>
+                      <label className="text-[10px] text-muted">Dañados</label>
                     <input
                       type="number"
                       min="0"
@@ -70,7 +70,7 @@ export function ReceiptForm({
             onClick={() => onSubmit(p.id)}
             className="w-full btn-accent text-sm min-h-[48px] active:scale-[0.98] transition-transform"
           >
-            Confirmar recepcion
+            Confirmar recepción
           </button>
         </div>
       </div>

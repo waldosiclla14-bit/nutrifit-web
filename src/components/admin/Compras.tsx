@@ -359,11 +359,11 @@ export function Compras({ token }: { token: string }) {
           token,
         });
         haptic(80);
-        toast.success('Recepcion registrada');
+        toast.success('Recepción registrada');
         loadPurchaseDetail(id);
         setView('detail');
       } catch (err: any) {
-        toast.error(err?.message || 'Error en recepcion');
+        toast.error(err?.message || 'Error en recepción');
       }
     },
     [token, receiptItems, loadPurchaseDetail],

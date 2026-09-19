@@ -149,7 +149,7 @@ export function PurchaseList({
               {p._count?.documents ? <span>{p._count.documents} docs</span> : null}
               {p.receiptStatus !== 'PENDING' && (
                 <span className={p.receiptStatus === 'COMPLETED' ? 'text-green-500' : 'text-amber-500'}>
-                  {p.receiptStatus === 'COMPLETED' ? 'Recibida completa' : 'Recepcion parcial'}
+                  {p.receiptStatus === 'COMPLETED' ? 'Recibida completa' : 'Recepción parcial'}
                 </span>
               )}
             </div>

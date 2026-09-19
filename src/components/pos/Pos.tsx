@@ -60,9 +60,9 @@ const LINE_COLORS: Record<string, string> = {
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
 
-// spec Â§4.7.1 â€” fixed 30-min delivery windows, 8 AM â€“ 10 PM
+// spec §4.7.1 — fixed 30-min delivery windows, 8 AM – 10 PM
 const TIME_PERIODS = {
-  manana: { label: 'MaÃ±ana', start: 8, end: 12 },
+  manana: { label: 'Mañana', start: 8, end: 12 },
   tarde: { label: 'Tarde', start: 12, end: 18 },
   noche: { label: 'Noche', start: 18, end: 22 },
 } as const;
@@ -165,27 +165,27 @@ function receiptText(r: ReceiptData): string {
   lines.push(formatDateTimeShort(r.at));
   lines.push('');
   lines.push(`Cliente: ${r.customerName}`);
-  if (r.customerPhone) lines.push(`TelÃ©fono: ${r.customerPhone}`);
-  lines.push('â”€'.repeat(26));
+  if (r.customerPhone) lines.push(`Teléfono: ${r.customerPhone}`);
+  lines.push('─'.repeat(26));
   lines.push('');
   lines.push('PRODUCTOS:');
   r.lines.forEach((l, i) => {
     lines.push(
       `${i + 1}. ${l.productName}${l.variantName ? ` (${l.variantName})` : ''}`,
     );
-    lines.push(`   ${l.quantity} Ã— ${formatPrice(l.unitPrice)} = ${formatPrice(l.total)}`);
+    lines.push(`   ${l.quantity} × ${formatPrice(l.unitPrice)} = ${formatPrice(l.total)}`);
   });
   lines.push('');
-  lines.push('â”€'.repeat(26));
+  lines.push('─'.repeat(26));
   lines.push(`Subtotal: ${formatPrice(r.subtotal)}`);
   if (r.discount > 0) lines.push(`Descuento: -${formatPrice(r.discount)}`);
-  if (r.shippingCost > 0) lines.push(`EnvÃ­o: ${formatPrice(r.shippingCost)}`);
+  if (r.shippingCost > 0) lines.push(`Envío: ${formatPrice(r.shippingCost)}`);
   lines.push(`TOTAL: ${formatPrice(r.total)}`);
-  lines.push(`Pago: ${r.payment}${r.paid ? ' Â· PAGADO' : ' Â· PENDIENTE'}`);
-  if (r.pago !== undefined) lines.push(`PagÃ³ con: ${formatPrice(r.pago)}`);
+  lines.push(`Pago: ${r.payment}${r.paid ? ' · PAGADO' : ' · PENDIENTE'}`);
+  if (r.pago !== undefined) lines.push(`Pagó con: ${formatPrice(r.pago)}`);
   if (r.vuelto !== undefined) lines.push(`Vuelto: ${formatPrice(r.vuelto)}`);
   lines.push('');
-  lines.push('Â¡Gracias por tu compra! ðŸ’ª');
+  lines.push('¡Gracias por tu compra! 💪');
   return lines.join('\n');
 }
 
@@ -369,7 +369,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       );
     } catch (err: any) {
       if (handleAuthError(err, onLogout)) return;
-      toast.error(err?.message || 'No se pudieron cargar los productos. Verifica tu conexiÃ³n.');
+      toast.error(err?.message || 'No se pudieron cargar los productos. Verifica tu conexión.');
     } finally {
       if (initial) setLoading(false);
     }
@@ -452,7 +452,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     return `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
   }
 
-  // spec Â§5 â€” single payment select encodes method + received (no separate checkbox)
+  // spec §5 — single payment select encodes method + received (no separate checkbox)
   type PayOption = 'EFECTIVO' | 'TRANSFER_PAGADA' | 'TRANSFER_PENDIENTE' | 'TARJETA_MANUAL' | 'MIXTO';
 
   function currentPayOption(): PayOption {
@@ -608,7 +608,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const deleteHold = async (h: Hold) => {
     const ok = await confirm({
       title: 'Eliminar venta en espera',
-      message: `Â¿Eliminar la venta de ${formatPrice(h.total)}? Esta acciÃ³n no se puede deshacer.`,
+      message: `¿Eliminar la venta de ${formatPrice(h.total)}? Esta acción no se puede deshacer.`,
       confirmLabel: 'Eliminar',
       danger: true,
     });
@@ -622,7 +622,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     if (cart.length === 0) return;
     const ok = await confirm({
       title: 'Cancelar venta',
-      message: 'Se descartarÃ¡n los productos del carrito actual. Esta acciÃ³n no se puede deshacer.',
+      message: 'Se descartarán los productos del carrito actual. Esta acción no se puede deshacer.',
       confirmLabel: 'Cancelar venta',
       danger: true,
     });
@@ -649,7 +649,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       if (l.variantId) {
         const v = p.variants?.find((x) => x.id === l.variantId);
         if (!v) continue;
-        if (l.quantity > v.stock) return { name: `${p.name} Â· ${v.name}`, avail: v.stock };
+        if (l.quantity > v.stock) return { name: `${p.name} · ${v.name}`, avail: v.stock };
       } else if (p.stock != null && l.quantity > p.stock) {
         return { name: p.name, avail: p.stock };
       }
@@ -666,22 +666,22 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     }
     if (!customerName.trim() || !customerPhone.trim()) {
       if (!(quickSale && mode !== 'DELIVERY')) {
-        toast.error('Ingresa nombre y telÃ©fono del cliente.');
+        toast.error('Ingresa nombre y teléfono del cliente.');
         if (!customerName.trim()) customerNameRef.current?.focus();
-        else document.querySelector<HTMLInputElement>('[placeholder="TelÃ©fono"]')?.focus();
+        else document.querySelector<HTMLInputElement>('[placeholder="Teléfono"]')?.focus();
         return;
       }
     }
-    // Venta rÃ¡pida (spec Â§4.9): cliente genÃ©rico reutilizable â€” el backend
-    // lo fusiona por telÃ©fono, asÃ­ todas las ventas rÃ¡pidas caen en "Mostrador".
+    // Venta rápida (spec §4.9): cliente genérico reutilizable — el backend
+    // lo fusiona por teléfono, así todas las ventas rápidas caen en "Mostrador".
     const qName = customerName.trim() || 'Mostrador';
     const qPhone = customerPhone.trim() || '000000';
     if (mode === 'METRO' && (!selectedStationId || !deliveryDay || !deliveryTime)) {
-      toast.error('Selecciona estaciÃ³n, fecha y horario de entrega.');
+      toast.error('Selecciona estación, fecha y horario de entrega.');
       return;
     }
     if (mode === 'DELIVERY' && (!deliveryAddress.trim() || !deliveryDay)) {
-      toast.error('Ingresa la direcciÃ³n y fecha de envÃ­o.');
+      toast.error('Ingresa la dirección y fecha de envío.');
       return;
     }
     if (payment === 'MIXTO') {
@@ -695,7 +695,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         return;
       }
     }
-    // Generate idempotency key once per checkout attempt â€” prevents double-submit
+    // Generate idempotency key once per checkout attempt — prevents double-submit
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -843,31 +843,31 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       } else if (mode === 'DELIVERY') {
         setSalePhone(qPhone);
         const delLines: string[] = [];
-        delLines.push('NUTRIFIT Â· TU PEDIDO CONFIRMADO');
-        delLines.push('â”€'.repeat(24));
+        delLines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
+        delLines.push('─'.repeat(24));
         delLines.push('');
-        delLines.push(`Hola ${qName} ðŸ‘‹`);
-        delLines.push(`Tu pedido ${order.orderNumber} quedÃ³ registrado con envÃ­o a domicilio.`);
+        delLines.push(`Hola ${qName} 👋`);
+        delLines.push(`Tu pedido ${order.orderNumber} quedó registrado con envío a domicilio.`);
         delLines.push('');
         delLines.push('*PRODUCTOS:*');
         cart.forEach((l, i) => {
-          delLines.push(`${i + 1}. ${l.productName}${l.variantName ? ` (${l.variantName})` : ''} Ã—${l.quantity}`);
+          delLines.push(`${i + 1}. ${l.productName}${l.variantName ? ` (${l.variantName})` : ''} ×${l.quantity}`);
           delLines.push(`   ${formatPrice(l.unitPrice * l.quantity)}`);
         });
         delLines.push('');
-        delLines.push('â”€'.repeat(24));
+        delLines.push('─'.repeat(24));
         delLines.push(`*Subtotal:* ${formatPrice(subtotal)}`);
         if (discountAmount) delLines.push(`*Descuento:* -${formatPrice(discountAmount)}`);
-        delLines.push(`*EnvÃ­o:* ${shippingCost > 0 ? formatPrice(shippingCost) : 'GRATIS'}`);
+        delLines.push(`*Envío:* ${shippingCost > 0 ? formatPrice(shippingCost) : 'GRATIS'}`);
         delLines.push(`*TOTAL:* ${formatPrice(total)}`);
-        delLines.push(`*Pago:* ${PAYMENT_LABELS[payment] ?? payment}${paidNow ? ' Â· RECIBIDO' : ' Â· CONTRA ENTREGA'}`);
+        delLines.push(`*Pago:* ${PAYMENT_LABELS[payment] ?? payment}${paidNow ? ' · RECIBIDO' : ' · CONTRA ENTREGA'}`);
         delLines.push('');
-        delLines.push('*ENVÃO A DOMICILIO:*');
-        delLines.push(`ðŸ“… ${deliveryDay}`);
-        delLines.push(`â° ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` â€“ ${formatTime12(deliveryTimeEnd)}` : ''}`);
-        delLines.push(`ðŸ  ${deliveryAddress}`);
+        delLines.push('*ENVÍO A DOMICILIO:*');
+        delLines.push(`📅 ${deliveryDay}`);
+        delLines.push(`⏰ ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}`);
+        delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
-        delLines.push('Â¡Te esperamos! Gracias por entrenar con confianza ðŸ’ª');
+        delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
         delLines.push(webFooter());
         setSaleMsg(delLines.join('\n'));
       }
@@ -923,8 +923,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     printWindow.close();
   };
 
-  // Metro schedule picker (spec Â§4.7.1): fixed 30-min window chips, 8 AM â€“ 10 PM.
-  // Selecting a chip IS the confirmation â€” no extra confirm step.
+  // Metro schedule picker (spec §4.7.1): fixed 30-min window chips, 8 AM – 10 PM.
+  // Selecting a chip IS the confirmation — no extra confirm step.
   const renderMetroSchedule = () => {
     const base: TimeSlot[] =
       slots.length > 0
@@ -1004,16 +1004,16 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               onClick={() => { setMode('DELIVERY'); setShippingInput(1000); setPaymentReceived(false); setQuickSale(false); }}
               className={`flex items-center gap-1 px-2.5 py-1.5 font-bold transition sm:px-3 ${mode === 'DELIVERY' ? 'bg-ink text-paper' : 'text-muted'}`}
             >
-              ðŸ  <span className="hidden sm:inline">Domicilio</span>
+              🏠 <span className="hidden sm:inline">Domicilio</span>
             </button>
           </div>
           <button
             onClick={() => { if (mode !== 'DELIVERY') setQuickSale((v) => !v); }}
             disabled={mode === 'DELIVERY'}
-            title={mode === 'DELIVERY' ? 'No disponible en envÃ­o a domicilio' : 'Oculta datos no esenciales'}
+            title={mode === 'DELIVERY' ? 'No disponible en envío a domicilio' : 'Oculta datos no esenciales'}
             className={`flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-bold transition disabled:opacity-40 ${quickSale ? 'border-ink bg-ink text-paper' : 'border-line bg-paper text-muted'}`}
           >
-            <Zap size={13} /> RÃ¡pida
+            <Zap size={13} /> Rápida
           </button>
           {cash?.status === 'OPEN' ? (
             <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[11px]">Caja abierta</span>
@@ -1037,7 +1037,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       {quickSale && (
         <div className="mt-2 flex items-center gap-2 rounded-xl bg-[var(--accent-bg)] px-3 py-2 text-[13px] font-medium text-[var(--accent-text)]">
           <Zap size={14} className="shrink-0" />
-          Venta rÃ¡pida activa{mode === 'LOCAL' ? ': sin datos de cliente.' : ': nombre y telÃ©fono opcionales.'}
+          Venta rápida activa{mode === 'LOCAL' ? ': sin datos de cliente.' : ': nombre y teléfono opcionales.'}
         </div>
       )}
 
@@ -1045,12 +1045,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         <div className="mt-3 rounded-xl border border-line bg-paper p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="flex items-center gap-2 font-display text-lg uppercase">
-              <Wallet size={18} className="text-accent" /> Resumen de caja del dÃ­a
+              <Wallet size={18} className="text-accent" /> Resumen de caja del día
             </p>
             <div className="flex items-center gap-2">
               {cash?.status === 'OPEN' ? (
                 <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800">
-                  Caja abierta{cash.initialAmount > 0 ? ` Â· apertura ${formatPrice(cash.initialAmount)}` : ''}
+                  Caja abierta{cash.initialAmount > 0 ? ` · apertura ${formatPrice(cash.initialAmount)}` : ''}
                 </span>
               ) : (
                 <span className="chip border-red-200 bg-red-50 text-red-700">Caja cerrada</span>
@@ -1063,7 +1063,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           {reportLoading && !report ? (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted">
-              <RefreshCw size={14} className="animate-spin" /> Cargando resumenâ€¦
+              <RefreshCw size={14} className="animate-spin" /> Cargando resumen…
             </div>
           ) : !report ? (
             <p className="py-8 text-center text-sm text-muted">Sin datos por ahora. Pulsa Actualizar.</p>
@@ -1071,11 +1071,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             <>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-2xl border border-line bg-soft/50 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Ventas del dÃ­a</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Ventas del día</p>
                   <p className="mt-1 font-display text-xl">{formatPrice(report.totalSales)}</p>
                 </div>
                 <div className="rounded-2xl border border-line bg-soft/50 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">NÃºmero de ventas</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">Número de ventas</p>
                   <p className="mt-1 font-display text-xl">{report.orderCount}</p>
                 </div>
                 <div className="rounded-2xl border border-line bg-soft/50 p-4">
@@ -1088,7 +1088,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 </div>
               </div>
               <div className="mt-4 rounded-2xl border border-line bg-soft/50 p-4">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Por mÃ©todo de pago</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Por método de pago</p>
                 {report.methods.length > 0 ? (
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     {report.methods.map((m) => (
@@ -1115,7 +1115,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </p>
             <div className="flex gap-2">
               <button onClick={copyReceipt} className="btn-outline px-4 py-2 text-xs">
-                <Copy size={13} /> {copied ? 'Â¡Copiado!' : 'Copiar'}
+                <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(receipt.customerPhone, receiptText(receipt))}
@@ -1137,18 +1137,18 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <p className="text-[11px] text-muted">{formatDateTimeShort(receipt.at)}</p>
             </div>
             <p className="mt-0.5 text-xs text-muted">
-              Boleta {receipt.orderNumber} Â· {receipt.customerName}
-              {receipt.customerPhone ? ` Â· ${receipt.customerPhone}` : ''}
+              Boleta {receipt.orderNumber} · {receipt.customerName}
+              {receipt.customerPhone ? ` · ${receipt.customerPhone}` : ''}
             </p>
             <div className="mt-3 space-y-1.5">
               {receipt.lines.map((l, i) => (
                 <div key={i} className="flex items-center justify-between gap-2 text-xs">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
-                      {l.quantity} Ã— {l.productName}
+                      {l.quantity} × {l.productName}
                     </p>
                     <p className="truncate text-muted">
-                      {l.variantName && `${l.variantName} Â· `}
+                      {l.variantName && `${l.variantName} · `}
                       {formatPrice(l.unitPrice)} c/u
                     </p>
                   </div>
@@ -1169,7 +1169,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               )}
               {receipt.shippingCost > 0 && (
                 <div className="flex justify-between text-muted">
-                  <span>EnvÃ­o</span>
+                  <span>Envío</span>
                   <span>{formatPrice(receipt.shippingCost)}</span>
                 </div>
               )}
@@ -1181,12 +1181,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <div className="flex justify-between">
                   <span>Pago</span>
                   <span className="font-semibold">
-                    {receipt.payment} Â· {receipt.paid ? 'Pagado' : 'Pendiente (contra entrega)'}
+                    {receipt.payment} · {receipt.paid ? 'Pagado' : 'Pendiente (contra entrega)'}
                   </span>
                 </div>
                 {receipt.pago !== undefined && (
                   <div className="flex justify-between">
-                    <span>PagÃ³ con</span>
+                    <span>Pagó con</span>
                     <span>{formatPrice(receipt.pago)}</span>
                   </div>
                 )}
@@ -1211,7 +1211,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             </p>
             <div className="flex gap-2">
               <button onClick={copyMessage} className="btn-outline px-4 py-2 text-xs">
-                <Copy size={13} /> {copied ? 'Â¡Copiado!' : 'Copiar'}
+                <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(salePhone, saleMsg)}
@@ -1235,7 +1235,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar producto o SKUâ€¦ (F1 Â· F2 cliente Â· F3 pausar)"
+              placeholder="Buscar producto o SKU… (F1 · F2 cliente · F3 pausar)"
               className="input pl-10 pr-9"
             />
             {query.length > 0 && (
@@ -1247,7 +1247,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           {!loading && (
             <p className="mt-2 text-[13px] font-medium text-[var(--text-secondary)]">
               {filtered.length} disponible{filtered.length === 1 ? '' : 's'}
-              {query.trim() ? ` para â€œ${query.trim()}â€` : ''}
+              {query.trim() ? ` para “${query.trim()}”` : ''}
             </p>
           )}
           {loading ? (
@@ -1268,7 +1268,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     {outOfStock ? (
                       <span className="ds-badge ds-badge-danger mt-1">agotado</span>
                     ) : (
-                      <p className="mt-0.5 truncate text-[13px] text-[var(--text-secondary)]">{p.brand?.name || 'Â '}</p>
+                      <p className="mt-0.5 truncate text-[13px] text-[var(--text-secondary)]">{p.brand?.name || ' '}</p>
                     )}
                     <div className="mt-1.5 space-y-1">
                       {list.map((v: any) => (
@@ -1328,7 +1328,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 </button>
               </div>
             ))}
-            {cart.length === 0 && <p className="py-6 text-center text-xs text-muted">Carrito vacÃ­o.</p>}
+            {cart.length === 0 && <p className="py-6 text-center text-xs text-muted">Carrito vacío.</p>}
           </div>
 
           {cart.length > 0 && (
@@ -1348,14 +1348,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               {holds.map((h, i) => (
                 <div key={h.id} className="flex items-center gap-2 rounded-2xl border border-accent/30 bg-accent/5 p-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold">Venta {i + 1} Â· {formatPrice(h.total)}</p>
+                    <p className="text-xs font-bold">Venta {i + 1} · {formatPrice(h.total)}</p>
                     <p className="truncate text-[11px] text-muted">
-                      {h.customerName || 'Sin cliente'} Â· {h.lines.length} {h.lines.length === 1 ? 'item' : 'items'}
+                      {h.customerName || 'Sin cliente'} · {h.lines.length} {h.lines.length === 1 ? 'item' : 'items'}
                     </p>
                     {h.lines.length > 0 && (
                       <p className="truncate text-[10px] text-muted/70">
-                        {h.lines.slice(0, 2).map((l) => `${l.productName}${l.quantity > 1 ? ` Ã—${l.quantity}` : ''}`).join(', ')}
-                        {h.lines.length > 2 ? ` +${h.lines.length - 2} mÃ¡s` : ''}
+                        {h.lines.slice(0, 2).map((l) => `${l.productName}${l.quantity > 1 ? ` ×${l.quantity}` : ''}`).join(', ')}
+                        {h.lines.length > 2 ? ` +${h.lines.length - 2} más` : ''}
                       </p>
                     )}
                   </div>
@@ -1374,7 +1374,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             {!(quickSale && mode === 'LOCAL') && (
               <>
                 <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={quickSale ? 'Nombre del cliente (opcional)' : 'Nombre del cliente (F2)'} className="input" />
-                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'TelÃ©fono (opcional)' : 'TelÃ©fono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+                <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'Teléfono (opcional)' : 'Teléfono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
               </>
             )}
             <select value={currentPayOption()} onChange={(e) => applyPayOption(e.target.value as PayOption)} className="input">
@@ -1472,17 +1472,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm">ðŸš‡</span>
+                  <span className="text-sm">🚇</span>
                 </div>
                 <div>
                   <p className="text-[13px] font-semibold text-ink leading-tight">Entrega en metro</p>
-                  <p className="text-[11px] text-muted">Retira tu pedido en la estaciÃ³n y horario que elijas</p>
+                  <p className="text-[11px] text-muted">Retira tu pedido en la estación y horario que elijas</p>
                 </div>
               </div>
               <div className="mt-3 space-y-2">
                 {/* Line selector pills */}
                 <div>
-                  <p className="text-[10px] font-semibold text-muted mb-1">LÃ­nea de metro</p>
+                  <p className="text-[10px] font-semibold text-muted mb-1">Línea de metro</p>
                   <div className="flex flex-wrap gap-1.5">
                     {metroLines.map((l) => {
                       const color = LINE_COLORS[l.line] || '#666';
@@ -1526,7 +1526,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     value={stationSearch}
                     onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }}
                     onFocus={() => { if (stationResults.length > 0) document.getElementById('station-dropdown')?.classList.add('abierta'); }}
-                    placeholder="Buscar estaciÃ³n..."
+                    placeholder="Buscar estación..."
                     className="input pl-9"
                   />
                   {stationResults.length > 0 && !selectedStationId && (
@@ -1550,7 +1550,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                             style={{ background: LINE_COLORS[s.line] || '#666' }}
                           />
                           <span className="font-semibold">{s.name}</span>
-                          <span className="text-[11px] text-muted ml-auto">{s.lineName || s.line} Â· {s.commune}</span>
+                          <span className="text-[11px] text-muted ml-auto">{s.lineName || s.line} · {s.commune}</span>
                         </button>
                       ))}
                     </div>
@@ -1569,7 +1569,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         <span className="w-2 h-2 rounded-full" style={{ background: LINE_COLORS[metroLine] || '#666' }} />
                         {metroLines.find(l => l.line === metroLine)?.lineName || metroLine}
                       </span>
-                      {' Â· '}{selectedStationCommune || 'â€”'}
+                      {' · '}{selectedStationCommune || '—'}
                     </p>
                   </div>
                 )}
@@ -1580,12 +1580,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 {/* Meeting point */}
                 {selectedStationId && (
                   <div className="text-[11px] text-muted flex items-center gap-1">
-                    ðŸ“ Punto de encuentro: <span className="font-semibold">{selectedMeetingPoint}</span>
+                    📍 Punto de encuentro: <span className="font-semibold">{selectedMeetingPoint}</span>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-muted">EnvÃ­o ($)</span>
+                  <span className="text-xs font-semibold text-muted">Envío ($)</span>
                   <input
                     type="number"
                     min={0}
@@ -1601,13 +1601,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           {mode === 'DELIVERY' && (
             <div className="mt-4 rounded-2xl border border-line bg-soft/40 p-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">ðŸ  EnvÃ­o a Domicilio</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted">🏠 Envío a Domicilio</p>
               <div className="mt-3 space-y-2">
                 <input
                   type="text"
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
-                  placeholder="DirecciÃ³n completa (calle, nÃºmero, comuna)"
+                  placeholder="Dirección completa (calle, número, comuna)"
                   className="input"
                 />
                 <input
@@ -1625,7 +1625,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     className="input"
                   />
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted">EnvÃ­o ($)</span>
+                    <span className="text-xs font-semibold text-muted">Envío ($)</span>
                     <input
                       type="number"
                       min={0}
@@ -1692,7 +1692,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     Limpiar
                   </button>
                 </div>
-                <p className="mt-1 text-[10px] text-muted">MÃ¡ximo: {formatPrice(subtotal)}</p>
+                <p className="mt-1 text-[10px] text-muted">Máximo: {formatPrice(subtotal)}</p>
                 </>
               )}
             </div>
@@ -1711,7 +1711,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             )}
             {shippingCost > 0 && (
               <div className="flex justify-between text-muted">
-                <span>EnvÃ­o (metro)</span>
+                <span>Envío (metro)</span>
                 <span>{formatPrice(shippingCost)}</span>
               </div>
             )}
@@ -1726,7 +1726,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             className={`ds-btn-primary mt-2 w-full py-2.5 text-sm uppercase tracking-wide ${showCashPay && cashShort ? 'bg-red-500 text-white' : ''}`}
           >
             {saving
-              ? 'Procesandoâ€¦'
+              ? 'Procesando…'
               : mode === 'METRO'
                 ? paymentReceived
                   ? `Cobrar ${formatPrice(total)} y registrar`
@@ -1734,7 +1734,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 : mode === 'DELIVERY'
                 ? paymentReceived
                   ? `Cobrar ${formatPrice(total)} y registrar`
-                  : 'Registrar venta (envÃ­o a domicilio)'
+                  : 'Registrar venta (envío a domicilio)'
                 : showCashPay
                   ? `Cobrar ${formatPrice(total)}`
                   : 'Cobrar'}
@@ -1801,7 +1801,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     </button>
                   </div>
                 ))}
-                {cart.length === 0 && <p className="py-8 text-center text-sm text-muted">Carrito vacÃ­o.</p>}
+                {cart.length === 0 && <p className="py-8 text-center text-sm text-muted">Carrito vacío.</p>}
               </div>
 
               {cart.length > 0 && (
@@ -1822,8 +1822,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   {holds.map((h, i) => (
                     <div key={h.id} className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3 py-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold">Venta {i + 1} Â· {formatPrice(h.total)}</p>
-                        <p className="truncate text-[11px] text-muted">{h.customerName || 'Sin cliente'} Â· {h.lines.length} items</p>
+                        <p className="text-xs font-bold">Venta {i + 1} · {formatPrice(h.total)}</p>
+                        <p className="truncate text-[11px] text-muted">{h.customerName || 'Sin cliente'} · {h.lines.length} items</p>
                       </div>
                       <button onClick={() => resumeHold(h)} className="rounded-full border border-line bg-paper p-1.5"><Play size={12} /></button>
                       <button onClick={() => deleteHold(h)} className="rounded-full p-1.5 text-red-500"><Trash2 size={12} /></button>
@@ -1837,7 +1837,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 {!(quickSale && mode === 'LOCAL') && (
                   <>
                     <input ref={customerNameRef} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder={quickSale ? 'Nombre del cliente (opcional)' : 'Nombre del cliente'} className="input" />
-                    <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'TelÃ©fono (opcional)' : 'TelÃ©fono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
+                    <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder={quickSale ? 'Teléfono (opcional)' : 'Teléfono (ej: 9 1234 5678)'} inputMode="tel" pattern="[0-9 ]*" maxLength={12} className="input" />
                   </>
                 )}
                 <select value={currentPayOption()} onChange={(e) => applyPayOption(e.target.value as PayOption)} className="input">
@@ -1894,11 +1894,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               {/* Metro / Delivery options (mobile) */}
               {mode === 'METRO' && (
                 <div className="mt-3 rounded-xl border border-line bg-soft/40 p-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">ðŸš‡ Entrega en metro</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">🚇 Entrega en metro</p>
                   <div className="space-y-2">
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                      <input type="text" value={stationSearch} onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }} placeholder="Buscar estaciÃ³n..." className="input pl-9" />
+                      <input type="text" value={stationSearch} onChange={(e) => { setStationSearch(e.target.value); setSelectedStationId(''); setMetroStation(''); setMetroLine(''); }} placeholder="Buscar estación..." className="input pl-9" />
                       {stationResults.length > 0 && !selectedStationId && (
                         <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-paper shadow-lg">
                           {stationResults.slice(0, 10).map((s) => (
@@ -1918,7 +1918,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     )}
                     {renderMetroSchedule()}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted">EnvÃ­o ($)</span>
+                      <span className="text-xs font-semibold text-muted">Envío ($)</span>
                       <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} className="input w-full text-sm" />
                     </div>
                   </div>
@@ -1927,13 +1927,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
               {mode === 'DELIVERY' && (
                 <div className="mt-3 rounded-xl border border-line bg-soft/40 p-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">ðŸ  EnvÃ­o a Domicilio</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted mb-2">🏠 Envío a Domicilio</p>
                   <div className="space-y-2">
-                    <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="DirecciÃ³n completa" className="input" />
+                    <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Dirección completa" className="input" />
                     <input type="date" value={deliveryDay} min={todayISO()} onChange={(e) => setDeliveryDay(e.target.value)} className="input" />
                     <div className="grid grid-cols-2 gap-2">
                       <input type="time" value={deliveryTime} onChange={(e) => { setDeliveryTime(e.target.value); setDeliveryTimeEnd(computeEndTime(e.target.value)); }} className="input" />
-                      <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} placeholder="EnvÃ­o $" className="input text-sm" />
+                      <input type="number" min={0} step={500} value={shippingInput} onChange={(e) => setShippingInput(Math.max(0, Number(e.target.value) || 0))} placeholder="Envío $" className="input text-sm" />
                     </div>
                   </div>
                 </div>
@@ -1981,7 +1981,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   )}
                   {shippingCost > 0 && (
                     <div className="flex justify-between text-sm text-muted">
-                      <span>EnvÃ­o</span>
+                      <span>Envío</span>
                       <span>{formatPrice(shippingCost)}</span>
                     </div>
                   )}
@@ -1994,7 +1994,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                     disabled={saving || cart.length === 0 || (showCashPay && cashShort)}
                     className={`ds-btn-primary mt-3 w-full py-3 text-base uppercase tracking-wide ${showCashPay && cashShort ? 'bg-red-500 text-white' : ''}`}
                   >
-                    {saving ? 'Procesandoâ€¦' : `Cobrar ${formatPrice(total)}`}
+                    {saving ? 'Procesando…' : `Cobrar ${formatPrice(total)}`}
                   </button>
                 </div>
               )}

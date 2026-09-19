@@ -617,7 +617,7 @@ export function Productos({
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
             <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
             <div className="flex items-center gap-1.5">
-              <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Codigo de barras (EAN-13, UPC-A)" className="input flex-1" />
+              <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Código de barras (EAN-13, UPC-A)" className="input flex-1" />
               <ScanBtn type="product" mode="create" />
             </div>
             <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría * (ej: Whey Protein)" className="input" />
@@ -872,7 +872,7 @@ export function Productos({
               <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
               <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
               <div className="flex items-center gap-1.5">
-                <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Codigo de barras" className="input flex-1" />
+                <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Código de barras" className="input flex-1" />
                 <ScanBtn type="product" mode="edit" />
               </div>
               <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />

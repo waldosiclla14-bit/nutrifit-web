@@ -104,7 +104,7 @@ export function PurchaseForm({
           </div>
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Metodo de pago</label>
+              <label className="block text-[10px] font-semibold text-muted uppercase tracking-widest mb-1">Método de pago</label>
           <select
             value={form.paymentMethod}
             onChange={(e) => onFormChange({ paymentMethod: e.target.value })}
