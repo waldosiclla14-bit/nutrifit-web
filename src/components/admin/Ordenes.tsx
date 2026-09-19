@@ -97,21 +97,32 @@ export function Ordenes({ token }: { token: string }) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return orders.filter((o) => {
-      if (statusFilter && o.status !== statusFilter) return false;
-      if (!q) return true;
-      const hay = `${o.orderNumber} ${o.customer?.name || ''} ${o.customer?.phone || ''} ${o.metroStation || ''}`.toLowerCase();
-      return hay.includes(q);
-    });
+    return orders
+      .filter((o) => {
+        if (statusFilter && o.status !== statusFilter) return false;
+        if (!q) return true;
+        const hay = `${o.orderNumber} ${o.customer?.name || ''} ${o.customer?.phone || ''} ${o.metroStation || ''}`.toLowerCase();
+        return hay.includes(q);
+      })
+      // Los que requieren acción (Nuevo) siempre arriba, luego cronológico
+      .sort((a, b) => {
+        const ap = a.status === 'PENDING' ? 0 : 1;
+        const bp = b.status === 'PENDING' ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
   }, [orders, query, statusFilter]);
+
+  // Orden operativo: Nuevo y Preparando primero, Entregado y Cancelado al final
+  const statusOptions = ['PENDING', 'PREPARING', 'CONFIRMED', 'PAID', 'READY', 'RETURNED', 'DELIVERED', 'CANCELLED'].filter(
+    (s) => STATUS_LABEL[s],
+  );
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
     return counts;
   }, [orders]);
-
-  const statusOptions = Object.keys(STATUS_LABEL);
 
   const renderActions = (o: AdminOrder) => (
     <>
@@ -219,23 +230,8 @@ export function Ordenes({ token }: { token: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar por nº de pedido, cliente, teléfono o estación…"
-          className="input max-w-md"
+          className="input max-w-md flex-1"
         />
-        <button
-          onClick={() => setStatusFilter('')}
-          className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${statusFilter === '' ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
-        >
-          Todos
-        </button>
-        {statusOptions.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-            className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition ${statusFilter === s ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
-          >
-            {STATUS_LABEL[s]} · {statusCounts[s] || 0}
-          </button>
-        ))}
         <button
           onClick={() => {
             const header = 'Pedido,Cliente,Fecha,Método,Estado,Subtotal,Descuento,Envío,Total';
@@ -258,10 +254,27 @@ export function Ordenes({ token }: { token: string }) {
             a.click();
             URL.revokeObjectURL(url);
           }}
-          className="rounded-full border border-line bg-paper px-3 py-1.5 text-[11px] font-bold text-muted transition hover:text-ink"
+          className="ds-btn-secondary px-3 py-2 text-[13px]"
         >
           CSV
         </button>
+      </div>
+      <div className="scrollbar-hide mt-2 flex items-center gap-1.5 overflow-x-auto pb-1">
+        <button
+          onClick={() => setStatusFilter('')}
+          className={`ds-chip shrink-0 ${statusFilter === '' ? 'ds-chip-active' : ''}`}
+        >
+          Todos · {orders.length}
+        </button>
+        {statusOptions.map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+            className={`ds-chip shrink-0 ${statusFilter === s ? 'ds-chip-active' : ''}`}
+          >
+            {STATUS_LABEL[s]} · {statusCounts[s] || 0}
+          </button>
+        ))}
       </div>
       <div className="mt-4 hidden overflow-x-auto rounded-xl border border-line bg-card lg:block">
         <Table>
@@ -328,7 +341,7 @@ export function Ordenes({ token }: { token: string }) {
       {/* Cards móvil */}
       <div className="mt-4 space-y-3 lg:hidden">
         {filtered.map((o) => (
-          <div key={o.id} className="rounded-xl border border-line bg-card p-4">
+          <div key={o.id} className={`ds-card p-4 ${o.status === 'PENDING' ? 'ds-card-action-warning' : ''}`}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate font-bold text-foreground">{o.orderNumber}</p>
