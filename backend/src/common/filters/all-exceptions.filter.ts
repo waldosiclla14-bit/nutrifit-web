@@ -20,15 +20,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message = typeof res === 'string' ? res : (res as any)?.message || exception.message;
       if (Array.isArray(message)) message = message.join(', ');
     } else if (exception instanceof Error) {
-      message = exception.message;
       const prisma = exception as any;
       // Log Prisma details internally but NEVER expose to client
+      // (paths like /app/dist/... and query internals must not reach the app)
       if (prisma.code) {
         extra = { prismaCode: prisma.code, meta: prisma.meta };
       }
       this.logger.error(
         `[${request.method} ${request.url}] ${exception.message}\n${JSON.stringify(extra || '')}\n${exception.stack || ''}`,
       );
+      message = 'Error interno del servidor. Intenta nuevamente.';
     } else {
       message = String(exception);
       this.logger.error(`[${request.method} ${request.url}] ${message}`);
