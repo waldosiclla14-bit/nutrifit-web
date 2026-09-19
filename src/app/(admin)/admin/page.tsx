@@ -411,7 +411,7 @@ function Dashboard({
             {loading && <TabSkeleton />}
             {!loading && (
               <Suspense fallback={<TabSkeleton />}>
-                {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} />}
+                {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} onNavigate={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
                 {tab === 'ordenes' && <Ordenes token={token} />}
                 {tab === 'entregas' && <Entregas token={token} />}
                 {tab === 'calendario' && <Calendario token={token} />}

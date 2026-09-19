@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ShoppingBag, TrendingUp, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, Boxes, CalendarDays, ShoppingBag, TrendingUp, Truck, Users, type LucideIcon } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { progressPct, stockLevel } from '@/lib/admin/format';
@@ -10,9 +10,11 @@ import type {
   AdminStats,
   AdminGoals,
   AdminInventoryValue,
+  AdminOrder,
   AdminReport,
   AdminSegments,
 } from '@/types/admin';
+import type { AdminTabKey } from './BottomNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CountUp, HourBars, SalesArea, Spark, TopBars } from './charts';
@@ -115,12 +117,14 @@ export function Resumen({
   inventory,
   token,
   onChanged,
+  onNavigate,
 }: {
   stats: AdminStats | null;
   goals: AdminGoals | null;
   inventory: AdminInventoryValue | null;
   token: string;
   onChanged: () => void;
+  onNavigate: (t: AdminTabKey) => void;
 }) {
   const [showGoals, setShowGoals] = useState(false);
   const [range, setRange] = useState<RangeKey>('30d');
@@ -129,6 +133,8 @@ export function Resumen({
   const [loading, setLoading] = useState(true);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
   const [segments, setSegments] = useState<AdminSegments | null>(null);
+  const [pending, setPending] = useState<AdminOrder[]>([]);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,6 +178,33 @@ export function Resumen({
       alive = false;
     };
   }, [token]);
+
+  const loadPending = useCallback(async () => {
+    try {
+      const res = await apiFetch<any>('/orders?status=PENDING&page=1&limit=5', { token });
+      setPending(res?.data || res || []);
+    } catch {
+      setPending([]);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
+
+  const confirmPending = async (id: string) => {
+    setConfirmingId(id);
+    try {
+      await apiFetch(`/orders/${id}/status`, { method: 'PATCH', token, body: { status: 'CONFIRMED' } });
+      toast.success('Orden confirmada.');
+      await loadPending();
+      onChanged();
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al confirmar.');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
 
   const period = useMemo(() => {
     if (!report || !prevReport) {
@@ -352,18 +385,6 @@ export function Resumen({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2">
-        {RANGES.map(([k, label]) => (
-          <button
-            key={k}
-            onClick={() => setRange(k)}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition ${range === k ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <Card key={c.label} className="relative overflow-hidden">
@@ -389,6 +410,26 @@ export function Resumen({
         ))}
       </div>
 
+      <div className="grid grid-cols-4 gap-2">
+        {(
+          [
+            { key: 'entregas', label: 'Entregas', Icon: Truck },
+            { key: 'productos', label: 'Productos', Icon: Boxes },
+            { key: 'clientes', label: 'Clientes', Icon: Users },
+            { key: 'reportes', label: 'Reportes', Icon: BarChart3 },
+          ] as { key: AdminTabKey; label: string; Icon: LucideIcon }[]
+        ).map(({ key, label, Icon }) => (
+          <button
+            key={key}
+            onClick={() => onNavigate(key)}
+            className="ds-card flex flex-col items-center gap-1.5 p-3 transition active:scale-[0.98]"
+          >
+            <Icon size={20} className="text-[var(--text-secondary)]" />
+            <span className="text-[11px] font-medium">{label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="rounded-3xl border border-accent/40 bg-accent/5 p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted">Ventas del período</p>
@@ -396,6 +437,17 @@ export function Resumen({
             {period.windowLabel}
             {period.prevLabel ? ` · vs ${period.prevLabel}` : ''}
           </span>
+        </div>
+        <div className="scrollbar-hide mt-2 flex items-center gap-1.5 overflow-x-auto pb-1">
+          {RANGES.map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setRange(k)}
+              className={`ds-chip shrink-0 ${range === k ? 'ds-chip-active' : ''}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <p className="font-display text-3xl uppercase tabular-nums">{report ? formatPrice(report.totalSales) : '—'}</p>
@@ -430,6 +482,45 @@ export function Resumen({
           <p className="mt-3 text-sm text-muted">Sin datos del período.</p>
         )}
       </div>
+
+      {pending.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[13px] font-medium">Requieren acción</p>
+            <button onClick={() => onNavigate('ordenes')} className="text-[13px] font-medium text-[var(--accent-text)]">
+              Ver pedidos →
+            </button>
+          </div>
+          {pending.slice(0, 3).map((o) => (
+            <div key={o.id} className="ds-card ds-card-action-warning p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-medium">
+                    {o.orderNumber} · {o.customer?.name || o.customerName || '—'}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-secondary)]">
+                    {o.deliveryType === 'METRO'
+                      ? `Metro ${o.metroLine || ''} ${o.metroStation || ''}`
+                      : 'Retiro tienda'}
+                    {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}
+                    {o.deliveryTime ? ` ${formatTime12(o.deliveryTime)}` : ''}
+                  </p>
+                </div>
+                <p className="shrink-0 text-[14px] font-medium tabular-nums">{formatPrice(o.total)}</p>
+              </div>
+              <div className="mt-3">
+                <button
+                  onClick={() => confirmPending(o.id)}
+                  disabled={confirmingId === o.id}
+                  className="ds-btn-primary w-full py-2 text-[13px] uppercase tracking-wide"
+                >
+                  {confirmingId === o.id ? 'Confirmando…' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {inventory && (
         <div className="rounded-3xl border border-accent/40 bg-accent/5 p-6">
