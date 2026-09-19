@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, UseGuards, Request } from '@nestjs/common';
 import { SuppliersService } from './suppliers.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 
 @Controller('suppliers')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -21,13 +22,15 @@ export class SuppliersController {
 
   @Post()
   @Roles('ADMIN')
-  create(@Body() body: { name: string; contactInfo?: string; paymentTerms?: string }) {
+  async create(@Request() req: any) {
+    const body: { name: string; contactInfo?: string; paymentTerms?: string } = await readJsonBody(req);
     return this.service.create(body);
   }
 
   @Put(':id')
   @Roles('ADMIN')
-  update(@Param('id') id: string, @Body() body: { name?: string; contactInfo?: string; paymentTerms?: string; isActive?: boolean }) {
+  async update(@Param('id') id: string, @Request() req: any) {
+    const body: { name?: string; contactInfo?: string; paymentTerms?: string; isActive?: boolean } = await readJsonBody(req);
     return this.service.update(id, body);
   }
 

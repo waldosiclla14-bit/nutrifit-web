@@ -1,8 +1,9 @@
-import { Controller, Post, Get, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { StockAdjustmentService } from './stock-adjustment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 
 @Controller('stock-adjustments')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -11,8 +12,8 @@ export class StockAdjustmentController {
 
   @Post()
   @Roles('ADMIN')
-  applyBulk(
-    @Body() body: {
+  async applyBulk(@Request() req: any) {
+    const body: {
       adjustments: {
         productId: string;
         variantId?: string;
@@ -20,8 +21,7 @@ export class StockAdjustmentController {
         reason: string;
         notes?: string;
       }[];
-    },
-  ) {
+    } = await readJsonBody(req);
     return this.service.applyBulk(body.adjustments);
   }
 

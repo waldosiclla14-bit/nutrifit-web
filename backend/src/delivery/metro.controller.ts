@@ -1,9 +1,10 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { MetroService } from './metro.service';
+import { readJsonBody } from '../common/decorators/raw-body.decorator';
 
 @Controller('metro-stations')
 export class MetroController {
@@ -32,7 +33,8 @@ export class MetroController {
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  update(@Param('id') id: string, @Body() data: any) {
+  async update(@Param('id') id: string, @Request() req: any) {
+    const data: any = await readJsonBody(req);
     return this.metroService.update(id, data);
   }
 }
