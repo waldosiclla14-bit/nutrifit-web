@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -23,13 +23,27 @@ export class SuppliersService {
   }
 
   async create(data: { name: string; contactInfo?: string; paymentTerms?: string }) {
-    return this.prisma.supplier.create({ data: data as any });
+    try {
+      return await this.prisma.supplier.create({ data: data as any });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new BadRequestException('El RUT ya está registrado en otro proveedor');
+      }
+      throw err;
+    }
   }
 
   async update(id: string, data: { name?: string; contactInfo?: string; paymentTerms?: string; isActive?: boolean }) {
     const supplier = await this.prisma.supplier.findUnique({ where: { id } });
     if (!supplier) throw new NotFoundException('Proveedor no encontrado');
-    return this.prisma.supplier.update({ where: { id }, data: data as any });
+    try {
+      return await this.prisma.supplier.update({ where: { id }, data: data as any });
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new BadRequestException('El RUT ya está registrado en otro proveedor');
+      }
+      throw err;
+    }
   }
 
   async remove(id: string) {
