@@ -5,18 +5,17 @@
  * Without this, `prisma migrate deploy` aborts with P3005
  * ("database schema is not empty") and the container exits status 1.
  *
- * Behavior:
- * - Fresh (empty) DB -> skip; `migrate deploy` creates the schema normally.
- * - DB with migration history -> skip; `migrate deploy` works normally.
- * - Non-empty DB without history -> mark local migrations as applied
- *   (`migrate resolve --applied`), then `migrate deploy` becomes a no-op.
+ * Only the pure settings UPDATE migrations are marked as applied: their
+ * effect is guaranteed separately (seed upsert on every boot).
+ * 20260913_add_purchase_models is deliberately NOT marked — it must RUN
+ * (it is idempotent: IF NOT EXISTS / duplicate_object guards) to create
+ * the columns/tables missing in db-pushed databases (e.g. suppliers.rut).
  *
  * Safe to run on every boot: it only acts when history is missing.
  */
 const { execSync } = require('child_process');
 
 const BASELINE_MIGRATIONS = [
-  '20260913_add_purchase_models',
   '20260918_metro_hours_9_to_22',
   '20260918_metro_hours_10_to_22',
   '20260918_metro_hours_8_to_22',

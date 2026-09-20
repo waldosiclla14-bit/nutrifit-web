@@ -1,26 +1,46 @@
+-- Idempotent version: this migration may run on databases created via `db push`
+-- where some (or all) of these objects already exist. Every statement below
+-- is safe to re-run: existing objects are skipped, missing ones are created.
+
 -- AlterTable: Add new fields to Supplier
-ALTER TABLE "suppliers" ADD COLUMN "rut" TEXT,
-ADD COLUMN "email" TEXT,
-ADD COLUMN "phone" TEXT,
-ADD COLUMN "address" TEXT,
-ADD COLUMN "city" TEXT,
-ADD COLUMN "contactPerson" TEXT,
-ADD COLUMN "notes" TEXT;
+ALTER TABLE "suppliers" ADD COLUMN IF NOT EXISTS "rut" TEXT,
+ADD COLUMN IF NOT EXISTS "email" TEXT,
+ADD COLUMN IF NOT EXISTS "phone" TEXT,
+ADD COLUMN IF NOT EXISTS "address" TEXT,
+ADD COLUMN IF NOT EXISTS "city" TEXT,
+ADD COLUMN IF NOT EXISTS "contactPerson" TEXT,
+ADD COLUMN IF NOT EXISTS "notes" TEXT;
 
 -- CreateEnum: DocumentType
-CREATE TYPE "DocumentType" AS ENUM ('FACTURA', 'BOLETA', 'NOTA_VENTA', 'GUIA_DESPACHO', 'ORDEN_COMPRA', 'OTRO');
+DO $$ BEGIN
+  CREATE TYPE "DocumentType" AS ENUM ('FACTURA', 'BOLETA', 'NOTA_VENTA', 'GUIA_DESPACHO', 'ORDEN_COMPRA', 'OTRO');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum: PurchaseStatus
-CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'PENDING_REVIEW', 'CONFIRMED', 'RECEIVING', 'RECEIVED', 'CANCELLED');
+DO $$ BEGIN
+  CREATE TYPE "PurchaseStatus" AS ENUM ('DRAFT', 'PENDING_REVIEW', 'CONFIRMED', 'RECEIVING', 'RECEIVED', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateEnum: ReceiptStatus
-CREATE TYPE "ReceiptStatus" AS ENUM ('PENDING', 'PARTIAL', 'COMPLETED');
+DO $$ BEGIN
+  CREATE TYPE "ReceiptStatus" AS ENUM ('PENDING', 'PARTIAL', 'COMPLETED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterEnum: Add PURCHASE_RECEIPT to MovementType
-ALTER TYPE "MovementType" ADD VALUE 'PURCHASE_RECEIPT';
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+    WHERE t.typname = 'MovementType' AND e.enumlabel = 'PURCHASE_RECEIPT'
+  ) THEN
+    ALTER TYPE "MovementType" ADD VALUE 'PURCHASE_RECEIPT';
+  END IF;
+END $$;
 
 -- CreateTable: Purchase
-CREATE TABLE "purchases" (
+CREATE TABLE IF NOT EXISTS "purchases" (
     "id" TEXT NOT NULL,
     "purchaseNumber" TEXT NOT NULL,
     "supplierId" TEXT,
@@ -50,18 +70,21 @@ CREATE TABLE "purchases" (
 );
 
 -- CreateIndex: Purchase
-CREATE UNIQUE INDEX "purchases_purchaseNumber_key" ON "purchases"("purchaseNumber");
-CREATE UNIQUE INDEX "purchases_idempotencyKey_key" ON "purchases"("idempotencyKey");
-CREATE INDEX "purchases_status_idx" ON "purchases"("status");
-CREATE INDEX "purchases_supplierId_idx" ON "purchases"("supplierId");
-CREATE INDEX "purchases_createdAt_idx" ON "purchases"("createdAt");
-CREATE INDEX "purchases_status_createdAt_idx" ON "purchases"("status", "createdAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "purchases_purchaseNumber_key" ON "purchases"("purchaseNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "purchases_idempotencyKey_key" ON "purchases"("idempotencyKey");
+CREATE INDEX IF NOT EXISTS "purchases_status_idx" ON "purchases"("status");
+CREATE INDEX IF NOT EXISTS "purchases_supplierId_idx" ON "purchases"("supplierId");
+CREATE INDEX IF NOT EXISTS "purchases_createdAt_idx" ON "purchases"("createdAt");
+CREATE INDEX IF NOT EXISTS "purchases_status_createdAt_idx" ON "purchases"("status", "createdAt");
 
 -- AddForeignKey: Purchase -> Supplier
-ALTER TABLE "purchases" ADD CONSTRAINT "purchases_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "purchases" ADD CONSTRAINT "purchases_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: PurchaseItem
-CREATE TABLE "purchase_items" (
+CREATE TABLE IF NOT EXISTS "purchase_items" (
     "id" TEXT NOT NULL,
     "purchaseId" TEXT NOT NULL,
     "productId" TEXT,
@@ -86,21 +109,30 @@ CREATE TABLE "purchase_items" (
 );
 
 -- CreateIndex: PurchaseItem
-CREATE INDEX "purchase_items_purchaseId_idx" ON "purchase_items"("purchaseId");
-CREATE INDEX "purchase_items_productId_idx" ON "purchase_items"("productId");
-CREATE INDEX "purchase_items_variantId_idx" ON "purchase_items"("variantId");
+CREATE INDEX IF NOT EXISTS "purchase_items_purchaseId_idx" ON "purchase_items"("purchaseId");
+CREATE INDEX IF NOT EXISTS "purchase_items_productId_idx" ON "purchase_items"("productId");
+CREATE INDEX IF NOT EXISTS "purchase_items_variantId_idx" ON "purchase_items"("variantId");
 
 -- AddForeignKey: PurchaseItem -> Purchase
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: PurchaseItem -> Product
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: PurchaseItem -> ProductVariant
-ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: PurchaseDocument
-CREATE TABLE "purchase_documents" (
+CREATE TABLE IF NOT EXISTS "purchase_documents" (
     "id" TEXT NOT NULL,
     "purchaseId" TEXT NOT NULL,
     "documentType" TEXT NOT NULL,
@@ -118,13 +150,16 @@ CREATE TABLE "purchase_documents" (
 );
 
 -- CreateIndex: PurchaseDocument
-CREATE INDEX "purchase_documents_purchaseId_idx" ON "purchase_documents"("purchaseId");
+CREATE INDEX IF NOT EXISTS "purchase_documents_purchaseId_idx" ON "purchase_documents"("purchaseId");
 
 -- AddForeignKey: PurchaseDocument -> Purchase
-ALTER TABLE "purchase_documents" ADD CONSTRAINT "purchase_documents_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "purchase_documents" ADD CONSTRAINT "purchase_documents_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: GoodsReceipt
-CREATE TABLE "goods_receipts" (
+CREATE TABLE IF NOT EXISTS "goods_receipts" (
     "id" TEXT NOT NULL,
     "purchaseId" TEXT NOT NULL,
     "receiptNumber" TEXT NOT NULL,
@@ -139,16 +174,19 @@ CREATE TABLE "goods_receipts" (
 );
 
 -- CreateIndex: GoodsReceipt
-CREATE UNIQUE INDEX "goods_receipts_receiptNumber_key" ON "goods_receipts"("receiptNumber");
-CREATE INDEX "goods_receipts_purchaseId_idx" ON "goods_receipts"("purchaseId");
-CREATE INDEX "goods_receipts_status_idx" ON "goods_receipts"("status");
-CREATE INDEX "goods_receipts_receivedAt_idx" ON "goods_receipts"("receivedAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "goods_receipts_receiptNumber_key" ON "goods_receipts"("receiptNumber");
+CREATE INDEX IF NOT EXISTS "goods_receipts_purchaseId_idx" ON "goods_receipts"("purchaseId");
+CREATE INDEX IF NOT EXISTS "goods_receipts_status_idx" ON "goods_receipts"("status");
+CREATE INDEX IF NOT EXISTS "goods_receipts_receivedAt_idx" ON "goods_receipts"("receivedAt");
 
 -- AddForeignKey: GoodsReceipt -> Purchase
-ALTER TABLE "goods_receipts" ADD CONSTRAINT "goods_receipts_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "goods_receipts" ADD CONSTRAINT "goods_receipts_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: GoodsReceiptItem
-CREATE TABLE "goods_receipt_items" (
+CREATE TABLE IF NOT EXISTS "goods_receipt_items" (
     "id" TEXT NOT NULL,
     "receiptId" TEXT NOT NULL,
     "purchaseItemId" TEXT NOT NULL,
@@ -163,20 +201,29 @@ CREATE TABLE "goods_receipt_items" (
 );
 
 -- CreateIndex: GoodsReceiptItem
-CREATE INDEX "goods_receipt_items_receiptId_idx" ON "goods_receipt_items"("receiptId");
-CREATE INDEX "goods_receipt_items_purchaseItemId_idx" ON "goods_receipt_items"("purchaseItemId");
+CREATE INDEX IF NOT EXISTS "goods_receipt_items_receiptId_idx" ON "goods_receipt_items"("receiptId");
+CREATE INDEX IF NOT EXISTS "goods_receipt_items_purchaseItemId_idx" ON "goods_receipt_items"("purchaseItemId");
 
 -- AddForeignKey: GoodsReceiptItem -> GoodsReceipt
-ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_receiptId_fkey" FOREIGN KEY ("receiptId") REFERENCES "goods_receipts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_receiptId_fkey" FOREIGN KEY ("receiptId") REFERENCES "goods_receipts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: GoodsReceiptItem -> PurchaseItem
-ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_purchaseItemId_fkey" FOREIGN KEY ("purchaseItemId") REFERENCES "purchase_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_purchaseItemId_fkey" FOREIGN KEY ("purchaseItemId") REFERENCES "purchase_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: GoodsReceiptItem -> ProductVariant
-ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "goods_receipt_items" ADD CONSTRAINT "goods_receipt_items_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- CreateTable: ProductCostHistory
-CREATE TABLE "product_cost_history" (
+CREATE TABLE IF NOT EXISTS "product_cost_history" (
     "id" TEXT NOT NULL,
     "productId" TEXT,
     "variantId" TEXT,
@@ -193,24 +240,33 @@ CREATE TABLE "product_cost_history" (
 );
 
 -- CreateIndex: ProductCostHistory
-CREATE INDEX "product_cost_history_productId_idx" ON "product_cost_history"("productId");
-CREATE INDEX "product_cost_history_variantId_idx" ON "product_cost_history"("variantId");
-CREATE INDEX "product_cost_history_purchaseId_idx" ON "product_cost_history"("purchaseId");
-CREATE INDEX "product_cost_history_purchaseDate_idx" ON "product_cost_history"("purchaseDate");
+CREATE INDEX IF NOT EXISTS "product_cost_history_productId_idx" ON "product_cost_history"("productId");
+CREATE INDEX IF NOT EXISTS "product_cost_history_variantId_idx" ON "product_cost_history"("variantId");
+CREATE INDEX IF NOT EXISTS "product_cost_history_purchaseId_idx" ON "product_cost_history"("purchaseId");
+CREATE INDEX IF NOT EXISTS "product_cost_history_purchaseDate_idx" ON "product_cost_history"("purchaseDate");
 
 -- AddForeignKey: ProductCostHistory -> Product
-ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: ProductCostHistory -> ProductVariant
-ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_variantId_fkey" FOREIGN KEY ("variantId") REFERENCES "product_variants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AddForeignKey: ProductCostHistory -> Purchase
-ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "product_cost_history" ADD CONSTRAINT "product_cost_history_purchaseId_fkey" FOREIGN KEY ("purchaseId") REFERENCES "purchases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterTable: InventoryMovement — add purchaseId, receiptId, unitCost
-ALTER TABLE "inventory_movements" ADD COLUMN "purchaseId" TEXT,
-ADD COLUMN "receiptId" TEXT,
-ADD COLUMN "unitCost" INTEGER;
+ALTER TABLE "inventory_movements" ADD COLUMN IF NOT EXISTS "purchaseId" TEXT,
+ADD COLUMN IF NOT EXISTS "receiptId" TEXT,
+ADD COLUMN IF NOT EXISTS "unitCost" INTEGER;
 
 -- CreateIndex: InventoryMovement
-CREATE INDEX "inventory_movements_purchaseId_idx" ON "inventory_movements"("purchaseId");
+CREATE INDEX IF NOT EXISTS "inventory_movements_purchaseId_idx" ON "inventory_movements"("purchaseId");
