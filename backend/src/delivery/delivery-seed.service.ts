@@ -33,6 +33,7 @@ export class DeliverySeedService implements OnModuleInit {
   async onModuleInit() {
     await this.seedStations();
     await this.seedSettings();
+    await this.syncScheduleWindow();
   }
 
   private async seedStations() {
@@ -120,5 +121,30 @@ export class DeliverySeedService implements OnModuleInit {
     }
 
     this.logger.log(`Delivery settings seeded: ${created} created`);
+  }
+
+  /**
+   * Canonical metro delivery window (spec 4.7.1: fixed 30-min blocks 8 AM - 10 PM).
+   * Upserted on every boot so the window is guaranteed even on databases
+   * baselined without running the settings UPDATE migrations.
+   * There is no admin UI for these keys; code owns the values.
+   */
+  private async syncScheduleWindow() {
+    const canonical: Record<string, string> = {
+      delivery_start_time: '08:00',
+      delivery_end_time: '22:00',
+    };
+    for (const [key, value] of Object.entries(canonical)) {
+      try {
+        await this.prisma.deliverySettings.upsert({
+          where: { key },
+          update: { value: value as any },
+          create: { key, value: value as any },
+        });
+      } catch (e: any) {
+        this.logger.warn(`Could not sync setting ${key}: ${e?.message}`);
+      }
+    }
+    this.logger.log('Delivery window synced: 08:00-22:00');
   }
 }
