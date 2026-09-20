@@ -19,14 +19,17 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
   const limitBytes = parseLimit(limit);
   return new Promise((resolve, reject) => {
     let done = false;
+    const timer = setTimeout(() => fail(new BadRequestException('Timeout leyendo body')), 15000);
     const finish = (value: any) => {
       if (done) return;
       done = true;
+      clearTimeout(timer);
       resolve(value);
     };
     const fail = (err: Error) => {
       if (done) return;
       done = true;
+      clearTimeout(timer);
       reject(err);
     };
     const chunks: Buffer[] = [];
@@ -49,11 +52,5 @@ export function readJsonBody(req: Request, limit = '5mb'): Promise<any> {
       }
     });
     req.on('error', () => fail(new BadRequestException('Error leyendo body')));
-    const timer = setTimeout(() => fail(new BadRequestException('Timeout leyendo body')), 15000);
-    const clearTimeoutSafe = () => { try { clearTimeout(timer); } catch {} };
-    const origFinish = finish;
-    (finish as any) = (v: any) => { clearTimeoutSafe(); origFinish(v); };
-    const origFail = fail;
-    (fail as any) = (e: Error) => { clearTimeoutSafe(); origFail(e); };
   });
 }
