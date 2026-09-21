@@ -36,7 +36,6 @@ import {
   PAYMENT_LABELS,
   TIME_SLOTS,
   lineKey,
-  tomorrowISO,
   todayISO,
   marginOf,
 } from '@/components/pos/posTypes';
@@ -209,7 +208,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [selectedMeetingPoint, setSelectedMeetingPoint] = useState('');
   const [stationSearch, setStationSearch] = useState('');
   const [stationResults, setStationResults] = useState<MetroStation[]>([]);
-  const [deliveryDay, setDeliveryDay] = useState(tomorrowISO());
+  const [deliveryDay, setDeliveryDay] = useState(todayISO());
   const [deliveryTime, setDeliveryTime] = useState('11:00');
   const [deliveryTimeEnd, setDeliveryTimeEnd] = useState('11:30');
   const [quickSale, setQuickSale] = useState(false);
@@ -533,7 +532,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setSelectedMeetingPoint('');
     setStationSearch('');
     setStationResults([]);
-    setDeliveryDay(tomorrowISO());
+    setDeliveryDay(todayISO());
     setDeliveryTime('11:00');
     setDeliveryTimeEnd('11:30');
     setShippingInput(1000);
@@ -588,7 +587,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setSelectedStationId(h.selectedStationId || '');
     setSelectedStationCommune(h.selectedStationCommune || '');
     setSelectedMeetingPoint(h.selectedMeetingPoint || '');
-    setDeliveryDay(h.deliveryDay || tomorrowISO());
+    setDeliveryDay(h.deliveryDay || todayISO());
     setDeliveryTime(h.deliveryTime || '11:00');
     setDeliveryTimeEnd(h.deliveryTimeEnd || '11:30');
     setDeliveryAddress(h.deliveryAddress || '');
