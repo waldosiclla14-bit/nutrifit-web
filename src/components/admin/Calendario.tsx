@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, MapPin, Clock, User, Truck, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, User } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
-import { DELIVERY_STATUS_DOT, DELIVERY_STATUS_LABEL } from '@/lib/admin/deliveryStatus';
+import { DELIVERY_STATUS_DOT, DELIVERY_STATUS_LABEL, deliveryNextActions } from '@/lib/admin/deliveryStatus';
 
 type Delivery = {
   id: string;
@@ -266,22 +266,24 @@ export function Calendario({ token }: { token: string }) {
               <p className="text-right font-bold">{formatPrice(selected.order?.total || 0)}</p>
             </div>
 
-            {/* Status actions */}
-            {selected.status !== 'DELIVERED' && selected.status !== 'CANCELLED' && (
+            {/* Status actions — only backend-valid transitions */}
+            {deliveryNextActions(selected.status).length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {(selected.status === 'CREATED' || selected.status === 'CONFIRMATION_PENDING') && (
-                  <button onClick={() => updateStatus(selected.id, 'CONFIRMED')} className="btn-accent text-xs min-h-[36px] px-3">Confirmar</button>
-                )}
-                {selected.status === 'CONFIRMED' && (
-                  <button onClick={() => updateStatus(selected.id, 'IN_ROUTE')} className="btn-accent text-xs min-h-[36px] px-3"><Truck size={12} className="mr-1" />En ruta</button>
-                )}
-                {selected.status === 'IN_ROUTE' && (
-                  <button onClick={() => updateStatus(selected.id, 'ARRIVED')} className="btn-accent text-xs min-h-[36px] px-3">Llegó</button>
-                )}
-                {selected.status === 'ARRIVED' && (
-                  <button onClick={() => updateStatus(selected.id, 'DELIVERED')} className="btn-accent text-xs min-h-[36px] px-3">Entregar</button>
-                )}
-                <button onClick={() => updateStatus(selected.id, 'CANCELLED')} className="rounded-xl border border-red-300 text-red-600 text-xs min-h-[36px] px-3 hover:bg-red-50"><XCircle size={12} className="mr-1" />Cancelar</button>
+                {deliveryNextActions(selected.status).map((a) => (
+                  <button
+                    key={a.to}
+                    onClick={() => updateStatus(selected.id, a.to)}
+                    className={
+                      a.kind === 'primary'
+                        ? 'btn-accent text-xs min-h-[36px] px-3'
+                        : a.kind === 'danger'
+                          ? 'rounded-xl border border-red-300 text-red-600 text-xs min-h-[36px] px-3 hover:bg-red-50'
+                          : 'rounded-xl border border-amber-300 text-amber-700 text-xs min-h-[36px] px-3 hover:bg-amber-50'
+                    }
+                  >
+                    {a.label}
+                  </button>
+                ))}
               </div>
             )}
           </div>

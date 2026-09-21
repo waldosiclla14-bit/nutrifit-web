@@ -16,7 +16,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
-import { DELIVERY_STATUS_LABEL, DELIVERY_STATUS_PILL } from '@/lib/admin/deliveryStatus';
+import { DELIVERY_STATUS_LABEL, DELIVERY_STATUS_PILL, deliveryNextActions } from '@/lib/admin/deliveryStatus';
 import NotificationButton from './NotificationButton';
 
 type Station = { id: string; name: string; line: string; lineName: string; commune: string };
@@ -336,25 +336,6 @@ function DeliveryDetail({
 }) {
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const updateWithNotes = async (status: string) => {
-    setSaving(true);
-    try {
-      const body: any = { status };
-      if (notes.trim()) body.notes = notes.trim();
-      await apiFetch(`/deliveries/${delivery.id}/status`, { method: 'PATCH', token, body });
-      toast.success(`Estado actualizado a ${DELIVERY_STATUS_LABEL[status] || status}`);
-      onUpdated();
-      onClose();
-      setNotes('');
-    } catch (err: any) {
-      toast.error(err?.message || 'Error al actualizar');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const verifyCode = async () => {
     if (code.length !== 4) return;
@@ -401,8 +382,8 @@ function DeliveryDetail({
           {delivery.order?.total != null && <Row label="Total pedido" value={`$${Number(delivery.order.total).toLocaleString()}`} />}
           {delivery.notes && <Row label="Notas" value={delivery.notes} />}
 
-          {/* Code verification */}
-          {(delivery.status === 'ARRIVED' || delivery.status === 'IN_ROUTE') && (
+          {/* Code verification (only valid from ARRIVED) */}
+          {delivery.status === 'ARRIVED' && (
             <div className="mt-4 rounded-xl border border-line bg-soft/40 p-3">
               <p className="text-xs font-bold text-muted">Código del cliente:</p>
               <div className="mt-2 flex gap-2">
@@ -425,40 +406,24 @@ function DeliveryDetail({
             </div>
           )}
 
-          {/* Status actions */}
+          {/* Status actions — only backend-valid transitions */}
           <div className="mt-4 flex flex-wrap gap-2">
-            {delivery.status === 'CONFIRMED' && (
-              <button onClick={() => onUpdateStatus(delivery.id, 'IN_ROUTE')} disabled={!!updating} className="btn-primary px-4 text-xs min-h-[40px]">
-                <Truck size={14} /> En ruta
+            {deliveryNextActions(delivery.status).map((a) => (
+              <button
+                key={a.to}
+                onClick={() => onUpdateStatus(delivery.id, a.to)}
+                disabled={!!updating}
+                className={
+                  a.kind === 'primary'
+                    ? 'btn-primary px-4 text-xs min-h-[40px] disabled:opacity-50'
+                    : a.kind === 'danger'
+                      ? 'rounded-xl border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 min-h-[40px] disabled:opacity-50'
+                      : 'rounded-xl border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 min-h-[40px] disabled:opacity-50'
+                }
+              >
+                {a.label}
               </button>
-            )}
-            {delivery.status === 'IN_ROUTE' && (
-              <button onClick={() => onUpdateStatus(delivery.id, 'ARRIVED')} disabled={!!updating} className="btn-primary px-4 text-xs min-h-[40px]">
-                Llegué
-              </button>
-            )}
-            {['IN_ROUTE', 'ARRIVED', 'CONFIRMED', 'SCHEDULED'].includes(delivery.status) && (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Nota (opcional)"
-                  className="input text-xs min-h-[40px] max-w-[180px]"
-                />
-                <button onClick={() => updateWithNotes('RESCHEDULED')} disabled={saving} className="rounded-xl border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 min-h-[40px]">
-                  Reprogramar
-                </button>
-                <button onClick={() => updateWithNotes('INCIDENT')} disabled={saving} className="rounded-xl border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 min-h-[40px]">
-                  Incidencia
-                </button>
-              </div>
-            )}
-            {['CONFIRMED', 'SCHEDULED'].includes(delivery.status) && (
-              <button onClick={() => onUpdateStatus(delivery.id, 'CANCELLED')} disabled={!!updating} className="rounded-xl border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 min-h-[40px]">
-                <XCircle size={14} /> Cancelar
-              </button>
-            )}
+            ))}
             <NotificationButton
               delivery={{
                 deliveryId: delivery.id,

@@ -56,3 +56,79 @@ export const DELIVERY_STATUS_DOT: Record<string, string> = {
   NOT_DELIVERED: 'bg-red-300',
   INCIDENT: 'bg-red-500',
 };
+
+export type DeliveryActionKind = 'primary' | 'danger' | 'warn';
+
+export type DeliveryAction = {
+  to: string;
+  label: string;
+  kind: DeliveryActionKind;
+};
+
+const CANCEL_ACTION: DeliveryAction = { to: 'CANCELLED', label: 'Cancelar', kind: 'danger' };
+
+// Single-PATCH valid next states, mirroring the backend state machine
+// (DeliveryService.updateStatus validTransitions). Using anything else
+// returns 400 "No se puede cambiar de X a Y".
+export function deliveryNextActions(status: string): DeliveryAction[] {
+  switch (status) {
+    case 'CREATED':
+      return [
+        { to: 'PAYMENT_CONFIRMED', label: 'Pago confirmado', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'PAYMENT_CONFIRMED':
+      return [
+        { to: 'PREPARING', label: 'Preparar', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'PREPARING':
+      return [
+        { to: 'READY', label: 'Listo', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'READY':
+      return [
+        { to: 'SCHEDULED', label: 'Programar', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'SCHEDULED':
+      return [
+        { to: 'CONFIRMATION_PENDING', label: 'Pedir confirmación', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'CONFIRMATION_PENDING':
+      return [
+        { to: 'CONFIRMED', label: 'Confirmar', kind: 'primary' },
+        { to: 'CUSTOMER_UNAVAILABLE', label: 'Cliente ausente', kind: 'warn' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'CONFIRMED':
+      return [
+        { to: 'IN_ROUTE', label: 'En ruta', kind: 'primary' },
+        { ...CANCEL_ACTION },
+      ];
+    case 'IN_ROUTE':
+      return [
+        { to: 'ARRIVED', label: 'Llegó', kind: 'primary' },
+        { to: 'CUSTOMER_UNAVAILABLE', label: 'Cliente ausente', kind: 'warn' },
+        { to: 'INCIDENT', label: 'Incidencia', kind: 'danger' },
+      ];
+    case 'ARRIVED':
+      return [
+        { to: 'DELIVERED', label: 'Entregar', kind: 'primary' },
+        { to: 'CUSTOMER_UNAVAILABLE', label: 'Cliente ausente', kind: 'warn' },
+        { to: 'NOT_DELIVERED', label: 'No entregado', kind: 'warn' },
+        { to: 'INCIDENT', label: 'Incidencia', kind: 'danger' },
+      ];
+    case 'RESCHEDULED':
+      return [{ to: 'SCHEDULED', label: 'Programar', kind: 'primary' }];
+    case 'CUSTOMER_UNAVAILABLE':
+    case 'NOT_DELIVERED':
+    case 'INCIDENT':
+      // Reprogramar con nueva fecha/hora requiere formulario dedicado
+      return [{ ...CANCEL_ACTION }];
+    default:
+      return [];
+  }
+}
