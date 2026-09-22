@@ -63,6 +63,35 @@ describe('OrdersService', () => {
     service = module.get<OrdersService>(OrdersService);
   });
 
+  describe('findAll date filters', () => {
+    it('filters delivered+paid by updated day (cierre de hoy)', async () => {
+      prisma.order.findMany.mockResolvedValue([{ id: 'o1' }]);
+      prisma.order.count.mockResolvedValue(1);
+      const res: any = await service.findAll({
+        status: 'DELIVERED',
+        paymentStatus: 'CONFIRMED',
+        updatedFrom: '2026-09-22',
+        updatedTo: '2026-09-22',
+        page: '1',
+        limit: '50',
+      });
+      expect(prisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'DELIVERED',
+            paymentStatus: 'CONFIRMED',
+            updatedAt: expect.objectContaining({ gte: expect.any(Date), lte: expect.any(Date) }),
+          }),
+        }),
+      );
+      expect(res).toEqual({ data: [{ id: 'o1' }], total: 1, page: 1, limit: 50 });
+    });
+
+    it('rejects invalid updatedFrom', async () => {
+      await expect(service.findAll({ updatedFrom: 'no-fecha' })).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('validateOrderPayload (private, tested via create)', () => {
     it('rejects empty items array', async () => {
       await expect(

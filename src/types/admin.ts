@@ -34,6 +34,7 @@ export type AdminOrder = {
   couponId?: string | null;
   itemCount?: number;
   createdAt: string;
+  updatedAt?: string;
   customerName?: string;
   customerPhone?: string;
   customer?: { id: string; name: string; phone: string } | null;
@@ -155,7 +156,7 @@ export type AdminReport = {
   orders: {
     orderNumber: string;
     customerName: string;
-    createdAt: string;
+  createdAt: string;
     paymentMethod: string | null;
     subtotal: number;
     discount: number;

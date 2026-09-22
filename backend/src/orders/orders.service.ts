@@ -203,6 +203,21 @@ export class OrdersService implements OnModuleInit {
         where.createdAt.lte = d;
       }
     }
+    // Updated-range filter (e.g. "delivered today": status=DELIVERED +
+    // paymentStatus=CONFIRMED + updatedFrom/updatedTo=today).
+    if (query.updatedFrom || query.updatedTo) {
+      where.updatedAt = {};
+      if (query.updatedFrom) {
+        const d = new Date(query.updatedFrom);
+        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
+        where.updatedAt.gte = d;
+      }
+      if (query.updatedTo) {
+        const d = new Date(query.updatedTo);
+        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
+        where.updatedAt.lte = d;
+      }
+    }
 
     const include = {
       customer: { select: { id: true, name: true, phone: true } },

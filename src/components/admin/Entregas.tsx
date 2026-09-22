@@ -17,7 +17,14 @@ import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import { DELIVERY_STATUS_LABEL, DELIVERY_STATUS_PILL, deliveryNextActions } from '@/lib/admin/deliveryStatus';
+import type { AdminOrder } from '@/types/admin';
 import NotificationButton from './NotificationButton';
+
+const CHANNEL_LABEL: Record<string, string> = {
+  METRO: '🚇 Metro',
+  ENVIO_DOMICILIO: '🏠 Domicilio',
+  RETIRO_TIENDA: '🏪 Local',
+};
 
 type Station = { id: string; name: string; line: string; lineName: string; commune: string };
 
@@ -75,6 +82,7 @@ export function Entregas({ token }: { token: string }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [closedToday, setClosedToday] = useState<AdminOrder[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -93,6 +101,20 @@ export function Entregas({ token }: { token: string }) {
 
       setDeliveries(delRes?.data || delRes || []);
       if (statsRes) setStats(statsRes);
+
+      // Cierre de hoy: ventas pagadas y entregadas el mismo día (todos los canales)
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const closedQ = new URLSearchParams({
+        status: 'DELIVERED',
+        paymentStatus: 'CONFIRMED',
+        updatedFrom: today,
+        updatedTo: today,
+        page: '1',
+        limit: '100',
+      });
+      const closedRes = await apiFetch<any>(`/orders?${closedQ}`, { token }).catch(() => null);
+      setClosedToday(closedRes?.data || []);
     } catch (err: any) {
       if (handleAuthError(err, () => { localStorage.removeItem('admin_token'); window.location.href = '/login'; })) return;
       toast.error('Error al cargar entregas');
@@ -128,6 +150,15 @@ export function Entregas({ token }: { token: string }) {
     );
   });
 
+  const closedTotal = closedToday.reduce((s, o) => s + (o.total || 0), 0);
+  const closedByChannel = closedToday.reduce<Record<string, { count: number; total: number }>>((acc, o) => {
+    const k = o.deliveryType || 'RETIRO_TIENDA';
+    if (!acc[k]) acc[k] = { count: 0, total: 0 };
+    acc[k].count += 1;
+    acc[k].total += o.total || 0;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-4">
       {/* Stats cards */}
@@ -139,6 +170,53 @@ export function Entregas({ token }: { token: string }) {
           <StatCard icon={<Clock size={16} />} label="Pendientes" value={(stats.byStatus['CONFIRMED'] || 0) + (stats.byStatus['IN_ROUTE'] || 0)} color="text-amber-600" />
         </div>
       )}
+
+      {/* Cierre de hoy: pagadas + entregadas */}
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">
+            Cierre de hoy · pagadas y entregadas
+          </p>
+          <p className="font-display text-2xl tabular-nums text-emerald-700">
+            {formatPrice(closedTotal)}
+          </p>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+          <span className="chip">{closedToday.length} ventas</span>
+          {Object.entries(closedByChannel).map(([k, v]) => (
+            <span key={k} className="chip">
+              {CHANNEL_LABEL[k] || k} · {v.count} · {formatPrice(v.total)}
+            </span>
+          ))}
+          {closedToday.length === 0 && (
+            <span className="text-xs text-muted">Aún no hay ventas cerradas hoy.</span>
+          )}
+        </div>
+        {closedToday.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {closedToday.slice(0, 8).map((o) => (
+              <div key={o.id} className="flex items-center justify-between gap-2 rounded-xl border border-line/60 bg-paper px-3 py-1.5 text-xs">
+                <div className="min-w-0">
+                  <span className="font-bold">{o.orderNumber}</span>
+                  <span className="text-muted"> · {o.customer?.name || o.customerName || '—'}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-muted">{CHANNEL_LABEL[o.deliveryType || ''] || ''}</span>
+                  <span className="text-muted tabular-nums">
+                    {o.updatedAt
+                      ? new Date(o.updatedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                      : ''}
+                  </span>
+                  <span className="font-bold tabular-nums">{formatPrice(o.total)}</span>
+                </div>
+              </div>
+            ))}
+            {closedToday.length > 8 && (
+              <p className="text-[11px] text-muted">+{closedToday.length - 8} más hoy.</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
