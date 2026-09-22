@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type ChatHistoryItem = { role: 'user' | 'model'; text: string };
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-3.5-flash';
 
 function fmtCLP(n: number): string {
   try {
@@ -127,7 +127,7 @@ ${snapshot}`;
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents,
-            generationConfig: { temperature: 0.3, maxOutputTokens: 1024 },
+            generationConfig: { maxOutputTokens: 1024 },
           }),
           signal: controller.signal,
         },
