@@ -91,7 +91,8 @@ export type CartItem = {
   discount: number;
   image: string;
   quantity: number;
-  variant?: string;
+  variant?: string;       // ← añadido: para distinguish Vainilla/Frutilla/Chocolate etc.
+  variantId?: number;     // ← añadido: ID real de la variante (UUID o numérico)
   isGift?: boolean;
 };
 
@@ -120,6 +121,8 @@ export type Banner = {
 
 export type OrderItem = {
   productId: number;
+  variantId?: number;     // ← añadido
+  variantName?: string;   // ← añadido
   name: string;
   price: number;
   quantity: number;

@@ -147,7 +147,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
           i.key === existing.key ? { ...i, quantity: i.quantity + item.quantity } : i,
         );
       }
-      return [...prev, { ...item, key: `p${item.productId}-${item.variant ?? 'base'}-${Date.now()}` }];
+      // --- NUEVO: si no trae variantId, buscarlo en el catálogo local ---
+      const catalog = PRODUCTS.find((p) => p.id === item.productId);
+      let vid: number | undefined;
+      let vname: string | undefined;
+      if (catalog?.variants?.length) {
+        const v = catalog.variants!.find((v: { name: string }) => v.name === (item.variant ?? catalog.variants![0]?.name));
+        if (v) {
+          // Usamos el índice como ID provisorio (los reales vienen del backend)
+          vid = catalog.variants!.indexOf(v);
+          vname = v.name;
+        }
+      }
+      const newItem: CartItem = {
+        key: `p${item.productId}-${item.variant ?? 'base'}-${Date.now()}`,
+        productId: item.productId,
+        slug: item.slug,
+        name: item.name,
+        price: item.price,
+        oldPrice: item.oldPrice,
+        discount: item.discount,
+        image: item.image,
+        quantity: item.quantity,
+        variant: item.variant ?? vname,
+        variantId: vid,           // ← ahora viene poblado o undefined
+        isGift: item.isGift ?? false,
+      };
+      return [...prev, newItem];
     });
     setIsOpen(true);
     trackEvent('AddToCart', {
@@ -159,7 +185,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const addBundle = useCallback(
+const addBundle = useCallback(
     (bundle: Bundle, variants?: Record<number, string>) => {
       const resolved = bundle.items
         .map((it) => {
@@ -172,6 +198,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             item: it,
             product: p,
             variant,
+            // --- NUEVO: obtener variantId del catálogo ---
+            variantId: p.variants!.indexOf(variant!) ?? 0,
             regularLine: p.price * it.quantity,
           };
         })
@@ -207,6 +235,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             image: entry.variant?.image ?? entry.product.image,
             quantity,
             variant: entry.variant?.name,
+            variantId: entry.variantId,   // ← ahora sí viene poblado
           },
           { merge: false },
         );

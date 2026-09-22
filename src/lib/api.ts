@@ -249,13 +249,13 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       paymentMethod: 'EFECTIVO',
       items: order.items.map((i) => ({
         productName: i.name,
-        variantName: '',
-        sku: String(i.productId),
+        variantName: i.variantName ?? '',
+        sku: String(i.variantId ?? i.productId),
         unitPrice: i.price,
         quantity: i.quantity,
         total: i.price * i.quantity,
-        productId: null,
-        variantId: null,
+        productId: i.variantId ?? i.productId,
+        variantId: i.variantId ?? null,
       })),
     },
   });
