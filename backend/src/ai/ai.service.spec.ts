@@ -55,6 +55,16 @@ describe('AiService', () => {
     await expect(service.chat('hola', [])).rejects.toThrow(ServiceUnavailableException);
   });
 
+  it('falls back to the next model on 503/404', async () => {
+    (global as any).fetch
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'overloaded' })
+      .mockResolvedValueOnce(geminiReply('respuesta 3.5'));
+    const res = await service.chat('hola?', []);
+    expect(res.reply).toContain('respuesta 3.5');
+    expect((global as any).fetch).toHaveBeenCalledTimes(2);
+    expect((global as any).fetch.mock.calls[1][0]).toContain('gemini-3.5-flash');
+  });
+
   it('caps history sent to the model', async () => {
     (global as any).fetch.mockResolvedValue(geminiReply('ok'));
     const history = Array.from({ length: 20 }, (_, i) => ({ role: 'user' as const, text: `m${i}` }));

@@ -3,7 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type ChatHistoryItem = { role: 'user' | 'model'; text: string };
 
-const MODEL = 'gemini-3.6-flash';
+// Ordered fallback chain: Google retires Flash models aggressively
+// (2.0 shut down Jun 2026, 2.5 scheduled Oct 2026). If the primary 404s
+// (retired) or 503s (overloaded), try the next one instead of failing.
+const MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 
 function fmtCLP(n: number): string {
   try {
@@ -120,27 +123,45 @@ ${snapshot}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 55000);
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents,
-            generationConfig: { maxOutputTokens: 1024 },
-          }),
-          signal: controller.signal,
-        },
-      );
-      if (!response.ok) {
-        const err = await response.text().catch(() => '');
-        this.logger.error(`Gemini chat error ${response.status}: ${err.slice(0, 200)}`);
-        throw new ServiceUnavailableException('La IA no respondió, intenta de nuevo.');
+      let lastStatus = 0;
+      let lastErr = '';
+      for (const model of MODELS) {
+        let response: Response;
+        try {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents,
+                generationConfig: { maxOutputTokens: 1024 },
+              }),
+              signal: controller.signal,
+            },
+          );
+        } catch (e: any) {
+          if (e?.name === 'AbortError') throw e;
+          lastErr = e?.message || 'fetch failed';
+          continue;
+        }
+        if (response.ok) {
+          const data = await response.json();
+          const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (!text.trim()) {
+            lastErr = 'empty response';
+            continue;
+          }
+          if (model !== MODELS[0]) this.logger.log(`Gemini chat answered via fallback model ${model}`);
+          return { reply: text.trim().slice(0, 2000) };
+        }
+        lastStatus = response.status;
+        lastErr = await response.text().catch(() => '');
+        this.logger.error(`Gemini chat error ${response.status} (${model}): ${lastErr.slice(0, 200)}`);
+        // Only retry on retriable statuses; auth/quota errors won't heal on fallback... except
+        // a retired model 404s while the next one works, so always continue the chain.
       }
-      const data = await response.json();
-      const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if (!text.trim()) throw new ServiceUnavailableException('La IA no respondió, intenta de nuevo.');
-      return { reply: text.trim().slice(0, 2000) };
+      throw new ServiceUnavailableException(`La IA no respondió (${lastStatus || 'sin conexión'}), intenta de nuevo.`);
     } catch (e: any) {
       if (e instanceof ServiceUnavailableException) throw e;
       this.logger.error(`Gemini chat failed: ${e?.message}`);

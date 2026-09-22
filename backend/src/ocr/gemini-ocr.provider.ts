@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DocumentOCRProvider, DocumentInput, OCRResult } from './ocr.types';
 
+// Ordered fallback chain (see AiService): retired/overloaded models 404/503.
+const OCR_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+
 @Injectable()
 export class GeminiOCRProvider implements DocumentOCRProvider {
   readonly name = 'gemini';
@@ -45,35 +48,49 @@ Reglas:
 
     this.logger.log(`Calling Gemini API for ${input.fileName} (${input.mimeType})`);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inlineData: { mimeType: input.mimeType, data: base64Clean } },
-            ],
-          }],
-          generationConfig: { maxOutputTokens: 2048 },
-        }),
-      },
-    );
+    const requestBody = {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: input.mimeType, data: base64Clean } },
+        ],
+      }],
+      generationConfig: { maxOutputTokens: 2048 },
+    };
 
-    if (!response.ok) {
-      const err = await response.text();
-      this.logger.error(`Gemini API error ${response.status}: ${err}`);
-      throw new Error(`Gemini API error ${response.status}: ${err.slice(0, 200)}`);
+    let lastErr = '';
+    for (const model of OCR_MODELS) {
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          },
+        );
+      } catch (e: any) {
+        lastErr = e?.message || 'fetch failed';
+        continue;
+      }
+      if (response.ok) {
+        const data = await response.json();
+        const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        this.logger.log(`Gemini response (${model}): ${text.slice(0, 200)}`);
+        if (!text) {
+          lastErr = 'empty response';
+          continue;
+        }
+        return this.parseOcrText(text);
+      }
+      lastErr = await response.text().catch(() => '');
+      this.logger.error(`Gemini OCR error ${response.status} (${model}): ${lastErr.slice(0, 200)}`);
     }
+    throw new Error(`Gemini OCR failed: ${lastErr.slice(0, 200)}`);
+  }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    this.logger.log(`Gemini response: ${text.slice(0, 200)}`);
-
-    if (!text) throw new Error('Gemini returned empty response');
-
+  private parseOcrText(text: string): OCRResult {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error(`No JSON found in Gemini response: ${text.slice(0, 200)}`);
 
