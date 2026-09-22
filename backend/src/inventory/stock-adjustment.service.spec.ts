@@ -41,7 +41,7 @@ describe('StockAdjustmentService', () => {
 
     it('rejects all-zero adjustments', async () => {
       await expect(service.applyBulk([
-        { productId: 'p1', quantityDelta: 0, reason: 'CORRECTION' },
+        { productId: 'p1', quantityDelta: 0, reason: 'CONTEO_FISICO' },
       ])).rejects.toThrow(BadRequestException);
     });
 
@@ -61,7 +61,7 @@ describe('StockAdjustmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       const result = await service.applyBulk([
-        { productId: 'p1', variantId: 'v1', quantityDelta: 10, reason: 'RESTOCK', notes: 'Received shipment' },
+        { productId: 'p1', variantId: 'v1', quantityDelta: 10, reason: 'INGRESO_COMPRA', notes: 'Received shipment' },
       ]);
 
       expect(result).toHaveLength(1);
@@ -90,7 +90,7 @@ describe('StockAdjustmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       const result = await service.applyBulk([
-        { productId: 'p1', variantId: 'v1', quantityDelta: -3, reason: 'DAMAGED', notes: 'Broken items' },
+        { productId: 'p1', variantId: 'v1', quantityDelta: -3, reason: 'MERMA', notes: 'Broken items' },
       ]);
 
       expect(result[0].newStock).toBe(7);
@@ -117,7 +117,7 @@ describe('StockAdjustmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       const result = await service.applyBulk([
-        { productId: 'p1', variantId: 'v1', quantityDelta: -10, reason: 'DAMAGED' },
+        { productId: 'p1', variantId: 'v1', quantityDelta: -10, reason: 'MERMA' },
       ]);
 
       expect(result[0].newStock).toBe(0);
@@ -135,7 +135,7 @@ describe('StockAdjustmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       const result = await service.applyBulk([
-        { productId: 'p1', variantId: 'nonexistent', quantityDelta: 5, reason: 'RESTOCK' },
+        { productId: 'p1', variantId: 'nonexistent', quantityDelta: 5, reason: 'INGRESO_COMPRA' },
       ]);
 
       expect(result).toHaveLength(0);
@@ -155,13 +155,26 @@ describe('StockAdjustmentService', () => {
       prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
 
       const result = await service.applyBulk([
-        { productId: 'p1', quantityDelta: 10, reason: 'RESTOCK' },
+        { productId: 'p1', quantityDelta: 10, reason: 'INGRESO_COMPRA' },
       ]);
 
       expect(result).toHaveLength(1);
       expect(mockTx.productVariant.findFirst).toHaveBeenCalledWith({
         where: { productId: 'p1' },
+        orderBy: { id: 'asc' },
       });
+    });
+
+    it('rejects invalid reason and delta', async () => {
+      await expect(
+        service.applyBulk([{ productId: 'p1', quantityDelta: 5, reason: 'INVENTADO' }]),
+      ).rejects.toThrow('motivo inválido');
+      await expect(
+        service.applyBulk([{ productId: 'p1', quantityDelta: -9999999999, reason: 'MERMA' }]),
+      ).rejects.toThrow('quantityDelta inválido');
+      await expect(
+        service.applyBulk([{ productId: '', quantityDelta: 5, reason: 'MERMA' }]),
+      ).rejects.toThrow('productId requerido');
     });
   });
 

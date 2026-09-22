@@ -614,7 +614,10 @@ export class OrdersService implements OnModuleInit {
 
     writes.push(
       this.prisma.order.update({
-        where: { id },
+        // Guard atómico anti doble-pago: si otro request confirmó el pago
+        // entre el pre-check y este write, no hay match → P2025 → todo el
+        // tx hace rollback (stock y contadores intactos).
+        where: markPaid ? { id, paymentStatus: { not: PaymentStatus.CONFIRMED } } : { id },
         data: {
           status,
           ...(markPaid ? { paymentStatus: PaymentStatus.CONFIRMED, paidAt: new Date() } : {}),
@@ -642,7 +645,18 @@ export class OrdersService implements OnModuleInit {
       );
     }
 
-    const results = await this.prisma.$transaction(writes);
+    const results = await this.prisma.$transaction(writes).catch(async (err: any) => {
+      if (markPaid && err?.code === 'P2025') {
+        const current = await this.prisma.order
+          .findUnique({ where: { id }, select: { paymentStatus: true } })
+          .catch(() => null);
+        if (!current) throw new NotFoundException('Orden no encontrada');
+        if (current.paymentStatus === PaymentStatus.CONFIRMED) {
+          throw new BadRequestException('El pago ya fue confirmado por otra operación');
+        }
+      }
+      throw err;
+    });
     const updated = results[results.length - 1];
 
     // Post-transaction safety + inventory movement logging
@@ -718,7 +732,9 @@ export class OrdersService implements OnModuleInit {
 
     writes.push(
       this.prisma.order.update({
-        where: { id },
+        // Mismo guard atómico que updateStatus: el perdedor de la carrera
+        // recibe P2025 y revierte stock + contadores + auditoría.
+        where: { id, paymentStatus: { not: PaymentStatus.CONFIRMED }, status: { not: OrderStatus.CANCELLED } },
         data: {
           paymentStatus: PaymentStatus.CONFIRMED,
           paymentMethod,
@@ -756,7 +772,21 @@ export class OrdersService implements OnModuleInit {
       }),
     );
 
-    await this.prisma.$transaction(writes);
+    await this.prisma.$transaction(writes).catch(async (err: any) => {
+      if (err?.code === 'P2025') {
+        const current = await this.prisma.order
+          .findUnique({ where: { id }, select: { paymentStatus: true, status: true } })
+          .catch(() => null);
+        if (!current) throw new NotFoundException('Orden no encontrada');
+        if (current.paymentStatus === PaymentStatus.CONFIRMED) {
+          throw new BadRequestException('El pago ya fue confirmado por otra operación');
+        }
+        if (current.status === OrderStatus.CANCELLED) {
+          throw new BadRequestException('No se puede confirmar el pago de una orden cancelada');
+        }
+      }
+      throw err;
+    });
 
     // Create cash movement if order is linked to a cash register
     if (existing.cashRegisterId && paymentMethod === 'EFECTIVO') {

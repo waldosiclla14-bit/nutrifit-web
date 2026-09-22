@@ -474,4 +474,59 @@ describe('OrdersService', () => {
       expect(result.deleted).toBe(true);
     });
   });
+
+  describe('concurrent payment guard', () => {
+    const pendingOrder: any = {
+      id: 'o1',
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
+      items: [],
+      total: 10000,
+      orderNumber: 'NF-000001',
+      customerId: 'c1',
+      customerName: 'Test',
+    };
+    const p2025 = Object.assign(new Error('No record found'), { code: 'P2025' });
+
+    it('updateStatus→PAID loser gets friendly error and conditional write', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(pendingOrder)
+        .mockResolvedValueOnce({ paymentStatus: 'CONFIRMED' });
+      prisma.$transaction.mockRejectedValueOnce(p2025);
+
+      await expect(service.updateStatus('o1', 'PAID')).rejects.toThrow(
+        'El pago ya fue confirmado por otra operación',
+      );
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'o1',
+            paymentStatus: { not: 'CONFIRMED' },
+          }),
+        }),
+      );
+    });
+
+    it('confirmPayment loser gets friendly error', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(pendingOrder)
+        .mockResolvedValueOnce({ paymentStatus: 'CONFIRMED', status: 'PAID' });
+      prisma.$transaction.mockRejectedValueOnce(p2025);
+
+      await expect(
+        service.confirmPayment('o1', { paymentMethod: 'EFECTIVO' }),
+      ).rejects.toThrow('El pago ya fue confirmado por otra operación');
+    });
+
+    it('confirmPayment rethrows original error when order is gone', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(pendingOrder)
+        .mockResolvedValueOnce(null);
+      prisma.$transaction.mockRejectedValueOnce(p2025);
+
+      await expect(
+        service.confirmPayment('o1', { paymentMethod: 'EFECTIVO' }),
+      ).rejects.toThrow('Orden no encontrada');
+    });
+  });
 });

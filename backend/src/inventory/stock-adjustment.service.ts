@@ -17,6 +17,19 @@ export class StockAdjustmentService {
   }[]) {
     if (!adjustments.length) throw new BadRequestException('No hay ajustes para aplicar');
 
+    const validReasons = ['INGRESO_COMPRA', 'CONTEO_FISICO', 'MERMA', 'DEVOLUCION'];
+    for (const [idx, adj] of adjustments.entries()) {
+      if (typeof adj.productId !== 'string' || !adj.productId) {
+        throw new BadRequestException(`Ajuste ${idx + 1}: productId requerido`);
+      }
+      if (!Number.isSafeInteger(adj.quantityDelta) || adj.quantityDelta === 0 || Math.abs(adj.quantityDelta) > 1000000) {
+        throw new BadRequestException(`Ajuste ${idx + 1}: quantityDelta inválido`);
+      }
+      if (!validReasons.includes(adj.reason)) {
+        throw new BadRequestException(`Ajuste ${idx + 1}: motivo inválido`);
+      }
+    }
+
     const valid = adjustments.filter((a) => a.quantityDelta !== 0);
     if (!valid.length) throw new BadRequestException('Todas las cantidades son 0');
 
@@ -24,10 +37,10 @@ export class StockAdjustmentService {
       const results = [];
 
       for (const adj of valid) {
-        // Get current stock
+        // Get current stock (deterministic: first variant by id when only productId given)
         const variant = adj.variantId
           ? await tx.productVariant.findUnique({ where: { id: adj.variantId } })
-          : await tx.productVariant.findFirst({ where: { productId: adj.productId } });
+          : await tx.productVariant.findFirst({ where: { productId: adj.productId }, orderBy: { id: 'asc' } });
 
         if (!variant) {
           this.logger.warn(`Variant not found for product ${adj.productId}, skipping`);
