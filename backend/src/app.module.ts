@@ -18,6 +18,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { PingModule } from './ping/ping.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { PurchasesModule } from './purchases/purchases.module';
+import { AiModule } from './ai/ai.module';
 import { TodoistModule } from './todoist/todoist.module';
 import { InventoryModule } from './inventory/inventory.module';
 
@@ -43,6 +44,7 @@ import { InventoryModule } from './inventory/inventory.module';
     DeliveryModule,
     InventoryModule,
     PurchasesModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

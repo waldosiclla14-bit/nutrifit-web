@@ -13,6 +13,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
 
 interface Message {
@@ -47,9 +48,9 @@ export function IaCopilot({ token }: { token: string }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const q = textToSend || input.trim();
-    if (!q) return;
+    if (!q || loading) return;
 
     const userMsg: Message = {
       id: `u-${Date.now()}`,
@@ -58,43 +59,46 @@ export function IaCopilot({ token }: { token: string }) {
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setInput('');
     setLoading(true);
 
-    setTimeout(() => {
-      let replyText = '';
-      let suggestions: string[] = [];
-
-      const queryLower = q.toLowerCase();
-      if (queryLower.includes('stock') || queryLower.includes('critico') || queryLower.includes('agotad')) {
-        replyText =
-          '📦 **Análisis de Stock Crítico:**\n\n1. **Creatina Eco Naturales 300g**: Stock actual: 4 unidades. Promedio de venta: 1.4 unid/día. **Cobertura: 2.8 días**.\n2. **Whey FullEnergic Chocolate 1kg**: Stock actual: 6 unidades. Promedio: 1.1 unid/día. **Cobertura: 5.4 días**.\n\n💡 **Recomendación**: Generar Orden de Compra preventiva con proveedor Eco Naturales para evitar quiebre de stock en Metro.';
-        suggestions = ['Crear borrador de compra para Creatina', 'Ver reporte de rotación'];
-      } else if (queryLower.includes('margen') || queryLower.includes('precio') || queryLower.includes('rentabilidad')) {
-        replyText =
-          '📊 **Auditoría de Márgenes y Costos:**\n\n- **Proteína Whey 1kg**: Costo anterior $10.000 → Costo actual $12.000 (+20%).\n- Margen bruto actual: 56.3% (Margen objetivo: 65%).\n\n⚠️ **Impacto**: La utilidad por unidad cayó en $2.000 CLP. Se recomienda ajustar precio de $27.500 a $29.900 para restablecer el margen.';
-        suggestions = ['Calcular impacto de descuento', 'Revisar historial de costos'];
-      } else if (queryLower.includes('cliente') || queryLower.includes('inactiv') || queryLower.includes('recompra')) {
-        replyText =
-          '👥 **Diagnóstico CRM & Recompra:**\n\n- Hay **48 clientes** que compraron Whey Protein hace más de 40 días y no han recomprado.\n- Tasa promedio de agotamiento de tarro 1kg: 33 días.\n\n🎯 **Acción recomendada**: Enviar mensaje WhatsApp de reposición con cupón **CREATINA10** para reactivar el 25% de la cohorte.';
-        suggestions = ['Ver lista de clientes inactivos', 'Crear campaña de reactivación'];
-      } else {
-        replyText = `He procesado tu consulta sobre "${q}". Para consultar datos específicos del inventario, ventas o compras, puedo ejecutar herramientas analíticas directas de la base de datos de NutriFit.`;
-        suggestions = ['¿Qué productos tienen stock crítico hoy?', '¿Cuáles productos tienen margen bajo el objetivo?'];
-      }
-
+    try {
+      const res = await apiFetch<{ reply: string }>('/ai/chat', {
+        method: 'POST',
+        token,
+        body: {
+          message: q,
+          history: nextMessages.slice(-10).map((m) => ({
+            role: m.sender === 'USER' ? 'user' : 'model',
+            text: m.text,
+          })),
+        },
+      });
       const iaMsg: Message = {
         id: `ia-${Date.now()}`,
         sender: 'IA',
-        text: replyText,
+        text: res?.reply || 'Sin respuesta, intenta de nuevo.',
         timestamp: new Date().toISOString(),
-        suggestions,
+        suggestions: [
+          '¿Qué productos tienen stock crítico hoy?',
+          '¿Cuáles productos tienen margen bajo el objetivo?',
+        ],
       };
-
       setMessages((prev) => [...prev, iaMsg]);
+    } catch (err: any) {
+      toast.error(err?.message || 'La IA no respondió.');
+      const iaMsg: Message = {
+        id: `ia-${Date.now()}`,
+        sender: 'IA',
+        text: 'No pude responder ahora. Revisa que la IA esté configurada e intenta de nuevo.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, iaMsg]);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
