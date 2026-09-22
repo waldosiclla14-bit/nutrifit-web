@@ -58,6 +58,7 @@ const LINE_COLORS: Record<string, string> = {
 
 const STORE_NAME = 'NutriFit';
 const HOLDS_KEY = 'nutrifit:pos:holds';
+const ACTIVE_CART_KEY = 'nutrifit:pos:activecart';
 
 // spec §4.7.1 — fixed 30-min delivery windows, 8 AM – 10 PM
 const TIME_PERIODS = {
@@ -315,6 +316,77 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       setHolds([]);
     }
   }, []);
+
+  // Active cart survives PWA reloads/updates mid-sale (same day only).
+  const restoredCartRef = useRef(false);
+  useEffect(() => {
+    if (restoredCartRef.current) return;
+    restoredCartRef.current = true;
+    try {
+      const raw = window.localStorage.getItem(ACTIVE_CART_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      if (!s || !Array.isArray(s.cart) || s.cart.length === 0) return;
+      if (s.savedDay !== todayISO()) {
+        window.localStorage.removeItem(ACTIVE_CART_KEY);
+        return;
+      }
+      setCart(s.cart);
+      if (typeof s.customerName === 'string') setCustomerName(s.customerName);
+      if (typeof s.customerPhone === 'string') setCustomerPhone(s.customerPhone);
+      if (s.payment) setPayment(s.payment);
+      if (s.mode) setMode(s.mode);
+      if (s.deliveryDay) setDeliveryDay(s.deliveryDay);
+      if (s.deliveryTime) setDeliveryTime(s.deliveryTime);
+      if (s.deliveryTimeEnd) setDeliveryTimeEnd(s.deliveryTimeEnd);
+      if (s.metroStation !== undefined) setMetroStation(s.metroStation);
+      if (s.metroLine !== undefined) setMetroLine(s.metroLine);
+      if (s.selectedStationId !== undefined) setSelectedStationId(s.selectedStationId);
+      if (s.shippingInput !== undefined) setShippingInput(s.shippingInput);
+      if (typeof s.paymentReceived === 'boolean') setPaymentReceived(s.paymentReceived);
+      if (typeof s.discountPct === 'number') setDiscountPct(s.discountPct);
+      if (s.discountMode) setDiscountMode(s.discountMode);
+      if (typeof s.discountAmountInput === 'number') setDiscountAmountInput(s.discountAmountInput);
+      if (typeof s.deliveryAddress === 'string') setDeliveryAddress(s.deliveryAddress);
+      toast.info('Venta en curso recuperada.');
+    } catch {
+      // corrupted snapshot: ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (cart.length === 0) {
+        window.localStorage.removeItem(ACTIVE_CART_KEY);
+        return;
+      }
+      window.localStorage.setItem(
+        ACTIVE_CART_KEY,
+        JSON.stringify({
+          savedDay: todayISO(),
+          cart,
+          customerName,
+          customerPhone,
+          payment,
+          mode,
+          deliveryDay,
+          deliveryTime,
+          deliveryTimeEnd,
+          metroStation,
+          metroLine,
+          selectedStationId,
+          shippingInput,
+          paymentReceived,
+          discountPct,
+          discountMode,
+          discountAmountInput,
+          deliveryAddress,
+        }),
+      );
+    } catch {
+      // storage unavailable
+    }
+  }, [cart, customerName, customerPhone, payment, mode, deliveryDay, deliveryTime, deliveryTimeEnd, metroStation, metroLine, selectedStationId, shippingInput, paymentReceived, discountPct, discountMode, discountAmountInput, deliveryAddress]);
 
   const persistHolds = useCallback((next: Hold[]) => {
     setHolds(next);
@@ -977,7 +1049,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   return (
-    <div className="container-px py-3 sm:py-4 lg:py-5" style={{ touchAction: 'manipulation' }}>
+    <div className="container-px py-3 sm:py-4 lg:py-5 pt-safe" style={{ touchAction: 'manipulation' }}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="section-label text-[10px] sm:text-xs">PUNTO DE VENTA</p>

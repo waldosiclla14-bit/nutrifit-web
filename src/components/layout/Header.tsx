@@ -24,7 +24,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-sport-border bg-sport-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-sport-border bg-sport-bg/90 backdrop-blur pt-safe">
         <div className="container-px flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label="NutriFit – Inicio">
             <span className="font-display text-xl uppercase tracking-wide">
