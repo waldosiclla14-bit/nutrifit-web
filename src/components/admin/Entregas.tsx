@@ -167,7 +167,7 @@ export function Entregas({ token }: { token: string }) {
           <StatCard icon={<CalendarDays size={16} />} label="Hoy" value={stats.today} color="text-accent" />
           <StatCard icon={<Truck size={16} />} label="Semana" value={stats.week} color="text-blue-600" />
           <StatCard icon={<CheckCircle size={16} />} label="Entregados" value={stats.byStatus['DELIVERED'] || 0} color="text-green-600" />
-          <StatCard icon={<Clock size={16} />} label="Pendientes" value={(stats.byStatus['CONFIRMED'] || 0) + (stats.byStatus['IN_ROUTE'] || 0)} color="text-amber-600" />
+          <StatCard icon={<Clock size={16} />} label="Pendientes" value={Object.entries(stats.byStatus || {}).reduce((s, [k, v]) => (k === 'DELIVERED' || k === 'CANCELLED' ? s : s + (v || 0)), 0)} color="text-amber-600" />
         </div>
       )}
 

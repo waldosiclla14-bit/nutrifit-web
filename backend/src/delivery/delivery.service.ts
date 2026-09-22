@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
+import { rangeBound, chileDayRange, startOfChileDay, todayChileISO } from '../common/date-range';
 
 @Injectable()
 export class DeliveryService {
@@ -35,8 +36,8 @@ export class DeliveryService {
     }
     if (query.dateFrom || query.dateTo) {
       where.deliveryDate = {};
-      if (query.dateFrom) where.deliveryDate.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.deliveryDate.lte = new Date(query.dateTo);
+      if (query.dateFrom) where.deliveryDate.gte = rangeBound(query.dateFrom, false);
+      if (query.dateTo) where.deliveryDate.lte = rangeBound(query.dateTo, true);
     }
     if (query.line || query.commune) {
       where.station = {};
@@ -55,13 +56,13 @@ export class DeliveryService {
 
     if (page > 0) {
       const [data, total] = await Promise.all([
-        this.prisma.delivery.findMany({ where, include, orderBy: { deliveryDate: 'asc' }, skip: (page - 1) * limit, take: limit }),
+        this.prisma.delivery.findMany({ where, include, orderBy: [{ deliveryDate: 'asc' }, { windowStart: 'asc' }], skip: (page - 1) * limit, take: limit }),
         this.prisma.delivery.count({ where }),
       ]);
       return { data, total, page, limit };
     }
 
-    return this.prisma.delivery.findMany({ where, include, orderBy: { deliveryDate: 'asc' } });
+    return this.prisma.delivery.findMany({ where, include, orderBy: [{ deliveryDate: 'asc' }, { windowStart: 'asc' }] });
   }
 
   async findOne(id: string) {
@@ -482,15 +483,18 @@ export class DeliveryService {
   }
 
   async getStats(query: { dateFrom?: string; dateTo?: string } = {}) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const weekStart = new Date(today);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    // Anchor "today" on the America/Santiago calendar, not server UTC.
+    const { gte: today, lt: tomorrow } = chileDayRange(todayChileISO());
+    const mondayISO = (() => {
+      const parts = todayChileISO().split('-').map(Number);
+      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
+      const dow = (d.getUTCDay() + 6) % 7; // Monday = 0
+      d.setUTCDate(d.getUTCDate() - dow);
+      const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      return iso;
+    })();
+    const { gte: weekStart } = chileDayRange(mondayISO);
+    const monthStart = startOfChileDay(todayChileISO().slice(0, 7) + '-01');
 
     const [todayDeliveries, weekDeliveries, monthDeliveries, statusCounts, stationCounts] =
       await Promise.all([

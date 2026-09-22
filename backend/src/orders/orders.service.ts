@@ -3,6 +3,7 @@ import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, Deliv
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { rangeBound } from '../common/date-range';
 
 @Injectable()
 export class OrdersService implements OnModuleInit {
@@ -193,14 +194,10 @@ export class OrdersService implements OnModuleInit {
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
       if (query.dateFrom) {
-        const d = new Date(query.dateFrom);
-        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
-        where.createdAt.gte = d;
+        where.createdAt.gte = rangeBound(query.dateFrom, false);
       }
       if (query.dateTo) {
-        const d = new Date(query.dateTo);
-        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
-        where.createdAt.lte = d;
+        where.createdAt.lte = rangeBound(query.dateTo, true);
       }
     }
     // Updated-range filter (e.g. "delivered today": status=DELIVERED +
@@ -208,14 +205,10 @@ export class OrdersService implements OnModuleInit {
     if (query.updatedFrom || query.updatedTo) {
       where.updatedAt = {};
       if (query.updatedFrom) {
-        const d = new Date(query.updatedFrom);
-        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
-        where.updatedAt.gte = d;
+        where.updatedAt.gte = rangeBound(query.updatedFrom, false);
       }
       if (query.updatedTo) {
-        const d = new Date(query.updatedTo);
-        if (Number.isNaN(d.getTime())) throw new BadRequestException('Fecha inválida');
-        where.updatedAt.lte = d;
+        where.updatedAt.lte = rangeBound(query.updatedTo, true);
       }
     }
 
@@ -1133,10 +1126,8 @@ export class OrdersService implements OnModuleInit {
   }
 
   async getReports(query: any = {}) {
-    const to = query.to ? new Date(query.to) : new Date();
-    to.setHours(23, 59, 59, 999);
-    const from = query.from ? new Date(query.from) : new Date(to);
-    from.setHours(0, 0, 0, 0);
+    const to = query.to ? rangeBound(query.to, true) : new Date();
+    const from = query.from ? rangeBound(query.from, false) : new Date(to);
     if (!query.from) from.setMonth(from.getMonth() - 1);
 
     const where: any = {
