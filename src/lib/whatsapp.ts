@@ -150,7 +150,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push('');
   lines.push('*ENTREGA AGENDADA:*');
   lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
-  lines.push(`⏰ ${formatTime12(m.deliveryTime)}${m.deliveryTimeEnd ? ` – ${formatTime12(m.deliveryTimeEnd)}` : ''}`);
+  lines.push(`⏰ ${formatTime12(m.deliveryTime)}`);
   lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
   if (m.meetingPoint) {
     lines.push(`📍 Punto de encuentro: *${m.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);

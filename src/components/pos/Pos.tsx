@@ -935,7 +935,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         delLines.push('');
         delLines.push('*ENVÍO A DOMICILIO:*');
         delLines.push(`📅 ${deliveryDay}`);
-        delLines.push(`⏰ ${formatTime12(deliveryTime)}${deliveryTimeEnd ? ` – ${formatTime12(deliveryTimeEnd)}` : ''}`);
+        delLines.push(`⏰ ${formatTime12(deliveryTime)}`);
         delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
         delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');

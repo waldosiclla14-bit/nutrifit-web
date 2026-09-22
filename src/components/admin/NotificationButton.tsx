@@ -61,7 +61,7 @@ export function buildDeliveryStatusMessage(status: string, data: DeliveryData): 
   lines.push(`*Estado:* ${label}`);
 
   if (data.deliveryDate) lines.push(`📅 ${formatDate(data.deliveryDate)}`);
-  if (data.windowStart && data.windowEnd) lines.push(`⏰ ${formatTime12(data.windowStart)} - ${formatTime12(data.windowEnd)}`);
+  if (data.windowStart) lines.push(`⏰ ${formatTime12(data.windowStart)}`);
   if (data.stationName) lines.push(`🚇 Metro ${data.stationName} · ${data.lineName || ''}`);
   if (data.meetingPoint) lines.push(`📍 ${data.meetingPoint}`);
   if (data.commune) lines.push(`🏘️ ${data.commune}`);
