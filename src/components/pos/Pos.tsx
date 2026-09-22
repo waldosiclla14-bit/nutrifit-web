@@ -228,6 +228,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [saleMsg, setSaleMsg] = useState<string | null>(null);
   const [salePhone, setSalePhone] = useState('');
   const [copied, setCopied] = useState(false);
@@ -578,7 +579,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   const cashRequired = mode === 'LOCAL' || paymentReceived;
   const showCashPay = cashRequired && payment === 'EFECTIVO' && total > 0;
-  const cashShort = cashRequired && payment === 'EFECTIVO' && total > 0 && pago > 0 && pago < total;
+  const cashShort = cashRequired && payment === 'EFECTIVO' && total > 0 && pago < total;
 
   useEffect(() => {
     if (payment !== 'EFECTIVO' || !cashRequired) return;
@@ -729,10 +730,14 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   };
 
   const checkout = async () => {
-    if (saving || cart.length === 0) return;
+    if (savingRef.current || saving || cart.length === 0) return;
     const stockIssue = insufficientStock();
     if (stockIssue) {
       toast.error(`Stock insuficiente: ${stockIssue.name} (disponible: ${stockIssue.avail})`);
+      return;
+    }
+    if (showCashPay && pago < total) {
+      toast.error(`Faltan ${formatPrice(total - pago)} para completar el pago en efectivo.`);
       return;
     }
     if (!customerName.trim() || !customerPhone.trim()) {
@@ -770,6 +775,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    savingRef.current = true;
     setSaving(true);
     try {
       const customer = await apiFetch<{ id: string }>('/customers', {
@@ -948,6 +954,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       if (handleAuthError(err, onLogout)) return;
       toast.error(err?.message || 'Error al cobrar. Verifica la conexion y vuelve a intentar.');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };

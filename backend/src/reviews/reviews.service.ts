@@ -45,7 +45,8 @@ export class ReviewsService {
         name,
         rating,
         text,
-        verified: !!body.verified,
+        // Never trust client-provided verified flag (fake "verified purchase" badges)
+        verified: false,
       },
     });
   }

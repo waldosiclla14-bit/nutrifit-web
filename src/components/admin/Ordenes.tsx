@@ -394,17 +394,21 @@ export function Ordenes({ token }: { token: string }) {
           onClose={() => setPaymentOrder(null)}
           onSave={async (method) => {
             const confirmed = paymentOrder.paymentStatus !== 'CONFIRMED';
-            await act(
-              () =>
-                apiFetch(`/orders/${paymentOrder.id}/${confirmed ? 'payment' : 'payment-method'}`, {
-                  method: 'PATCH',
-                  token,
-                  body: { paymentMethod: method },
-                }),
-              paymentOrder.id,
-              confirmed ? 'Pago confirmado.' : 'Método de pago actualizado.',
-            );
-            setPaymentOrder(null);
+            setBusyId(paymentOrder.id);
+            try {
+              await apiFetch(`/orders/${paymentOrder.id}/${confirmed ? 'payment' : 'payment-method'}`, {
+                method: 'PATCH',
+                token,
+                body: { paymentMethod: method },
+              });
+              toast.success(confirmed ? 'Pago confirmado.' : 'Método de pago actualizado.');
+              await reloadAll();
+              setPaymentOrder(null);
+            } catch (err: any) {
+              toast.error(err?.message || 'Error al guardar el pago. Intenta de nuevo.');
+            } finally {
+              setBusyId(null);
+            }
           }}
         />
       )}
