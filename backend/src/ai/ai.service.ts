@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 export type ChatHistoryItem = { role: 'user' | 'model'; text: string };
 
-const MODEL = 'gemini-3.5-flash';
+const MODEL = 'gemini-3.6-flash';
 
 function fmtCLP(n: number): string {
   try {
