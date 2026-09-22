@@ -8,6 +8,9 @@ import { TodoistService } from '../todoist/todoist.service';
 @Injectable()
 export class DeliveryService {
   private readonly logger = new Logger(DeliveryService.name);
+  // Anti fuerza-bruta del código de 4 dígitos (9000 combos): máximo
+  // 8 intentos por entrega cada 10 minutos. En memoria como el login.
+  private readonly codeAttempts = new Map<string, { count: number; resetAt: number }>();
 
   constructor(
     private prisma: PrismaService,
@@ -448,12 +451,32 @@ export class DeliveryService {
   }
 
   async verifyCode(id: string, code: string) {
+    const clean = String(code || '').replace(/\D/g, '').slice(0, 4);
+    if (clean.length !== 4) {
+      throw new BadRequestException('Código inválido');
+    }
+    const now = Date.now();
+    const entry = this.codeAttempts.get(id);
+    if (entry && entry.resetAt > now) {
+      entry.count += 1;
+      if (entry.count > 8) {
+        throw new BadRequestException('Demasiados intentos. Espera 10 minutos.');
+      }
+    } else {
+      this.codeAttempts.set(id, { count: 1, resetAt: now + 10 * 60 * 1000 });
+      if (this.codeAttempts.size > 5000) {
+        const first = this.codeAttempts.keys().next();
+        if (!first.done) this.codeAttempts.delete(first.value);
+      }
+    }
+
     const delivery = await this.prisma.delivery.findUnique({ where: { id } });
     if (!delivery) throw new NotFoundException('Entrega no encontrada');
 
-    if (delivery.deliveryCode !== code) {
+    if (delivery.deliveryCode !== clean) {
       throw new BadRequestException('Código de entrega incorrecto');
     }
+    this.codeAttempts.delete(id);
 
     return this.updateStatus(id, DeliveryStatus.DELIVERED);
   }

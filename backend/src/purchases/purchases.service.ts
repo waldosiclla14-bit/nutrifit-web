@@ -111,6 +111,24 @@ export class PurchasesService implements OnModuleInit {
     if (!data.items || data.items.length === 0) {
       throw new BadRequestException('Debe incluir al menos un producto');
     }
+    if (data.items.length > 500) {
+      throw new BadRequestException('Máximo 500 ítems por compra');
+    }
+    data.items.forEach((item: any, idx: number) => {
+      if (!item || typeof item.productName !== 'string' || !item.productName.trim()) {
+        throw new BadRequestException(`Ítem ${idx + 1}: nombre de producto requerido`);
+      }
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 100000) {
+        throw new BadRequestException(`Ítem ${idx + 1}: cantidad inválida`);
+      }
+      for (const [field, val] of [['unitCost', item.unitCost], ['discount', item.discount ?? 0], ['tax', item.tax ?? 0]] as const) {
+        const n = Number(val);
+        if (!Number.isFinite(n) || n < 0 || n > 100000000) {
+          throw new BadRequestException(`Ítem ${idx + 1}: ${field} inválido`);
+        }
+      }
+    });
 
     const purchaseNumber = await this.generatePurchaseNumber();
 

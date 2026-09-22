@@ -221,6 +221,19 @@ describe('DeliveryService', () => {
 
       await expect(service.verifyCode('del-1', '9999')).rejects.toThrow(BadRequestException);
     });
+
+    it('should block after 8 failed attempts', async () => {
+      prismaMock.delivery.findUnique.mockResolvedValue({ ...mockDelivery, deliveryCode: '5832' });
+
+      for (let i = 0; i < 8; i++) {
+        await expect(service.verifyCode('del-block', '0000')).rejects.toThrow('Código de entrega incorrecto');
+      }
+      await expect(service.verifyCode('del-block', '0000')).rejects.toThrow('Demasiados intentos');
+    });
+
+    it('should reject malformed codes without counting them as full attempts', async () => {
+      await expect(service.verifyCode('del-1', '12')).rejects.toThrow('Código inválido');
+    });
   });
 
   describe('getSlots', () => {

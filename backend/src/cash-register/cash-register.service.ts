@@ -20,13 +20,17 @@ export class CashRegisterService {
   }
 
   async open(data: { openedById: string; initialAmount: number }) {
+    const initialAmount = Math.round(Number(data.initialAmount) || 0);
+    if (!Number.isSafeInteger(initialAmount) || initialAmount < 0) {
+      throw new BadRequestException('Monto inicial inválido');
+    }
     const existing = await this.getCurrent();
     if (existing) throw new BadRequestException('Ya existe una caja abierta');
 
     return this.prisma.cashRegister.create({
       data: {
         openedById: data.openedById,
-        initialAmount: data.initialAmount,
+        initialAmount,
         isOpen: true,
       },
       include: { movements: true },
@@ -34,6 +38,10 @@ export class CashRegisterService {
   }
 
   async close(id: string, data: { finalAmount: number; closedById: string }) {
+    const finalAmount = Math.round(Number(data.finalAmount) || 0);
+    if (!Number.isSafeInteger(finalAmount) || finalAmount < 0) {
+      throw new BadRequestException('Monto contado inválido');
+    }
     const register = await this.prisma.cashRegister.findUnique({
       where: { id },
       include: { movements: true },
@@ -54,9 +62,9 @@ export class CashRegisterService {
       where: { id },
       data: {
         closedAt: new Date(),
-        finalAmount: data.finalAmount,
+        finalAmount,
         expectedAmount,
-        difference: data.finalAmount - expectedAmount,
+        difference: finalAmount - expectedAmount,
         isOpen: false,
       },
     });
@@ -70,8 +78,18 @@ export class CashRegisterService {
     orderId?: string;
     createdById: string;
   }) {
+    if (data.type !== 'INCOME' && data.type !== 'EXPENSE') {
+      throw new BadRequestException('Tipo de movimiento inválido');
+    }
+    const amount = Math.round(Number(data.amount) || 0);
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      throw new BadRequestException('Monto inválido');
+    }
+    const register = await this.prisma.cashRegister.findUnique({ where: { id: data.registerId } });
+    if (!register) throw new BadRequestException('Caja no encontrada');
+    if (!register.isOpen) throw new BadRequestException('La caja está cerrada');
     return this.prisma.cashMovement.create({
-      data,
+      data: { ...data, amount },
       include: { register: true },
     });
   }

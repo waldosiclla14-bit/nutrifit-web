@@ -81,22 +81,22 @@ export class CouponsService {
     const normalizedCode = this.normalizeCode(code);
     const normalizedPhone = this.normalizePhone(phone);
 
-    if (!normalizedCode) {
-      throw new BadRequestException('Código de cupón inválido');
-    }
-    if (!normalizedPhone) {
-      throw new BadRequestException('El cupón requiere un teléfono válido');
+    if (!normalizedCode || !normalizedPhone) {
+      throw new BadRequestException('Cupón inválido');
     }
 
+    // Mensaje único genérico a propósito: mensajes distintos por estado
+    // (no existe / usado / vencido / otro teléfono) permiten enumerar
+    // teléfonos con cupón válido mediante fuerza bruta.
     const coupon = await tx.coupon.findUnique({ where: { code: normalizedCode } });
-    if (!coupon) throw new NotFoundException('Cupón no encontrado');
-    if (!coupon.isActive) throw new BadRequestException('Cupón inactivo');
-    if (coupon.usedAt) throw new BadRequestException('Este cupón ya fue usado');
-    if (coupon.expiresAt && coupon.expiresAt.getTime() < Date.now()) {
-      throw new BadRequestException('Cupón vencido');
-    }
-    if (this.normalizePhone(coupon.customerPhone) !== normalizedPhone) {
-      throw new BadRequestException('Este cupón pertenece a otro teléfono');
+    if (
+      !coupon ||
+      !coupon.isActive ||
+      coupon.usedAt ||
+      (coupon.expiresAt && coupon.expiresAt.getTime() < Date.now()) ||
+      this.normalizePhone(coupon.customerPhone) !== normalizedPhone
+    ) {
+      throw new BadRequestException('Cupón inválido o no disponible');
     }
     return coupon;
   }
