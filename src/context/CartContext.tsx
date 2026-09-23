@@ -133,45 +133,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: Omit<CartItem, 'key'>, opts?: { merge?: boolean }) => {
     setItems((prev) => {
+      // Normalizar variante ANTES de buscar duplicado: si no trae variantId,
+      // se resuelve del catálogo local (índice como ID provisorio; los reales
+      // vienen del backend). Así dos agregados del mismo producto+variante
+      // siempre matchean y se fusionan en una sola línea.
+      const catalog = PRODUCTS.find((p) => p.id === item.productId);
+      let vid: number | undefined = (item as CartItem).variantId;
+      let vname: string | undefined = item.variant;
+      if (vid === undefined && catalog?.variants?.length) {
+        const v = catalog.variants!.find((v: { name: string }) => v.name === (item.variant ?? catalog.variants![0]?.name));
+        if (v) {
+          vid = catalog.variants!.indexOf(v);
+          vname = v.name;
+        }
+      }
+      const normalized: Omit<CartItem, 'key'> = {
+        ...item,
+        variant: vname,
+        variantId: vid,
+        isGift: item.isGift ?? false,
+      };
       const existing =
         opts?.merge === false
           ? undefined
           : prev.find(
               (i) =>
-                i.productId === item.productId &&
-                (i.variant ?? '') === (item.variant ?? '') &&
-                i.isGift === item.isGift,
+                i.productId === normalized.productId &&
+                (i.variant ?? '') === (normalized.variant ?? '') &&
+                i.isGift === normalized.isGift,
             );
       if (existing) {
         return prev.map((i) =>
           i.key === existing.key ? { ...i, quantity: i.quantity + item.quantity } : i,
         );
       }
-      // --- NUEVO: si no trae variantId, buscarlo en el catálogo local ---
-      const catalog = PRODUCTS.find((p) => p.id === item.productId);
-      let vid: number | undefined;
-      let vname: string | undefined;
-      if (catalog?.variants?.length) {
-        const v = catalog.variants!.find((v: { name: string }) => v.name === (item.variant ?? catalog.variants![0]?.name));
-        if (v) {
-          // Usamos el índice como ID provisorio (los reales vienen del backend)
-          vid = catalog.variants!.indexOf(v);
-          vname = v.name;
-        }
-      }
       const newItem: CartItem = {
-        key: `p${item.productId}-${item.variant ?? 'base'}-${Date.now()}`,
-        productId: item.productId,
-        slug: item.slug,
-        name: item.name,
-        price: item.price,
-        oldPrice: item.oldPrice,
-        discount: item.discount,
-        image: item.image,
-        quantity: item.quantity,
-        variant: item.variant ?? vname,
-        variantId: vid,           // ← ahora viene poblado o undefined
-        isGift: item.isGift ?? false,
+        ...normalized,
+        key: `p${normalized.productId}-${normalized.variant ?? 'base'}-${Date.now()}`,
       };
       return [...prev, newItem];
     });
