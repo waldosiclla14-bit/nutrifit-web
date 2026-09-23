@@ -99,8 +99,14 @@ export class DeliveryService {
     notes?: string;
     assignedTo?: string;
   }) {
-    const existing = await this.prisma.delivery.findUnique({ where: { orderId: data.orderId } });
-    if (existing) throw new BadRequestException('Ya existe una entrega para este pedido');
+    // Idempotente: el backend auto-crea el delivery al crear la orden METRO y el
+    // POS lo crea manual justo después — gana el primero, el otro reutiliza.
+    // (Antes lanzaba 400 y el vendedor veía "error al agendar" aunque existía.)
+    const existing = await this.prisma.delivery.findUnique({
+      where: { orderId: data.orderId },
+      include: { station: true, order: true },
+    });
+    if (existing) return existing;
 
     if (data.deliveryType === 'METRO' && data.stationId) {
       const station = await this.prisma.metroStation.findUnique({ where: { id: data.stationId } });

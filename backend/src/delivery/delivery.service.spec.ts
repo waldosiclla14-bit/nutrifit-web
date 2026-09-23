@@ -115,12 +115,13 @@ describe('DeliveryService', () => {
       expect(prismaMock.delivery.create).toHaveBeenCalled();
     });
 
-    it('should reject duplicate delivery for same order', async () => {
+    it('should return existing delivery instead of rejecting duplicate (idempotent)', async () => {
       prismaMock.delivery.findUnique.mockResolvedValue(mockDelivery);
 
-      await expect(
-        service.create({ orderId: 'ord-1', customerId: 'cust-1', deliveryType: DeliveryType.METRO }),
-      ).rejects.toThrow(BadRequestException);
+      const result = await service.create({ orderId: 'ord-1', customerId: 'cust-1', deliveryType: DeliveryType.METRO });
+
+      expect(result.id).toBe('del-1');
+      expect(prismaMock.delivery.create).not.toHaveBeenCalled();
     });
 
     it('should reject inactive station', async () => {

@@ -529,4 +529,106 @@ describe('OrdersService', () => {
       ).rejects.toThrow('Orden no encontrada');
     });
   });
+
+  describe('scheduled orders (agendados)', () => {
+    const basePayload = (extra: any = {}) => ({
+      items: [{ productId: 'p1', variantId: 'v1', productName: 'Whey', variantName: '2kg', sku: 'W-2K', unitPrice: 30000, quantity: 1, total: 30000 }],
+      customerId: 'c1',
+      customerName: 'Test User',
+      customerPhone: '1234567890',
+      deliveryType: 'METRO',
+      paymentMethod: 'EFECTIVO',
+      subtotal: 30000,
+      total: 30000,
+      ...extra,
+    });
+    const mockVariantOk = () => {
+      prisma.productVariant.findMany
+        .mockResolvedValueOnce([
+          {
+            id: 'v1',
+            variantName: '2kg',
+            physicalStock: 10,
+            reservedStock: 0,
+            price: 30000,
+            costPrice: 20000,
+            product: { id: 'p1', name: 'Whey', basePrice: 30000, costPrice: 20000 },
+          },
+        ])
+        .mockResolvedValueOnce([
+          { id: 'v1', reservedStock: 1, physicalStock: 10, variantName: '2kg' },
+        ]);
+    };
+    const mockCreateInfra = () => {
+      prisma.$queryRaw.mockResolvedValue([{ next: 1 }]);
+      prisma.$executeRaw.mockResolvedValue(undefined);
+      prisma.order.findUnique.mockResolvedValue(null);
+      prisma.$transaction.mockResolvedValue([{ id: 'order-1', orderNumber: 'NF-000001' }]);
+    };
+
+    it('creates AGENDADO with future scheduledAt', async () => {
+      mockCreateInfra();
+      mockVariantOk();
+      // Fecha local explícita (no toISOString: UTC te cambia el día de noche)
+      const t = new Date();
+      t.setDate(t.getDate() + 2);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const future = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+
+      await service.create(basePayload({ scheduledAt: future }));
+
+      const data = prisma.order.create.mock.calls[0][0].data;
+      expect(data.status).toBe('AGENDADO');
+      expect(data.scheduledAt).toBeInstanceOf(Date);
+    });
+
+    it('same-day scheduledAt stays PENDING', async () => {
+      mockCreateInfra();
+      mockVariantOk();
+      const n = new Date();
+      const pad = (n2: number) => String(n2).padStart(2, '0');
+      const today = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
+
+      await service.create(basePayload({ scheduledAt: today }));
+
+      const data = prisma.order.create.mock.calls[0][0].data;
+      expect(data.status).toBe('PENDING');
+    });
+
+    it('rejects past scheduledAt', async () => {
+      await expect(service.create(basePayload({ scheduledAt: '2020-01-01' }))).rejects.toThrow(
+        'No se puede agendar en una fecha pasada',
+      );
+    });
+
+    it('rejects invalid scheduledAt', async () => {
+      await expect(service.create(basePayload({ scheduledAt: 'no-es-fecha' }))).rejects.toThrow(
+        'scheduledAt inválido',
+      );
+    });
+
+    it('AGENDADO→CONFIRMED sets soldAt and decrements stock', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'o1',
+        status: 'AGENDADO',
+        paymentStatus: 'PENDING',
+        items: [{ variantId: 'v1', quantity: 2 }],
+        total: 60000,
+        orderNumber: 'NF-000001',
+        customerId: 'c1',
+      });
+      const soldDate = new Date();
+      prisma.$transaction.mockResolvedValue([{}, { id: 'o1', status: 'CONFIRMED', soldAt: soldDate }]);
+
+      const updated: any = await service.updateStatus('o1', 'CONFIRMED' as any);
+
+      expect(prisma.$executeRaw).toHaveBeenCalled();
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'CONFIRMED', soldAt: expect.any(Date) }),
+        }),
+      );
+      expect(updated.soldAt).toEqual(soldDate);
+    });
+  });
 });

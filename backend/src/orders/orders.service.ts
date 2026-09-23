@@ -265,20 +265,24 @@ export class OrdersService implements OnModuleInit {
 
     // Agendado: si scheduledAt es un día futuro, el pedido nace AGENDADO
     // (no cuenta en ventas/caja hasta confirmarse). Mismo día o pasado → PENDING.
+    // Comparación por día calendario (strings YYYY-MM-DD), NO por instante:
+    // '2026-09-23' es UTC-medianoche y en Chile (UTC-4) caería "ayer" de noche.
     let scheduledAt: Date | null = null;
     let initialStatus: OrderStatus = OrderStatus.PENDING;
     if (data.scheduledAt !== undefined && data.scheduledAt !== null && String(data.scheduledAt).trim() !== '') {
-      const d = new Date(String(data.scheduledAt));
-      if (isNaN(d.getTime())) throw new BadRequestException('scheduledAt inválido');
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      if (d.getTime() < startOfToday.getTime()) {
+      const raw = String(data.scheduledAt).trim();
+      const dayMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+      const d = new Date(raw);
+      if (!dayMatch || isNaN(d.getTime())) throw new BadRequestException('scheduledAt inválido');
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const nowL = new Date();
+      const todayStr = `${nowL.getFullYear()}-${pad(nowL.getMonth() + 1)}-${pad(nowL.getDate())}`;
+      const dayStr = dayMatch[1];
+      if (dayStr < todayStr) {
         throw new BadRequestException('No se puede agendar en una fecha pasada');
       }
       scheduledAt = d;
-      const startOfTomorrow = new Date(startOfToday);
-      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-      if (d.getTime() >= startOfTomorrow.getTime()) initialStatus = OrderStatus.AGENDADO;
+      if (dayStr > todayStr) initialStatus = OrderStatus.AGENDADO;
     }
 
     // Pre-fetch variants in a single query (pgbouncer-compatible: no
