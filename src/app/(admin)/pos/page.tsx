@@ -17,8 +17,11 @@ export default function PosPage() {
     fetchSession().then((s) => {
       if (cancelled) return;
       if (!s) {
-        // Navegación dura: router.replace suave puede atascarse en iOS/PWA
-        window.location.href = '/login?next=/pos';
+        // Limpiar sesión cosmética ANTES de redirigir (evita loop con middleware).
+        logoutServer().finally(() => {
+          // Navegación dura: router.replace suave puede atascarse en iOS/PWA
+          window.location.href = '/login?next=/pos';
+        });
         return;
       }
       setAuthed(true);

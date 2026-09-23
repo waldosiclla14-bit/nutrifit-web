@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, fetchSession, setSessionCookie, setSessionUser } from '@/lib/api';
+import { apiFetch, clearSessionCookie, clearSessionUser, fetchSession, setSessionCookie, setSessionUser } from '@/lib/api';
 
 export default function LoginClient() {
   const router = useRouter();
@@ -36,6 +36,9 @@ export default function LoginClient() {
       setSessionCookie();
       const session = await fetchSession();
       if (!session) {
+        // No dejar nf_session puesta: el middleware rebotaría /login → /admin en loop.
+        clearSessionCookie();
+        clearSessionUser();
         setError('El navegador bloqueó las cookies (modo privado o cookies desactivadas). Actívalas e intenta de nuevo.');
         return;
       }

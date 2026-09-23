@@ -96,7 +96,11 @@ export default function AdminPage() {
     fetchSession().then((s) => {
       if (cancelled) return;
       if (!s) {
-        window.location.href = '/login?next=/admin';
+        // Limpiar sesión cosmética ANTES de redirigir: si no, el middleware
+        // ve nf_session y rebota /login → /admin en loop infinito.
+        logoutServer().finally(() => {
+          window.location.href = '/login?next=/admin';
+        });
         return;
       }
       setAuthed(true);
