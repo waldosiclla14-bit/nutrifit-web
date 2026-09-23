@@ -798,6 +798,24 @@ markPaid = true;
       }),
     );
 
+    // Movimiento de caja DENTRO de la tx: si falla, el pago completo revierte
+    // y el vendedor reintenta (el guard P2025 lo hace idempotente). Antes iba
+    // fuera con .catch() silencioso: pago confirmado pero caja sin registro.
+    if (existing.cashRegisterId && paymentMethod === 'EFECTIVO') {
+      writes.push(
+        this.prisma.cashMovement.create({
+          data: {
+            registerId: existing.cashRegisterId,
+            type: 'INCOME',
+            amount: existing.total,
+            reason: `Venta POS #${existing.orderNumber}`,
+            orderId: id,
+            createdById: userId,
+          },
+        }),
+      );
+    }
+
     // Audit log
     writes.push(
       this.prisma.auditLog.create({
@@ -826,20 +844,6 @@ markPaid = true;
       }
       throw err;
     });
-
-    // Create cash movement if order is linked to a cash register
-    if (existing.cashRegisterId && paymentMethod === 'EFECTIVO') {
-      await this.prisma.cashMovement.create({
-        data: {
-          registerId: existing.cashRegisterId,
-          type: 'INCOME',
-          amount: existing.total,
-          reason: `Venta POS #${existing.orderNumber}`,
-          orderId: id,
-          createdById: userId,
-        },
-      }).catch((e) => this.logger.warn(`Failed to create cash movement: ${e?.message}`));
-    }
 
     // Log inventory movements after successful transaction
     const confirmVariantIds = existing.items.filter(i => i.variantId).map(i => i.variantId);

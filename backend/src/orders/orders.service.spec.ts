@@ -14,6 +14,7 @@ describe('OrdersService', () => {
     order: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; findMany: jest.Mock; count: jest.Mock; aggregate: jest.Mock; groupBy: jest.Mock; delete: jest.Mock; deleteMany: jest.Mock };
     productVariant: { findMany: jest.Mock; findUnique: jest.Mock };
     customer: { update: jest.Mock };
+    cashMovement: { create: jest.Mock };
     auditLog: { create: jest.Mock };
     inventoryMovement: { create: jest.Mock; deleteMany: jest.Mock };
     orderItem: { deleteMany: jest.Mock; groupBy: jest.Mock };
@@ -43,6 +44,7 @@ describe('OrdersService', () => {
         findUnique: jest.fn(),
       },
       customer: { update: jest.fn() },
+      cashMovement: { create: jest.fn() },
       auditLog: { create: jest.fn() },
       inventoryMovement: { create: jest.fn(), deleteMany: jest.fn() },
       orderItem: { deleteMany: jest.fn(), groupBy: jest.fn() },
@@ -629,6 +631,50 @@ describe('OrdersService', () => {
         }),
       );
       expect(updated.soldAt).toEqual(soldDate);
+    });
+  });
+
+  describe('confirmPayment cash movement', () => {
+    const paidOrder: any = {
+      id: 'o1',
+      status: 'CONFIRMED',
+      paymentStatus: 'PENDING',
+      items: [],
+      total: 50000,
+      orderNumber: 'NF-000001',
+      customerId: 'c1',
+      cashRegisterId: 'r1',
+    };
+
+    it('includes INCOME movement inside the tx for EFECTIVO with register', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(paidOrder)
+        .mockResolvedValueOnce({ ...paidOrder, paymentStatus: 'CONFIRMED', status: 'PAID' });
+      prisma.$transaction.mockResolvedValue([]);
+
+      await service.confirmPayment('o1', { paymentMethod: 'EFECTIVO' }, 'u1');
+
+      expect(prisma.cashMovement.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            registerId: 'r1',
+            type: 'INCOME',
+            amount: 50000,
+            orderId: 'o1',
+          }),
+        }),
+      );
+    });
+
+    it('skips movement without register or non-cash method', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce({ ...paidOrder, cashRegisterId: null })
+        .mockResolvedValueOnce({ ...paidOrder, paymentStatus: 'CONFIRMED', status: 'PAID' });
+      prisma.$transaction.mockResolvedValue([]);
+
+      await service.confirmPayment('o1', { paymentMethod: 'TRANSFERENCIA' }, 'u1');
+
+      expect(prisma.cashMovement.create).not.toHaveBeenCalled();
     });
   });
 });
