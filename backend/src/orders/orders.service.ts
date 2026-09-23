@@ -585,7 +585,22 @@ export class OrdersService implements OnModuleInit {
           `,
         );
       }
-      markPaid = true;
+markPaid = true;
+    }
+
+    // Cuando se confirma un pedido AGENDADO, descontar stock y setear soldAt
+    if (status === OrderStatus.CONFIRMED && oldStatus === OrderStatus.AGENDADO) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        writes.push(
+          this.prisma.$executeRaw`
+            UPDATE "product_variants"
+            SET "stock" = GREATEST("stock" - ${item.quantity}, 0),
+                "reservedStock" = GREATEST("reservedStock" - ${item.quantity}, 0)
+            WHERE "id" = ${item.variantId} AND "stock" >= ${item.quantity}
+          `,
+        );
+      }
     }
 
     // CANCELLED: liberar la reserva o, si ya estaba pagada/entregada/devuelta,
@@ -622,6 +637,7 @@ export class OrdersService implements OnModuleInit {
           status,
           ...(markPaid ? { paymentStatus: PaymentStatus.CONFIRMED, paidAt: new Date() } : {}),
           ...(refunded ? { paymentStatus: PaymentStatus.REFUNDED } : {}),
+          ...(oldStatus === OrderStatus.AGENDADO ? { soldAt: new Date() } : {}),
           updatedAt: new Date(),
         },
         include: {

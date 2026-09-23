@@ -494,6 +494,9 @@ model Order {
   invoiceFolio    String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  scheduledAt     DateTime?     // fecha para la cual está agendado (state=AGENDADO)
+  soldAt          DateTime?     // fecha que efectivamente fue venta (cuando confirma)
+
   createdById     String?
   cashRegisterId  String?
 
@@ -589,6 +592,7 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   RETURNED
+  AGENDADO
 }
 
 enum InvoiceType {
