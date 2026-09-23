@@ -1,4 +1,5 @@
-import { Controller, Post, Req, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Post, Req, Res, HttpException, HttpStatus, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
@@ -66,12 +67,12 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('login')
-  async login(@Req() req: any) {
+  async login(@Res({ passthrough: true }) res: Response, @Req() req: any) {
     const dto: LoginDto = await readJsonBody(req);
     const ip = req.ip || 'unknown';
     const key = attemptKey(dto.email, ip);
     trackAttempt(key);
-    const result = await this.authService.login(dto.email, dto.password);
+    const result = await this.authService.login(res, dto.email, dto.password);
     attempts.delete(key);
     return result;
   }
@@ -81,6 +82,19 @@ export class AuthController {
   async changePassword(@Req() req: any) {
     const dto: ChangePasswordDto = await readJsonBody(req);
     return this.authService.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+  }
+
+  // Sesión actual leída desde la cookie HttpOnly (el frontend ya no decodifica JWT)
+  @UseGuards(JwtAuthGuard)
+  @Post('me')
+  async me(@Req() req: any) {
+    const u = req.user;
+    return { user: { id: u.id, name: u.name, email: u.email, role: u.role } };
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    return this.authService.logout(res);
   }
 
   @Post('bootstrap')

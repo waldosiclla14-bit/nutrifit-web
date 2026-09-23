@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, getToken, setSessionCookie, setToken } from '@/lib/api';
+import { apiFetch, fetchSession, setSessionCookie, setSessionUser } from '@/lib/api';
 
 export default function LoginClient() {
   const router = useRouter();
@@ -26,14 +26,17 @@ export default function LoginClient() {
     setError('');
     setLoading(true);
     try {
-      const res = await apiFetch<{ access_token: string }>('/auth/login', {
+      const res = await apiFetch<{ user: { id: string; name: string; email: string; role: string } }>('/auth/login', {
         method: 'POST',
         body: { email, password },
       });
-      setToken(res.access_token);
+      // El JWT quedó en cookie HttpOnly (el servidor la seteó). Guardamos solo
+      // el perfil para mostrar nombre/rol; la validez la confirma /auth/me.
+      if (res?.user) setSessionUser(res.user);
       setSessionCookie();
-      if (!getToken()) {
-        setError('El navegador bloqueó el almacenamiento (modo privado o cookies desactivadas). Actívalo e intenta de nuevo.');
+      const session = await fetchSession();
+      if (!session) {
+        setError('El navegador bloqueó las cookies (modo privado o cookies desactivadas). Actívalas e intenta de nuevo.');
         return;
       }
       router.replace(next);

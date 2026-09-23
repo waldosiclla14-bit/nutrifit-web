@@ -2,8 +2,6 @@ import type { Order } from '@/types';
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://nutrifit-api-635n.onrender.com').replace(/\/$/, '');
 
-const TOKEN_KEY = 'nutrifit:admin:token';
-
 // ── In-memory GET cache with TTL ──────────────────────────────────────────────
 const CACHE_TTL = 30_000; // 30 seconds
 const LONG_CACHE_TTL = 300_000; // 5 minutes for static data
@@ -92,7 +90,9 @@ export async function apiFetch<T = any>(
   opts: { method?: string; body?: unknown; token?: string } = {},
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const authToken = opts.token ?? (typeof window !== 'undefined' ? getToken() : null);
+  // Token explícito (transición) o nada: con HttpOnly el navegador envía la
+  // cookie solo vía credentials:include; '' se ignora para no mandar 'Bearer '.
+  const authToken = opts.token || null;
   if (authToken) headers.Authorization = `Bearer ${authToken}`;
   const method = opts.method ?? 'GET';
   const body = opts.body !== undefined ? JSON.stringify(opts.body) : undefined;
@@ -114,6 +114,8 @@ export async function apiFetch<T = any>(
         method,
         headers,
         body,
+        // HttpOnly: el navegador adjunta la cookie access_token solo.
+        credentials: 'include',
         signal: controller?.signal,
       });
     } finally {
@@ -170,44 +172,67 @@ export async function apiFetch<T = any>(
   return data as T;
 }
 
-export function getToken(): string | null {
+// ── Sesión HttpOnly ─────────────────────────────────────────────────────
+// El JWT vive en cookie HttpOnly (JS no lo ve). Aquí solo guardamos el PERFIL
+// (id/email/role, no sensible) para mostrar nombre/rol sin pedir al servidor.
+// La validez real siempre la confirma el backend vía /auth/me.
+const PROFILE_KEY = 'nutrifit:admin:profile';
+
+export type SessionProfile = { id?: string; email?: string; name?: string; role?: string };
+
+export function getSessionUser(): SessionProfile | null {
   if (typeof window === 'undefined') return null;
   try {
-    return window.localStorage.getItem(TOKEN_KEY);
+    const raw = window.localStorage.getItem(PROFILE_KEY);
+    return raw ? (JSON.parse(raw) as SessionProfile) : null;
   } catch {
     return null;
   }
 }
 
-export function getSessionUser(): { email?: string; role?: string } | null {
-  const t = getToken();
-  if (!t) return null;
+export function setSessionUser(profile: SessionProfile) {
+  if (typeof window === 'undefined') return;
   try {
-    const payload = JSON.parse(
-      atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
-    );
-    return { email: payload.email, role: payload.role };
+    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile ?? {}));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearSessionUser() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(PROFILE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Valida la sesión contra el servidor (lee la cookie HttpOnly). Retorna el
+// perfil si la cookie es válida, null si no hay sesión.
+export async function fetchSession(): Promise<SessionProfile | null> {
+  try {
+    const res = await apiFetch<{ user: SessionProfile }>('/auth/me', { method: 'POST' });
+    if (res?.user) {
+      setSessionUser(res.user);
+      return res.user;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-export function setToken(token: string) {
-  if (typeof window === 'undefined') return;
+// Cierra sesión en el servidor (borra la cookie HttpOnly) y limpia local.
+export async function logoutServer(): Promise<void> {
   try {
-    window.localStorage.setItem(TOKEN_KEY, token);
+    await apiFetch('/auth/logout', { method: 'POST' });
   } catch {
-    // ignore
+    // igual limpiamos local aunque falle la red
   }
-}
-
-export function clearToken() {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // ignore
-  }
+  clearSessionUser();
+  clearSessionCookie();
+  clearCache();
 }
 
 const SESSION_COOKIE = 'nf_session';

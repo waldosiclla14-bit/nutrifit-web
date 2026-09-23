@@ -2,26 +2,33 @@
 
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearSessionCookie, clearToken, getToken } from '@/lib/api';
+import { fetchSession, logoutServer } from '@/lib/api';
 import { ConfirmProvider } from '@/lib/feedback';
 
 const Pos = lazy(() => import('@/components/pos/Pos').then((m) => ({ default: m.Pos })));
 
 export default function PosPage() {
   const router = useRouter();
-  const [token, setTokenState] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
-    const t = getToken();
-    if (!t) {
-      // Navegación dura: router.replace suave puede atascarse en iOS/PWA
-      window.location.href = '/login?next=/pos';
-      return;
-    }
-    setTokenState(t);
+    let cancelled = false;
+    // La sesión vive en cookie HttpOnly: se valida contra el servidor.
+    fetchSession().then((s) => {
+      if (cancelled) return;
+      if (!s) {
+        // Navegación dura: router.replace suave puede atascarse en iOS/PWA
+        window.location.href = '/login?next=/pos';
+        return;
+      }
+      setAuthed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (!token) {
+  if (!authed) {
     return (
       <div className="flex h-dvh items-center justify-center bg-surface">
         <div className="space-y-4 p-6 text-center">
@@ -44,11 +51,9 @@ export default function PosPage() {
         }
       >
         <Pos
-          token={token}
+          token=""
           onLogout={() => {
-            clearToken();
-            clearSessionCookie();
-            router.replace('/login?next=/pos');
+            logoutServer().finally(() => router.replace('/login?next=/pos'));
           }}
         />
       </Suspense>

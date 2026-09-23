@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -16,15 +17,39 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, password: string) {
+  async login(res: Response, email: string, password: string) {
     const user = await this.validateUser(String(email || '').trim().toLowerCase(), password);
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
     const payload = { sub: user.id, email: user.email, role: user.role, iss: 'nutrifit-api', aud: 'nutrifit-client' };
+    const accessToken = this.jwtService.sign(payload);
+
+    // --- Cookie HttpOnly: el navegador la envía solo, JS no puede leerla ---
+    // Producción = cross-site (Vercel → Render): exige SameSite=None + Secure,
+    // si no el navegador la bloquea y el login "pasa" pero nada funciona.
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 * 1000, // 7 días en milisegundos
+    });
+
     return {
-      access_token: this.jwtService.sign(payload),
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     };
+  }
+
+  async logout(res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+    });
+    return { ok: true };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {

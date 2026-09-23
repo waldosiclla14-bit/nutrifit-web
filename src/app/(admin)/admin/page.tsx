@@ -23,7 +23,7 @@ import {
   ShieldCheck,
   Building,
 } from 'lucide-react';
-import { apiFetch, clearSessionCookie, clearToken, getSessionUser, getToken } from '@/lib/api';
+import { apiFetch, fetchSession, getSessionUser, logoutServer } from '@/lib/api';
 import { ConfirmProvider, toast } from '@/lib/feedback';
 import { mapApiProduct, handleAuthError } from '@/lib/admin/helpers';
 import type {
@@ -87,27 +87,32 @@ export type TabKey =
 
 export default function AdminPage() {
   const router = useRouter();
-  const [token, setTokenState] = useState<string | null>(null);
+  const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<TabKey>('resumen');
 
   useEffect(() => {
-    const t = getToken();
-    if (!t) {
-      window.location.href = '/login?next=/admin';
-      return;
-    }
-    setTokenState(t);
+    let cancelled = false;
+    // La sesión vive en cookie HttpOnly: se valida contra el servidor.
+    fetchSession().then((s) => {
+      if (cancelled) return;
+      if (!s) {
+        window.location.href = '/login?next=/admin';
+        return;
+      }
+      setAuthed(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleLogout = useCallback(() => {
-    clearToken();
-    clearSessionCookie();
-    router.replace('/login?next=/admin');
+    logoutServer().finally(() => router.replace('/login?next=/admin'));
   }, [router]);
 
   const handleSell = useCallback(() => router.push('/pos'), [router]);
 
-  if (!token) {
+  if (!authed) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="space-y-3 text-center">
@@ -121,7 +126,7 @@ export default function AdminPage() {
   return (
     <ConfirmProvider>
       <Dashboard
-        token={token}
+        token=""
         tab={tab}
         setTab={setTab}
         onSell={handleSell}
@@ -194,8 +199,7 @@ function Dashboard({
       }
       } catch (err: any) {
         if (handleAuthError(err, onLogout)) {
-          clearToken();
-          clearSessionCookie();
+          logoutServer();
           return;
         }
         if (!silent) toast.error(err?.message || 'Error al cargar datos.');
