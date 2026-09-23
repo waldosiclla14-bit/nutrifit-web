@@ -2,6 +2,10 @@ import type { Order } from '@/types';
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://nutrifit-api-635n.onrender.com').replace(/\/$/, '');
 
+// Proxy mismo-origen: todas las llamadas van a /erp/* (rewrite → API).
+// La cookie auth queda first-party y el navegador siempre la envía.
+const API_PATH = '/erp';
+
 // ── In-memory GET cache with TTL ──────────────────────────────────────────────
 const CACHE_TTL = 30_000; // 30 seconds
 const LONG_CACHE_TTL = 300_000; // 5 minutes for static data
@@ -110,7 +114,7 @@ export async function apiFetch<T = any>(
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
     const timer = controller ? setTimeout(() => controller.abort(), 45000) : undefined;
     try {
-      return await fetch(`${API_BASE}/api${path}`, {
+      return await fetch(`${API_PATH}${path}`, {
         method,
         headers,
         body,

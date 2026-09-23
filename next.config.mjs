@@ -17,8 +17,17 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
-  async headers() {
+  // Proxy mismo-origen hacia la API: la cookie auth queda first-party
+  // (los navegadores bloquean cookies third-party en incógnito/Safari).
+  async rewrites() {
     return [
+      {
+        source: '/erp/:path*',
+        destination: `${apiOrigin}/api/:path*`,
+      },
+    ];
+  },
+  async headers() {    return [
       {
         source: '/(.*)',
         headers: [
