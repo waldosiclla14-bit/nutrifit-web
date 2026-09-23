@@ -104,17 +104,17 @@ export function Ordenes({ token }: { token: string }) {
         const hay = `${o.orderNumber} ${o.customer?.name || ''} ${o.customer?.phone || ''} ${o.metroStation || ''}`.toLowerCase();
         return hay.includes(q);
       })
-      // Los que requieren acción (Nuevo) siempre arriba, luego cronológico
+      // Los que requieren acción (Nuevo y Agendado) siempre arriba, luego cronológico
       .sort((a, b) => {
-        const ap = a.status === 'PENDING' ? 0 : 1;
-        const bp = b.status === 'PENDING' ? 0 : 1;
+        const ap = a.status === 'PENDING' || a.status === 'AGENDADO' ? 0 : 1;
+        const bp = b.status === 'PENDING' || b.status === 'AGENDADO' ? 0 : 1;
         if (ap !== bp) return ap - bp;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
   }, [orders, query, statusFilter]);
 
   // Orden operativo: Nuevo y Preparando primero, Entregado y Cancelado al final
-  const statusOptions = ['PENDING', 'PREPARING', 'CONFIRMED', 'PAID', 'READY', 'RETURNED', 'DELIVERED', 'CANCELLED'].filter(
+  const statusOptions = ['PENDING', 'AGENDADO', 'PREPARING', 'CONFIRMED', 'PAID', 'READY', 'RETURNED', 'DELIVERED', 'CANCELLED'].filter(
     (s) => STATUS_LABEL[s],
   );
 
@@ -126,6 +126,15 @@ export function Ordenes({ token }: { token: string }) {
 
   const renderActions = (o: AdminOrder) => (
     <>
+      {o.status === 'AGENDADO' && (
+        <button
+          disabled={busyId === o.id}
+          onClick={() => act(() => apiFetch(`/orders/${o.id}/status`, { method: 'PATCH', token, body: { status: 'CONFIRMED' } }), o.id, 'Agendado confirmado: ya cuenta en ventas.')}
+          className="btn-primary px-3 py-1.5 text-[11px] min-h-[44px]"
+        >
+          Confirmar venta
+        </button>
+      )}
       {o.status === 'PENDING' && (
         <button
           disabled={busyId === o.id}
@@ -295,6 +304,9 @@ export function Ordenes({ token }: { token: string }) {
                 <TableCell>
                   <p className="font-bold text-foreground truncate">{o.orderNumber}</p>
                   <p className="text-[11px] text-muted-foreground">{new Date(o.createdAt).toLocaleString('es-CL')}</p>
+                  {(o as any).scheduledAt && (
+                    <p className="text-[11px] font-semibold text-indigo-600">Agendado: {new Date((o as any).scheduledAt).toLocaleDateString('es-CL')}</p>
+                  )}
                 </TableCell>
                 <TableCell>
                   <p className="font-semibold truncate">{o.customer?.name || '—'}</p>
@@ -360,6 +372,7 @@ export function Ordenes({ token }: { token: string }) {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {PAYMENT_LABEL[o.paymentMethod || ''] || 'Pago'} · {o.paymentStatus === 'CONFIRMED' ? 'Pagado' : 'Pendiente'}
+              {(o as any).scheduledAt ? ` · Agendado para el ${new Date((o as any).scheduledAt).toLocaleDateString('es-CL')}` : ''}
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 [&>*]:justify-center">
               {renderActions(o)}

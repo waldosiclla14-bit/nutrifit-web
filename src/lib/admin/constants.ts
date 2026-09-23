@@ -7,6 +7,7 @@ export const STATUS_LABEL: Record<string, string> = {
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelado',
   RETURNED: 'Devuelto',
+  AGENDADO: 'Agendado',
 };
 
 export const STATUS_STYLE: Record<string, string> = {
@@ -18,6 +19,7 @@ export const STATUS_STYLE: Record<string, string> = {
   DELIVERED: 'border-line bg-soft text-muted',
   CANCELLED: 'border-red-300 bg-red-100 text-red-800',
   RETURNED: 'border-red-300 bg-red-100 text-red-800',
+  AGENDADO: 'border-indigo-300 bg-indigo-100 text-indigo-800',
 };
 
 export const PAYMENT_LABEL: Record<string, string> = {

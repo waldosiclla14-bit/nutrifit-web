@@ -775,6 +775,9 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // Agendado: fecha futura → el pedido nace AGENDADO (no cuenta en ventas/caja
+    // hasta confirmarse el día de la entrega). Solo METRO/DELIVERY tienen fecha.
+    const isScheduled = (mode === 'METRO' || mode === 'DELIVERY') && !!deliveryDay && deliveryDay > todayISO();
     savingRef.current = true;
     setSaving(true);
     try {
@@ -804,6 +807,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           total,
           paymentMethod: payment,
           cashRegisterId: cash?.id || null,
+          scheduledAt: isScheduled ? deliveryDay : undefined,
           items: cart.map((l) => ({
             productId: l.productId,
             variantId: l.variantId,
@@ -816,7 +820,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           })),
         },
       });
-      if (mode === 'LOCAL' || paymentReceived) {
+      // Agendado: el pago se registra el día de la confirmación, no ahora.
+      if ((mode === 'LOCAL' || paymentReceived) && !isScheduled) {
         try {
           await apiFetch(`/orders/${order.id}/payment`, {
             method: 'PATCH',
@@ -858,7 +863,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           toast.error(`Venta registrada pero error al agendar entrega: ${deliveryErr?.message || 'desconocido'}`);
         }
       }
-      const paidNow = mode === 'LOCAL' || paymentReceived;
+      const paidNow = (mode === 'LOCAL' || paymentReceived) && !isScheduled;
       setReceipt({
         orderNumber: order.orderNumber,
         at: new Date().toISOString(),
@@ -881,7 +886,11 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         vuelto: payment === 'EFECTIVO' && pago >= total ? pago - total : undefined,
       });
       haptic(80);
-      toast.success(paidNow ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`);
+      toast.success(
+        isScheduled
+          ? `Pedido ${order.orderNumber} agendado para el ${deliveryDay}. No suma en ventas hasta confirmarse.`
+          : paidNow ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`,
+      );
       if (mode === 'METRO') {
         // Get deliveryCode from the delivery result if available
         let deliveryCodeVal = '';
@@ -920,7 +929,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       } else if (mode === 'DELIVERY') {
         setSalePhone(qPhone);
         const delLines: string[] = [];
-        delLines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
+        delLines.push(isScheduled ? 'NUTRIFIT · TU PEDIDO AGENDADO' : 'NUTRIFIT · TU PEDIDO CONFIRMADO');
         delLines.push('─'.repeat(24));
         delLines.push('');
         delLines.push(`Hola ${qName} 👋`);

@@ -263,6 +263,24 @@ export class OrdersService implements OnModuleInit {
     const shippingCost = Math.max(0, Math.round(Number(data.shippingCost) || 0));
     const couponCode = String(data.couponCode || '').trim().toUpperCase() || null;
 
+    // Agendado: si scheduledAt es un día futuro, el pedido nace AGENDADO
+    // (no cuenta en ventas/caja hasta confirmarse). Mismo día o pasado → PENDING.
+    let scheduledAt: Date | null = null;
+    let initialStatus: OrderStatus = OrderStatus.PENDING;
+    if (data.scheduledAt !== undefined && data.scheduledAt !== null && String(data.scheduledAt).trim() !== '') {
+      const d = new Date(String(data.scheduledAt));
+      if (isNaN(d.getTime())) throw new BadRequestException('scheduledAt inválido');
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      if (d.getTime() < startOfToday.getTime()) {
+        throw new BadRequestException('No se puede agendar en una fecha pasada');
+      }
+      scheduledAt = d;
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+      if (d.getTime() >= startOfTomorrow.getTime()) initialStatus = OrderStatus.AGENDADO;
+    }
+
     // Pre-fetch variants in a single query (pgbouncer-compatible: no
     // interactive transaction). Stock is validated here; reservation happens
     // atomically inside the non-interactive transaction below.
@@ -377,7 +395,8 @@ export class OrdersService implements OnModuleInit {
             profit,
             profitMargin,
             paymentMethod,
-            status: OrderStatus.PENDING,
+            status: initialStatus,
+            scheduledAt,
             paymentStatus: PaymentStatus.PENDING,
             needsInvoice: data.needsInvoice || false,
             createdById: data.createdById,
