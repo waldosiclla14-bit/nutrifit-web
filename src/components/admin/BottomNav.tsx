@@ -28,6 +28,7 @@ export type AdminTabKey =
   | 'proveedores'
   | 'clientes'
   | 'caja'
+  | 'finanzas'
   | 'desk'
   | 'marketing'
   | 'reportes'
@@ -41,6 +42,7 @@ const SHEET_KEYS: AdminTabKey[] = [
   'proveedores',
   'clientes',
   'caja',
+  'finanzas',
   'desk',
   'marketing',
   'reportes',

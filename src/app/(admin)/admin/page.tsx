@@ -43,6 +43,7 @@ const Ordenes = lazy(() => import('@/components/admin/Ordenes').then((m) => ({ d
 const Productos = lazy(() => import('@/components/admin/Productos').then((m) => ({ default: m.Productos })));
 const Clientes = lazy(() => import('@/components/admin/Clientes').then((m) => ({ default: m.Clientes })));
 const Caja = lazy(() => import('@/components/admin/Caja').then((m) => ({ default: m.Caja })));
+const Finanzas = lazy(() => import('@/components/admin/Finanzas').then((m) => ({ default: m.Finanzas })));
 const Reportes = lazy(() => import('@/components/admin/Reportes').then((m) => ({ default: m.Reportes })));
 const Inventario = lazy(() => import('@/components/admin/Inventario').then((m) => ({ default: m.Inventario })));
 const Compras = lazy(() => import('@/components/admin/Compras').then((m) => ({ default: m.Compras })));
@@ -79,6 +80,7 @@ export type TabKey =
   | 'proveedores'
   | 'clientes'
   | 'caja'
+  | 'finanzas'
   | 'desk'
   | 'marketing'
   | 'reportes'
@@ -262,6 +264,9 @@ function Dashboard({
       title: 'FINANZAS & CONTROL',
       items: [
         { key: 'caja' as TabKey, label: 'Caja / Turnos', icon: Wallet },
+        ...(process.env.NEXT_PUBLIC_FINANZAS_ENABLED === 'true'
+          ? [{ key: 'finanzas' as TabKey, label: 'Finanzas / P&L', icon: Wallet }]
+          : []),
         { key: 'reportes' as TabKey, label: 'Analítica & Reportes', icon: BarChart3 },
         { key: 'ia' as TabKey, label: 'Copiloto IA', icon: Bot, highlight: true },
         { key: 'configuracion' as TabKey, label: 'Configuración', icon: Settings },
@@ -431,6 +436,7 @@ function Dashboard({
                 {tab === 'desk' && <Desk token={token} />}
                 {tab === 'marketing' && <Marketing token={token} />}
                 {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
+                {tab === 'finanzas' && <Finanzas token={token} />}
                 {tab === 'reportes' && <Reportes token={token} />}
                 {tab === 'ia' && <IaCopilot token={token} />}
                 {tab === 'configuracion' && <Configuracion token={token} onRefresh={load} onPassword={() => setShowPassword(true)} onLogout={onLogout} />}
