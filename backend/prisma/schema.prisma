@@ -897,6 +897,42 @@ model DeliveryAuditLog {
 }
 
 // ───────────────────────────────────────────────
+// FINANZAS — Gastos operacionales (P&L)
+// Ingresos/COGS salen de Order+Purchase existentes; aquí solo lo nuevo.
+// ───────────────────────────────────────────────
+
+model ExpenseCategory {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  color     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+model Expense {
+  id          String    @id @default(uuid())
+  categoryId  String?
+  description String
+  amount      Int
+  spentAt     DateTime  @default(now())
+  notes       String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  category ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([spentAt])
+  @@index([categoryId])
+  @@map("expenses")
+}
+
+// ───────────────────────────────────────────────
 // NUTRIFIT DELIVERY — Configuración
 // ───────────────────────────────────────────────
 

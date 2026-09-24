@@ -3,7 +3,7 @@ import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, Deliv
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { RemindersService } from '../reminders/reminders.service';
-import { rangeBound } from '../common/date-range';
+import { rangeBound, todayChileISO } from '../common/date-range';
 
 @Injectable()
 export class OrdersService implements OnModuleInit {
@@ -274,10 +274,8 @@ export class OrdersService implements OnModuleInit {
       const dayMatch = raw.match(/^(\d{4}-\d{2}-\d{2})/);
       const d = new Date(raw);
       if (!dayMatch || isNaN(d.getTime())) throw new BadRequestException('scheduledAt inválido');
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const nowL = new Date();
-      const todayStr = `${nowL.getFullYear()}-${pad(nowL.getMonth() + 1)}-${pad(nowL.getDate())}`;
       const dayStr = dayMatch[1];
+      const todayStr = todayChileISO();
       if (dayStr < todayStr) {
         throw new BadRequestException('No se puede agendar en una fecha pasada');
       }
