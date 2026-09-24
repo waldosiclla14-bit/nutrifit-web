@@ -17,7 +17,7 @@ import { EditOrderModal } from './EditOrderModal';
 
 const PAGE_LIMIT = 50;
 
-export function Ordenes({ token }: { token: string }) {
+export function Ordenes({ token, initialStatus, onInitConsumed }: { token: string; initialStatus?: string; onInitConsumed?: () => void }) {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -25,7 +25,16 @@ export function Ordenes({ token }: { token: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus ?? '');
+
+  // Al llegar desde el banner de agendados, aterrizar ya filtrado (una sola vez)
+  useEffect(() => {
+    if (initialStatus) {
+      setStatusFilter(initialStatus);
+      onInitConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStatus]);
   const [paymentOrder, setPaymentOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
   const confirm = useConfirm();

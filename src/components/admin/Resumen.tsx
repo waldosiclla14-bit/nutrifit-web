@@ -118,6 +118,7 @@ export function Resumen({
   token,
   onChanged,
   onNavigate,
+  onGoAgendados,
 }: {
   stats: AdminStats | null;
   goals: AdminGoals | null;
@@ -125,6 +126,7 @@ export function Resumen({
   token: string;
   onChanged: () => void;
   onNavigate: (t: AdminTabKey) => void;
+  onGoAgendados?: () => void;
 }) {
   const [showGoals, setShowGoals] = useState(false);
   const [range, setRange] = useState<RangeKey>('30d');
@@ -135,6 +137,7 @@ export function Resumen({
   const [segments, setSegments] = useState<AdminSegments | null>(null);
   const [pending, setPending] = useState<AdminOrder[]>([]);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [dueAgendados, setDueAgendados] = useState<AdminOrder[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -191,6 +194,30 @@ export function Resumen({
   useEffect(() => {
     loadPending();
   }, [loadPending]);
+
+  // Agendados que vencen: scheduledAt <= hoy (día local). Volumen bajo,
+  // filtro en cliente sobre status=AGENDADO del servidor.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiFetch<any>('/orders?status=AGENDADO&page=1&limit=100', { token });
+        const list: AdminOrder[] = res?.data || res || [];
+        const n = new Date();
+        const pad = (v: number) => String(v).padStart(2, '0');
+        const today = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
+        const due = list
+          .filter((o: any) => String(o.scheduledAt || '').slice(0, 10) <= today)
+          .sort((a: any, b: any) => String(a.scheduledAt || '').localeCompare(String(b.scheduledAt || '')));
+        if (alive) setDueAgendados(due);
+      } catch {
+        if (alive) setDueAgendados([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [token]);
 
   const confirmPending = async (id: string) => {
     setConfirmingId(id);
@@ -482,6 +509,26 @@ export function Resumen({
           <p className="mt-3 text-sm text-muted">Sin datos del período.</p>
         )}
       </div>
+
+      {dueAgendados.length > 0 && (
+        <div className="ds-card ds-card-action-warning space-y-2 p-4">
+          <p className="text-[13px] font-bold">
+            📅 {dueAgendados.length} agendado{dueAgendados.length > 1 ? 's' : ''} por confirmar
+          </p>
+          {dueAgendados.slice(0, 3).map((o: any) => (
+            <p key={o.id} className="truncate text-xs text-muted">
+              {o.orderNumber} · {o.customer?.name || o.customerName || '—'} ·{' '}
+              {String(o.scheduledAt || '').slice(0, 10)}
+            </p>
+          ))}
+          <button
+            onClick={() => (onGoAgendados ? onGoAgendados() : onNavigate('ordenes'))}
+            className="ds-btn-primary w-full py-2 text-[13px] uppercase tracking-wide"
+          >
+            Ver agendados
+          </button>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="space-y-3">

@@ -177,6 +177,7 @@ function Dashboard({
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [cash, setCash] = useState<AdminCashRegister | null>(null);
   const [inventory, setInventory] = useState<AdminInventoryValue | null>(null);
+  const [ordenesInit, setOrdenesInit] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -424,8 +425,8 @@ function Dashboard({
             {loading && <TabSkeleton />}
             {!loading && (
               <Suspense fallback={<TabSkeleton />}>
-                {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} onNavigate={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
-                {tab === 'ordenes' && <Ordenes token={token} />}
+                {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} onGoAgendados={() => { setOrdenesInit('AGENDADO'); setTab('ordenes'); window.scrollTo({ top: 0 }); }} onNavigate={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
+                {tab === 'ordenes' && <Ordenes token={token} initialStatus={ordenesInit} onInitConsumed={() => setOrdenesInit('')} />}
                 {tab === 'entregas' && <Entregas token={token} />}
                 {tab === 'calendario' && <Calendario token={token} />}
                 {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
