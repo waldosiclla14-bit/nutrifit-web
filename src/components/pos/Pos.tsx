@@ -577,7 +577,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
   const tenders = useMemo(() => tendersOf(total), [total]);
 
-  const cashRequired = mode === 'LOCAL' || paymentReceived;
+  // Agendado (fecha futura): el pago siempre queda para el día de la
+  // confirmación — no se exige ni se registra cobro ahora.
+  const isFutureDate = (mode === 'METRO' || mode === 'DELIVERY') && !!deliveryDay && deliveryDay > todayISO();
+  const cashRequired = (mode === 'LOCAL' || paymentReceived) && !isFutureDate;
   const showCashPay = cashRequired && payment === 'EFECTIVO' && total > 0;
   const cashShort = cashRequired && payment === 'EFECTIVO' && total > 0 && pago < total;
 
@@ -777,7 +780,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     // Agendado: fecha futura → el pedido nace AGENDADO (no cuenta en ventas/caja
     // hasta confirmarse el día de la entrega). Solo METRO/DELIVERY tienen fecha.
-    const isScheduled = (mode === 'METRO' || mode === 'DELIVERY') && !!deliveryDay && deliveryDay > todayISO();
+    // paidFlag: en agendados el pago queda para la confirmación aunque el
+    // selector diga "pagada" — se avisa con toast para no confundir.
+    const isScheduled = isFutureDate;
+    const paidFlag = paymentReceived && !isScheduled;
     savingRef.current = true;
     setSaving(true);
     try {
@@ -821,7 +827,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         },
       });
       // Agendado: el pago se registra el día de la confirmación, no ahora.
-      if ((mode === 'LOCAL' || paymentReceived) && !isScheduled) {
+      if ((mode === 'LOCAL' || paidFlag) && !isScheduled) {
         try {
           await apiFetch(`/orders/${order.id}/payment`, {
             method: 'PATCH',
@@ -851,8 +857,8 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             deliveryPayload.address = deliveryAddress.trim();
           }
           const deliveryResult = await apiFetch<any>('/deliveries', { method: 'POST', token, body: deliveryPayload });
-          // If payment already received, transition delivery status
-          if (paymentReceived) {
+          // Solo si se cobró ahora (nunca en agendados: su pago va a la confirmación)
+          if (paidFlag) {
             await apiFetch(`/deliveries/${deliveryResult.id}/status`, {
               method: 'PATCH',
               token,
@@ -863,7 +869,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           toast.error(`Venta registrada pero error al agendar entrega: ${deliveryErr?.message || 'desconocido'}`);
         }
       }
-      const paidNow = (mode === 'LOCAL' || paymentReceived) && !isScheduled;
+      const paidNow = (mode === 'LOCAL' || paidFlag) && !isScheduled;
       setReceipt({
         orderNumber: order.orderNumber,
         at: new Date().toISOString(),
@@ -882,13 +888,13 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         total,
         payment: PAYMENT_LABELS[payment] ?? payment,
         paid: paidNow,
-        pago: payment === 'EFECTIVO' && pago >= total ? pago : undefined,
-        vuelto: payment === 'EFECTIVO' && pago >= total ? pago - total : undefined,
+        pago: !isScheduled && payment === 'EFECTIVO' && pago >= total ? pago : undefined,
+        vuelto: !isScheduled && payment === 'EFECTIVO' && pago >= total ? pago - total : undefined,
       });
       haptic(80);
       toast.success(
         isScheduled
-          ? `Pedido ${order.orderNumber} agendado para el ${deliveryDay}. No suma en ventas hasta confirmarse.`
+          ? `Pedido ${order.orderNumber} agendado para el ${deliveryDay}. No suma en ventas hasta confirmarse.${paymentReceived ? ' El pago se registrará ese día.' : ''}`
           : paidNow ? `Venta ${order.orderNumber} registrada y pagada.` : `Venta ${order.orderNumber} registrada.`,
       );
       if (mode === 'METRO') {
@@ -916,7 +922,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             shippingCost,
             total,
             paymentLabel: PAYMENT_LABELS[payment] ?? payment,
-            paymentReceived,
+            paymentReceived: paidFlag,
             metroLine,
             metroStation,
             deliveryDay,
