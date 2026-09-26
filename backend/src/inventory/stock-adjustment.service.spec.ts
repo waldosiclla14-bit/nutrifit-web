@@ -46,19 +46,11 @@ describe('StockAdjustmentService', () => {
     });
 
     it('applies positive delta (restock)', async () => {
-      const mockTx = {
-        productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 5 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 15 }),
-        },
-        stockAdjustment: {
-          create: jest.fn().mockResolvedValue({ id: 'sa1' }),
-        },
-        inventoryMovement: {
-          create: jest.fn(),
-        },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
+      prisma.productVariant.findUnique.mockResolvedValue({ id: 'v1', physicalStock: 5 });
+      prisma.productVariant.update.mockResolvedValue({});
+      prisma.stockAdjustment.create.mockResolvedValue({ id: 'sa1' });
+      prisma.inventoryMovement.create.mockResolvedValue({});
+      prisma.$transaction.mockImplementation(async (writes: any[]) => [{}, { id: 'sa1' }, {}]);
 
       const result = await service.applyBulk([
         { productId: 'p1', variantId: 'v1', quantityDelta: 10, reason: 'INGRESO_COMPRA', notes: 'Received shipment' },
@@ -67,7 +59,9 @@ describe('StockAdjustmentService', () => {
       expect(result).toHaveLength(1);
       expect(result[0].previousStock).toBe(5);
       expect(result[0].newStock).toBe(15);
-      expect(mockTx.inventoryMovement.create).toHaveBeenCalledWith(
+      // Transacción NO interactiva (array) → compatible pgbouncer
+      expect(prisma.$transaction.mock.calls[0][0]).toBeInstanceOf(Array);
+      expect(prisma.inventoryMovement.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ type: 'RESTOCK', quantity: 10 }),
         }),
@@ -75,26 +69,15 @@ describe('StockAdjustmentService', () => {
     });
 
     it('applies negative delta (adjustment)', async () => {
-      const mockTx = {
-        productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 10 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 7 }),
-        },
-        stockAdjustment: {
-          create: jest.fn().mockResolvedValue({ id: 'sa2' }),
-        },
-        inventoryMovement: {
-          create: jest.fn(),
-        },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
+      prisma.productVariant.findUnique.mockResolvedValue({ id: 'v1', physicalStock: 10 });
+      prisma.$transaction.mockImplementation(async (writes: any[]) => [{}, { id: 'sa2' }, {}]);
 
       const result = await service.applyBulk([
         { productId: 'p1', variantId: 'v1', quantityDelta: -3, reason: 'MERMA', notes: 'Broken items' },
       ]);
 
       expect(result[0].newStock).toBe(7);
-      expect(mockTx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect(prisma.inventoryMovement.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ type: 'ADJUSTMENT', quantity: 3 }),
         }),
@@ -102,19 +85,8 @@ describe('StockAdjustmentService', () => {
     });
 
     it('clamps stock to 0 (never negative)', async () => {
-      const mockTx = {
-        productVariant: {
-          findUnique: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 2 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 0 }),
-        },
-        stockAdjustment: {
-          create: jest.fn().mockResolvedValue({ id: 'sa3' }),
-        },
-        inventoryMovement: {
-          create: jest.fn(),
-        },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
+      prisma.productVariant.findUnique.mockResolvedValue({ id: 'v1', physicalStock: 2 });
+      prisma.$transaction.mockImplementation(async (writes: any[]) => [{}, { id: 'sa3' }, {}]);
 
       const result = await service.applyBulk([
         { productId: 'p1', variantId: 'v1', quantityDelta: -10, reason: 'MERMA' },
@@ -124,15 +96,8 @@ describe('StockAdjustmentService', () => {
     });
 
     it('skips non-existent variants', async () => {
-      const mockTx = {
-        productVariant: {
-          findUnique: jest.fn().mockResolvedValue(null),
-          update: jest.fn(),
-        },
-        stockAdjustment: { create: jest.fn() },
-        inventoryMovement: { create: jest.fn() },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
+      prisma.productVariant.findUnique.mockResolvedValue(null);
+      prisma.$transaction.mockImplementation(async (writes: any[]) => []);
 
       const result = await service.applyBulk([
         { productId: 'p1', variantId: 'nonexistent', quantityDelta: 5, reason: 'INGRESO_COMPRA' },
@@ -142,24 +107,15 @@ describe('StockAdjustmentService', () => {
     });
 
     it('uses first variant if no variantId provided', async () => {
-      const mockTx = {
-        productVariant: {
-          findFirst: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 0 }),
-          update: jest.fn().mockResolvedValue({ id: 'v1', physicalStock: 10 }),
-        },
-        stockAdjustment: {
-          create: jest.fn().mockResolvedValue({ id: 'sa4' }),
-        },
-        inventoryMovement: { create: jest.fn() },
-      };
-      prisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
+      prisma.productVariant.findFirst.mockResolvedValue({ id: 'v1', physicalStock: 0 });
+      prisma.$transaction.mockImplementation(async (writes: any[]) => [{}, { id: 'sa4' }, {}]);
 
       const result = await service.applyBulk([
         { productId: 'p1', quantityDelta: 10, reason: 'INGRESO_COMPRA' },
       ]);
 
       expect(result).toHaveLength(1);
-      expect(mockTx.productVariant.findFirst).toHaveBeenCalledWith({
+      expect(prisma.productVariant.findFirst).toHaveBeenCalledWith({
         where: { productId: 'p1' },
         orderBy: { id: 'asc' },
       });
@@ -196,6 +152,10 @@ describe('StockAdjustmentService', () => {
           where: expect.objectContaining({ productId: 'p1' }),
         }),
       );
+    });
+
+    it('rejects invalid reason', async () => {
+      await expect(service.findAll({ reason: 'INVENTADO' })).rejects.toThrow('Motivo inválido');
     });
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { PurchaseStatus, DocumentType, ReceiptStatus, MovementType } from '@prisma/client';
+import { PrismaPromise, PurchaseStatus, DocumentType, ReceiptStatus, MovementType } from '@prisma/client';
 import { rangeBound } from '../common/date-range';
 
 @Injectable()
@@ -208,66 +209,63 @@ export class PurchasesService implements OnModuleInit {
     if (existing.status !== 'DRAFT' && existing.status !== 'PENDING_REVIEW') {
       throw new BadRequestException('Solo se pueden editar compras en borrador o pendiente de revision');
     }
-
-    return this.prisma.$transaction(async (tx) => {
-      if (data.items) {
-        if (data.items.length === 0 || data.items.length > 500) {
-          throw new BadRequestException('La compra debe contener entre 1 y 500 ítems');
-        }
-        data.items.forEach((item: any, idx: number) => this.validatePurchaseItem(item, idx));
-        await tx.purchaseItem.deleteMany({ where: { purchaseId: id } });
+    if (data.items) {
+      if (data.items.length === 0 || data.items.length > 500) {
+        throw new BadRequestException('La compra debe contener entre 1 y 500 ítems');
       }
+      data.items.forEach((item: any, idx: number) => this.validatePurchaseItem(item, idx));
+    }
 
-      const r2 = (n: number) => Math.round(Number(n) || 0);
-      const subtotal = data.items
-        ? r2(data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0))
-        : existing.subtotal;
-      const tax = data.items
-        ? r2(data.items.reduce((sum, i) => sum + (i.tax || 0), 0))
-        : existing.tax;
-      const discount = data.items
-        ? r2(data.items.reduce((sum, i) => sum + (i.discount || 0), 0))
-        : existing.discount;
-      const total = subtotal + tax;
+    const r2 = (n: number) => Math.round(Number(n) || 0);
+    const subtotal = data.items
+      ? r2(data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0))
+      : existing.subtotal;
+    const tax = data.items
+      ? r2(data.items.reduce((sum, i) => sum + (i.tax || 0), 0))
+      : existing.tax;
+    const discount = data.items
+      ? r2(data.items.reduce((sum, i) => sum + (i.discount || 0), 0))
+      : existing.discount;
+    const total = subtotal + tax;
 
-      const purchase = await tx.purchase.update({
-        where: { id },
-        data: {
-          supplierId: data.supplierId !== undefined ? data.supplierId : undefined,
-          documentType: data.documentType !== undefined ? data.documentType : undefined,
-          documentNumber: data.documentNumber !== undefined ? data.documentNumber : undefined,
-          documentDate: data.documentDate ? new Date(data.documentDate) : undefined,
-          paymentMethod: data.paymentMethod !== undefined ? data.paymentMethod : undefined,
-          notes: data.notes !== undefined ? data.notes : undefined,
-          subtotal,
-          tax,
-          discount,
-          total,
-          status: 'PENDING_REVIEW',
-          items: data.items
-            ? {
-                create: data.items.map((item) => ({
-                  productId: item.productId || null,
-                  variantId: item.variantId || null,
-                  productName: item.productName,
-                  variantName: item.variantName || null,
-                  sku: item.sku || null,
-                  barcode: item.barcode || null,
-                  quantity: item.quantity,
-                  unitCost: r2(item.unitCost),
-                  discount: r2(item.discount || 0),
-                  tax: r2(item.tax || 0),
-                  totalCost: r2(item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0)),
-                  receivedQty: 0,
-                  notes: item.notes || null,
-                })),
-              }
-            : undefined,
-        },
-        include: { items: true, supplier: true },
-      });
-
-      return purchase;
+    // UN SOLO write con nested deleteMany+create: atómico y compatible con
+    // pgbouncer transaction-mode (las tx interactivas P2028 aquí).
+    return this.prisma.purchase.update({
+      where: { id },
+      data: {
+        supplierId: data.supplierId !== undefined ? data.supplierId : undefined,
+        documentType: data.documentType !== undefined ? data.documentType : undefined,
+        documentNumber: data.documentNumber !== undefined ? data.documentNumber : undefined,
+        documentDate: data.documentDate ? new Date(data.documentDate) : undefined,
+        paymentMethod: data.paymentMethod !== undefined ? data.paymentMethod : undefined,
+        notes: data.notes !== undefined ? data.notes : undefined,
+        subtotal,
+        tax,
+        discount,
+        total,
+        status: 'PENDING_REVIEW',
+        items: data.items
+          ? {
+              deleteMany: { purchaseId: id },
+              create: data.items.map((item) => ({
+                productId: item.productId || null,
+                variantId: item.variantId || null,
+                productName: item.productName,
+                variantName: item.variantName || null,
+                sku: item.sku || null,
+                barcode: item.barcode || null,
+                quantity: item.quantity,
+                unitCost: r2(item.unitCost),
+                discount: r2(item.discount || 0),
+                tax: r2(item.tax || 0),
+                totalCost: r2(item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0)),
+                receivedQty: 0,
+                notes: item.notes || null,
+              })),
+            }
+          : undefined,
+      },
+      include: { items: true, supplier: true },
     });
   }
 
@@ -423,97 +421,153 @@ export class PurchasesService implements OnModuleInit {
     });
 
     const receiptNumber = await this.generateReceiptNumber();
+    const receiptId = randomUUID();
 
-    return this.prisma.$transaction(async (tx) => {
-      const receipt = await tx.goodsReceipt.create({
+    // Pre-lectura de variantes: todo se calcula en JS y los writes van en UNA
+    // transacción NO interactiva (array), compatible con pgbouncer.
+    // Las tx interactivas ($transaction async) P2028 aquí → 500 en recepción.
+    const lines = data.items.map((item: any) => {
+      const pi: any = existing.items.find((p) => p.id === item.purchaseItemId);
+      return {
+        pi,
+        variantId: (item.variantId || pi.variantId || null) as string | null,
+        receivedQty: item.receivedQty as number,
+        damagedQty: (item.damagedQty ?? 0) as number,
+        notes: item.notes || null,
+      };
+    });
+    const variantIds = [...new Set(lines.map((l) => l.variantId).filter(Boolean))] as string[];
+    const variants = variantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: variantIds } },
+          select: { id: true, physicalStock: true, costPrice: true },
+        })
+      : [];
+    const vMap = new Map(variants.map((v: any) => [v.id, v]));
+
+    const writes: PrismaPromise<any>[] = [];
+
+    writes.push(
+      this.prisma.goodsReceipt.create({
         data: {
+          id: receiptId,
           purchaseId: id,
           receiptNumber,
           status: 'PENDING',
           notes: data.notes || null,
           receivedById: userId || null,
           items: {
-            create: data.items.map((item) => {
-              const purchaseItem = existing.items.find((pi) => pi.id === item.purchaseItemId);
-              return {
-                purchaseItemId: item.purchaseItemId,
-                variantId: item.variantId || purchaseItem?.variantId || null,
-                expectedQty: purchaseItem?.quantity || 0,
-                receivedQty: item.receivedQty,
-                damagedQty: item.damagedQty || 0,
-                notes: item.notes || null,
-              };
-            }),
+            create: lines.map((l) => ({
+              purchaseItemId: l.pi.id,
+              variantId: l.variantId,
+              expectedQty: l.pi.quantity,
+              receivedQty: l.receivedQty,
+              damagedQty: l.damagedQty,
+              notes: l.notes,
+            })),
           },
         },
         include: { items: true },
-      });
+      }),
+    );
 
-      for (const item of data.items) {
-        const purchaseItem = existing.items.find((pi) => pi.id === item.purchaseItemId);
-        if (!purchaseItem) continue;
+    for (const l of lines) {
+      writes.push(
+        this.prisma.purchaseItem.update({
+          where: { id: l.pi.id },
+          data: { receivedQty: l.pi.receivedQty + l.receivedQty },
+        }),
+      );
 
-        const newReceivedQty = purchaseItem.receivedQty + item.receivedQty;
-        await tx.purchaseItem.update({
-          where: { id: item.purchaseItemId },
-          data: { receivedQty: newReceivedQty },
-        });
+      if (l.variantId) {
+        const v: any = vMap.get(l.variantId);
+        const previousStock = v?.physicalStock ?? 0;
+        const newStock = Math.max(0, previousStock + l.receivedQty - l.damagedQty);
+        writes.push(
+          this.prisma.productVariant.update({
+            where: { id: l.variantId },
+            data: { physicalStock: newStock },
+          }),
+        );
+        writes.push(
+          this.prisma.inventoryMovement.create({
+            data: {
+              variantId: l.variantId,
+              type: 'PURCHASE_RECEIPT',
+              quantity: l.receivedQty - l.damagedQty,
+              previousStock,
+              newStock,
+              purchaseId: id,
+              receiptId,
+              userId: userId || null,
+              unitCost: l.pi.unitCost,
+              notes: `Recepcion compra ${existing.purchaseNumber}`,
+            },
+          }),
+        );
 
-        if (purchaseItem.variantId) {
-          const variant = await tx.productVariant.findUnique({ where: { id: purchaseItem.variantId } });
-          if (variant) {
-            const previousStock = variant.physicalStock;
-            const newStock = previousStock + item.receivedQty - item.damagedQty;
-            await tx.productVariant.update({
-              where: { id: purchaseItem.variantId },
-              data: { physicalStock: Math.max(0, newStock) },
-            });
-            await tx.inventoryMovement.create({
-              data: {
-                variantId: purchaseItem.variantId,
-                type: 'PURCHASE_RECEIPT',
-                quantity: item.receivedQty - item.damagedQty,
-                previousStock,
-                newStock: Math.max(0, newStock),
-                purchaseId: id,
-                receiptId: receipt.id,
-                userId: userId || null,
-                unitCost: purchaseItem.unitCost,
-                notes: `Recepcion compra ${existing.purchaseNumber}`,
-              },
-            });
-
-            await this.updateCostHistory(tx, purchaseItem.productId, purchaseItem.variantId, id, item.receivedQty, purchaseItem.unitCost, previousStock);
-          }
-        }
+        // Costo promedio ponderado (misma fórmula que updateCostHistory)
+        const previousCost = v?.costPrice || 0;
+        const totalNewCost = l.receivedQty * l.pi.unitCost;
+        const totalOldCost = previousStock * previousCost;
+        const newAverageCost =
+          previousStock + l.receivedQty > 0
+            ? Math.round((totalOldCost + totalNewCost) / (previousStock + l.receivedQty))
+            : l.pi.unitCost;
+        writes.push(
+          this.prisma.productCostHistory.create({
+            data: {
+              productId: l.pi.productId,
+              variantId: l.variantId,
+              purchaseId: id,
+              quantity: l.receivedQty,
+              unitCost: l.pi.unitCost,
+              totalCost: totalNewCost,
+              previousCost,
+              newAverageCost,
+              purchaseDate: new Date(),
+            },
+          }),
+        );
+        writes.push(
+          this.prisma.productVariant.update({
+            where: { id: l.variantId },
+            data: { costPrice: newAverageCost },
+          }),
+        );
       }
+    }
 
-      const allItemsReceived = existing.items.every(
-        (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) >= pi.quantity,
-      );
-      const anyReceived = existing.items.some(
-        (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) > 0,
-      );
+    const allItemsReceived = existing.items.every(
+      (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) >= pi.quantity,
+    );
+    const anyReceived = existing.items.some(
+      (pi) => pi.receivedQty + (data.items.find((i) => i.purchaseItemId === pi.id)?.receivedQty || 0) > 0,
+    );
 
-      const receiptStatus = allItemsReceived ? 'COMPLETED' : anyReceived ? 'PARTIAL' : 'PENDING';
-      const purchaseStatus = allItemsReceived ? 'RECEIVED' : 'RECEIVING';
+    const receiptStatus = allItemsReceived ? 'COMPLETED' : anyReceived ? 'PARTIAL' : 'PENDING';
+    const purchaseStatus = allItemsReceived ? 'RECEIVED' : 'RECEIVING';
 
-      await tx.goodsReceipt.update({
-        where: { id: receipt.id },
+    writes.push(
+      this.prisma.goodsReceipt.update({
+        where: { id: receiptId },
         data: { status: receiptStatus as any },
-      });
+      }),
+    );
 
-      await tx.purchase.update({
+    writes.push(
+      this.prisma.purchase.update({
         where: { id },
         data: {
           status: purchaseStatus as any,
           receiptStatus: receiptStatus as any,
           receivedAt: anyReceived ? new Date() : existing.receivedAt,
         },
-      });
+      }),
+    );
 
-      return receipt;
-    });
+    const results = await this.prisma.$transaction(writes);
+    return results[0];
   }
 
   async getCostHistory(productId?: string, variantId?: string) {

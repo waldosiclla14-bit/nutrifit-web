@@ -8,14 +8,26 @@ describe('PurchasesService confirm/cancel', () => {
   let prisma: {
     $executeRaw: jest.Mock;
     $queryRaw: jest.Mock;
+    $transaction: jest.Mock;
     purchase: { findUnique: jest.Mock; update: jest.Mock; create: jest.Mock };
+    purchaseItem: { update: jest.Mock };
+    productVariant: { findMany: jest.Mock; update: jest.Mock };
+    inventoryMovement: { create: jest.Mock };
+    productCostHistory: { create: jest.Mock };
+    goodsReceipt: { create: jest.Mock; update: jest.Mock };
   };
 
   beforeEach(async () => {
     prisma = {
       $executeRaw: jest.fn(),
       $queryRaw: jest.fn(),
+      $transaction: jest.fn(),
       purchase: { findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
+      purchaseItem: { update: jest.fn() },
+      productVariant: { findMany: jest.fn(), update: jest.fn() },
+      inventoryMovement: { create: jest.fn() },
+      productCostHistory: { create: jest.fn() },
+      goodsReceipt: { create: jest.fn(), update: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -170,6 +182,56 @@ describe('PurchasesService confirm/cancel', () => {
       await expect(
         service.createReceipt('p1', { items: [{ purchaseItemId: 'pi-1', receivedQty: 1, damagedQty: 2 }] }, 'u1'),
       ).rejects.toThrow('dañados no puede superar');
+    });
+
+    it('completes receipt in one non-interactive tx (pgbouncer-safe)', async () => {
+      prisma.purchase.findUnique.mockResolvedValue({
+        id: 'p1',
+        status: 'CONFIRMED',
+        purchaseNumber: 'COMP-000001',
+        receivedAt: null,
+        items: [{ id: 'pi-1', quantity: 10, receivedQty: 4, unitCost: 20000, variantId: 'v1', productId: 'p1' }],
+      });
+      prisma.productVariant.findMany.mockResolvedValue([{ id: 'v1', physicalStock: 5, costPrice: 18000 }]);
+      prisma.$queryRaw.mockResolvedValue([{ next: 3 }]);
+      prisma.$executeRaw.mockResolvedValue(undefined);
+      prisma.$transaction.mockImplementation(async (writes: any[]) => {
+        // Simula el retorno: primer write = receipt creado
+        return [{ id: 'rec-uuid-1', receiptNumber: 'REC-000003' }];
+      });
+
+      const res: any = await service.createReceipt(
+        'p1',
+        { items: [{ purchaseItemId: 'pi-1', receivedQty: 6, damagedQty: 0 }] },
+        'u1',
+      );
+
+      expect(res.receiptNumber).toBe('REC-000003');
+      // Receipt con id propio + stock + movimiento + costo + estados
+      expect(prisma.goodsReceipt.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ id: expect.any(String), purchaseId: 'p1' }),
+        }),
+      );
+      expect(prisma.purchaseItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'pi-1' }, data: { receivedQty: 10 } }),
+      );
+      expect(prisma.productVariant.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'v1' }, data: { physicalStock: 11 } }),
+      );
+      expect(prisma.inventoryMovement.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ variantId: 'v1', type: 'PURCHASE_RECEIPT', quantity: 6 }),
+        }),
+      );
+      expect(prisma.productCostHistory.create).toHaveBeenCalled();
+      expect(prisma.purchase.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'RECEIVED', receiptStatus: 'COMPLETED' }),
+        }),
+      );
+      // Una sola transacción con array (no interactiva)
+      expect(prisma.$transaction.mock.calls[0][0]).toBeInstanceOf(Array);
     });
   });
 });
