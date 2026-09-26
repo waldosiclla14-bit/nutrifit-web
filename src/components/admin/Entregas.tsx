@@ -268,8 +268,8 @@ export function Entregas({ token }: { token: string }) {
           a.download = `entregas-${filterDateFrom}.csv`;
           a.click();
           URL.revokeObjectURL(url);
-        }} className="btn-outline px-3 py-2 text-xs min-h-[40px]">CSV</button>
-        <button onClick={loadData} className="btn-outline px-3 py-2 text-xs min-h-[40px]">
+        }} className="ds-btn-secondary px-3 py-2 text-xs min-h-[40px]">CSV</button>
+        <button onClick={loadData} className="ds-btn-secondary px-3 py-2 text-xs min-h-[40px]">
           <RefreshCw size={14} />
         </button>
       </div>
@@ -476,7 +476,7 @@ function DeliveryDetail({
                 <button
                   onClick={verifyCode}
                   disabled={code.length !== 4 || verifying}
-                  className="btn-primary px-4 text-xs min-h-[40px]"
+                  className="ds-btn-primary px-4 text-xs min-h-[40px]"
                 >
                   {verifying ? 'Verificando...' : '✓ Confirmar'}
                 </button>
@@ -493,7 +493,7 @@ function DeliveryDetail({
                 disabled={!!updating}
                 className={
                   a.kind === 'primary'
-                    ? 'btn-primary px-4 text-xs min-h-[40px] disabled:opacity-50'
+                    ? 'ds-btn-primary px-4 text-xs min-h-[40px] disabled:opacity-50'
                     : a.kind === 'danger'
                       ? 'rounded-xl border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 min-h-[40px] disabled:opacity-50'
                       : 'rounded-xl border border-amber-300 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 min-h-[40px] disabled:opacity-50'

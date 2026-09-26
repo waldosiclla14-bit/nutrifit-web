@@ -103,7 +103,7 @@ export function Clientes({ token }: { token: string }) {
       <button
         type="button"
         onClick={() => openEdit(c)}
-        className="inline-flex items-center gap-1 btn-outline px-3 py-1.5 text-[11px] min-h-[44px]"
+        className="inline-flex items-center gap-1 ds-btn-secondary px-3 py-1.5 text-[11px] min-h-[44px]"
       >
         <Pencil size={12} /> Editar
       </button>
@@ -132,7 +132,7 @@ export function Clientes({ token }: { token: string }) {
         type="button"
         onClick={() => remove(c)}
         disabled={deleting === c.id}
-        className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 transition hover:bg-red-50 disabled:opacity-50 min-h-[44px]"
+        className="ds-btn-danger px-3 py-1.5 text-[11px] min-h-[44px]"
       >
         <Trash2 size={12} /> {deleting === c.id ? '…' : 'Eliminar'}
       </button>
@@ -256,7 +256,7 @@ export function Clientes({ token }: { token: string }) {
         <button
           type="button"
           onClick={openAdd}
-          className="btn-primary px-4 py-2 text-xs min-h-[44px]"
+          className="ds-btn-primary px-4 py-2 text-xs min-h-[44px]"
         >
           <Plus size={14} /> Agregar cliente
         </button>
@@ -355,7 +355,7 @@ export function Clientes({ token }: { token: string }) {
             type="button"
             disabled={loadingMore}
             onClick={() => loadPage(pageRef.current + 1, true)}
-            className="btn-outline w-full px-4 py-2.5 text-xs disabled:opacity-50"
+            className="ds-btn-secondary w-full px-4 py-2.5 text-xs disabled:opacity-50"
           >
             {loadingMore ? 'Cargando…' : `Cargar más (${total - customers.length} restantes)`}
           </button>
@@ -395,13 +395,13 @@ export function Clientes({ token }: { token: string }) {
               />
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setShowForm(false)} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={() => setShowForm(false)} className="ds-btn-secondary px-4 py-2 text-xs">
                 Cancelar
               </button>
               <button
                 onClick={save}
                 disabled={saving}
-                className="btn-accent px-4 py-2 text-xs disabled:opacity-50"
+                className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50"
               >
                 {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear cliente'}
               </button>

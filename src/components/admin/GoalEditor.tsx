@@ -63,10 +63,10 @@ export function GoalEditor({
           ))}
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onClose} className="ds-btn-secondary px-4 py-2 text-xs">
             Cancelar
           </button>
-          <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
             {saving ? 'Guardando…' : 'Guardar metas'}
           </button>
         </div>

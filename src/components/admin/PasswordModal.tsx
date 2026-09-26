@@ -89,10 +89,10 @@ export function PasswordModal({
         {error && <p className="mt-3 text-xs font-semibold text-red-500">{error}</p>}
         {ok && <p className="mt-3 text-xs font-semibold text-emerald-600">Contraseña actualizada correctamente.</p>}
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onClose} className="ds-btn-secondary px-4 py-2 text-xs">
             Cerrar
           </button>
-          <button onClick={save} disabled={saving} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
             {saving ? 'Guardando…' : 'Guardar contraseña'}
           </button>
         </div>

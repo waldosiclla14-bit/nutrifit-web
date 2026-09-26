@@ -275,7 +275,7 @@ export function Calendario({ token }: { token: string }) {
                     onClick={() => updateStatus(selected.id, a.to)}
                     className={
                       a.kind === 'primary'
-                        ? 'btn-accent text-xs min-h-[36px] px-3'
+                        ? 'ds-btn-accent text-xs min-h-[36px] px-3'
                         : a.kind === 'danger'
                           ? 'rounded-xl border border-red-300 text-red-600 text-xs min-h-[36px] px-3 hover:bg-red-50'
                           : 'rounded-xl border border-amber-300 text-amber-700 text-xs min-h-[36px] px-3 hover:bg-amber-50'

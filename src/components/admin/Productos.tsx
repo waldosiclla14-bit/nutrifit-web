@@ -566,12 +566,12 @@ export function Productos({
           </div>
           <button
             onClick={() => { setSortDir((d) => d === 'asc' ? 'desc' : 'asc'); }}
-            className="btn-outline px-2 py-2 text-xs"
+            className="ds-btn-secondary px-2 py-2 text-xs"
             title={`Ordenar por ${sortBy} ${sortDir === 'asc' ? 'descendente' : 'ascendente'}`}
           >
             {sortDir === 'asc' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
           </button>
-          <label className={`relative inline-flex cursor-pointer items-center btn-outline px-3 py-2 text-xs ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
+          <label className={`relative inline-flex cursor-pointer items-center ds-btn-secondary px-3 py-2 text-xs ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
             {importing ? 'Importando…' : 'Importar'}
             <input
               type="file"
@@ -586,17 +586,17 @@ export function Productos({
               }}
             />
           </label>
-          <button onClick={exportExcel} className="btn-outline px-3 py-2 text-xs">
+          <button onClick={exportExcel} className="ds-btn-secondary px-3 py-2 text-xs">
             Exportar {filteredProducts.length < products.length ? `(${filteredProducts.length})` : ''}
           </button>
           <button
             onClick={() => setCompactMode((c) => !c)}
-            className="btn-outline px-3 py-2 text-xs"
+            className="ds-btn-secondary px-3 py-2 text-xs"
             title={compactMode ? 'Vista detallada' : 'Vista compacta'}
           >
             {compactMode ? '📋 Compacta' : '📊 Detalle'}
           </button>
-          <button onClick={() => setShowForm((s) => !s)} className="btn-accent px-4 py-2 text-xs">
+          <button onClick={() => setShowForm((s) => !s)} className="ds-btn-accent px-4 py-2 text-xs">
             {showForm ? 'Cancelar' : '+ Nuevo'}
           </button>
         </div>
@@ -659,10 +659,10 @@ export function Productos({
           </button>
 
           <div className="mt-6 flex justify-end gap-2">
-            <button onClick={() => setShowForm(false)} className="btn-outline px-4 py-2 text-xs">
+            <button onClick={() => setShowForm(false)} className="ds-btn-secondary px-4 py-2 text-xs">
               Cancelar
             </button>
-            <button onClick={create} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+            <button onClick={create} disabled={submitting} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
               {submitting ? 'Guardando…' : 'Guardar producto'}
             </button>
           </div>
@@ -699,7 +699,7 @@ export function Productos({
                   <button
                     onClick={() => remove(p)}
                     disabled={deleting === p.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-300 px-3 py-2 text-[11px] font-bold text-red-700 disabled:opacity-50 min-h-[44px]"
+                    className="ds-btn-danger px-3 py-2 text-[11px] min-h-[44px]"
                   >
                     <Trash2 size={10} /> {deleting === p.id ? '…' : 'Desactivar'}
                   </button>
@@ -817,7 +817,7 @@ export function Productos({
                             <button
                               disabled={saving === v.id}
                               onClick={() => save(p, v, v.stock)}
-                              className="btn-accent px-4 py-2 text-[11px] min-h-[44px] disabled:opacity-50"
+                              className="ds-btn-accent px-4 py-2 text-[11px] min-h-[44px] disabled:opacity-50"
                             >
                               {saving === v.id ? 'Guardando…' : 'Guardar'}
                             </button>
@@ -844,7 +844,7 @@ export function Productos({
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="btn-outline px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
+              className="ds-btn-secondary px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
             >
               ← Anterior
             </button>
@@ -854,7 +854,7 @@ export function Productos({
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="btn-outline px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
+              className="ds-btn-secondary px-3 py-2 text-xs min-h-[44px] disabled:opacity-30"
             >
               Siguiente →
             </button>
@@ -925,10 +925,10 @@ export function Productos({
             </button>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setEditing(null)} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={() => setEditing(null)} className="ds-btn-secondary px-4 py-2 text-xs">
                 Cancelar
               </button>
-              <button onClick={saveEdit} disabled={submitting} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+              <button onClick={saveEdit} disabled={submitting} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
                 {submitting ? 'Guardando…' : 'Guardar cambios'}
               </button>
             </div>

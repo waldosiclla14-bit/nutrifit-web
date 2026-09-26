@@ -229,7 +229,7 @@ export function EditOrderModal({
           </div>
 
           <div className="mt-4 rounded-2xl border border-line bg-soft p-3">
-            <button onClick={loadCatalog} className="btn-outline px-3 py-2 text-[11px] min-h-[44px]">
+            <button onClick={loadCatalog} className="ds-btn-secondary px-3 py-2 text-[11px] min-h-[44px]">
               {catalogLoading ? 'Cargando…' : catalog ? 'Buscar producto' : 'Cargar catálogo'}
             </button>
             {catalog && (
@@ -343,10 +343,10 @@ export function EditOrderModal({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-line p-6">
-          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onClose} className="ds-btn-secondary px-4 py-2 text-xs">
             Cancelar
           </button>
-          <button onClick={save} disabled={busy} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+          <button onClick={save} disabled={busy} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
             {busy ? 'Guardando…' : 'Guardar cambios'}
           </button>
         </div>

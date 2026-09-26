@@ -174,10 +174,10 @@ export function Finanzas({ token }: { token: string }) {
             {label}
           </button>
         ))}
-        <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
+        <button onClick={load} className="ds-btn-secondary px-4 py-2 text-xs" title="Actualizar">
           <RefreshCw size={14} /> Actualizar
         </button>
-        <button onClick={() => setShowForm(true)} className="btn-accent px-4 py-2 text-xs">
+        <button onClick={() => setShowForm(true)} className="ds-btn-accent px-4 py-2 text-xs">
           <Plus size={14} /> Registrar gasto
         </button>
       </div>
@@ -296,10 +296,10 @@ export function Finanzas({ token }: { token: string }) {
               </div>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-2">
-              <button onClick={() => setShowForm(false)} className="btn-outline justify-center" disabled={saving}>
+              <button onClick={() => setShowForm(false)} className="ds-btn-secondary justify-center" disabled={saving}>
                 Cancelar
               </button>
-              <button onClick={saveExpense} className="btn-accent justify-center" disabled={saving}>
+              <button onClick={saveExpense} className="ds-btn-accent justify-center" disabled={saving}>
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

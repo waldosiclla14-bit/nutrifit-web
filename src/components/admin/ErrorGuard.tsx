@@ -21,7 +21,7 @@ export class AdminErrorGuard extends Component<{ children: ReactNode }, { error:
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="btn-outline mt-4 px-4 py-2 text-xs min-h-[44px]"
+            className="ds-btn-secondary mt-4 px-4 py-2 text-xs min-h-[44px]"
           >
             Recargar
           </button>

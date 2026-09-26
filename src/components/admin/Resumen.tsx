@@ -598,7 +598,7 @@ export function Resumen({
         <div className="rounded-3xl border border-line bg-paper p-6">
           <div className="flex items-center justify-between">
             <p className="font-display text-lg uppercase">Metas de ventas</p>
-            <button onClick={() => setShowGoals(true)} className="btn-outline px-3 py-1.5 text-[11px]">
+            <button onClick={() => setShowGoals(true)} className="ds-btn-secondary px-3 py-1.5 text-[11px]">
               Editar metas
             </button>
           </div>

@@ -248,7 +248,7 @@ export function PurchaseForm({
             <button
               onClick={onSubmit}
               disabled={submitting}
-              className="btn-accent text-sm min-h-[44px] px-6 active:scale-[0.98] transition-transform"
+              className="ds-btn-accent text-sm min-h-[44px] px-6 active:scale-[0.98] transition-transform"
             >
               {submitting ? 'Creando...' : 'Crear compra'}
             </button>

@@ -54,7 +54,7 @@ export function PurchaseDetail({
           </p>
           <button
             onClick={onStartReceipt}
-            className="mt-2 flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl bg-green-500 text-white"
+            className="mt-2 flex items-center gap-1 ds-btn-success px-3 py-2 text-xs"
           >
             <Truck className="h-3.5 w-3.5" /> Recepcionar ahora
           </button>
@@ -194,7 +194,7 @@ export function PurchaseDetail({
           {p.status === 'DRAFT' && (
             <button
               onClick={() => onSubmitReview(p.id)}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white"
+              className="flex items-center gap-1 ds-btn-primary px-3 py-2 text-xs"
             >
               <Send className="h-3.5 w-3.5" /> Enviar a revisión
             </button>
@@ -202,7 +202,7 @@ export function PurchaseDetail({
           {p.status === 'PENDING_REVIEW' && (
             <button
               onClick={() => onConfirm(p.id)}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white"
+              className="flex items-center gap-1 ds-btn-primary px-3 py-2 text-xs"
             >
               <Send className="h-3.5 w-3.5" /> Confirmar
             </button>
@@ -230,7 +230,7 @@ export function PurchaseDetail({
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-[#25D366] text-white"
+                className="ds-btn-whatsapp px-3 py-2 text-xs"
               >
                 <MessageCircle className="h-3.5 w-3.5" /> Pedir por WhatsApp
               </a>

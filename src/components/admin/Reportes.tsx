@@ -112,10 +112,10 @@ export function Reportes({ token }: { token: string }) {
             {label}
           </button>
         ))}
-        <button onClick={load} className="btn-outline px-4 py-2 text-xs" title="Actualizar">
+        <button onClick={load} className="ds-btn-secondary px-4 py-2 text-xs" title="Actualizar">
           <RefreshCw size={14} /> Actualizar
         </button>
-        <button onClick={() => report && exportCSV(report.orders)} disabled={!report || report.orders.length === 0} className="btn-accent px-4 py-2 text-xs disabled:opacity-50">
+        <button onClick={() => report && exportCSV(report.orders)} disabled={!report || report.orders.length === 0} className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50">
           Exportar CSV
         </button>
       </div>

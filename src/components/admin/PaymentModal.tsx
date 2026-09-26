@@ -52,13 +52,13 @@ export function PaymentModal({
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-outline px-4 py-2 text-xs">
+          <button onClick={onClose} className="ds-btn-secondary px-4 py-2 text-xs">
             Cancelar
           </button>
           <button
             onClick={() => onSave(method)}
             disabled={busy}
-            className="btn-accent px-4 py-2 text-xs disabled:opacity-50"
+            className="ds-btn-accent px-4 py-2 text-xs disabled:opacity-50"
           >
             {busy ? 'Guardando…' : confirming ? 'Confirmar pago' : 'Guardar método'}
           </button>

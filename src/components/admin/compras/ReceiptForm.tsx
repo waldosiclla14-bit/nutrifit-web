@@ -68,7 +68,7 @@ export function ReceiptForm({
         <div className="mt-4">
           <button
             onClick={() => onSubmit(p.id)}
-            className="w-full btn-accent text-sm min-h-[48px] active:scale-[0.98] transition-transform"
+            className="w-full ds-btn-accent text-sm min-h-[48px] active:scale-[0.98] transition-transform"
           >
             Confirmar recepción
           </button>

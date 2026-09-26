@@ -1111,17 +1111,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           {cash?.status === 'OPEN' ? (
             <span className="chip border-emerald-300 bg-emerald-100 text-emerald-800 text-[11px]">Caja abierta</span>
           ) : (
-            <button onClick={openRegister} className="btn-accent px-2.5 py-1 text-xs">
+            <button onClick={openRegister} className="ds-btn-accent px-2.5 py-1 text-xs">
               Abrir caja
             </button>
           )}
           <button
             onClick={() => setShowCash((v) => !v)}
-            className={`btn-outline px-2.5 py-1 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
+            className={`ds-btn-secondary px-2.5 py-1 text-xs ${showCash ? 'border-ink bg-ink text-paper' : ''}`}
           >
             <Wallet size={12} /> {showCash ? 'Ocultar' : 'Caja'}
           </button>
-          <button onClick={onLogout} className="btn-outline px-2.5 py-1 text-xs">
+          <button onClick={onLogout} className="ds-btn-secondary px-2.5 py-1 text-xs">
             Salir
           </button>
         </div>
@@ -1148,7 +1148,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               ) : (
                 <span className="chip border-red-200 bg-red-50 text-red-700">Caja cerrada</span>
               )}
-              <button onClick={loadReport} disabled={reportLoading} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={loadReport} disabled={reportLoading} className="ds-btn-secondary px-4 py-2 text-xs">
                 <RefreshCw size={13} /> Actualizar
               </button>
             </div>
@@ -1207,19 +1207,19 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <Receipt size={18} className="text-accent" /> Boleta {receipt.orderNumber}
             </p>
             <div className="flex gap-2">
-              <button onClick={copyReceipt} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={copyReceipt} className="ds-btn-secondary px-4 py-2 text-xs">
                 <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(receipt.customerPhone, receiptText(receipt))}
-                className="btn-outline px-4 py-2 text-xs text-emerald-600 hover:border-emerald-300"
+                className="ds-btn-secondary px-4 py-2 text-xs text-emerald-600 hover:border-emerald-300"
               >
                 <MessageCircle size={13} /> WhatsApp
               </button>
-              <button onClick={printReceipt} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={printReceipt} className="ds-btn-secondary px-4 py-2 text-xs">
                 <Printer size={13} /> Imprimir
               </button>
-              <button onClick={() => setReceipt(null)} className="btn-accent px-4 py-2 text-xs">
+              <button onClick={() => setReceipt(null)} className="ds-btn-accent px-4 py-2 text-xs">
                 <X size={13} /> Cerrar
               </button>
             </div>
@@ -1303,12 +1303,12 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               Mensaje para el cliente (WhatsApp)
             </p>
             <div className="flex gap-2">
-              <button onClick={copyMessage} className="btn-outline px-4 py-2 text-xs">
+              <button onClick={copyMessage} className="ds-btn-secondary px-4 py-2 text-xs">
                 <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(salePhone, saleMsg)}
-                className="btn-accent px-4 py-2 text-xs"
+                className="ds-btn-accent px-4 py-2 text-xs"
               >
                 <MessageCircle size={13} /> Enviar por WhatsApp
               </button>
@@ -1426,10 +1426,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
           {cart.length > 0 && (
             <div className="mt-3 flex gap-2">
-              <button onClick={pauseSale} className="btn-outline flex-1 px-3 py-2 text-xs">
+              <button onClick={pauseSale} className="ds-btn-secondary flex-1 px-3 py-2 text-xs">
                 <Pause size={13} /> Pausar venta
               </button>
-              <button onClick={cancelSale} className="btn-outline flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
+              <button onClick={cancelSale} className="ds-btn-secondary flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
                 <X size={13} /> Cancelar venta
               </button>
             </div>
@@ -1899,10 +1899,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
 
               {cart.length > 0 && (
                 <div className="mt-2 flex gap-2">
-                  <button onClick={pauseSale} className="btn-outline flex-1 px-3 py-2 text-xs">
+                  <button onClick={pauseSale} className="ds-btn-secondary flex-1 px-3 py-2 text-xs">
                     <Pause size={12} /> Pausar
                   </button>
-                  <button onClick={cancelSale} className="btn-outline flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
+                  <button onClick={cancelSale} className="ds-btn-secondary flex-1 px-3 py-2 text-xs text-red-600 hover:border-red-300">
                     <X size={12} /> Cancelar
                   </button>
                 </div>

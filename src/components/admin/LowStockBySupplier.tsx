@@ -166,7 +166,7 @@ export default function LowStockBySupplier({ token, onReceiveStock }: Props) {
                         href={waUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3 py-2 text-xs font-semibold text-[#128C4B] hover:bg-[#25D366]/20 transition"
+                        className="ds-btn-whatsapp w-full px-3 py-2 text-xs"
                       >
                         <MessageCircle size={13} /> Pedir faltantes por WhatsApp
                       </a>

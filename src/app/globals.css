@@ -231,6 +231,63 @@
   .ds-btn-secondary:active { transform: scale(0.98); }
   .ds-btn-secondary:disabled { opacity: 0.5; }
 
+  .ds-btn-accent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #5DD62C;
+    color: #0B0B0B;
+    border-radius: var(--radius-control);
+    font-weight: 700;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .ds-btn-accent:active { transform: scale(0.98); }
+  .ds-btn-accent:disabled { opacity: 0.5; }
+
+  .ds-btn-success {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #15803D;
+    color: #fff;
+    border-radius: var(--radius-control);
+    font-weight: 700;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .ds-btn-success:active { transform: scale(0.98); }
+  .ds-btn-success:disabled { opacity: 0.5; }
+
+  .ds-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--danger-text);
+    color: var(--danger-text);
+    border-radius: var(--radius-control);
+    font-weight: 700;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .ds-btn-danger:active { transform: scale(0.98); }
+  .ds-btn-danger:disabled { opacity: 0.5; }
+
+  .ds-btn-whatsapp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #25D366;
+    color: #062B16;
+    border-radius: var(--radius-control);
+    font-weight: 700;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .ds-btn-whatsapp:active { transform: scale(0.98); }
+  .ds-btn-whatsapp:disabled { opacity: 0.5; }
+
   .ds-chip {
     display: inline-flex;
     align-items: center;

@@ -52,7 +52,7 @@ export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | nul
           <p className="mt-1 text-sm text-muted">Fondo inicial (puede ser 0).</p>
           <div className="mt-4 space-y-3">
             <input type="number" min={0} value={initial} onChange={(e) => setInitial(String(Math.max(0, Number(e.target.value) || 0)))} className="input" placeholder="Fondo inicial" />
-            <button onClick={open} disabled={saving} className="btn-accent w-full">
+            <button onClick={open} disabled={saving} className="ds-btn-accent w-full">
               {saving ? 'Abriendo…' : 'Abrir caja'}
             </button>
           </div>
@@ -85,7 +85,7 @@ export function Caja({ cash, token, onChanged }: { cash: AdminCashRegister | nul
           {cash.status === 'OPEN' && (
             <div className="mt-4 space-y-3">
               <input type="number" min={0} value={final} onChange={(e) => setFinal(String(Math.max(0, Number(e.target.value) || 0)))} className="input" placeholder="Total contado al cierre" />
-              <button onClick={close} disabled={saving} className="btn-accent w-full">
+              <button onClick={close} disabled={saving} className="ds-btn-accent w-full">
                 {saving ? 'Cerrando…' : 'Cerrar caja'}
               </button>
             </div>
