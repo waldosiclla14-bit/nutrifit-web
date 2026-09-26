@@ -15,6 +15,7 @@ describe('OrdersService', () => {
     productVariant: { findMany: jest.Mock; findUnique: jest.Mock };
     customer: { update: jest.Mock };
     cashMovement: { create: jest.Mock };
+    cashRegister: { findUnique: jest.Mock };
     auditLog: { create: jest.Mock };
     inventoryMovement: { create: jest.Mock; deleteMany: jest.Mock };
     orderItem: { deleteMany: jest.Mock; groupBy: jest.Mock };
@@ -45,6 +46,7 @@ describe('OrdersService', () => {
       },
       customer: { update: jest.fn() },
       cashMovement: { create: jest.fn() },
+      cashRegister: { findUnique: jest.fn() },
       auditLog: { create: jest.fn() },
       inventoryMovement: { create: jest.fn(), deleteMany: jest.fn() },
       orderItem: { deleteMany: jest.fn(), groupBy: jest.fn() },
@@ -675,6 +677,89 @@ describe('OrdersService', () => {
       await service.confirmPayment('o1', { paymentMethod: 'TRANSFERENCIA' }, 'u1');
 
       expect(prisma.cashMovement.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('returnOrder', () => {
+    const deliveredOrder: any = {
+      id: 'o1',
+      status: 'DELIVERED',
+      paymentStatus: 'CONFIRMED',
+      paymentMethod: 'EFECTIVO',
+      items: [{ variantId: 'v1', quantity: 2 }],
+      total: 60000,
+      orderNumber: 'NF-000001',
+      customerId: 'c1',
+      cashRegisterId: 'r1',
+    };
+
+    it('reverses stock, payment, counters and cash in one tx', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(deliveredOrder)
+        .mockResolvedValueOnce({ ...deliveredOrder, status: 'RETURNED', paymentStatus: 'REFUNDED' });
+      prisma.cashRegister.findUnique.mockResolvedValue({ isOpen: true });
+      prisma.productVariant.findMany.mockResolvedValue([{ id: 'v1', physicalStock: 12 }]);
+      prisma.inventoryMovement.create.mockResolvedValue({});
+      prisma.$transaction.mockResolvedValue([]);
+
+      const res: any = await service.returnOrder('o1', { reason: 'No le gustó' }, 'u1');
+
+      expect(prisma.$executeRaw).toHaveBeenCalled();
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'o1',
+            status: { in: ['PAID', 'DELIVERED'] },
+            paymentStatus: 'CONFIRMED',
+          }),
+          data: expect.objectContaining({ status: 'RETURNED', paymentStatus: 'REFUNDED' }),
+        }),
+      );
+      expect(prisma.customer.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            totalSpent: { decrement: 60000 },
+            totalOrders: { decrement: 1 },
+          }),
+        }),
+      );
+      expect(prisma.cashMovement.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ registerId: 'r1', type: 'EXPENSE', amount: 60000, orderId: 'o1' }),
+        }),
+      );
+      expect(res.cashReversed).toBe(true);
+    });
+
+    it('succeeds without cash reversal when register is closed', async () => {
+      prisma.order.findUnique
+        .mockResolvedValueOnce(deliveredOrder)
+        .mockResolvedValueOnce({ ...deliveredOrder, status: 'RETURNED', paymentStatus: 'REFUNDED' });
+      prisma.cashRegister.findUnique.mockResolvedValue({ isOpen: false });
+      prisma.productVariant.findMany.mockResolvedValue([]);
+      prisma.inventoryMovement.create.mockResolvedValue({});
+      prisma.$transaction.mockResolvedValue([]);
+
+      const res: any = await service.returnOrder('o1', {}, 'u1');
+
+      expect(res.cashReversed).toBe(false);
+      expect(prisma.cashMovement.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects unpaid, already-returned and lost races', async () => {
+      prisma.order.findUnique.mockResolvedValue({ ...deliveredOrder, status: 'PENDING', paymentStatus: 'PENDING' });
+      await expect(service.returnOrder('o1', {}, 'u1')).rejects.toThrow('pagadas o entregadas');
+
+      prisma.order.findUnique.mockResolvedValue({ ...deliveredOrder, status: 'RETURNED', paymentStatus: 'REFUNDED' });
+      await expect(service.returnOrder('o1', {}, 'u1')).rejects.toThrow('ya fue devuelta');
+
+      const p2025 = Object.assign(new Error('No record found'), { code: 'P2025' });
+      prisma.order.findUnique
+        .mockResolvedValueOnce(deliveredOrder)
+        .mockResolvedValueOnce({ status: 'RETURNED', paymentStatus: 'REFUNDED' });
+      prisma.cashRegister.findUnique.mockResolvedValue({ isOpen: true });
+      prisma.$transaction.mockRejectedValueOnce(p2025);
+      await expect(service.returnOrder('o1', {}, 'u1')).rejects.toThrow('ya fue devuelta por otra operación');
     });
   });
 });

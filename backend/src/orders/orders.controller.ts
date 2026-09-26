@@ -88,6 +88,15 @@ export class OrdersController {
     return this.ordersService.updatePaymentMethod(id, body, req.user?.id);
   }
 
+  @Patch(':id/return')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async returnOrder(@Param('id') id: string, @Request() req: any) {
+    const body = await readJsonBody(req).catch(() => ({}));
+    return this.ordersService.returnOrder(id, body, req.user?.id);
+  }
+
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)

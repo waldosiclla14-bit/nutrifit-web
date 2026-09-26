@@ -171,6 +171,38 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
           Entregado
         </button>
       )}
+      {['PAID', 'DELIVERED'].includes(o.status) && (
+        <button
+          disabled={busyId === o.id}
+          onClick={async () => {
+            const ok = await confirm({
+              title: 'Devolver orden',
+              message: `¿Devolver ${o.orderNumber} por ${formatPrice(o.total)}? Revierte stock, pago y caja.`,
+              cancelLabel: 'No',
+              confirmLabel: 'Sí, devolver',
+              danger: true,
+            });
+            if (!ok) return;
+            setBusyId(o.id);
+            try {
+              const res: any = await apiFetch(`/orders/${o.id}/return`, { method: 'PATCH', token, body: {} });
+              await reloadAll();
+              toast.success(
+                res?.cashReversed === false
+                  ? 'Devolución lista. OJO: la caja estaba cerrada, registra el egreso manual.'
+                  : 'Devolución registrada.',
+              );
+            } catch (err: any) {
+              toast.error(err?.message || 'Error al devolver.');
+            } finally {
+              setBusyId(null);
+            }
+          }}
+          className="rounded-full border border-amber-300 px-3 py-1.5 text-[11px] font-bold text-amber-700 transition hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
+        >
+          Devolver
+        </button>
+      )}
       {!['CANCELLED', 'DELIVERED', 'RETURNED'].includes(o.status) && (
         <button
           disabled={busyId === o.id}

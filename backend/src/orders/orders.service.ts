@@ -862,6 +862,133 @@ markPaid = true;
     return this.findOne(id);
   }
 
+  // Devolución total: revierte stock, pago, contadores y caja en UNA tx.
+  // Reglas v1 (a definir con negocio): sin ventana límite, 100%, todo a stock.
+  async returnOrder(id: string, data: { reason?: string }, userId?: string) {
+    const existing = await this.prisma.order.findUnique({ where: { id }, include: { items: true } });
+    if (!existing) throw new NotFoundException('Orden no encontrada');
+    if (existing.status === OrderStatus.RETURNED || existing.paymentStatus === PaymentStatus.REFUNDED) {
+      throw new BadRequestException('Esta orden ya fue devuelta');
+    }
+    if (!([OrderStatus.PAID, OrderStatus.DELIVERED] as OrderStatus[]).includes(existing.status as OrderStatus)) {
+      throw new BadRequestException('Solo se pueden devolver órdenes pagadas o entregadas');
+    }
+    if (existing.paymentStatus !== PaymentStatus.CONFIRMED) {
+      throw new BadRequestException('Solo se pueden devolver órdenes con pago confirmado');
+    }
+    const reason = String(data?.reason || '').trim().slice(0, 200) || null;
+
+    // Caja: solo se reversa si el turno sigue abierto (si cerró, el vendedor
+    // lo registra manual; se avisa con cashReversed=false, nunca silencioso).
+    let cashReversed = false;
+    if (existing.cashRegisterId && existing.paymentMethod === 'EFECTIVO') {
+      const reg = await this.prisma.cashRegister
+        .findUnique({ where: { id: existing.cashRegisterId }, select: { isOpen: true } })
+        .catch(() => null);
+      if (reg?.isOpen) cashReversed = true;
+    }
+
+    const writes: PrismaPromise<any>[] = [];
+
+    // Reponer stock físico (la reserva ya se consumió al pagar)
+    for (const item of existing.items) {
+      if (!item.variantId) continue;
+      writes.push(
+        this.prisma.$executeRaw`
+          UPDATE "product_variants"
+          SET "stock" = "stock" + ${item.quantity}
+          WHERE "id" = ${item.variantId}
+        `,
+      );
+    }
+
+    writes.push(
+      this.prisma.order.update({
+        // Guard anti doble-devolución: el perdedor no matchea → P2025 → rollback
+        where: {
+          id,
+          status: { in: [OrderStatus.PAID, OrderStatus.DELIVERED] },
+          paymentStatus: PaymentStatus.CONFIRMED,
+        },
+        data: {
+          status: OrderStatus.RETURNED,
+          paymentStatus: PaymentStatus.REFUNDED,
+          updatedAt: new Date(),
+        },
+      }),
+    );
+
+    // Revertir contadores del cliente
+    writes.push(
+      this.prisma.customer.update({
+        where: { id: existing.customerId },
+        data: {
+          totalSpent: { decrement: existing.total },
+          totalOrders: { decrement: 1 },
+        },
+      }),
+    );
+
+    if (cashReversed) {
+      writes.push(
+        this.prisma.cashMovement.create({
+          data: {
+            registerId: existing.cashRegisterId!,
+            type: 'EXPENSE',
+            amount: existing.total,
+            reason: `Devolución POS #${existing.orderNumber}`,
+            orderId: id,
+            createdById: userId,
+          },
+        }),
+      );
+    }
+
+    writes.push(
+      this.prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'ORDER_RETURNED',
+          entity: 'Order',
+          entityId: id,
+          newValue: { status: OrderStatus.RETURNED, paymentStatus: PaymentStatus.REFUNDED, reason },
+        },
+      }),
+    );
+
+    await this.prisma.$transaction(writes).catch(async (err: any) => {
+      if (err?.code === 'P2025') {
+        const current = await this.prisma.order
+          .findUnique({ where: { id }, select: { paymentStatus: true, status: true } })
+          .catch(() => null);
+        if (!current) throw new NotFoundException('Orden no encontrada');
+        if (current.status === OrderStatus.RETURNED || current.paymentStatus === PaymentStatus.REFUNDED) {
+          throw new BadRequestException('Esta orden ya fue devuelta por otra operación');
+        }
+      }
+      throw err;
+    });
+
+    // Movimientos de inventario post-tx (auditoría, con catch interno)
+    const returnVariantIds = existing.items.filter(i => i.variantId).map(i => i.variantId);
+    const returnVariants = returnVariantIds.length
+      ? await this.prisma.productVariant.findMany({
+          where: { id: { in: returnVariantIds } },
+          select: { id: true, physicalStock: true },
+        })
+      : [];
+    const returnVariantMap = new Map(returnVariants.map(v => [v.id, v]));
+    for (const item of existing.items) {
+      if (!item.variantId) continue;
+      const v = returnVariantMap.get(item.variantId);
+      const newStock = v?.physicalStock ?? 0;
+      this.logInventoryMovement(item.variantId, MovementType.RETURN, item.quantity, newStock - item.quantity, newStock, id, userId, `Devolución ${existing.orderNumber}`);
+    }
+
+    const order = await this.findOne(id);
+    return { ...order, cashReversed };
+  }
+
   async updatePaymentMethod(id: string, data: { paymentMethod: string; paymentNotes?: string }, userId?: string) {
     const existing = await this.prisma.order.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Orden no encontrada');
