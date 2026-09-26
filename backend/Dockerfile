@@ -24,4 +24,4 @@ COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "node prisma/baseline.js && node prisma/ensure-enum.js && npx prisma migrate deploy && exec node dist/main"]
+CMD ["sh", "-c", "node prisma/baseline.js && node prisma/ensure-enum.js && (for i in 1 2 3; do npx prisma migrate deploy && break || { echo \"[boot] migrate intento $i fallido, reintentando...\"; sleep 20; }; done) && exec node dist/main"]
