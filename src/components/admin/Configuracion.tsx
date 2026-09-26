@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/feedback';
+import { PushSettings } from './PushSettings';
 
 export function Configuracion({
   token,
@@ -157,6 +158,8 @@ export function Configuracion({
             </button>
           </div>
         </div>
+
+        <PushSettings token={token} />
 
         <div className="flex justify-end">
           <Button type="submit" className="bg-sport-green text-black font-extrabold px-6">

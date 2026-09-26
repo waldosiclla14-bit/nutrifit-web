@@ -22,6 +22,7 @@ import { AiModule } from './ai/ai.module';
 import { TodoistModule } from './todoist/todoist.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { FinancesModule } from './finances/finances.module';
+import { PushModule } from './push/push.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -45,6 +46,7 @@ import { FinancesModule } from './finances/finances.module';
     InventoryModule,
     PurchasesModule,
     FinancesModule,
+    PushModule,
     AiModule,
   ],
   providers: [

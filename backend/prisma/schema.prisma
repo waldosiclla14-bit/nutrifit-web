@@ -933,6 +933,24 @@ model Expense {
 }
 
 // ───────────────────────────────────────────────
+// PUSH — Suscripciones Web Push (PWA)
+// ───────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+// ───────────────────────────────────────────────
 // NUTRIFIT DELIVERY — Configuración
 // ───────────────────────────────────────────────
 
