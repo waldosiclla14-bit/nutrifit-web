@@ -162,8 +162,8 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
 }
 
 export function openWhatsApp(phone: string, message: string) {
-  let clean = phone.replace(/[^\d]/g, '').replace(/^0+/, '');
-  if (/^9\d{8}$/.test(clean)) clean = `56${clean}`;
+  const clean = normalizeChilePhone(phone);
+  if (!clean) return;
   const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
   const link = document.createElement('a');
   link.href = url;
@@ -172,4 +172,50 @@ export function openWhatsApp(phone: string, message: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+// Normaliza teléfonos chilenos a formato wa.me (solo dígitos con código país).
+// Acepta: 912345678, +56912345678, 56912345678, con espacios/guiones.
+// Devuelve null si no es un número chileno reconocible.
+export function normalizeChilePhone(raw?: string | null): string | null {
+  if (!raw) return null;
+  const d = String(raw).replace(/[^\d]/g, '').replace(/^0+/, '');
+  if (/^56\d{9}$/.test(d)) return d; // ya con código país
+  if (/^9\d{8}$/.test(d)) return `56${d}`; // móvil sin código
+  return null;
+}
+
+export function supplierWhatsAppUrl(phone: string | null | undefined, message: string): string | null {
+  const clean = normalizeChilePhone(phone);
+  if (!clean) return null;
+  return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
+}
+
+export type SupplierOrderLine = {
+  name: string;
+  variant?: string | null;
+  quantity: number;
+  unitPrice?: number | null;
+};
+
+export function buildSupplierOrderMessage(
+  supplierName: string,
+  meta: { purchaseNumber?: string; date?: string },
+  lines: SupplierOrderLine[],
+  total?: number | null,
+): string {
+  const out: string[] = [];
+  out.push(`Hola ${supplierName || 'proveedor'} 👋, habla el equipo NutriFit.`);
+  out.push(`Quiero hacer un pedido${meta.purchaseNumber ? ` (ref: ${meta.purchaseNumber})` : ''}:`);
+  out.push('');
+  lines.forEach((l, i) => {
+    out.push(`${i + 1}. ${l.name}${l.variant ? ` (${l.variant})` : ''} ×${l.quantity}`);
+    if (l.unitPrice != null) out.push(`   Ref: ${formatPrice(l.unitPrice * l.quantity)}`);
+  });
+  out.push('');
+  if (total != null) out.push(`*Total ref:* ${formatPrice(total)}`);
+  if (meta.date) out.push(`Fecha: ${meta.date}`);
+  out.push('');
+  out.push('Quedo atento a confirmación y fecha de entrega. ¡Gracias!');
+  return out.join('\n');
 }

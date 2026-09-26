@@ -185,14 +185,15 @@ describe('ProductsService', () => {
   describe('getLowStockBySupplier', () => {
     it('groups products by supplier', async () => {
       prisma.$queryRaw.mockResolvedValue([
-        { variantId: 'v1', variantName: '2kg', sku: 'W-2K', stock: 2, threshold: 5, productId: 'p1', productName: 'Whey', supplierId: 's1', supplierName: 'Proveedor A', supplierPaymentTerms: 'CREDITO' },
-        { variantId: 'v2', variantName: '1kg', sku: 'W-1K', stock: 1, threshold: 5, productId: 'p2', productName: 'Creatina', supplierId: 's1', supplierName: 'Proveedor A', supplierPaymentTerms: 'CREDITO' },
-        { variantId: 'v3', variantName: 'Unica', sku: 'BC-1', stock: 0, threshold: 5, productId: 'p3', productName: 'BCAA', supplierId: null, supplierName: null, supplierPaymentTerms: null },
+        { variantId: 'v1', variantName: '2kg', sku: 'W-2K', stock: 2, threshold: 5, productId: 'p1', productName: 'Whey', supplierId: 's1', supplierName: 'Proveedor A', supplierPhone: '56912345678', supplierPaymentTerms: 'CREDITO' },
+        { variantId: 'v2', variantName: '1kg', sku: 'W-1K', stock: 1, threshold: 5, productId: 'p2', productName: 'Creatina', supplierId: 's1', supplierName: 'Proveedor A', supplierPhone: '56912345678', supplierPaymentTerms: 'CREDITO' },
+        { variantId: 'v3', variantName: 'Unica', sku: 'BC-1', stock: 0, threshold: 5, productId: 'p3', productName: 'BCAA', supplierId: null, supplierName: null, supplierPhone: null, supplierPaymentTerms: null },
       ]);
 
       const result = await service.getLowStockBySupplier();
       expect(result).toHaveLength(2);
       expect(result[0].supplierId).toBe('s1');
+      expect(result[0].supplierPhone).toBe('56912345678');
       expect(result[0].products).toHaveLength(2);
       expect(result[1].supplierId).toBeNull();
       expect(result[1].products).toHaveLength(1);

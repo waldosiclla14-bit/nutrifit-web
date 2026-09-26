@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Package, Truck, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Truck, AlertTriangle, MessageCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { buildSupplierOrderMessage, supplierWhatsAppUrl } from '@/lib/whatsapp';
 
 interface LowStockProduct {
   variantId: string;
@@ -17,6 +18,7 @@ interface LowStockProduct {
 interface SupplierGroup {
   supplierId: string | null;
   supplierName: string;
+  supplierPhone?: string | null;
   supplierPaymentTerms: string | null;
   products: LowStockProduct[];
 }
@@ -142,6 +144,35 @@ export default function LowStockBySupplier({ token, onReceiveStock }: Props) {
                     </button>
                   </div>
                 )}
+
+                {/* Pedir faltantes por WhatsApp (cantidades sugeridas, editables antes de enviar) */}
+                {(() => {
+                  const waUrl = supplierWhatsAppUrl(
+                    group.supplierPhone,
+                    buildSupplierOrderMessage(
+                      group.supplierName,
+                      {},
+                      group.products.map((p) => ({
+                        name: p.productName,
+                        variant: p.variantName,
+                        quantity: Math.max((p.threshold ?? 0) - (p.stock ?? 0), 1),
+                      })),
+                      null,
+                    ),
+                  );
+                  return waUrl ? (
+                    <div className="px-4 py-2 border-t border-line/50">
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#25D366]/10 px-3 py-2 text-xs font-semibold text-[#128C4B] hover:bg-[#25D366]/20 transition"
+                      >
+                        <MessageCircle size={13} /> Pedir faltantes por WhatsApp
+                      </a>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             )}
           </div>

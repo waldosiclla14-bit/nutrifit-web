@@ -1,8 +1,9 @@
 'use client';
 
-import { Camera, CheckCircle, FilePlus, FileText, RotateCcw, Send, Truck, X } from 'lucide-react';
+import { Camera, CheckCircle, FilePlus, FileText, MessageCircle, RotateCcw, Send, Truck, X } from 'lucide-react';
 import type { Purchase } from './types';
 import { statusColor, statusLabel } from './helpers';
+import { buildSupplierOrderMessage, supplierWhatsAppUrl } from '@/lib/whatsapp';
 
 export function PurchaseDetail({
   purchase: p,
@@ -214,6 +215,27 @@ export function PurchaseDetail({
               <Truck className="h-3.5 w-3.5" /> Recepcionar
             </button>
           )}
+          {(() => {
+            const waUrl = supplierWhatsAppUrl(
+              p.supplier?.phone,
+              buildSupplierOrderMessage(
+                p.supplier?.name || '',
+                { purchaseNumber: p.purchaseNumber, date: p.createdAt?.slice(0, 10) },
+                p.items.map((i) => ({ name: i.productName, variant: i.variantName, quantity: i.quantity, unitPrice: i.unitCost })),
+                p.total,
+              ),
+            );
+            return waUrl ? (
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-[#25D366] text-white"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> Pedir por WhatsApp
+              </a>
+            ) : null;
+          })()}
           {p.status !== 'CANCELLED' && p.status !== 'RECEIVED' && (
             <button
               onClick={() => onCancel(p.id)}

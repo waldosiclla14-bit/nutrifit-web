@@ -21,7 +21,7 @@ export type Purchase = {
   id: string;
   purchaseNumber: string;
   supplierId?: string;
-  supplier?: { id: string; name: string };
+  supplier?: { id: string; name: string; phone?: string | null };
   status: string;
   documentType?: string;
   documentNumber?: string;

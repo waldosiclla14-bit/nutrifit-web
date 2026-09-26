@@ -9,7 +9,9 @@ import {
   Mail,
   Pencil,
   Trash2,
+  MessageCircle,
 } from 'lucide-react';
+import { supplierWhatsAppUrl } from '@/lib/whatsapp';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
@@ -205,6 +207,17 @@ export function Proveedores({ token }: { token: string }) {
                   <p className="flex items-center gap-2">
                     <Phone size={12} className="text-sport-green" />
                     <a href={`tel:${s.phone}`} className="hover:text-ink">{s.phone}</a>
+                    {supplierWhatsAppUrl(s.phone, `Hola ${s.name || 'proveedor'} 👋, habla el equipo NutriFit.`) && (
+                      <a
+                        href={supplierWhatsAppUrl(s.phone, `Hola ${s.name || 'proveedor'} 👋, habla el equipo NutriFit.`)!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-full bg-[#25D366]/10 px-2 py-1 text-[10px] font-bold text-[#128C4B] hover:bg-[#25D366]/20"
+                        title="Abrir WhatsApp"
+                      >
+                        <MessageCircle size={12} /> WhatsApp
+                      </a>
+                    )}
                   </p>
                 )}
                 {s.email && (
