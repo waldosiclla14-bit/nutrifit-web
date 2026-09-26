@@ -46,6 +46,20 @@ export function PurchaseDetail({
         </span>
       </div>
 
+      {(p.status === 'CONFIRMED' || p.status === 'RECEIVING') && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <p className="text-xs font-bold text-amber-800">
+            ⚠️ Confirmada pero sin recepcionar: el stock aún no ingresó.
+          </p>
+          <button
+            onClick={onStartReceipt}
+            className="mt-2 flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl bg-green-500 text-white"
+          >
+            <Truck className="h-3.5 w-3.5" /> Recepcionar ahora
+          </button>
+        </div>
+      )}
+
       <div className="bg-paper rounded-xl p-4 border border-line">
         <h3 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">Documento</h3>
         <div className="grid grid-cols-2 gap-2 text-xs">

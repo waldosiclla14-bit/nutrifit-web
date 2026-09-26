@@ -152,6 +152,9 @@ export function PurchaseList({
                   {p.receiptStatus === 'COMPLETED' ? 'Recibida completa' : 'Recepción parcial'}
                 </span>
               )}
+              {(p.status === 'CONFIRMED' || p.status === 'RECEIVING') && p.receiptStatus === 'PENDING' && (
+                <span className="font-semibold text-amber-600">⚠️ Sin stock aún</span>
+              )}
             </div>
           </button>
         ))}
