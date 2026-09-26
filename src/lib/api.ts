@@ -294,13 +294,30 @@ export async function submitStoreOrder(order: Order): Promise<void> {
 // Pings /api/health every 10 minutes to keep the free-tier instance awake.
 // Uses a 60s timeout to handle cold starts (Render free tier spins down after
 // ~15 min idle and takes 30-60s to wake up).
+// ADEMÁS: ping inmediato al cargar (despierta mientras haces login) y al
+// volver a la pestaña (throttle 5 min) — antes el primer ping esperaba 10 min.
 if (typeof window !== 'undefined') {
   const KEEPALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes
-  setInterval(() => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60_000);
-    fetch(`${API_BASE}/api/health`, { method: 'GET', signal: controller.signal })
-      .catch(() => {})
-      .finally(() => clearTimeout(timer));
-  }, KEEPALIVE_INTERVAL);
+  const MIN_GAP = 5 * 60 * 1000; // no más de 1 ping cada 5 min por visibilidad
+  let lastPing = 0;
+  const ping = () => {
+    try {
+      if (typeof fetch === 'undefined') return; // jsdom/tests
+      const now = Date.now();
+      if (now - lastPing < MIN_GAP) return;
+      lastPing = now;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60_000);
+      fetch(`${API_BASE}/api/health`, { method: 'GET', signal: controller.signal })
+        .catch(() => {})
+        .finally(() => clearTimeout(timer));
+    } catch {
+      // el ping nunca debe romper la app
+    }
+  };
+  ping();
+  setInterval(ping, KEEPALIVE_INTERVAL);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') ping();
+  });
 }
