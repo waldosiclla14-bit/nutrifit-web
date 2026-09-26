@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PurchaseStatus, DocumentType, ReceiptStatus, MovementType } from '@prisma/client';
+import { rangeBound } from '../common/date-range';
 
 @Injectable()
 export class PurchasesService implements OnModuleInit {
@@ -19,12 +20,17 @@ export class PurchasesService implements OnModuleInit {
 
   async findAll(query: any = {}) {
     const where: any = {};
-    if (query.status) where.status = query.status;
+    if (query.status) {
+      if (!Object.values(PurchaseStatus).includes(query.status)) {
+        throw new BadRequestException(`Estado inválido: ${query.status}`);
+      }
+      where.status = query.status;
+    }
     if (query.supplierId) where.supplierId = query.supplierId;
     if (query.dateFrom || query.dateTo) {
       where.createdAt = {};
-      if (query.dateFrom) where.createdAt.gte = new Date(query.dateFrom);
-      if (query.dateTo) where.createdAt.lte = new Date(query.dateTo);
+      if (query.dateFrom) where.createdAt.gte = rangeBound(query.dateFrom, false);
+      if (query.dateTo) where.createdAt.lte = rangeBound(query.dateTo, true);
     }
     if (query.search) {
       where.OR = [
@@ -114,32 +120,32 @@ export class PurchasesService implements OnModuleInit {
     if (data.items.length > 500) {
       throw new BadRequestException('Máximo 500 ítems por compra');
     }
-    data.items.forEach((item: any, idx: number) => {
-      if (!item || typeof item.productName !== 'string' || !item.productName.trim()) {
-        throw new BadRequestException(`Ítem ${idx + 1}: nombre de producto requerido`);
-      }
-      const qty = Number(item.quantity);
-      if (!Number.isInteger(qty) || qty < 1 || qty > 100000) {
-        throw new BadRequestException(`Ítem ${idx + 1}: cantidad inválida`);
-      }
-      for (const [field, val] of [['unitCost', item.unitCost], ['discount', item.discount ?? 0], ['tax', item.tax ?? 0]] as const) {
-        const n = Number(val);
-        if (!Number.isFinite(n) || n < 0 || n > 100000000) {
-          throw new BadRequestException(`Ítem ${idx + 1}: ${field} inválido`);
-        }
-      }
-    });
+    // Idempotencia: doble-clic / reintento con la misma key devuelve la
+    // compra existente en vez de duplicarla (la columna ya existía).
+    const idempotencyKey = String((data as any)?.idempotencyKey || '').trim() || null;
+    if (idempotencyKey) {
+      const dupe = await this.prisma.purchase.findUnique({
+        where: { idempotencyKey },
+        include: { items: true, supplier: true },
+      });
+      if (dupe) return dupe;
+    }
+    data.items.forEach((item: any, idx: number) => this.validatePurchaseItem(item, idx));
 
     const purchaseNumber = await this.generatePurchaseNumber();
 
-    const subtotal = data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0);
-    const tax = data.items.reduce((sum, i) => sum + (i.tax || 0), 0);
-    const discount = data.items.reduce((sum, i) => sum + (i.discount || 0), 0);
+    // Redondeo a entero: las columnas son Int y un costo con decimales
+    // (ej. 19.99) reventaba con 500. El CLP no usa decimales.
+    const r = (n: number) => Math.round(Number(n) || 0);
+    const subtotal = r(data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0));
+    const tax = r(data.items.reduce((sum, i) => sum + (i.tax || 0), 0));
+    const discount = r(data.items.reduce((sum, i) => sum + (i.discount || 0), 0));
     const total = subtotal + tax;
 
     const purchase = await this.prisma.purchase.create({
       data: {
         purchaseNumber,
+        idempotencyKey,
         supplierId: data.supplierId || null,
         status: 'DRAFT',
         documentType: data.documentType || null,
@@ -161,10 +167,10 @@ export class PurchasesService implements OnModuleInit {
             sku: item.sku || null,
             barcode: item.barcode || null,
             quantity: item.quantity,
-            unitCost: item.unitCost,
-            discount: item.discount || 0,
-            tax: item.tax || 0,
-            totalCost: item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0),
+            unitCost: r(item.unitCost),
+            discount: r(item.discount || 0),
+            tax: r(item.tax || 0),
+            totalCost: r(item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0)),
             receivedQty: 0,
             notes: item.notes || null,
           })),
@@ -176,8 +182,7 @@ export class PurchasesService implements OnModuleInit {
     return purchase;
   }
 
-  async update(id: string, data: {
-    supplierId?: string;
+  async update(id: string, data: {    supplierId?: string;
     documentType?: DocumentType;
     documentNumber?: string;
     documentDate?: string;
@@ -206,17 +211,22 @@ export class PurchasesService implements OnModuleInit {
 
     return this.prisma.$transaction(async (tx) => {
       if (data.items) {
+        if (data.items.length === 0 || data.items.length > 500) {
+          throw new BadRequestException('La compra debe contener entre 1 y 500 ítems');
+        }
+        data.items.forEach((item: any, idx: number) => this.validatePurchaseItem(item, idx));
         await tx.purchaseItem.deleteMany({ where: { purchaseId: id } });
       }
 
+      const r2 = (n: number) => Math.round(Number(n) || 0);
       const subtotal = data.items
-        ? data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0)
+        ? r2(data.items.reduce((sum, i) => sum + i.quantity * i.unitCost - (i.discount || 0), 0))
         : existing.subtotal;
       const tax = data.items
-        ? data.items.reduce((sum, i) => sum + (i.tax || 0), 0)
+        ? r2(data.items.reduce((sum, i) => sum + (i.tax || 0), 0))
         : existing.tax;
       const discount = data.items
-        ? data.items.reduce((sum, i) => sum + (i.discount || 0), 0)
+        ? r2(data.items.reduce((sum, i) => sum + (i.discount || 0), 0))
         : existing.discount;
       const total = subtotal + tax;
 
@@ -244,10 +254,10 @@ export class PurchasesService implements OnModuleInit {
                   sku: item.sku || null,
                   barcode: item.barcode || null,
                   quantity: item.quantity,
-                  unitCost: item.unitCost,
-                  discount: item.discount || 0,
-                  tax: item.tax || 0,
-                  totalCost: item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0),
+                  unitCost: r2(item.unitCost),
+                  discount: r2(item.discount || 0),
+                  tax: r2(item.tax || 0),
+                  totalCost: r2(item.quantity * item.unitCost - (item.discount || 0) + (item.tax || 0)),
                   receivedQty: 0,
                   notes: item.notes || null,
                 })),
@@ -385,6 +395,32 @@ export class PurchasesService implements OnModuleInit {
     if (existing.status !== 'CONFIRMED' && existing.status !== 'RECEIVING') {
       throw new BadRequestException('La compra debe estar confirmada para recibir');
     }
+
+    // Validación estricta: sin esto, cantidades negativas/fraccionarias o
+    // ítems ajenos corrompían stock y receivedQty sin aviso.
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      throw new BadRequestException('Debe incluir al menos un ítem recibido');
+    }
+    const seenItems = new Set<string>();
+    data.items.forEach((item: any, idx: number) => {
+      const n = idx + 1;
+      const pi = existing.items.find((p) => p.id === item?.purchaseItemId);
+      if (!pi) throw new BadRequestException(`Ítem ${n}: no pertenece a esta compra`);
+      if (seenItems.has(item.purchaseItemId)) {
+        throw new BadRequestException(`Ítem ${n}: duplicado en la recepción`);
+      }
+      seenItems.add(item.purchaseItemId);
+      const rq = Number(item.receivedQty);
+      const dq = Number(item.damagedQty ?? 0);
+      if (!Number.isInteger(rq) || rq < 0 || !Number.isInteger(dq) || dq < 0) {
+        throw new BadRequestException(`Ítem ${n}: cantidades inválidas`);
+      }
+      if (rq === 0 && dq === 0) throw new BadRequestException(`Ítem ${n}: nada que recibir`);
+      if (dq > rq) throw new BadRequestException(`Ítem ${n}: dañados no puede superar recibidos`);
+      if (pi.receivedQty + rq > pi.quantity) {
+        throw new BadRequestException(`Ítem ${n}: supera lo comprado (${pi.quantity})`);
+      }
+    });
 
     const receiptNumber = await this.generateReceiptNumber();
 
@@ -540,6 +576,22 @@ export class PurchasesService implements OnModuleInit {
       pendingReceipt,
       suppliersCount,
     };
+  }
+
+  private validatePurchaseItem(item: any, idx: number) {
+    if (!item || typeof item.productName !== 'string' || !item.productName.trim()) {
+      throw new BadRequestException(`Ítem ${idx + 1}: nombre de producto requerido`);
+    }
+    const qty = Number(item.quantity);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 100000) {
+      throw new BadRequestException(`Ítem ${idx + 1}: cantidad inválida`);
+    }
+    for (const [field, val] of [['unitCost', item.unitCost], ['discount', item.discount ?? 0], ['tax', item.tax ?? 0]] as const) {
+      const n = Number(val);
+      if (!Number.isFinite(n) || n < 0 || n > 100000000) {
+        throw new BadRequestException(`Ítem ${idx + 1}: ${field} inválido`);
+      }
+    }
   }
 
   private async generatePurchaseNumber(): Promise<string> {

@@ -6,12 +6,16 @@ import { PrismaService } from '../prisma/prisma.service';
 describe('PurchasesService confirm/cancel', () => {
   let service: PurchasesService;
   let prisma: {
-    purchase: { findUnique: jest.Mock; update: jest.Mock };
+    $executeRaw: jest.Mock;
+    $queryRaw: jest.Mock;
+    purchase: { findUnique: jest.Mock; update: jest.Mock; create: jest.Mock };
   };
 
   beforeEach(async () => {
     prisma = {
-      purchase: { findUnique: jest.fn(), update: jest.fn() },
+      $executeRaw: jest.fn(),
+      $queryRaw: jest.fn(),
+      purchase: { findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -86,6 +90,86 @@ describe('PurchasesService confirm/cancel', () => {
 
       const res: any = await service.cancel('p1');
       expect(res.status).toBe('CANCELLED');
+    });
+  });
+
+  describe('create idempotency and rounding', () => {
+    const item = {
+      productName: 'Whey',
+      quantity: 2,
+      unitCost: 19999.5,
+      discount: 0,
+      tax: 0,
+    };
+
+    it('returns existing purchase for repeated idempotencyKey', async () => {
+      prisma.purchase.findUnique.mockResolvedValue({ id: 'dup-1', purchaseNumber: 'COMP-000001' });
+
+      const res: any = await service.create({
+        idempotencyKey: 'key-123',
+        items: [{ ...item }],
+      } as any);
+
+      expect(res.id).toBe('dup-1');
+      expect(prisma.purchase.create).not.toHaveBeenCalled();
+    });
+
+    it('rounds fractional costs to integer CLP', async () => {
+      prisma.purchase.findUnique.mockResolvedValue(null);
+      prisma.$executeRaw.mockResolvedValue(undefined);
+      prisma.$queryRaw.mockResolvedValue([{ next: 7 }]);
+      prisma.purchase.create.mockImplementation((args: any) => Promise.resolve({ id: 'p1', ...args.data }));
+
+      const res: any = await service.create({ items: [{ ...item }] } as any);
+
+      expect(res.subtotal).toBe(39999); // 2 x 19999.5 redondeado a entero
+      expect(res.total).toBe(39999);
+      const line = prisma.purchase.create.mock.calls[0][0].data.items.create[0];
+      expect(line.unitCost).toBe(20000);
+      expect(line.totalCost).toBe(39999);
+    });
+  });
+
+  describe('createReceipt validation', () => {
+    const purchaseBase: any = {
+      id: 'p1',
+      status: 'CONFIRMED',
+      purchaseNumber: 'COMP-000001',
+      items: [{ id: 'pi-1', quantity: 10, receivedQty: 4, unitCost: 20000, variantId: 'v1', productId: 'p1' }],
+    };
+
+    it('rejects negative, fractional, foreign, duplicate and over-receiving lines', async () => {
+      prisma.purchase.findUnique.mockResolvedValue(purchaseBase);
+
+      await expect(
+        service.createReceipt('p1', { items: [{ purchaseItemId: 'pi-1', receivedQty: -1 }] }, 'u1'),
+      ).rejects.toThrow('cantidades inválidas');
+
+      await expect(
+        service.createReceipt('p1', { items: [{ purchaseItemId: 'pi-1', receivedQty: 1.5 }] }, 'u1'),
+      ).rejects.toThrow('cantidades inválidas');
+
+      await expect(
+        service.createReceipt('p1', { items: [{ purchaseItemId: 'otro', receivedQty: 1 }] }, 'u1'),
+      ).rejects.toThrow('no pertenece a esta compra');
+
+      await expect(
+        service.createReceipt('p1', {
+          items: [
+            { purchaseItemId: 'pi-1', receivedQty: 1 },
+            { purchaseItemId: 'pi-1', receivedQty: 1 },
+          ],
+        }, 'u1'),
+      ).rejects.toThrow('duplicado');
+
+      // ya recibió 4 de 10 → 7 más supera
+      await expect(
+        service.createReceipt('p1', { items: [{ purchaseItemId: 'pi-1', receivedQty: 7 }] }, 'u1'),
+      ).rejects.toThrow('supera lo comprado');
+
+      await expect(
+        service.createReceipt('p1', { items: [{ purchaseItemId: 'pi-1', receivedQty: 1, damagedQty: 2 }] }, 'u1'),
+      ).rejects.toThrow('dañados no puede superar');
     });
   });
 });

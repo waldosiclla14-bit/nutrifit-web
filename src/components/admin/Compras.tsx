@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { haptic } from '@/lib/haptic';
@@ -43,6 +43,7 @@ export function Compras({ token }: { token: string }) {
   const [itemResults, setItemResults] = useState<any[]>([]);
   const [showItemSearch, setShowItemSearch] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const [receiptItems, setReceiptItems] = useState<ReceiptLineInput[]>([]);
   const [reports, setReports] = useState<any>(null);
@@ -264,11 +265,17 @@ export function Compras({ token }: { token: string }) {
       toast.error('Agrega al menos un producto');
       return;
     }
+    if (submittingRef.current) return; // doble-clic: el backend además es idempotente por key
+    submittingRef.current = true;
     setSubmitting(true);
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
       const res = await apiFetch<any>('/admin/purchases', {
         method: 'POST',
         body: {
+          idempotencyKey,
           ...form,
           supplierId: form.supplierId || null,
           items: formItems.map((i) => ({
@@ -296,6 +303,7 @@ export function Compras({ token }: { token: string }) {
     } catch (err: any) {
       toast.error(err?.message || 'Error al crear compra');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }, [token, form, formItems, loadPurchases, loadStats]);
