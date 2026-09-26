@@ -9,6 +9,7 @@ export function PurchaseDetail({
   onBack,
   onEditCopy,
   onConfirm,
+  onSubmitReview,
   onCancel,
   onStartReceipt,
   onPhotoFile,
@@ -20,6 +21,7 @@ export function PurchaseDetail({
   onBack: () => void;
   onEditCopy: () => void;
   onConfirm: (id: string) => void;
+  onSubmitReview: (id: string) => void;
   onCancel: (id: string) => void;
   onStartReceipt: () => void;
   onPhotoFile: (file: File) => void;
@@ -175,6 +177,14 @@ export function PurchaseDetail({
             </button>
           )}
           {p.status === 'DRAFT' && (
+            <button
+              onClick={() => onSubmitReview(p.id)}
+              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white"
+            >
+              <Send className="h-3.5 w-3.5" /> Enviar a revisión
+            </button>
+          )}
+          {p.status === 'PENDING_REVIEW' && (
             <button
               onClick={() => onConfirm(p.id)}
               className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white"

@@ -321,6 +321,21 @@ export function Compras({ token }: { token: string }) {
     [token, confirmDialog, loadPurchaseDetail, loadPurchases],
   );
 
+  const handleSubmitReview = useCallback(
+    async (id: string) => {
+      try {
+        await apiFetch(`/admin/purchases/${id}`, { method: 'PATCH', token, body: {} });
+        haptic(80);
+        toast.success('Compra enviada a revisión');
+        loadPurchaseDetail(id);
+        loadPurchases();
+      } catch (err: any) {
+        toast.error(err?.message || 'Error al enviar a revisión');
+      }
+    },
+    [token, loadPurchaseDetail, loadPurchases],
+  );
+
   const handleCancel = useCallback(
     async (id: string) => {
       const ok = await confirmDialog({
@@ -552,6 +567,7 @@ export function Compras({ token }: { token: string }) {
           }}
           onEditCopy={() => editCopy(selectedPurchase)}
           onConfirm={handleConfirm}
+          onSubmitReview={handleSubmitReview}
           onCancel={handleCancel}
           onStartReceipt={() => startReceipt(selectedPurchase)}
           onPhotoFile={handleDocFile}

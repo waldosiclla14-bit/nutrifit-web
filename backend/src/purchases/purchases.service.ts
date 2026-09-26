@@ -268,21 +268,42 @@ export class PurchasesService implements OnModuleInit {
       throw new BadRequestException('Solo se pueden confirmar compras pendientes de revision');
     }
 
-    return this.prisma.purchase.update({
-      where: { id },
-      data: {
-        status: 'CONFIRMED',
-        confirmedAt: new Date(),
-        confirmedById: userId || null,
-      },
-    });
+    // Guard atómico: si otra operación (anular/confirmar) cambió el estado
+    // entre el check y el write, no hay match → P2025 → error amable.
+    try {
+      return await this.prisma.purchase.update({
+        where: { id, status: 'PENDING_REVIEW' },
+        data: {
+          status: 'CONFIRMED',
+          confirmedAt: new Date(),
+          confirmedById: userId || null,
+        },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2025') {
+        const cur = await this.prisma.purchase
+          .findUnique({ where: { id }, select: { status: true } })
+          .catch(() => null);
+        if (!cur) throw new NotFoundException('Compra no encontrada');
+        if (cur.status === 'CONFIRMED') {
+          throw new BadRequestException('La compra ya fue confirmada por otra operación');
+        }
+        throw new BadRequestException(`La compra ya no está pendiente de revisión (estado: ${cur.status})`);
+      }
+      throw e;
+    }
   }
 
   async cancel(id: string) {
-    const existing = await this.prisma.purchase.findUnique({ where: { id } });
+    const existing = await this.prisma.purchase.findUnique({ where: { id }, include: { items: true } });
     if (!existing) throw new NotFoundException('Compra no encontrada');
     if (existing.status === 'CANCELLED') {
       throw new BadRequestException('La compra ya esta cancelada');
+    }
+    // Anular con mercadería recibida dejaría stock fantasma (no hay reversa):
+    // esas compras no se anulan, se ajustan por inventario.
+    if (existing.status === 'RECEIVED' || existing.items.some((i) => (i.receivedQty || 0) > 0)) {
+      throw new BadRequestException('No se puede anular: ya tiene mercadería recibida en stock');
     }
 
     return this.prisma.purchase.update({
