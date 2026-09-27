@@ -14,6 +14,24 @@
  */
 const { execSync } = require('child_process');
 
+// Igual que PrismaService: contra pooler (transaction mode) hay que usar el
+// protocolo simple (pgbouncer=true) o los prepared statements con nombre
+// (s1, s2...) colisionan entre sesiones (42P05) y tumban el arranque.
+function resolveDatabaseUrl() {
+  const raw = process.env.DATABASE_URL || '';
+  if (!raw) return raw;
+  try {
+    const u = new URL(raw);
+    const p = u.searchParams;
+    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
+    if (!p.has('connection_limit')) p.set('connection_limit', '5');
+    if (!p.has('sslmode')) p.set('sslmode', 'require');
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 const BASELINE_MIGRATIONS = [
   '20260918_metro_hours_9_to_22',
   '20260918_metro_hours_10_to_22',
@@ -28,7 +46,9 @@ async function main() {
     console.error('[baseline] @prisma/client not available, aborting boot');
     process.exit(1);
   }
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    datasources: { db: { url: resolveDatabaseUrl() } },
+  });
   try {
     let historyRows = -1;
     try {

@@ -12,12 +12,31 @@
  */
 const { PrismaClient } = require('@prisma/client');
 
+// Igual que PrismaService/baseline.js: pgbouncer=true evita prepared
+// statements con nombre (42P05 "s1 already exists" en pooler).
+function resolveDatabaseUrl() {
+  const raw = process.env.DATABASE_URL || '';
+  if (!raw) return raw;
+  try {
+    const u = new URL(raw);
+    const p = u.searchParams;
+    if (!p.has('pgbouncer')) p.set('pgbouncer', 'true');
+    if (!p.has('connection_limit')) p.set('connection_limit', '5');
+    if (!p.has('sslmode')) p.set('sslmode', 'require');
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
 const REQUIRED_LABELS = [
   { type: 'OrderStatus', label: 'AGENDADO' },
 ];
 
 async function main() {
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    datasources: { db: { url: resolveDatabaseUrl() } },
+  });
   try {
     for (const { type, label } of REQUIRED_LABELS) {
       // Single statement, auto-committed: NOT inside a transaction block.
