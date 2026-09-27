@@ -79,7 +79,7 @@ export default function LowStockBySupplier({ token, onReceiveStock }: Props) {
         <h3 className="text-sm font-bold text-ink flex items-center gap-2">
           <AlertTriangle size={16} className="text-amber-500" />
           Stock bajo por proveedor
-          <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+          <span className="ml-1 ds-badge ds-badge-warning">
             {totalLow}
           </span>
         </h3>
@@ -107,7 +107,7 @@ export default function LowStockBySupplier({ token, onReceiveStock }: Props) {
                   </span>
                 )}
               </div>
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+              <span className="ds-badge ds-badge-warning">
                 {group.products.length} {group.products.length === 1 ? 'producto' : 'productos'}
               </span>
             </button>

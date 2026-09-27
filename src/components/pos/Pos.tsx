@@ -1332,7 +1332,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               className="input pl-10 pr-9"
             />
             {query.length > 0 && (
-              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition">
+              <button onClick={() => setQuery('')} aria-label="Limpiar búsqueda" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition">
                 <X size={15} />
               </button>
             )}
@@ -1416,7 +1416,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                   <Plus size={12} />
                 </button>
                 <span className="w-14 text-right text-[11px] font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
-                <button onClick={() => setQty(lineKey(l), 0)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
+                <button onClick={() => setQty(lineKey(l), 0)} aria-label="Quitar producto" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
                   <Trash2 size={11} />
                 </button>
               </div>
@@ -1867,7 +1867,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <p className="flex items-center gap-2 font-display text-base uppercase">
                 <ShoppingCart size={16} /> Venta
               </p>
-              <button onClick={() => setShowMobileCart(false)} className="rounded-full border border-line p-1.5">
+              <button onClick={() => setShowMobileCart(false)} aria-label="Cerrar carrito" className="rounded-full border border-line p-1.5">
                 <X size={16} />
               </button>
             </div>
@@ -1889,7 +1889,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                       <Plus size={12} />
                     </button>
                     <span className="w-16 text-right text-xs font-bold text-accent tabular-nums">{formatPrice(l.unitPrice * l.quantity)}</span>
-                    <button onClick={() => setQty(lineKey(l), 0)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
+                    <button onClick={() => setQty(lineKey(l), 0)} aria-label="Quitar producto" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-red-400 transition hover:bg-red-50 hover:text-red-600 active:scale-95">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -1918,7 +1918,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                         <p className="text-xs font-bold">Venta {i + 1} · {formatPrice(h.total)}</p>
                         <p className="truncate text-[11px] text-muted">{h.customerName || 'Sin cliente'} · {h.lines.length} items</p>
                       </div>
-                      <button onClick={() => resumeHold(h)} className="rounded-full border border-line bg-paper p-1.5"><Play size={12} /></button>
+                      <button onClick={() => resumeHold(h)} aria-label="Retomar venta" className="rounded-full border border-line bg-paper p-1.5"><Play size={12} /></button>
                       <button onClick={() => deleteHold(h)} className="rounded-full p-1.5 text-red-500"><Trash2 size={12} /></button>
                     </div>
                   ))}

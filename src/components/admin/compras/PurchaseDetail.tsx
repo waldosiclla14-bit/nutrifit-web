@@ -33,7 +33,7 @@ export function PurchaseDetail({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} className="text-muted">
+        <button onClick={onBack} aria-label="Volver" className="text-muted">
           <X className="h-5 w-5" />
         </button>
         <div className="flex-1">
@@ -97,7 +97,7 @@ export function PurchaseDetail({
                 <p className="text-[10px] font-bold text-accent">${item.totalCost.toLocaleString()}</p>
               </div>
               {item.receivedQty > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-semibold">
+                <span className="ds-badge ds-badge-success">
                   {item.receivedQty}/{item.quantity}
                 </span>
               )}
@@ -152,12 +152,12 @@ export function PurchaseDetail({
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold">{r.receiptNumber}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full font-semibold ${
+                    className={`ds-badge ${
                       r.status === 'COMPLETED'
-                        ? 'bg-green-100 text-green-600'
+                        ? 'ds-badge-success'
                         : r.status === 'PARTIAL'
-                          ? 'bg-amber-100 text-amber-600'
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'ds-badge-warning'
+                          : 'ds-badge-muted'
                     }`}
                   >
                     {r.status === 'COMPLETED' ? 'Completa' : r.status === 'PARTIAL' ? 'Parcial' : 'Pendiente'}
@@ -239,7 +239,7 @@ export function PurchaseDetail({
           {p.status !== 'CANCELLED' && p.status !== 'RECEIVED' && (
             <button
               onClick={() => onCancel(p.id)}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-red-100 text-red-600"
+              className="flex items-center gap-1 ds-btn-danger px-3 py-2 text-xs"
             >
               <X className="h-3.5 w-3.5" /> Anular
             </button>

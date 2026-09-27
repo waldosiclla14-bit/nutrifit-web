@@ -206,7 +206,7 @@ export function EditOrderModal({
                   <p className="text-[11px] text-muted">{formatPrice(l.unitPrice)} c/u</p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => setQty(l.key, l.quantity - 1)} className="rounded-full border border-line bg-paper px-2 py-1 text-sm font-bold">
+                  <button onClick={() => setQty(l.key, l.quantity - 1)} aria-label="Quitar uno" className="rounded-full border border-line bg-paper px-2 py-1 text-sm font-bold">
                     <Minus size={13} />
                   </button>
                   <input
@@ -216,7 +216,7 @@ export function EditOrderModal({
                     onChange={(e) => setQty(l.key, Number(e.target.value))}
                     className="input w-16 px-2 py-1 text-center"
                   />
-                  <button onClick={() => setQty(l.key, l.quantity + 1)} className="rounded-full border border-line bg-paper px-2 py-1 text-sm font-bold">
+                  <button onClick={() => setQty(l.key, l.quantity + 1)} aria-label="Agregar uno" className="rounded-full border border-line bg-paper px-2 py-1 text-sm font-bold">
                     <Plus size={13} />
                   </button>
                 </div>

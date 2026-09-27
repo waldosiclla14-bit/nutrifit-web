@@ -153,7 +153,7 @@ export function PurchaseList({
                 </span>
               )}
               {(p.status === 'CONFIRMED' || p.status === 'RECEIVING') && p.receiptStatus === 'PENDING' && (
-                <span className="font-semibold text-amber-600">⚠️ Sin stock aún</span>
+                <span className="ds-badge ds-badge-warning">⚠️ Sin stock aún</span>
               )}
             </div>
           </button>
