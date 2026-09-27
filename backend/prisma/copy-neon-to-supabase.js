@@ -1,8 +1,12 @@
 /**
  * Copia de datos Neon -> Supabase (una vez).
  *
- * Uso:
+ * Uso copia completa (destino vacío):
  *   SOURCE_DATABASE_URL="postgresql://..." TARGET_DATABASE_URL="postgresql://..." node prisma/copy-neon-to-supabase.js
+ *
+ * Uso merge solo-historial (destino en uso: trae órdenes+clientes viejos
+ * sin tocar stock, catálogo ni contadores; omite lo que ya existe):
+ *   MERGE=true SOURCE_DATABASE_URL="..." TARGET_DATABASE_URL="..." node prisma/copy-neon-to-supabase.js
  *
  * Requisitos previos:
  *   1. En Supabase ya corrió `prisma db push` + `migrate resolve --applied` (schema + historial).
@@ -53,6 +57,11 @@ const TABLES = [
   'pushSubscription',
 ];
 
+// Modo MERGE=true: solo historial (órdenes+clientes+direcciones), sin pisar.
+// Omite filas que ya existen (por id) y NO toca stock, catálogo ni contadores.
+// Uso: MERGE=true SOURCE_... TARGET_... node prisma/copy-neon-to-supabase.js
+const MERGE_TABLES = ['customer', 'address', 'coupon', 'order', 'orderItem'];
+
 const PAGE = 200;
 
 async function countAll(db) {
@@ -72,25 +81,44 @@ async function main() {
   }
   const source = new PrismaClient({ datasources: { db: { url: sourceUrl } } });
   const target = new PrismaClient({ datasources: { db: { url: targetUrl } } });
+  const merge = process.env.MERGE === 'true';
+  const tables = merge ? MERGE_TABLES : TABLES;
 
   try {
-    // Guard: no pisar un destino con datos
-    const guard = await target.order.count().catch(() => -1);
-    if (guard !== 0) {
-      console.error(`Destino no vacío (orders=${guard}). Abortando por seguridad.`);
-      process.exit(1);
+    if (merge) {
+      console.log('Modo MERGE: solo historial, se omiten filas existentes.');
+    } else {
+      // Guard: no pisar un destino con datos (solo en copia completa)
+      const guard = await target.order.count().catch(() => -1);
+      if (guard !== 0) {
+        console.error(`Destino no vacío (orders=${guard}). Abortando por seguridad.`);
+        process.exit(1);
+      }
     }
 
     let total = 0;
-    for (const t of TABLES) {
+    for (const t of tables) {
       let skip = 0;
       let moved = 0;
       for (;;) {
         const rows = await source[t].findMany({ skip, take: PAGE });
         if (rows.length === 0) break;
-        // JSON-serializable tal cual (fechas/JSON/enums viajan bien)
-        await target[t].createMany({ data: rows });
-        moved += rows.length;
+        if (merge) {
+          // Omite por id las que ya existen en destino
+          const ids = rows.map((r) => r.id);
+          const existing = await target[t].findMany({
+            where: { id: { in: ids } },
+            select: { id: true },
+          });
+          const have = new Set(existing.map((e) => e.id));
+          const fresh = rows.filter((r) => !have.has(r.id));
+          if (fresh.length) await target[t].createMany({ data: fresh });
+          moved += fresh.length;
+        } else {
+          // JSON-serializable tal cual (fechas/JSON/enums viajan bien)
+          await target[t].createMany({ data: rows });
+          moved += rows.length;
+        }
         skip += rows.length;
       }
       total += moved;
@@ -102,8 +130,14 @@ async function main() {
     console.log('Verificando conteos...');
     const [src, dst] = await Promise.all([countAll(source), countAll(target)]);
     let ok = true;
-    for (const t of TABLES) {
-      if (src[t] !== dst[t]) {
+    for (const t of tables) {
+      if (merge) {
+        // En merge: destino debe contener al menos todo el origen
+        if ((dst[t] ?? -1) < src[t]) {
+          ok = false;
+          console.error(`  MISMATCH ${t}: origen=${src[t]} destino=${dst[t]}`);
+        }
+      } else if (src[t] !== dst[t]) {
         ok = false;
         console.error(`  MISMATCH ${t}: origen=${src[t]} destino=${dst[t]}`);
       }
