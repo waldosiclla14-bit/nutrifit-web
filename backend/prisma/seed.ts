@@ -106,7 +106,7 @@ async function main() {
         variantName: 'Vainilla 1kg',
         attributes: { sabor: 'vainilla', peso: '1kg' },
         price: 24990,
-        stock: 15,
+        physicalStock: 15,
         lowStockAlert: 5,
       },
     });
@@ -120,7 +120,7 @@ async function main() {
         variantName: 'Chocolate 1kg',
         attributes: { sabor: 'chocolate', peso: '1kg' },
         price: 24990,
-        stock: 12,
+        physicalStock: 12,
         lowStockAlert: 5,
       },
     });
@@ -134,7 +134,7 @@ async function main() {
         variantName: 'Cookies & Cream 1kg',
         attributes: { sabor: 'cookies', peso: '1kg' },
         price: 25990,
-        stock: 8,
+        physicalStock: 8,
         lowStockAlert: 3,
       },
     });
@@ -168,7 +168,7 @@ async function main() {
         variantName: '300g Sin Sabor',
         attributes: { peso: '300g', sabor: 'sin sabor' },
         price: 14990,
-        stock: 20,
+        physicalStock: 20,
         lowStockAlert: 5,
       },
     });
