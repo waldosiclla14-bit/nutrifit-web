@@ -16,6 +16,8 @@ services:
         value: 7d
       - key: CORS_ORIGINS
         value: https://nutrifit-web-nu.vercel.app
+      - key: DIRECT_URL
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: SELLER_PASSWORD

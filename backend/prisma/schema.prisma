@@ -8,6 +8,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Conexión directa (sin pooler) solo para `migrate deploy`:
+  // los locks de migración no funcionan vía pooler en modo transacción.
+  directUrl = env("DIRECT_URL")
 }
 
 // ───────────────────────────────────────────────
