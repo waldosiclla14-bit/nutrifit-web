@@ -1,8 +1,8 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
-function resolveDatabaseUrl(): string {
-  const raw = process.env.DATABASE_URL || '';
+export function resolveDatabaseUrl(rawInput?: string): string {
+  const raw = rawInput ?? process.env.DATABASE_URL ?? '';
   if (!raw) return raw;
   try {
     const u = new URL(raw);
@@ -14,7 +14,9 @@ function resolveDatabaseUrl(): string {
     // /api/ping mantiene el compute despierto. NOTA: las transacciones
     // interactivas no son compatibles con pgbouncer (transaction mode), por
     // eso orders.service usa transacciones NO interactivas.
-    if (!u.hostname.includes('-pooler')) {
+    // SOLO para hosts Neon: en Supabase (ya pooler) u otros, el rewrite
+    // rompería el hostname (ej. xxx-pooler.pooler.supabase.com → NXDOMAIN).
+    if (u.hostname.endsWith('.neon.tech') && !u.hostname.includes('-pooler')) {
       const dot = u.hostname.indexOf('.');
       if (dot > 0) {
         u.hostname = `${u.hostname.slice(0, dot)}-pooler${u.hostname.slice(dot)}`;
