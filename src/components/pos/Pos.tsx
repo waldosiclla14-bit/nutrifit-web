@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12, uid } from '@/lib/utils';
-import { buildDeliveryOrderMessage, openWhatsApp, webFooter } from '@/lib/whatsapp';
+import { buildDeliveryOrderMessage, buildTickTickLine, openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import type { AdminReport } from '@/types/admin';
@@ -230,6 +230,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [saleMsg, setSaleMsg] = useState<string | null>(null);
+  const [saleTickTick, setSaleTickTick] = useState<string | null>(null);
   const [salePhone, setSalePhone] = useState('');
   const [copied, setCopied] = useState(false);
   const [holds, setHolds] = useState<Hold[]>([]);
@@ -504,6 +505,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     });
     setReceipt(null);
     setSaleMsg(null);
+    setSaleTickTick(null);
   };
 
   const setQty = (key: string, quantity: number) => {
@@ -677,6 +679,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     setMixedTransfer(h.mixedTransfer || 0);
     setReceipt(null);
     setSaleMsg(null);
+    setSaleTickTick(null);
     toast.info('Venta recuperada de espera.');
   };
 
@@ -932,6 +935,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
             deliveryCode: deliveryCodeVal,
           }),
         );
+        setSaleTickTick(
+          buildTickTickLine({
+            orderNumber: order.orderNumber,
+            name: qName,
+            metroStation,
+            deliveryDay,
+            deliveryTime,
+          }),
+        );
       } else if (mode === 'DELIVERY') {
         setSalePhone(qPhone);
         const delLines: string[] = [];
@@ -982,6 +994,17 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('No se pudo copiar. Copia el mensaje manualmente.');
+    }
+  };
+
+  const copyTickTick = async () => {
+    if (!saleTickTick) return;
+    try {
+      await navigator.clipboard.writeText(saleTickTick);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('No se pudo copiar. Copia la línea manualmente.');
     }
   };
 
@@ -1306,6 +1329,15 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
               <button onClick={copyMessage} className="ds-btn-secondary px-4 py-2 text-xs">
                 <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
+              {saleTickTick && (
+                <button
+                  onClick={copyTickTick}
+                  className="ds-btn-secondary px-4 py-2 text-xs"
+                  title={saleTickTick}
+                >
+                  <Copy size={13} /> Copiar TickTick
+                </button>
+              )}
               <button
                 onClick={() => openWhatsApp(salePhone, saleMsg)}
                 className="ds-btn-accent px-4 py-2 text-xs"

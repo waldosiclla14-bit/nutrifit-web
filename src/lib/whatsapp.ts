@@ -115,50 +115,65 @@ export function formatDeliveryDay(iso: string) {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
+  // "Miércoles 7 de octubre" (sin coma, formato corto para WhatsApp/TickTick)
   const s = new Intl.DateTimeFormat('es-CL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(d);
+  })
+    .format(d)
+    .replace(',', '');
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   const lines: string[] = [];
-  lines.push('NUTRIFIT · TU PEDIDO CONFIRMADO');
-  lines.push('─'.repeat(24));
+  lines.push(`*NUTRIFIT · PEDIDO ${m.orderNumber}*`);
   lines.push('');
-  lines.push(`Hola ${m.name} 👋`);
-  lines.push(`Tu pedido ${m.orderNumber} quedó registrado con entrega agendada.`);
+  lines.push(`Hola ${m.name} 👋 Tu pedido está confirmado.`);
   lines.push('');
-  lines.push('*PRODUCTOS:*');
-  m.items.forEach((item, index) => {
-    lines.push(
-      `${index + 1}. ${item.productName}${item.variantName ? ` (${item.variantName})` : ''} ×${item.quantity}`,
-    );
-    lines.push(`   ${formatPrice(item.total)}`);
+  lines.push('*Productos:*');
+  m.items.forEach((item) => {
+    const name = `${item.productName}${item.variantName ? ` (${item.variantName})` : ''}`;
+    lines.push(`• ${name} ×${item.quantity} — ${formatPrice(item.total)}`);
   });
   lines.push('');
-  lines.push('─'.repeat(24));
-  lines.push(`*Subtotal:* ${formatPrice(m.subtotal)}`);
-  if (m.discount) {
-    lines.push(`*Descuento:* -${formatPrice(m.discount)}`);
-  }
-  lines.push(`*Envío:* ${m.shippingCost > 0 ? formatPrice(m.shippingCost) : 'GRATIS'}`);
-  lines.push(`*TOTAL:* ${formatPrice(m.total)}`);
-  lines.push(`*Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ' · CONTRA ENTREGA'}`);
+  lines.push(`*Total:* ${formatPrice(m.total)}`);
+  lines.push(`*Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ''}`);
   lines.push('');
-  lines.push('*ENTREGA AGENDADA:*');
   lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
-  lines.push(`⏰ ${formatTime12(m.deliveryTime)}`);
-  lines.push(`🚇 Metro ${m.metroStation} · Línea ${m.metroLine}`);
-  if (m.meetingPoint) {
-    lines.push(`📍 Punto de encuentro: *${m.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
-  }
+  lines.push(`⏰ ${m.deliveryTime}`);
+  lines.push(`🚇 Metro ${m.metroStation} · ${m.metroLine}`);
+  lines.push(
+    `📍 Entrega: torniquetes o cambio de andén${m.meetingPoint ? ` (${m.meetingPoint})` : ''}`,
+  );
   lines.push('');
-  lines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
-  lines.push(webFooter());
+  lines.push('Gracias por comprar en *NutriFit* 💪');
+  lines.push('');
+  lines.push('🌐 *Compra online:*');
+  lines.push('https://nutrifit-web-nu.vercel.app');
+  lines.push('');
+  lines.push('🎁 Promociones exclusivas en nuestra web.');
   return lines.join('\n');
+}
+
+// Línea de una sola pasada para TickTick (fecha y hora explícitas, sin frases):
+// "NF-000137 · M.guti · Entrega Metro Plaza Quilicura · 7 octubre 18:00"
+export function buildTickTickLine(o: {
+  orderNumber: string;
+  name: string;
+  metroStation: string;
+  deliveryDay: string;
+  deliveryTime: string;
+}): string {
+  let day = o.deliveryDay;
+  const d = new Date(`${o.deliveryDay}T00:00:00`);
+  if (!Number.isNaN(d.getTime())) {
+    day = new Intl.DateTimeFormat('es-CL', { day: 'numeric', month: 'long' })
+      .format(d)
+      .replace(' de ', ' ');
+  }
+  return `${o.orderNumber} · ${o.name} · Entrega Metro ${o.metroStation} · ${day} ${o.deliveryTime}`;
 }
 
 export function openWhatsApp(phone: string, message: string) {

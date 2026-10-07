@@ -2,6 +2,8 @@ import {
   normalizeChilePhone,
   supplierWhatsAppUrl,
   buildSupplierOrderMessage,
+  buildDeliveryOrderMessage,
+  buildTickTickLine,
 } from './whatsapp';
 
 describe('normalizeChilePhone', () => {
@@ -32,6 +34,78 @@ describe('supplierWhatsAppUrl', () => {
   });
 });
 
+describe('buildDeliveryOrderMessage', () => {
+  const base = {
+    name: 'M.guti',
+    phone: '912345678',
+    orderNumber: 'NF-000137',
+    items: [
+      { productName: 'Whey Chocolate 1 kg', quantity: 3, total: 48000 },
+      { productName: 'Whey Frutilla 1 kg', quantity: 2, total: 32000 },
+      { productName: 'Creatina 300 g', quantity: 1, total: 13500 },
+    ],
+    subtotal: 93500,
+    discount: 5500,
+    shippingCost: 0,
+    total: 88000,
+    paymentLabel: 'Transferencia al recibir',
+    paymentReceived: false,
+    metroLine: 'L3',
+    metroStation: 'Plaza Quilicura',
+    deliveryDay: '2026-10-07',
+    deliveryTime: '18:00',
+    meetingPoint: 'Acceso principal',
+    deliveryCode: '1234',
+  };
+
+  it('matches the spec template with dynamic data', () => {
+    const msg = buildDeliveryOrderMessage(base);
+
+    expect(msg).toContain('NUTRIFIT · PEDIDO NF-000137');
+    expect(msg).toContain('Hola M.guti');
+    expect(msg).toContain('• Whey Chocolate 1 kg ×3 — $48.000');
+    expect(msg).toContain('• Creatina 300 g ×1 — $13.500');
+    expect(msg).toContain('Pago:* Transferencia al recibir'.replace('*', '*'));
+    expect(msg).toContain('📅 Miércoles 7 de octubre');
+    expect(msg).toContain('⏰ 18:00');
+    expect(msg).toContain('🚇 Metro Plaza Quilicura · L3');
+    expect(msg).toContain('torniquetes o cambio de andén');
+    expect(msg).toContain('https://nutrifit-web-nu.vercel.app');
+    // Nada del ejemplo queda fijo: sin meeting point no aparece el paréntesis
+    expect(buildDeliveryOrderMessage({ ...base, meetingPoint: undefined })).not.toContain('(Acceso');
+  });
+
+  it('marks RECIBIDO when paid', () => {
+    const msg = buildDeliveryOrderMessage({ ...base, paymentReceived: true });
+    expect(msg).toContain('RECIBIDO');
+  });
+});
+
+describe('buildTickTickLine', () => {
+  it('formats the one-liner with explicit date and time', () => {
+    expect(
+      buildTickTickLine({
+        orderNumber: 'NF-000137',
+        name: 'M.guti',
+        metroStation: 'Plaza Quilicura',
+        deliveryDay: '2026-10-07',
+        deliveryTime: '18:00',
+      }),
+    ).toBe('NF-000137 · M.guti · Entrega Metro Plaza Quilicura · 7 octubre 18:00');
+  });
+
+  it('falls back to raw day when unparseable', () => {
+    expect(
+      buildTickTickLine({
+        orderNumber: 'NF-1',
+        name: 'X',
+        metroStation: 'Y',
+        deliveryDay: 'cualquiera',
+        deliveryTime: '10:00',
+      }),
+    ).toContain('cualquiera 10:00');
+  });
+});
 describe('buildSupplierOrderMessage', () => {
   it('lists lines with quantities and reference total', () => {
     const msg = buildSupplierOrderMessage(
