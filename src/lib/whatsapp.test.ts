@@ -4,7 +4,9 @@ import {
   buildSupplierOrderMessage,
   buildDeliveryOrderMessage,
   buildTickTickLine,
+  trustFooter,
 } from './whatsapp';
+import { BRAND } from '@/data/seed';
 
 describe('normalizeChilePhone', () => {
   it('accepts local mobile and adds country code', () => {
@@ -78,6 +80,16 @@ describe('buildDeliveryOrderMessage', () => {
   it('marks RECIBIDO when paid', () => {
     const msg = buildDeliveryOrderMessage({ ...base, paymentReceived: true });
     expect(msg).toContain('RECIBIDO');
+  });
+
+  it('includes trust links (Maps + Instagram, no tracking params)', () => {
+    const msg = buildDeliveryOrderMessage(base);
+    expect(msg).toContain(BRAND.mapsUrl);
+    expect(msg).toContain(BRAND.instagramUrl);
+    expect(msg).not.toContain('mdxt=');
+    expect(msg).not.toContain('utm_source=');
+    expect(trustFooter()).toContain('maps.app.goo.gl');
+    expect(trustFooter()).toContain('instagram.com/nutrifitsuplementos_cl');
   });
 });
 

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatPrice, formatTime12, uid } from '@/lib/utils';
-import { buildDeliveryOrderMessage, buildTickTickLine, openWhatsApp, webFooter } from '@/lib/whatsapp';
+import { buildDeliveryOrderMessage, buildTickTickLine, openWhatsApp, trustFooter, webFooter } from '@/lib/whatsapp';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import type { AdminReport } from '@/types/admin';
@@ -972,6 +972,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
         delLines.push(`🏠 ${deliveryAddress}`);
         delLines.push('');
         delLines.push('¡Te esperamos! Gracias por entrenar con confianza 💪');
+        delLines.push(trustFooter());
         delLines.push(webFooter());
         setSaleMsg(delLines.join('\n'));
       }

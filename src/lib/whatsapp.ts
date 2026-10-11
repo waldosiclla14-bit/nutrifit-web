@@ -1,5 +1,6 @@
 import type { OrderItem } from '@/types';
 import { formatPrice, formatTime12 } from '@/lib/utils';
+import { BRAND } from '@/data/seed';
 
 const SITE_URL = 'https://nutrifit-web-nu.vercel.app';
 
@@ -10,6 +11,18 @@ export function webFooter() {
     '🌐 *Compra online con envío a todo Chile:*',
     SITE_URL,
     '🎁 *¡Tienes promociones exclusivas al comprar por nuestra página web!*',
+  ].join('\n');
+}
+
+// Prueba social + ubicación para dar confianza (Maps e Instagram).
+// URLs canónicas centralizadas en BRAND (sin parámetros de tracking).
+export function trustFooter() {
+  return [
+    '',
+    `📍 *Encuéntranos aquí:*`,
+    BRAND.mapsUrl,
+    `📸 *Síguenos en Instagram:*`,
+    BRAND.instagramUrl,
   ].join('\n');
 }
 
@@ -149,6 +162,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   );
   lines.push('');
   lines.push('Gracias por comprar en *NutriFit* 💪');
+  lines.push(trustFooter());
   lines.push('');
   lines.push('🌐 *Compra online:*');
   lines.push('https://nutrifit-web-nu.vercel.app');
