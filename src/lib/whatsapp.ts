@@ -142,32 +142,42 @@ export function formatDeliveryDay(iso: string) {
 export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   const lines: string[] = [];
   lines.push(`*NUTRIFIT · PEDIDO ${m.orderNumber}*`);
+  lines.push(`Hola, ${m.name} 👋 ¡Tu pedido está confirmado!`);
   lines.push('');
-  lines.push(`Hola ${m.name} 👋 Tu pedido está confirmado.`);
-  lines.push('');
-  lines.push('*Productos:*');
+  lines.push('📦 *PRODUCTOS*');
   m.items.forEach((item) => {
     const name = `${item.productName}${item.variantName ? ` (${item.variantName})` : ''}`;
     lines.push(`• ${name} ×${item.quantity} — ${formatPrice(item.total)}`);
   });
+  if (m.shippingCost > 0) {
+    lines.push(`🛵 *Costo de entrega:* ${formatPrice(m.shippingCost)}`);
+  }
   lines.push('');
-  lines.push(`*Total:* ${formatPrice(m.total)}`);
-  lines.push(`*Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ''}`);
+  lines.push(`💰 *TOTAL: ${formatPrice(m.total)}*`);
+  lines.push(`💵 *Pago:* ${m.paymentLabel}${m.paymentReceived ? ' · RECIBIDO' : ''}`);
   lines.push('');
-  lines.push(`📅 ${formatDeliveryDay(m.deliveryDay)}`);
-  lines.push(`⏰ ${m.deliveryTime}`);
-  lines.push(`🚇 Metro ${m.metroStation} · ${m.metroLine}`);
+  lines.push(`📅 *Entrega:* ${formatDeliveryDay(m.deliveryDay)}`);
+  lines.push(`⏰ *Hora:* ${m.deliveryTime} h`);
+  lines.push(`🚇 *Lugar:* Metro ${m.metroStation} · ${m.metroLine}`);
   lines.push(
-    `📍 Entrega: torniquetes o cambio de andén${m.meetingPoint ? ` (${m.meetingPoint})` : ''}`,
+    `📍 *Punto de encuentro:* Torniquetes o cambio de andén${m.meetingPoint ? ` (${m.meetingPoint})` : ''}.`,
   );
   lines.push('');
-  lines.push('Gracias por comprar en *NutriFit* 💪');
-  lines.push(trustFooter());
+  lines.push('¡Gracias por comprar en *NutriFit*! 💪');
+  lines.push('');
+  lines.push('⭐ *Opiniones de nuestros clientes:*');
+  lines.push('Conoce sus experiencias en Google Maps.');
+  lines.push(BRAND.mapsUrl);
+  lines.push('');
+  lines.push('📸 *Síguenos en Instagram:*');
+  lines.push(BRAND.instagramUrl);
   lines.push('');
   lines.push('🌐 *Compra online:*');
   lines.push('https://nutrifit-web-nu.vercel.app');
   lines.push('');
-  lines.push('🎁 Promociones exclusivas en nuestra web.');
+  lines.push('🎁 Descubre nuestras promociones exclusivas en la web.');
+  lines.push('');
+  lines.push('*NUTRIFIT · Suplementación para tu rendimiento.*');
   return lines.join('\n');
 }
 

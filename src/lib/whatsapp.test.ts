@@ -64,17 +64,25 @@ describe('buildDeliveryOrderMessage', () => {
     const msg = buildDeliveryOrderMessage(base);
 
     expect(msg).toContain('NUTRIFIT · PEDIDO NF-000137');
-    expect(msg).toContain('Hola M.guti');
+    expect(msg).toContain('Hola, M.guti');
     expect(msg).toContain('• Whey Chocolate 1 kg ×3 — $48.000');
     expect(msg).toContain('• Creatina 300 g ×1 — $13.500');
     expect(msg).toContain('Pago:* Transferencia al recibir'.replace('*', '*'));
-    expect(msg).toContain('📅 Miércoles 7 de octubre');
-    expect(msg).toContain('⏰ 18:00');
-    expect(msg).toContain('🚇 Metro Plaza Quilicura · L3');
-    expect(msg).toContain('torniquetes o cambio de andén');
+    expect(msg).toContain('📅 *Entrega:* Miércoles 7 de octubre');
+    expect(msg).toContain('⏰ *Hora:* 18:00 h');
+    expect(msg).toContain('🚇 *Lugar:* Metro Plaza Quilicura · L3');
+    expect(msg).toContain('Torniquetes o cambio de andén (Acceso principal).');
+    expect(msg).toContain('Opiniones de nuestros clientes');
     expect(msg).toContain('https://nutrifit-web-nu.vercel.app');
+    expect(msg).toContain('Suplementación para tu rendimiento');
     // Nada del ejemplo queda fijo: sin meeting point no aparece el paréntesis
     expect(buildDeliveryOrderMessage({ ...base, meetingPoint: undefined })).not.toContain('(Acceso');
+  });
+
+  it('shows delivery cost only when greater than zero', () => {
+    expect(buildDeliveryOrderMessage(base)).not.toContain('Costo de entrega');
+    const msg = buildDeliveryOrderMessage({ ...base, shippingCost: 1000 });
+    expect(msg).toContain('🛵 *Costo de entrega:* $1.000');
   });
 
   it('marks RECIBIDO when paid', () => {
