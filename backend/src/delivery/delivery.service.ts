@@ -4,6 +4,7 @@ import * as crypto from 'crypto';
 import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
+import { PushService } from '../push/push.service';
 import { rangeBound, chileDayRange, startOfChileDay, todayChileISO } from '../common/date-range';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class DeliveryService {
     private prisma: PrismaService,
     private notificationService: NotificationService,
     private todoist: TodoistService,
+    private push: PushService,
   ) {}
 
   async findAll(query: any = {}) {
@@ -658,5 +660,71 @@ export class DeliveryService {
         newValue: newValue || Prisma.JsonNull,
       },
     });
+  }
+
+  // Recordatorios push pre-entrega (lo llama un cron externo cada 15 min).
+  // Avisa las entregas de HOY cuya hora de inicio cae dentro de los próximos
+  // `minutes` (default 60, configurable). Idempotente por día vía auditoría:
+  // cada delivery recibe máximo 1 recordatorio diario.
+  async dispatchReminders(minutes = 60) {
+    const mins = Math.min(240, Math.max(5, Math.round(Number(minutes) || 60)));
+    const { gte, lt } = chileDayRange(todayChileISO());
+    const openStates = [
+      DeliveryStatus.CREATED,
+      DeliveryStatus.PAYMENT_CONFIRMED,
+      DeliveryStatus.PREPARING,
+      DeliveryStatus.READY,
+      DeliveryStatus.SCHEDULED,
+      DeliveryStatus.CONFIRMATION_PENDING,
+      DeliveryStatus.CONFIRMED,
+    ];
+    const dels = await this.prisma.delivery.findMany({
+      where: { deliveryDate: { gte, lt }, status: { in: openStates } },
+      include: {
+        order: { select: { orderNumber: true, customerName: true } },
+        station: { select: { name: true } },
+      },
+    });
+
+    // Reloj de Chile (windowStart es hora local "HH:mm")
+    const nowParts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+    const [nh, nm] = nowParts.split(':').map(Number);
+    const nowMin = nh * 60 + nm;
+
+    let reminded = 0;
+    let skipped = 0;
+    for (const d of dels) {
+      const m = /^(\d{1,2}):(\d{2})/.exec(String((d as any).windowStart || ''));
+      if (!m) {
+        skipped++;
+        continue;
+      }
+      const diff = Number(m[1]) * 60 + Number(m[2]) - nowMin;
+      if (diff < 0 || diff > mins) {
+        skipped++;
+        continue;
+      }
+      const already = await this.prisma.deliveryAuditLog.findFirst({
+        where: { deliveryId: d.id, action: 'REMINDER_SENT', createdAt: { gte } },
+      });
+      if (already) {
+        skipped++;
+        continue;
+      }
+      const label = `${(d as any).order?.orderNumber || ''} · ${(d as any).order?.customerName || ''}`.trim();
+      await this.push.broadcast({
+        title: `🚇 Entrega en ${Math.max(0, diff)} min`,
+        body: `${label} — Metro ${(d as any).station?.name || ''} ${(d as any).windowStart || ''}`.trim(),
+        url: '/admin',
+      });
+      await this.audit(d.id, 'REMINDER_SENT', null, { minutesBefore: diff });
+      reminded++;
+    }
+    return { total: dels.length, reminded, skipped, minutes: mins };
   }
 }

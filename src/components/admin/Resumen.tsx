@@ -138,6 +138,8 @@ export function Resumen({
   const [pending, setPending] = useState<AdminOrder[]>([]);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [dueAgendados, setDueAgendados] = useState<AdminOrder[]>([]);
+  const [todayDeliveries, setTodayDeliveries] = useState<any[]>([]);
+  const [purchaseAlerts, setPurchaseAlerts] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,6 +214,34 @@ export function Resumen({
         if (alive) setDueAgendados(due);
       } catch {
         if (alive) setDueAgendados([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  // Logística hoy + compras pendientes (mismo patrón que agendados)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const n = new Date();
+        const pad = (v: number) => String(v).padStart(2, '0');
+        const today = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
+        const [dels, alerts] = await Promise.all([
+          apiFetch<any>(`/deliveries?dateFrom=${today}&dateTo=${today}&limit=100`, { token }).catch(() => null),
+          apiFetch<any>('/admin/purchases/alerts', { token }).catch(() => []),
+        ]);
+        if (!alive) return;
+        const list = dels?.data || dels || [];
+        setTodayDeliveries(Array.isArray(list) ? list : []);
+        setPurchaseAlerts(Array.isArray(alerts) ? alerts : []);
+      } catch {
+        if (alive) {
+          setTodayDeliveries([]);
+          setPurchaseAlerts([]);
+        }
       }
     })();
     return () => {
@@ -529,6 +559,50 @@ export function Resumen({
           </button>
         </div>
       )}
+
+      {(() => {
+        const incidents = todayDeliveries.filter((d: any) =>
+          ['INCIDENT', 'CUSTOMER_UNAVAILABLE', 'NOT_DELIVERED'].includes(d.status),
+        );
+        const toReview = purchaseAlerts.filter((a: any) => a.type === 'PENDING_REVIEW');
+        const toReceive = purchaseAlerts.filter((a: any) => a.type === 'PARTIAL_RECEIPT');
+        if (todayDeliveries.length === 0 && toReview.length === 0 && toReceive.length === 0) return null;
+        return (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {todayDeliveries.length > 0 && (
+              <div className="ds-card space-y-1 p-4">
+                <p className="text-[13px] font-bold">
+                  🚇 {todayDeliveries.length} entrega{todayDeliveries.length > 1 ? 's' : ''} hoy
+                  {incidents.length > 0 && (
+                    <span className="text-red-600"> · {incidents.length} con problema</span>
+                  )}
+                </p>
+                <button
+                  onClick={() => onNavigate('entregas')}
+                  className="ds-btn-secondary w-full py-2 text-[12px]"
+                >
+                  Ver logística
+                </button>
+              </div>
+            )}
+            {(toReview.length > 0 || toReceive.length > 0) && (
+              <div className="ds-card space-y-1 p-4">
+                <p className="text-[13px] font-bold">
+                  📦 Compras: {toReview.length > 0 && `${toReview.length} por confirmar`}
+                  {toReview.length > 0 && toReceive.length > 0 && ' · '}
+                  {toReceive.length > 0 && `${toReceive.length} por recibir`}
+                </p>
+                <button
+                  onClick={() => onNavigate('compras')}
+                  className="ds-btn-secondary w-full py-2 text-[12px]"
+                >
+                  Ver compras
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {pending.length > 0 && (
         <div className="space-y-3">

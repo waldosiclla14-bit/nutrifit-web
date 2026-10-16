@@ -25,6 +25,7 @@ jest.mock('./notification.service', () => ({
 describe('DeliveryService', () => {
   let service: DeliveryService;
   let prismaMock: any;
+  let pushMock: { broadcast: jest.Mock };
 
   const mockDelivery = {
     id: 'del-1',
@@ -71,11 +72,15 @@ describe('DeliveryService', () => {
       },
       deliveryAuditLog: {
         create: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
 
+    pushMock = { broadcast: jest.fn().mockResolvedValue({ sent: 1, total: 1 }) };
+
     const { NotificationService } = require('./notification.service');
     const { TodoistService } = require('../todoist/todoist.service');
+    const { PushService } = require('../push/push.service');
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -83,6 +88,7 @@ describe('DeliveryService', () => {
         { provide: PrismaService, useValue: prismaMock },
         NotificationService,
         TodoistService,
+        { provide: PushService, useValue: pushMock },
       ],
     }).compile();
 
@@ -299,6 +305,68 @@ describe('DeliveryService', () => {
       expect(stats.month).toBe(30);
       expect(stats.byStatus[DeliveryStatus.CONFIRMED]).toBe(3);
       expect(stats.topStations).toHaveLength(1);
+    });
+  });
+
+  describe('dispatchReminders', () => {
+    function chileNowPlus(offsetMin: number): string {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }).format(new Date());
+      const [h, m] = parts.split(':').map(Number);
+      const total = h * 60 + m + offsetMin;
+      const hh = String(Math.floor(total / 60) % 24).padStart(2, '0');
+      const mm = String(total % 60).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    const baseDel: any = {
+      id: 'd1',
+      status: 'CONFIRMED',
+      windowStart: '17:00',
+      order: { orderNumber: 'NF-1', customerName: 'Ana' },
+      station: { name: 'Baquedano' },
+    };
+
+    it('reminds deliveries starting within the window, once per day', async () => {
+      prismaMock.delivery.findMany.mockResolvedValue([
+        { ...baseDel, id: 'd1', windowStart: chileNowPlus(30) },
+        { ...baseDel, id: 'd2', windowStart: chileNowPlus(180) },
+      ]);
+      prismaMock.deliveryAuditLog.findFirst.mockResolvedValue(null);
+      prismaMock.deliveryAuditLog.create.mockResolvedValue({});
+
+      const res = await service.dispatchReminders(60);
+
+      expect(res).toEqual(
+        expect.objectContaining({ total: 2, reminded: 1, skipped: 1, minutes: 60 }),
+      );
+      expect(pushMock.broadcast).toHaveBeenCalledTimes(1);
+      expect(pushMock.broadcast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: expect.stringContaining('min') }),
+      );
+    });
+
+    it('skips already reminded and out-of-window', async () => {
+      prismaMock.delivery.findMany.mockResolvedValue([
+        { ...baseDel, id: 'd1', windowStart: chileNowPlus(20) },
+      ]);
+      prismaMock.deliveryAuditLog.findFirst.mockResolvedValue({ id: 'a1' });
+
+      const res = await service.dispatchReminders(30);
+
+      expect(res.reminded).toBe(0);
+      expect(pushMock.broadcast).not.toHaveBeenCalled();
+    });
+
+    it('clamps minutes to 5..240', async () => {
+      prismaMock.delivery.findMany.mockResolvedValue([]);
+      const res = await service.dispatchReminders(9999);
+      expect(res.minutes).toBe(240);
+      expect(res.total).toBe(0);
     });
   });
 });
