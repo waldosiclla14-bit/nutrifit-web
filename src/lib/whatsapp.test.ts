@@ -4,6 +4,7 @@ import {
   buildSupplierOrderMessage,
   buildDeliveryOrderMessage,
   buildTickTickLine,
+  buildCancelOrderMessage,
   trustFooter,
 } from './whatsapp';
 import { BRAND } from '@/data/seed';
@@ -143,5 +144,47 @@ describe('buildSupplierOrderMessage', () => {
     expect(msg).toContain('Proteina Whey 1kg (Vainilla 1kg) ×3');
     expect(msg).toContain('Creatina 300g ×2');
     expect(msg).toContain('$50.000');
+  });
+});
+
+describe('buildCancelOrderMessage', () => {
+  it('renders cancel notice with returned lines', () => {
+    const msg = buildCancelOrderMessage({
+      orderNumber: 'NF-000153',
+      name: 'Mostrador',
+      items: [{ name: 'Proteína Whey 1 kg', variant: 'Cookies & Cream', quantity: 1, unitPrice: 16000 }],
+      total: 17000,
+      paymentLabel: 'Efectivo',
+    });
+
+    expect(msg).toContain('PEDIDO CANCELADO NF-000153');
+    expect(msg).toContain('• Proteína Whey 1 kg (Cookies & Cream) ×1 — $16.000');
+    expect(msg).toContain('TOTAL DEVUELTO: $17.000');
+    expect(msg).toContain('Medio:* Efectivo'.replace('*', '*'));
+    expect(msg).toContain('instagram.com/nutrifitsuplementos_cl');
+  });
+});
+
+describe('buildDeliveryOrderMessage scheduled', () => {
+  it('greets as today when scheduled', () => {
+    const msg = buildDeliveryOrderMessage({
+      name: 'M.guti',
+      phone: '912345678',
+      orderNumber: 'NF-000137',
+      items: [{ productName: 'Whey', quantity: 1, total: 16000 }],
+      subtotal: 16000,
+      discount: 0,
+      shippingCost: 0,
+      total: 16000,
+      paymentLabel: 'Efectivo',
+      paymentReceived: false,
+      metroLine: 'L3',
+      metroStation: 'Plaza Quilicura',
+      deliveryDay: '2026-10-07',
+      deliveryTime: '18:00',
+      scheduled: true,
+    });
+
+    expect(msg).toContain('¡Tu pedido agendado es hoy!');
   });
 });

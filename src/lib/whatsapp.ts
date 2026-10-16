@@ -122,6 +122,7 @@ export type DeliverySaleMessage = {
   deliveryTimeEnd?: string;
   meetingPoint?: string;
   deliveryCode?: string;
+  scheduled?: boolean;
 };
 
 export function formatDeliveryDay(iso: string) {
@@ -142,7 +143,11 @@ export function formatDeliveryDay(iso: string) {
 export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   const lines: string[] = [];
   lines.push(`*NUTRIFIT · PEDIDO ${m.orderNumber}*`);
-  lines.push(`Hola, ${m.name} 👋 ¡Tu pedido está confirmado!`);
+  lines.push(
+    m.scheduled
+      ? `Hola, ${m.name} 👋 ¡Tu pedido agendado es hoy!`
+      : `Hola, ${m.name} 👋 ¡Tu pedido está confirmado!`,
+  );
   lines.push('');
   lines.push('📦 *PRODUCTOS*');
   m.items.forEach((item) => {
@@ -176,6 +181,38 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push('https://nutrifit-web-nu.vercel.app');
   lines.push('');
   lines.push('🎁 Descubre nuestras promociones exclusivas en la web.');
+  lines.push('');
+  lines.push('*NUTRIFIT · Suplementación para tu rendimiento.*');
+  return lines.join('\n');
+}
+
+// Aviso de anulación/devolución total.
+export function buildCancelOrderMessage(o: {
+  orderNumber: string;
+  name: string;
+  items: SupplierOrderLine[];
+  total: number;
+  paymentLabel: string;
+}): string {
+  const lines: string[] = [];
+  lines.push(`*NUTRIFIT · PEDIDO CANCELADO ${o.orderNumber}*`);
+  lines.push(`Hola, ${o.name} 👋 Te avisamos que tu pedido fue anulado.`);
+  lines.push('');
+  lines.push('📦 *PRODUCTOS DEVUELTOS*');
+  o.items.forEach((l) => {
+    lines.push(`• ${l.name}${l.variant ? ` (${l.variant})` : ''} ×${l.quantity} — ${formatPrice((l.unitPrice ?? 0) * l.quantity)}`);
+  });
+  lines.push('');
+  lines.push(`💰 *TOTAL DEVUELTO: ${formatPrice(o.total)}*`);
+  lines.push(`💵 *Medio:* ${o.paymentLabel}`);
+  lines.push('');
+  lines.push('¡Gracias por tu comprensión! 💪');
+  lines.push('');
+  lines.push('📸 *Síguenos en Instagram:*');
+  lines.push(BRAND.instagramUrl);
+  lines.push('');
+  lines.push('🌐 *Compra online:*');
+  lines.push('https://nutrifit-web-nu.vercel.app');
   lines.push('');
   lines.push('*NUTRIFIT · Suplementación para tu rendimiento.*');
   return lines.join('\n');

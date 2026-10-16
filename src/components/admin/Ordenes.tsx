@@ -7,6 +7,7 @@ import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import { STATUS_LABEL, PAYMENT_LABEL } from '@/lib/admin/constants';
+import { normalizeChilePhone, buildCancelOrderMessage, buildDeliveryOrderMessage } from '@/lib/whatsapp';
 import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -133,6 +134,60 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
     return counts;
   }, [orders]);
 
+  // Aviso WhatsApp según estado: anulada/devuelta → mensaje de devolución;
+  // confirmada desde agendado (METRO) → mensaje "es hoy". Trae el detalle
+  // (teléfono + ítems) porque el listado no los incluye.
+  const notifyWhatsApp = async (o: AdminOrder, kind: 'cancelled' | 'scheduled') => {
+    try {
+      const full: any = await apiFetch(`/orders/${o.id}`, { token });
+      const phone = normalizeChilePhone(
+        full.customer?.phone || full.customerPhone || o.customer?.phone || o.customerPhone,
+      );
+      if (!phone) {
+        toast.error('Sin teléfono válido para avisar.');
+        return;
+      }
+      const name = full.customer?.name || full.customerName || 'Cliente';
+      const items = (full.items || []).map((i: any) => ({
+        name: i.productName,
+        variant: i.variantName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      }));
+      let msg: string;
+      if (kind === 'cancelled') {
+        msg = buildCancelOrderMessage({
+          orderNumber: full.orderNumber,
+          name,
+          items,
+          total: full.total,
+          paymentLabel: PAYMENT_LABEL[full.paymentMethod || ''] || 'Pago',
+        });
+      } else {
+        msg = buildDeliveryOrderMessage({
+          name,
+          phone,
+          orderNumber: full.orderNumber,
+          items: items.map((i: any) => ({ ...i, total: i.quantity * (i.unitPrice || 0) })),
+          subtotal: full.subtotal,
+          discount: full.discount,
+          shippingCost: full.shippingCost,
+          total: full.total,
+          paymentLabel: PAYMENT_LABEL[full.paymentMethod || ''] || 'Pago',
+          paymentReceived: full.paymentStatus === 'CONFIRMED',
+          metroLine: full.metroLine || '',
+          metroStation: full.metroStation || '',
+          deliveryDay: full.deliveryDay || '',
+          deliveryTime: full.deliveryTime || '',
+          scheduled: true,
+        });
+      }
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al preparar el aviso.');
+    }
+  };
+
   const renderActions = (o: AdminOrder) => (
     <>
       {o.status === 'AGENDADO' && (
@@ -201,6 +256,26 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
           className="rounded-full border border-amber-300 px-3 py-1.5 text-[11px] font-bold text-amber-700 transition hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
         >
           Devolver
+        </button>
+      )}
+      {['CANCELLED', 'RETURNED'].includes(o.status) && (
+        <button
+          disabled={busyId === o.id}
+          onClick={() => notifyWhatsApp(o, 'cancelled')}
+          className="ds-btn-secondary px-3 py-1.5 text-[11px] min-h-[44px]"
+          title="Avisar anulación por WhatsApp"
+        >
+          <MessageCircle size={12} /> Avisar
+        </button>
+      )}
+      {o.status === 'CONFIRMED' && (o as any).scheduledAt && o.deliveryType === 'METRO' && (
+        <button
+          disabled={busyId === o.id}
+          onClick={() => notifyWhatsApp(o, 'scheduled')}
+          className="ds-btn-secondary px-3 py-1.5 text-[11px] min-h-[44px]"
+          title="Avisar que la entrega es hoy"
+        >
+          <MessageCircle size={12} /> Avisar es hoy
         </button>
       )}
       {!['CANCELLED', 'DELIVERED', 'RETURNED'].includes(o.status) && (
