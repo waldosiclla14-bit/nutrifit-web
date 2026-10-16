@@ -156,7 +156,8 @@ export type AdminReport = {
   orders: {
     orderNumber: string;
     customerName: string;
-  createdAt: string;
+    createdAt: string;
+    deliveryType?: string;
     paymentMethod: string | null;
     subtotal: number;
     discount: number;

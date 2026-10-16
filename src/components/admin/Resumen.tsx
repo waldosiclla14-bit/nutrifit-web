@@ -17,7 +17,7 @@ import type {
 import type { AdminTabKey } from './BottomNav';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CountUp, HourBars, SalesArea, Spark, TopBars } from './charts';
+import { CountUp, HourBars, PayDonut, SalesArea, Spark, TopBars } from './charts';
 import { GoalEditor } from './GoalEditor';
 import LowStockBySupplier from './LowStockBySupplier';
 
@@ -300,6 +300,28 @@ export function Resumen({
     }
     return { hour, total };
   }, [byHour]);
+
+  const CHANNEL_LABEL: Record<string, string> = {
+    RETIRO_TIENDA: 'Local',
+    METRO: 'Metro',
+    ENVIO_DOMICILIO: 'Domicilio',
+  };
+
+  const byChannel = useMemo(() => {
+    if (!report) return [];
+    const map = new Map<string, { total: number; count: number }>();
+    for (const o of report.orders) {
+      const key = CHANNEL_LABEL[o.deliveryType || ''] || 'Otro';
+      const cur = map.get(key) || { total: 0, count: 0 };
+      cur.total += o.total || 0;
+      cur.count += 1;
+      map.set(key, cur);
+    }
+    const grand = [...map.values()].reduce((a, v) => a + v.total, 0) || 1;
+    return [...map.entries()]
+      .map(([label, v]) => ({ label, ...v, pct: Math.round((v.total / grand) * 100) }))
+      .sort((a, b) => b.total - a.total);
+  }, [report]);
 
   const rangeDaily = useMemo(() => {
     if (!report) return [];
@@ -726,6 +748,31 @@ export function Resumen({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-line bg-paper p-6">
+          <p className="font-display text-lg uppercase">Ventas por canal</p>
+          {!report || byChannel.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">{loading ? 'Cargando…' : 'Sin datos del período.'}</p>
+          ) : (
+            <>
+              <div className="mt-4">
+                <PayDonut data={byChannel.map((c) => ({ label: c.label, total: c.total }))} />
+              </div>
+              <div className="mt-3 space-y-1.5">
+                {byChannel.map((c) => (
+                  <div key={c.label} className="flex items-center justify-between text-sm">
+                    <span className="text-muted">
+                      {c.label} · {c.count} {c.count === 1 ? 'orden' : 'órdenes'}
+                    </span>
+                    <span className="font-bold tabular-nums">
+                      {formatPrice(c.total)} <span className="font-normal text-muted">({c.pct}%)</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
         <div className="rounded-3xl border border-line bg-paper p-6">
           <p className="font-display text-lg uppercase">Ventas por hora</p>
           {!report ? (
