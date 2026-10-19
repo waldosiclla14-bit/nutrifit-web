@@ -9,7 +9,7 @@ import { readJsonBody } from '../common/decorators/raw-body.decorator';
 import { Request } from 'express';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SELLER)
+@Roles(Role.ADMIN)
 @Controller('admin/purchases')
 export class PurchasesController {
   constructor(
