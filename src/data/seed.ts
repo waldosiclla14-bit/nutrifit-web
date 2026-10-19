@@ -10,7 +10,7 @@ export const BRAND = {
   instagramUrl: 'https://www.instagram.com/nutrifitsuplementos_cl',
   mapsUrl: 'https://maps.app.goo.gl/b1c9NbrUXhUmRGU18?g_st=ic',
   city: 'Santiago, Chile',
-  url: 'https://nutrifit-web-nu.vercel.app',
+  url: 'https://nutrifitsuplementos.cl',
   hours: 'Lunes a Sábado, 10:00–20:00 hrs',
   freeShippingFrom: 30000,
   rating: 4.9,

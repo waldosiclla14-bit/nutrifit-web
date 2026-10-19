@@ -1009,6 +1009,22 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
     }
   };
 
+  // Abre WhatsApp con el mensaje del cliente. Copia el texto de respaldo y
+  // avisa explícitamente cuando el teléfono no sirve o el texto es muy largo
+  // (antes fallaba en silencio: se abría WhatsApp vacío).
+  const sendWhatsApp = (phone: string, message: string) => {
+    const result = openWhatsApp(phone, message, { copy: true });
+    if (result === 'invalid_phone') {
+      toast.error('Teléfono del cliente inválido para WhatsApp (ej: 9 1234 5678). El mensaje quedó copiado: pégalo a mano.');
+      return;
+    }
+    if (result === 'opened_short') {
+      toast.info('Mensaje muy largo: WhatsApp abrió sin texto. Quedó copiado, pégalo en el chat.');
+      return;
+    }
+    toast.success('WhatsApp abierto · mensaje copiado (pegar con Ctrl/Cmd+V si sale vacío).');
+  };
+
   const copyReceipt = async () => {
     if (!receipt) return;
     try {
@@ -1235,7 +1251,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 <Copy size={13} /> {copied ? '¡Copiado!' : 'Copiar'}
               </button>
               <button
-                onClick={() => openWhatsApp(receipt.customerPhone, receiptText(receipt))}
+                onClick={() => sendWhatsApp(receipt.customerPhone, receiptText(receipt))}
                 className="ds-btn-secondary px-4 py-2 text-xs text-emerald-600 hover:border-emerald-300"
               >
                 <MessageCircle size={13} /> WhatsApp
@@ -1340,7 +1356,7 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
                 </button>
               )}
               <button
-                onClick={() => openWhatsApp(salePhone, saleMsg)}
+                onClick={() => sendWhatsApp(salePhone, saleMsg || '')}
                 className="ds-btn-accent px-4 py-2 text-xs"
               >
                 <MessageCircle size={13} /> Enviar por WhatsApp

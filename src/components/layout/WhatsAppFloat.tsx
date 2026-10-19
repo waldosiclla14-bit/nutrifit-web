@@ -10,7 +10,9 @@ export default function WhatsAppFloat() {
       href="#"
       onClick={(e) => {
         e.preventDefault();
-        openWhatsApp(getSettings().whatsapp, 'Hola! Necesito ayuda con mi pedido o una recomendación.');
+        openWhatsApp(getSettings().whatsapp, 'Hola! Necesito ayuda con mi pedido o una recomendación.', {
+          copy: true,
+        });
       }}
       className="fixed bottom-5 right-5 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110 lg:flex"
       aria-label={`Contactar por WhatsApp (${BRAND.hours})`}

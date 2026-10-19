@@ -7,7 +7,7 @@ import { formatPrice, formatTime12 } from '@/lib/utils';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import { STATUS_LABEL, PAYMENT_LABEL } from '@/lib/admin/constants';
-import { normalizeChilePhone, buildCancelOrderMessage, buildDeliveryOrderMessage } from '@/lib/whatsapp';
+import { normalizeChilePhone, openWhatsApp, buildCancelOrderMessage, buildDeliveryOrderMessage } from '@/lib/whatsapp';
 import { waLink } from '@/lib/admin/format';
 import type { AdminOrder } from '@/types/admin';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -182,7 +182,9 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
           scheduled: true,
         });
       }
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+      // openWhatsApp copia el texto de respaldo y usa window.open dentro del
+      // gesto (window.open tras await era bloqueado por el navegador).
+      openWhatsApp(phone, msg, { copy: true });
     } catch (err: any) {
       toast.error(err?.message || 'Error al preparar el aviso.');
     }

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/feedback';
+import { waMeUrl } from '@/lib/whatsapp';
 
 interface Ticket {
   id: string;
@@ -424,7 +425,7 @@ export function Desk({ token }: { token: string }) {
                   <p className="text-[10px] font-bold text-muted uppercase">Cliente</p>
                   <p className="font-bold text-ink">{selectedTicket.customerName}</p>
                   <a
-                    href={`https://wa.me/${selectedTicket.customerPhone.replace(/\D/g, '')}`}
+                    href={waMeUrl(selectedTicket.customerPhone) || '#'}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[11px] text-sport-green hover:underline"

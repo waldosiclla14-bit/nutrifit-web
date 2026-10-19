@@ -73,7 +73,7 @@ export default function ProductDetail({
       '¿Está disponible? Quiero coordinar mi entrega en metro.',
       webFooter(),
     ].join('\n');
-    openWhatsApp(getSettings().whatsapp, message);
+    openWhatsApp(getSettings().whatsapp, message, { copy: true });
   };
 
   const infoCards = useMemo(

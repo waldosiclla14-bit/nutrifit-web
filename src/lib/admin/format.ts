@@ -1,15 +1,14 @@
 import { STATUS_LABEL } from './constants';
-import { webFooter } from '@/lib/whatsapp';
+import { waMeUrl, webFooter } from '@/lib/whatsapp';
 import type { AdminOrder } from '@/types/admin';
 
 export function waLink(order: AdminOrder) {
-  const phone = (order.customer?.phone || '').replace(/\D/g, '');
-  const msg = encodeURIComponent(
-    `Hola ${order.customer?.name || ''}! Tu pedido ${order.orderNumber} está ${
-      STATUS_LABEL[order.status] || order.status
-    }. Respondeme para coordinar la entrega.${webFooter()}`,
-  );
-  return `https://wa.me/56${phone}?text=${msg}`;
+  const msg = `Hola ${order.customer?.name || ''}! Tu pedido ${order.orderNumber} está ${
+    STATUS_LABEL[order.status] || order.status
+  }. Respondeme para coordinar la entrega.${webFooter()}`;
+  // normalizeChilePhone evita el doble código país (5656…) cuando el cliente
+  // ya está guardado con 56. Devuelve '#' si el teléfono no sirve.
+  return waMeUrl(order.customer?.phone || order.customerPhone, msg) ?? '#';
 }
 
 export function marginOf(price: number, cost: number) {

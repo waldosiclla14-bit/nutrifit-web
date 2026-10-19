@@ -2,7 +2,11 @@ import type { OrderItem } from '@/types';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { BRAND } from '@/data/seed';
 
-const SITE_URL = 'https://nutrifit-web-nu.vercel.app';
+const SITE_URL = 'https://nutrifitsuplementos.cl';
+
+// Largo máximo seguro de la URL wa.me (límite práctico de api.whatsapp.com).
+// Más allá de esto WhatsApp puede descartar el texto precargado.
+const WA_URL_MAX = 1900;
 
 export function webFooter() {
   return [
@@ -178,7 +182,7 @@ export function buildDeliveryOrderMessage(m: DeliverySaleMessage) {
   lines.push(BRAND.instagramUrl);
   lines.push('');
   lines.push('🌐 *Compra online:*');
-  lines.push('https://nutrifit-web-nu.vercel.app');
+  lines.push(SITE_URL);
   lines.push('');
   lines.push('🎁 Descubre nuestras promociones exclusivas en la web.');
   lines.push('');
@@ -212,7 +216,7 @@ export function buildCancelOrderMessage(o: {
   lines.push(BRAND.instagramUrl);
   lines.push('');
   lines.push('🌐 *Compra online:*');
-  lines.push('https://nutrifit-web-nu.vercel.app');
+  lines.push(SITE_URL);
   lines.push('');
   lines.push('*NUTRIFIT · Suplementación para tu rendimiento.*');
   return lines.join('\n');
@@ -237,17 +241,56 @@ export function buildTickTickLine(o: {
   return `${o.orderNumber} · ${o.name} · Entrega Metro ${o.metroStation} · ${day} ${o.deliveryTime}`;
 }
 
-export function openWhatsApp(phone: string, message: string) {
+export type OpenWhatsAppResult =
+  | 'opened' // abrió con el texto precargado
+  | 'opened_short' // texto muy largo: abrió sin texto (el mensaje quedó copiado)
+  | 'invalid_phone' // teléfono inválido: no se abrió nada
+  | 'blocked'; // el navegador bloqueó la pestaña y se usó el fallback ancla
+
+export function waMeUrl(phone: string | null | undefined, message?: string): string | null {
   const clean = normalizeChilePhone(phone);
-  if (!clean) return;
-  const url = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
-  const link = document.createElement('a');
-  link.href = url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  if (!clean) return null;
+  const base = `https://wa.me/${clean}`;
+  if (!message) return base;
+  return `${base}?text=${encodeURIComponent(message)}`;
+}
+
+// Abre WhatsApp con el mensaje precargado. Usa window.open dentro del gesto
+// del usuario (el <a> programático + removeChild inmediato se perdía en
+// Safari/iOS). Si el texto excede el largo seguro de wa.me, abre sin texto y
+// lo copia al portapapeles para que el vendedor lo pegue.
+export function openWhatsApp(
+  phone: string,
+  message: string,
+  opts?: { copy?: boolean },
+): OpenWhatsAppResult {
+  const clean = normalizeChilePhone(phone);
+  if (!clean) return 'invalid_phone';
+
+  const full = `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
+  const shortEnough = full.length <= WA_URL_MAX;
+  const url = shortEnough ? full : `https://wa.me/${clean}`;
+
+  // Copia de seguridad: si WhatsApp no precarga el texto, se puede pegar.
+  if (opts?.copy && message && typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(message).catch(() => {});
+  }
+
+  let opened = false;
+  try {
+    opened = !!window.open(url, '_blank', 'noopener,noreferrer');
+  } catch {
+    opened = false;
+  }
+  if (!opened && typeof document !== 'undefined') {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
+    return shortEnough ? 'opened' : 'opened_short';
+  }
+  return shortEnough ? 'opened' : 'opened_short';
 }
 
 // Normaliza teléfonos chilenos a formato wa.me (solo dígitos con código país).

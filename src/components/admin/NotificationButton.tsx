@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatTime12 } from '@/lib/utils';
+import { openWhatsApp } from '@/lib/whatsapp';
 
 type DeliveryData = {
   deliveryId: string;
@@ -101,7 +102,7 @@ export function buildDeliveryStatusMessage(status: string, data: DeliveryData): 
       break;
   }
 
-  lines.push('', '─'.repeat(24), '🌐 nutrifit-web-nu.vercel.app');
+  lines.push('', '─'.repeat(24), '🌐 nutrifitsuplementos.cl');
   return lines.join('\n');
 }
 
@@ -113,11 +114,8 @@ export default function NotificationButton({ delivery }: { delivery: DeliveryDat
 
     setSending(true);
     const message = buildDeliveryStatusMessage(delivery.status, delivery);
-    let phone = delivery.customerPhone.replace(/[^\d]/g, '').replace(/^0+/, '');
-    if (/^9\d{8}$/.test(phone)) phone = `56${phone}`;
-
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // normalizeChilePhone + copy de respaldo: evita el 5656 y el texto perdido.
+    openWhatsApp(delivery.customerPhone, message, { copy: true });
     setTimeout(() => setSending(false), 1500);
   };
 

@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { toast, useConfirm } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
-import { webFooter } from '@/lib/whatsapp';
+import { openWhatsApp, webFooter } from '@/lib/whatsapp';
 import { customerSegment } from '@/lib/admin/segment';
 import type { AdminCustomer } from '@/types/admin';
 
@@ -225,8 +225,6 @@ export function Clientes({ token }: { token: string }) {
           },
         },
       );
-      const phone = customer.phone.replace(/\D/g, '');
-      const phoneWithCountry = phone.startsWith('56') ? phone : `56${phone}`;
       const expiry = coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleDateString('es-CL') : '30 días';
       const discountExample = Math.round(30000 * (discountPercent / 100));
       const message = [
@@ -240,7 +238,9 @@ export function Clientes({ token }: { token: string }) {
         'Úsalo en tu próxima compra por WhatsApp o en el carrito.',
         webFooter(),
       ].join('\n');
-      window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+      if (openWhatsApp(customer.phone, message, { copy: true }) === 'invalid_phone') {
+        toast.error('Teléfono del cliente inválido para WhatsApp. Copia el cupón y envíalo a mano.');
+      }
       await reloadAll();
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo generar el cupón.');

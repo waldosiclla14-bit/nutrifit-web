@@ -64,6 +64,7 @@ export default function CartDrawer() {
   const [offerAdded, setOfferAdded] = useState<number | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [syncStatus, setSyncStatus] = useState<'ok' | 'offline'>('ok');
+  const [waFailed, setWaFailed] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -165,7 +166,12 @@ export default function CartDrawer() {
     };
 
     saveOrder(order);
-    openWhatsApp(getSettings().whatsapp, buildWhatsAppMessage(order));
+    // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
+    // texto, el cliente lo pega y el pedido no se pierde.
+    setWaFailed(
+      openWhatsApp(getSettings().whatsapp, buildWhatsAppMessage(order), { copy: true }) ===
+        'invalid_phone',
+    );
     setLastOrder(order);
     setPlaced(true);
     setError('');
@@ -226,7 +232,7 @@ export default function CartDrawer() {
       shipping: shippingNext,
       total: Math.max(0, subtotalNext - (lastOrder.discount ?? 0) + shippingNext),
     });
-    openWhatsApp(getSettings().whatsapp, message);
+    openWhatsApp(getSettings().whatsapp, message, { copy: true });
     setOfferAdded(p.id);
   };
 
@@ -290,6 +296,16 @@ export default function CartDrawer() {
               Abrimos WhatsApp con tu pedido listo para enviar. Solo presiona enviar y te
               confirmamos el punto de entrega en tu estación de metro.
             </p>
+            <p className="text-xs leading-relaxed text-white/40">
+              ¿WhatsApp se abrió sin el mensaje? Pega con Ctrl/Cmd+V: tu pedido quedó en el
+              portapapeles.
+            </p>
+            {waFailed && (
+              <p className="text-xs font-semibold text-red-300">
+                No pudimos abrir WhatsApp (número del local inválido). Copiá el mensaje de
+                WhatsApp a mano o avísanos por Instagram para coordinar tu pedido.
+              </p>
+            )}
             <p
               className={`text-xs font-semibold ${
                 syncStatus === 'ok' ? 'text-sport-orange' : 'text-white/50'

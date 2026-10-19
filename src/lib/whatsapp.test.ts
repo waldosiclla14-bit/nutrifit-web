@@ -1,11 +1,13 @@
 import {
   normalizeChilePhone,
+  openWhatsApp,
   supplierWhatsAppUrl,
   buildSupplierOrderMessage,
   buildDeliveryOrderMessage,
   buildTickTickLine,
   buildCancelOrderMessage,
   trustFooter,
+  waMeUrl,
 } from './whatsapp';
 import { BRAND } from '@/data/seed';
 
@@ -74,7 +76,7 @@ describe('buildDeliveryOrderMessage', () => {
     expect(msg).toContain('🚇 *Lugar:* Metro Plaza Quilicura · L3');
     expect(msg).toContain('Torniquetes o cambio de andén (Acceso principal).');
     expect(msg).toContain('Opiniones de nuestros clientes');
-    expect(msg).toContain('https://nutrifit-web-nu.vercel.app');
+    expect(msg).toContain('https://nutrifitsuplementos.cl');
     expect(msg).toContain('Suplementación para tu rendimiento');
     // Nada del ejemplo queda fijo: sin meeting point no aparece el paréntesis
     expect(buildDeliveryOrderMessage({ ...base, meetingPoint: undefined })).not.toContain('(Acceso');
@@ -186,5 +188,86 @@ describe('buildDeliveryOrderMessage scheduled', () => {
     });
 
     expect(msg).toContain('¡Tu pedido agendado es hoy!');
+  });
+});
+
+describe('waMeUrl', () => {
+  it('normaliza el teléfono sin duplicar el código país', () => {
+    expect(waMeUrl('912345678', 'Hola')).toBe(
+      `https://wa.me/56912345678?text=${encodeURIComponent('Hola')}`,
+    );
+    expect(waMeUrl('56912345678', 'Hola')).toBe(
+      `https://wa.me/56912345678?text=${encodeURIComponent('Hola')}`,
+    );
+    expect(waMeUrl('+56 9 1234 5678', 'Hola')).toBe(
+      `https://wa.me/56912345678?text=${encodeURIComponent('Hola')}`,
+    );
+  });
+
+  it('returns base link without message and null on invalid phone', () => {
+    expect(waMeUrl('912345678')).toBe('https://wa.me/56912345678');
+    expect(waMeUrl('000000', 'Hola')).toBeNull();
+    expect(waMeUrl('', 'Hola')).toBeNull();
+    expect(waMeUrl(null, 'Hola')).toBeNull();
+  });
+});
+
+describe('openWhatsApp', () => {
+  let openSpy: jest.SpyInstance;
+  let writeText: jest.Mock;
+
+  beforeEach(() => {
+    writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    openSpy = jest.spyOn(window, 'open').mockReturnValue({} as Window);
+  });
+
+  afterEach(() => {
+    openSpy.mockRestore();
+  });
+
+  it('opens wa.me with encoded text and copies the message as a safety net', () => {
+    const result = openWhatsApp('912345678', 'Hola cliente', { copy: true });
+
+    expect(result).toBe('opened');
+    const [url] = openSpy.mock.calls[0];
+    expect(url).toBe(`https://wa.me/56912345678?text=${encodeURIComponent('Hola cliente')}`);
+    expect(writeText).toHaveBeenCalledWith('Hola cliente');
+  });
+
+  it('fails loudly on invalid phone instead of opening nothing', () => {
+    const result = openWhatsApp('000000', 'Hola cliente', { copy: true });
+
+    expect(result).toBe('invalid_phone');
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it('opens without text when the URL is too long and still copies the message', () => {
+    const huge = 'Mensaje muy largo '.repeat(200);
+
+    const result = openWhatsApp('912345678', huge, { copy: true });
+
+    expect(result).toBe('opened_short');
+    const [url] = openSpy.mock.calls[0];
+    expect(url).toBe('https://wa.me/56912345678');
+    expect(writeText).toHaveBeenCalledWith(huge);
+  });
+
+  it('falls back to an anchor when the popup is blocked', () => {
+    openSpy.mockReturnValue(null);
+    const clickSpy = jest.fn();
+    const createSpy = jest
+      .spyOn(document, 'createElement')
+      .mockReturnValue({ click: clickSpy } as unknown as HTMLElement);
+
+    const result = openWhatsApp('912345678', 'Hola');
+
+    expect(result).toBe('opened');
+    expect(clickSpy).toHaveBeenCalled();
+    createSpy.mockRestore();
   });
 });

@@ -84,7 +84,7 @@ export default function FirstOrderOffer() {
       '',
       '¿Me lo aplican a mi pedido?',
     ].join('\n');
-    openWhatsApp(getSettings().whatsapp, message);
+    openWhatsApp(getSettings().whatsapp, message, { copy: true });
     markShown();
     setShow(false);
   };
