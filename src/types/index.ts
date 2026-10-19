@@ -3,6 +3,7 @@ export type ProductVariant = {
   name: string;
   image: string;
   stock: number;
+  sku?: string;
   reservedStock?: number;
   publicStock?: number;
   publicPublished?: boolean;
@@ -22,6 +23,7 @@ export type Product = {
   desc: string;
   benefits: string[];
   stock: number;
+  sku?: string;
   publicStock?: number;
   publicPublished?: boolean;
   rating: number;

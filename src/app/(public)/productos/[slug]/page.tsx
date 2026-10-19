@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { PRODUCTS, PRODUCT_ALIASES, BRAND } from '@/data/seed';
+import { PRODUCTS, PRODUCT_ALIASES } from '@/data/seed';
 import ProductDetail from '@/components/product/ProductDetail';
 import { getDiscount } from '@/lib/utils';
+import { buildProductJsonLd } from '@/lib/seo/merchant-config';
 
 export function generateStaticParams() {
   return [...PRODUCTS.map((p) => ({ slug: p.slug })), ...Object.keys(PRODUCT_ALIASES).map((slug) => ({ slug }))];
@@ -51,37 +52,7 @@ export default async function ProductPage({
     (p) => p.id !== product.id && p.category === product.category,
   ).slice(0, 4);
 
-  const productJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: product.name,
-    image: `${BRAND.url}${product.image}`,
-    description: product.desc,
-    sku: `seed-${product.slug}`,
-    brand: { '@type': 'Brand', name: product.brand },
-    ...(product.variants && product.variants.length > 0
-      ? {
-          hasVariant: product.variants.map((v) => ({
-            '@type': 'Product',
-            name: `${product.name} ${v.name}`,
-            image: `${BRAND.url}${v.image}`,
-          })),
-        }
-      : {}),
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: product.rating,
-      reviewCount: product.reviews,
-    },
-    offers: {
-      '@type': 'Offer',
-      url: `${BRAND.url}/productos/${product.slug}`,
-      priceCurrency: 'CLP',
-      price: product.price,
-      availability:
-        product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-    },
-  };
+  const productJsonLd = buildProductJsonLd(product);
 
   return (
     <>

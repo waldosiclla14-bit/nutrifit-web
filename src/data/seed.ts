@@ -795,9 +795,49 @@ const PRODUCT_RAW: ProductRaw[] = [
   },
 ];
 
+// SKU por id de producto. Formato: NF-<CATEGORIA>-<PRODUCTO>-<TAMAÑO>,
+// mayúsculas, sin espacios ni tildes, máx. 50 caracteres. Fuente única para
+// tienda, POS y Admin (ver docs/SEO-MERCHANT.md).
+export const PRODUCT_SKUS: Record<number, string> = {
+  4: 'NF-PROT-FE-WHEY-1KG',
+  6: 'NF-PROT-FE-VEGAN-1KG',
+  7: 'NF-CREA-FE-CREAT-300G',
+  8: 'NF-REND-RAIN-OXID-1200MG-60C',
+  9: 'NF-BIEN-FNL-OM3-800MG-60C',
+  10: 'NF-BIEN-RAIN-BERB-1000MG-60C',
+  11: 'NF-BIEN-RAIN-SHIL-500MG-90C',
+  12: 'NF-REND-RAIN-CITR-1800MG-90C',
+  13: 'NF-BIEN-FNL-ASHW-800MG-90C',
+  14: 'NF-BIEN-FNL-MELENA-90C',
+  15: 'NF-VIT-FNL-VITW-60C',
+  16: 'NF-BIEN-FNL-OREG-60C',
+  17: 'NF-PESO-FNL-LIPO9-120C',
+  18: 'NF-MIN-FNL-ZMA-90C',
+  19: 'NF-REND-FNL-ARGI-650MG-200C',
+  20: 'NF-VIT-FNL-VITC-1000MG-90C',
+  21: 'NF-BIEN-FNL-COLAG-150C',
+  22: 'NF-CREA-FNL-CREAT-1KG',
+  23: 'NF-BIEN-FNL-OM3VG-60C',
+  24: 'NF-BIEN-FNL-RESV-NMN-30C',
+  25: 'NF-PESO-FNL-KETO-90C',
+  26: 'NF-BIEN-FNL-PAVO-784MG-60C',
+  27: 'NF-PESO-FNL-CARN-1500MG-90C',
+  28: 'NF-VIT-FNL-VITM-60C',
+  29: 'NF-REND-FNL-BCAA-180C',
+  30: 'NF-REND-RAIN-TESTO-180C',
+  31: 'NF-CREA-ECO-CREAT-300G',
+  32: 'NF-PROT-FNL-SNW-WOMAN',
+  33: 'NF-PROT-FNL-VEGAN-900G',
+  34: 'NF-PROT-ULTI-PROSTAR-5LB',
+  35: 'NF-ACC-KEEP-SHAKER-700ML',
+  36: 'NF-PROT-OSTRO-WHEY-700G',
+  37: 'NF-PROT-FNL-WHEY-947G',
+};
+
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
   ...p,
   slug: slugify(p.name),
+  ...(PRODUCT_SKUS[p.id] ? { sku: PRODUCT_SKUS[p.id] } : {}),
 }));
 
 export const PRODUCT_ALIASES: Record<string, string> = {
