@@ -52,3 +52,57 @@ informativa, carruseles "Recién llegados"/"Ofertas" y página de marcas.
 
 ### Siguiente paso
 Deploy y verificación en producción (sitemap, robots, Rich Results, Search Console).
+
+---
+
+## Sesión: optimización de conversión (flujo de compra)
+
+### Objetivo
+Mejorar atractivo y facilidad de compra, basado en auditoría del flujo (carrito, checkout
+WhatsApp, ficha, packs).
+
+### Decisiones tomadas
+- **Eliminar escasez/prueba social fabricada** (regla "no inventar"): `LiveViewers`
+  (número aleatorio de personas viendo), `RecentSalesToast` (ventas con nombres/comunas
+  inventados) y `TopStockBanner` (stock hardcodeado = 12). Archivos eliminados.
+- **Persistir datos del cliente** (nombre, teléfono, línea y estación) en localStorage,
+  clave `nutrifit:customer:v1`, para autocompletar compras recurrentes.
+- **Cupón NUTRIFIT5 auto-aplicable**: el modal de primera compra ahora guarda el código
+  pendiente (`nutrifit:pending-coupon:v1`) y abre el carrito; se aplica solo si hay
+  teléfono. Ya no obliga a pedirlo por WhatsApp.
+- **CTAs "Comprar por WhatsApp"** de ficha y hero ahora agregan al carrito y abren el
+  drawer para capturar datos antes de generar el pedido (el vendedor ya no pregunta todo).
+- **Medios de pago declarados** (confirmados por el dueño): **efectivo y transferencia**
+  (pago contra entrega), visibles en carrito, ficha y mensaje de WhatsApp.
+- **Sección "Sets y packs"** en la home con ahorro visible; arregla el ancla rota `/#sets`
+  que referenciaba el banner.
+- **Código muerto**: `COMBOS` y `TESTIMONIALS`/`REVIEWS` del seed se mantienen sin usar,
+  por decisión del dueño (se conservan para reutilizar).
+
+### Archivos creados/modificados
+- Eliminados: `src/components/product/LiveViewers.tsx`, `src/components/ui/RecentSalesToast.tsx`,
+  `src/components/home/TopStockBanner.tsx`.
+- `src/lib/store.ts`: perfil de cliente + cupón pendiente.
+- `src/types/index.ts`: tipo `CustomerProfile`.
+- `src/components/layout/CartDrawer.tsx`: precarga de datos, cupón pendiente, línea de pagos.
+- `src/components/home/FirstOrderOffer.tsx`: cupón al carrito (sin WhatsApp).
+- `src/components/product/ProductDetail.tsx` / `src/components/home/HeroSection.tsx`: CTAs
+  por carrito; texto de pagos.
+- `src/components/home/Packs.tsx` (nuevo) + `src/app/(public)/page.tsx`.
+- `src/lib/whatsapp.ts`: mensaje indica "Efectivo o transferencia (contra entrega)".
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
+- `npx jest`: **78/78** (9 suites).
+- Local: `#sets` presente, `TopStockBanner` ausente, sección de packs renderiza.
+
+### Capturas
+`docs/capturas/conv-packs-390.png`, `conv-home-1280.png`, `conv-producto-1280.png`.
+
+### Pendiente / requiere validación humana
+- Revisar en producción el flujo completo: agregar → carrito → datos → WhatsApp.
+- Probar persistencia del perfil borrando `nutrifit:customer:v1`.
+- Considerar limpiar cifras no verificables de `/sobre-nosotros` (+500, 140+) en otra sesión.
+
+### Siguiente paso
+Deploy de los commits de conversión y verificación en producción.
