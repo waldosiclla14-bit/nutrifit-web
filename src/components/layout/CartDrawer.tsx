@@ -759,6 +759,9 @@ export default function CartDrawer() {
                 Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
                 estación de metro.
               </p>
+              <p className="mt-1 text-center text-[11px] font-semibold text-sport-textMuted">
+                Aceptamos efectivo y transferencia (pago contra entrega).
+              </p>
             </div>
           </>
         )}

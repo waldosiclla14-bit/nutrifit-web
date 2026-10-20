@@ -236,7 +236,8 @@ export default function ProductDetail({
           </div>
           <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
-            Entrega coordinada por WhatsApp en estaciones de Metro.
+            Entrega coordinada por WhatsApp en estaciones de Metro. Aceptamos efectivo y
+            transferencia (pago contra entrega).
           </p>
         </div>
       </div>
