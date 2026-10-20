@@ -243,7 +243,8 @@ export class ProductsService implements OnModuleInit {
     if (data.isActive !== undefined) productData.isActive = !!data.isActive;
     if (data.isFeatured !== undefined) productData.isFeatured = !!data.isFeatured;
     if (data.sku !== undefined) {
-      const sku = String(data.sku).trim().toUpperCase() || existing.sku;
+      const rawSku = String(data.sku).trim();
+      const sku = rawSku ? this.assertValidSku(rawSku) : existing.sku;
       if (sku !== existing.sku) productData.sku = await this.uniqueSku(sku, 'product');
     }
     if (data.barcode !== undefined) {
@@ -265,6 +266,10 @@ export class ProductsService implements OnModuleInit {
     }
 
     const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
+    // Validar todos los SKU antes de escribir nada (evita escrituras parciales).
+    for (const v of variants) {
+      if (String(v.sku || '').trim()) this.assertValidSku(v.sku);
+    }
 
     if (data.costPrice === undefined && data.basePrice !== undefined && existing.costPrice === 0) {
       productData.costPrice = productData.costPrice ?? 0;
@@ -428,8 +433,9 @@ export class ProductsService implements OnModuleInit {
     if (!name) throw new BadRequestException('El nombre del producto es obligatorio');
 
     const slug = await this.uniqueSlug(name);
+    const providedSku = String(data.sku || '').trim();
     const sku = await this.uniqueSku(
-      String(data.sku || '').trim().toUpperCase() || `SKU-${slug.toUpperCase()}`,
+      providedSku ? this.assertValidSku(providedSku) : `SKU-${slug.toUpperCase()}`,
       'product',
     );
 
@@ -439,6 +445,9 @@ export class ProductsService implements OnModuleInit {
     const brandId = await this.resolveBrand(data.brandId, data.brand);
 
     const variants: any[] = Array.isArray(data.variants) ? data.variants : [];
+    for (const v of variants) {
+      if (String(v.sku || '').trim()) this.assertValidSku(v.sku);
+    }
     const basePrice = Number(data.basePrice);
     const firstVariantPrice = Number(variants[0]?.price);
     const finalBasePrice =
@@ -523,6 +532,23 @@ export class ProductsService implements OnModuleInit {
       slug = `${base}-${n++}`;
     }
     return slug;
+  }
+
+  /**
+   * Valida el formato de SKU (Merchant Center + ERP): 1-50 caracteres,
+   * mayúsculas, sin espacios ni tildes. Solo se aplica cuando el SKU viene en
+   * el body; si no viene, el servicio autogenera uno único (SKU-<slug>).
+   */
+  private assertValidSku(sku: string): string {
+    const normalized = String(sku || '').trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('El SKU es obligatorio');
+    if (normalized.length > 50) {
+      throw new BadRequestException('El SKU no puede superar los 50 caracteres');
+    }
+    if (!/^[A-Z0-9-]+$/.test(normalized)) {
+      throw new BadRequestException('El SKU solo admite letras mayúsculas, números y guiones');
+    }
+    return normalized;
   }
 
   private async uniqueSku(sku: string, kind: 'product' | 'variant', excludeId?: string) {

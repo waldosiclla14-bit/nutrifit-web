@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
+import { isValidSku, normalizeSku, skuError } from '@/lib/sku';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 import { BarcodeScanner } from './BarcodeScanner';
 
@@ -178,6 +179,19 @@ export function Productos({
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
+    const skuErr = skuError(form.sku);
+    if (skuErr) {
+      toast.error(skuErr);
+      return;
+    }
+    for (const v of formVariants) {
+      if (!v.sku.trim()) continue;
+      const err = skuError(v.sku);
+      if (err) {
+        toast.error(`SKU variante "${v.variantName || 'sin nombre'}": ${err}`);
+        return;
+      }
+    }
     const invalidVariant = formVariants.find((v) => !v.variantName.trim() && !v.sku.trim() && !v.barcode.trim());
     if (invalidVariant) {
       toast.error('Cada variante necesita nombre, SKU o código de barras.');
@@ -192,7 +206,7 @@ export function Productos({
         token,
         body: {
           name: form.name,
-          sku: form.sku,
+          sku: normalizeSku(form.sku),
           barcode: form.barcode || undefined,
           basePrice: Number(form.basePrice) || undefined,
           costPrice: Number(form.costPrice) || undefined,
@@ -207,7 +221,7 @@ export function Productos({
             .filter((v) => v.variantName.trim() || v.sku.trim())
             .map((v) => ({
               variantName: v.variantName,
-              sku: v.sku,
+              sku: v.sku.trim() ? normalizeSku(v.sku) : undefined,
               barcode: v.barcode || undefined,
               price: Number(v.price) || undefined,
               costPrice: Number(v.costPrice) || undefined,
@@ -272,6 +286,19 @@ export function Productos({
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
+    const skuErr = skuError(editForm.sku);
+    if (skuErr) {
+      toast.error(skuErr);
+      return;
+    }
+    for (const v of editForm.variants) {
+      if (!v.sku.trim()) continue;
+      const err = skuError(v.sku);
+      if (err) {
+        toast.error(`SKU variante "${v.variantName || 'sin nombre'}": ${err}`);
+        return;
+      }
+    }
     const stockChanges = editForm.variants
       .map((v) => ({ id: v.id, old: (editing.variants || []).find((x) => x.id === v.id)?.stock ?? 0, next: Number(v.stock) || 0 }))
       .filter((s) => s.id && s.next !== s.old);
@@ -288,7 +315,7 @@ export function Productos({
         token,
         body: {
           name: editForm.name,
-          sku: editForm.sku,
+          sku: normalizeSku(editForm.sku),
           barcode: editForm.barcode || null,
           category: editForm.category,
           brand: editForm.brand,
@@ -302,7 +329,7 @@ export function Productos({
           variants: editForm.variants.map((v) => ({
             id: v.id,
             variantName: v.variantName,
-            sku: v.sku,
+            sku: v.sku.trim() ? normalizeSku(v.sku) : undefined,
             barcode: v.barcode || null,
             price: Number(v.price) || undefined,
             costPrice: Number(v.costPrice) || undefined,
@@ -427,21 +454,36 @@ export function Productos({
       for (const [, rs] of grouped) {
         const first = rs[0];
         const skuP = String(get(first, 'sku_producto') || '').trim();
+        if (skuP) {
+          const err = skuError(skuP);
+          if (err) {
+            errors++;
+            lastError = `${String(get(first, 'producto') || '?')}: SKU ${err}`;
+            continue;
+          }
+        }
         const nameP = String(get(first, 'producto') || '').trim();
         const existing = skuP
           ? products.find((p) => p.sku && p.sku.toLowerCase() === skuP.toLowerCase())
           : products.find((p) => p.name.toLowerCase() === nameP.toLowerCase());
         const variants = rs
           .filter((r) => String(get(r, 'sku_variante') || '').trim() || String(get(r, 'variante') || '').trim())
-          .map((r) => ({
-            variantName: String(get(r, 'variante') || '').trim(),
-            sku: String(get(r, 'sku_variante') || '').trim(),
-            barcode: String(get(r, 'barcode_variante') || '').trim() || undefined,
-            price: parseNum(get(r, 'precio_variante')),
-            costPrice: parseNum(get(r, 'costo_variante')),
-            stock: parseNum(get(r, 'stock')),
-            lowStockAlert: parseNum(get(r, 'alerta_stock')),
-          }));
+          .map((r) => {
+            const vSku = String(get(r, 'sku_variante') || '').trim();
+            if (vSku) {
+              const err = skuError(vSku);
+              if (err) throw new Error(`SKU variante: ${err}`);
+            }
+            return {
+              variantName: String(get(r, 'variante') || '').trim(),
+              sku: vSku ? normalizeSku(vSku) : undefined,
+              barcode: String(get(r, 'barcode_variante') || '').trim() || undefined,
+              price: parseNum(get(r, 'precio_variante')),
+              costPrice: parseNum(get(r, 'costo_variante')),
+              stock: parseNum(get(r, 'stock')),
+              lowStockAlert: parseNum(get(r, 'alerta_stock')),
+            };
+          });
         try {
           if (existing) {
             const existingVariants = existing.variants || [];
@@ -454,7 +496,7 @@ export function Productos({
               token,
               body: {
                 name: nameP || existing.name,
-                sku: skuP || undefined,
+                sku: skuP ? normalizeSku(skuP) : undefined,
                 barcode: String(get(first, 'barcode') || '').trim() || undefined,
                 category: String(get(first, 'categoria') || '').trim() || undefined,
                 brand: String(get(first, 'marca') || '').trim() || undefined,
@@ -472,7 +514,7 @@ export function Productos({
               token,
               body: {
                 name: nameP,
-                sku: skuP || undefined,
+                sku: skuP ? normalizeSku(skuP) : undefined,
                 barcode: String(get(first, 'barcode') || '').trim() || undefined,
                 category: String(get(first, 'categoria') || 'Otros').trim(),
                 brand: String(get(first, 'marca') || '').trim() || undefined,
