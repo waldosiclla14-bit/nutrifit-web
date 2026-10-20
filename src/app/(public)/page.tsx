@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
-import TopStockBanner from '@/components/home/TopStockBanner';
 import HeroSection from '@/components/home/HeroSection';
 import NutritionalTransparency from '@/components/home/NutritionalTransparency';
 import UGCProof from '@/components/home/UGCProof';
@@ -73,7 +72,6 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <TopStockBanner />
       <HeroSection />
       <NutritionalTransparency />
       <UGCProof />
