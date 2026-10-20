@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, X } from 'lucide-react';
-import { openWhatsApp } from '@/lib/whatsapp';
-import { getSettings } from '@/lib/store';
+import { X } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
+import { setPendingCoupon } from '@/lib/store';
 import { trackEvent } from '@/lib/analytics';
 
 const STORAGE_KEY = 'nutrifit:first-order-offer';
 const OFFER_TTL = 30 * 24 * 60 * 60 * 1000;
+const COUPON_CODE = 'NUTRIFIT5';
 
 function markShown() {
   try {
@@ -30,6 +31,7 @@ function wasShown() {
 export default function FirstOrderOffer() {
   const [show, setShow] = useState(false);
   const showRef = useRef(false);
+  const { openCart } = useCart();
 
   useEffect(() => {
     if (typeof window === 'undefined' || wasShown()) return;
@@ -75,18 +77,10 @@ export default function FirstOrderOffer() {
 
   const handleClaim = () => {
     trackEvent('FirstOrderOfferClaim');
-    const message = [
-      'HOLA NUTRIFIT',
-      'QUIERO MI 5% OFF DE PRIMERA COMPRA',
-      '─'.repeat(24),
-      '',
-      '*Cupón:* NUTRIFIT5',
-      '',
-      '¿Me lo aplican a mi pedido?',
-    ].join('\n');
-    openWhatsApp(getSettings().whatsapp, message, { copy: true });
+    setPendingCoupon(COUPON_CODE);
     markShown();
     setShow(false);
+    openCart();
   };
 
   const handleClose = () => {
@@ -121,13 +115,12 @@ export default function FirstOrderOffer() {
           Lleva <span className="text-sport-green">5% OFF</span> en tu primer pedido
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-gray-500">
-          Usa tu cupón de bienvenida en tu primera compra por WhatsApp y empieza a entrenar
-          con confianza.
+          Aplica tu cupón de bienvenida en el carrito y empieza a entrenar con confianza.
         </p>
 
         <div className="mt-6 rounded-2xl border-2 border-dashed border-sport-green/50 bg-sport-green/10 px-5 py-3 text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Tu cupón</p>
-          <p className="font-display text-2xl uppercase tracking-widest text-gray-900">NUTRIFIT5</p>
+          <p className="font-display text-2xl uppercase tracking-widest text-gray-900">{COUPON_CODE}</p>
         </div>
 
         <button
@@ -135,7 +128,7 @@ export default function FirstOrderOffer() {
           onClick={handleClaim}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-sport-green px-6 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow"
         >
-          <MessageCircle size={16} /> Quiero mi 5% OFF
+          Usar mi 5% OFF
         </button>
         <p className="mt-3 text-center text-[11px] text-gray-400">
           Válido en tu primer pedido. Aplica sobre el total.

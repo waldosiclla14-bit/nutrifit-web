@@ -160,6 +160,13 @@ export type Settings = {
   rewardPercent?: number;
 };
 
+export type CustomerProfile = {
+  name: string;
+  phone: string;
+  metroLine?: string;
+  metroStation?: string;
+};
+
 export type BlogBlock =
   | { type: 'p'; text: string }
   | { type: 'h2'; text: string }

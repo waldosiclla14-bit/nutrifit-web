@@ -1,6 +1,7 @@
-import type { Order, Settings } from '@/types';
+import type { CustomerProfile, Order, Settings } from '@/types';
 
 export const STORAGE_KEY = 'nutrifit:store:v1';
+const PROFILE_KEY = 'nutrifit:customer:v1';
 const CHANGE_EVENT = 'nutrifit:store:changed';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,4 +102,67 @@ export function resetStore() {
   if (!isBrowser()) return;
   window.localStorage.removeItem(STORAGE_KEY);
   saveDB({ orders: [], settings: { ...DEFAULT_SETTINGS } });
+}
+
+// Perfil del cliente (nombre, teléfono, línea y estación de Metro) para
+// autocompletar el checkout en compras recurrentes. Se guarda aparte del DB
+// de la tienda para no interferir con pedidos ni configuración.
+export function getCustomerProfile(): CustomerProfile | null {
+  if (!isBrowser()) return null;
+  try {
+    const raw = window.localStorage.getItem(PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CustomerProfile>;
+    if (!parsed.name && !parsed.phone) return null;
+    return {
+      name: parsed.name ?? '',
+      phone: parsed.phone ?? '',
+      metroLine: parsed.metroLine,
+      metroStation: parsed.metroStation,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveCustomerProfile(profile: CustomerProfile) {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  } catch {
+    // storage may be unavailable (private mode) — ignore
+  }
+}
+
+export function clearCustomerProfile() {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.removeItem(PROFILE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// Código de cupón pendiente de aplicar en el carrito (p. ej. desde el modal de
+// primera compra). Se consume una vez y se borra.
+const PENDING_COUPON_KEY = 'nutrifit:pending-coupon:v1';
+
+export function setPendingCoupon(code: string) {
+  if (!isBrowser()) return;
+  try {
+    window.localStorage.setItem(PENDING_COUPON_KEY, code.trim().toUpperCase());
+  } catch {
+    // ignore
+  }
+}
+
+export function takePendingCoupon(): string | null {
+  if (!isBrowser()) return null;
+  try {
+    const code = window.localStorage.getItem(PENDING_COUPON_KEY);
+    if (code) window.localStorage.removeItem(PENDING_COUPON_KEY);
+    return code;
+  } catch {
+    return null;
+  }
 }

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeCheck,
@@ -21,7 +21,7 @@ import { PRODUCTS } from '@/data/seed';
 import { METRO_LINES } from '@/data/metro';
 import { formatPrice, uid } from '@/lib/utils';
 import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
-import { getSettings, saveOrder } from '@/lib/store';
+import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon, saveOrder } from '@/lib/store';
 import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
@@ -72,8 +72,37 @@ export default function CartDrawer() {
   }, [isOpen]);
 
   useEffect(() => {
-    setMetroStation('');
+    if (!metroLine) return;
+    setMetroStation((prev) => (prev && METRO_LINES.some((l) => l.line === metroLine && l.stations.includes(prev)) ? prev : ''));
   }, [metroLine]);
+
+  // Precarga los datos del cliente en compras recurrentes (una sola vez).
+  useEffect(() => {
+    const profile = getCustomerProfile();
+    if (profile) {
+      setName((v) => v || profile.name);
+      setPhone((v) => v || profile.phone);
+      if (profile.metroLine) setMetroLine((v) => v || profile.metroLine!);
+      if (profile.metroStation) setMetroStation((v) => v || profile.metroStation!);
+    }
+  }, []);
+
+  // Consume un cupón pendiente (p. ej. del modal de primera compra) al abrir
+  // el carrito. Si ya hay teléfono, se aplica automáticamente.
+  const pendingHandled = useRef(false);
+  useEffect(() => {
+    if (!isOpen || pendingHandled.current) return;
+    pendingHandled.current = true;
+    const code = takePendingCoupon();
+    if (!code) return;
+    setCouponInput(code);
+    if (phone.trim() && items.length > 0) {
+      applyCoupon(code, phone)
+        .then(() => setCouponInput(''))
+        .catch((err: unknown) => setCouponError((err as Error)?.message || 'Cupón inválido.'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const giftEnabled = (settings.giftThreshold ?? 0) > 0 && !!settings.giftProductId;
   const giftProgress =
@@ -162,6 +191,12 @@ export default function CartDrawer() {
     };
 
     saveOrder(order);
+    saveCustomerProfile({
+      name: order.name,
+      phone: order.phone,
+      metroLine: order.metroLine,
+      metroStation: order.metroStation,
+    });
     // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
     // texto, el cliente lo pega y el pedido no se pierde.
     setWaFailed(
