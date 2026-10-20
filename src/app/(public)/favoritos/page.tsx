@@ -26,10 +26,10 @@ export default function FavoritesPage() {
       ) : (
         <div className="rounded-3xl border border-sport-border bg-sport-surface p-14 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sport-card">
-            <Heart size={26} className="text-white/50" />
+            <Heart size={26} className="text-sport-textMuted" />
           </div>
           <p className="mt-5 font-display text-xl uppercase tracking-wide">Sin favoritos</p>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-white/50">
+          <p className="mx-auto mt-2 max-w-sm text-sm text-sport-textMuted">
             Marca el corazón en cualquier producto para guardarlo aquí y encontrarlo rápido cuando
             quieras.
           </p>

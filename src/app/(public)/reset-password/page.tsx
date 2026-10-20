@@ -45,41 +45,41 @@ export default function ResetPasswordPage() {
           </span>
           <div>
             <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">NUTRIFIT</p>
-            <h1 className="font-display text-xl uppercase tracking-wide text-white">Restablecer contraseña</h1>
+            <h1 className="font-display text-xl uppercase tracking-wide text-sport-text">Restablecer contraseña</h1>
           </div>
         </div>
-        <p className="mt-3 text-sm text-white/50">
-          Usa tu clave de administrador (la variable <code className="rounded bg-white/10 px-1 py-0.5 text-xs">ADMIN_PASSWORD</code> de Render) para fijar una nueva contraseña.
+        <p className="mt-3 text-sm text-sport-textMuted">
+          Usa tu clave de administrador (la variable <code className="rounded bg-sport-surface px-1 py-0.5 text-xs">ADMIN_PASSWORD</code> de Render) para fijar una nueva contraseña.
         </p>
         <div className="mt-6 space-y-3">
           <label className="block">
-            <span className="text-xs font-semibold text-white/40">Clave de administrador (ADMIN_PASSWORD)</span>
+            <span className="text-xs font-semibold text-sport-textMuted">Clave de administrador (ADMIN_PASSWORD)</span>
             <input
               type="password"
               value={bootstrapKey}
               onChange={(e) => setBootstrapKey(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-white placeholder-white/30 focus:border-sport-green focus:outline-none"
+              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-sport-text placeholder-sport-textMuted focus:border-sport-green focus:outline-none"
               placeholder="Pega tu ADMIN_PASSWORD de Render"
               required
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-white/40">Email del usuario</span>
+            <span className="text-xs font-semibold text-sport-textMuted">Email del usuario</span>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-white placeholder-white/30 focus:border-sport-green focus:outline-none"
+              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-sport-text placeholder-sport-textMuted focus:border-sport-green focus:outline-none"
               required
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-white/40">Nueva contraseña</span>
+            <span className="text-xs font-semibold text-sport-textMuted">Nueva contraseña</span>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-white placeholder-white/30 focus:border-sport-green focus:outline-none"
+              className="mt-1 w-full rounded-xl border border-sport-border/50 bg-sport-bg px-4 py-3 text-sm text-sport-text placeholder-sport-textMuted focus:border-sport-green focus:outline-none"
               placeholder="Mínimo 6 caracteres"
               minLength={6}
               required
@@ -87,7 +87,7 @@ export default function ResetPasswordPage() {
           </label>
         </div>
         {error && (
-          <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-red-400">
+          <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-red-500">
             <AlertCircle size={14} /> {error}
           </p>
         )}

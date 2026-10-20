@@ -18,7 +18,7 @@ export default function BlogPage() {
         <h1 className="section-title">
           Aprende con <span className="text-sport-orange">NutriFit</span>
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-white/50">
+        <p className="mt-2 max-w-xl text-sm text-sport-textMuted">
           Guías y consejos prácticos para elegir bien tus suplementos y potenciar tu rendimiento.
         </p>
       </Reveal>

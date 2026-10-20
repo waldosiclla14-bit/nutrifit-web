@@ -7,7 +7,7 @@ export default function NotFound() {
       <h1 className="mt-2 font-display text-2xl uppercase tracking-wide sm:text-3xl">
         Página no encontrada
       </h1>
-      <p className="mt-3 max-w-md text-sm text-white/50">
+      <p className="mt-3 max-w-md text-sm text-sport-textMuted">
         La página que buscas no existe o fue movida. Vuelve al catálogo para seguir entrenando con
         confianza.
       </p>

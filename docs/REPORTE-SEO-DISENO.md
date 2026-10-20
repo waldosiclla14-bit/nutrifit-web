@@ -37,19 +37,33 @@ Fecha: 2026-10-20 · Dominio canónico: `https://nutrifitsuplementos.cl`
 - HTML renderizado comprobado: H1 nuevo presente, CTA WhatsApp presente, `wa.me/56923883826`, botón flotante, H1 antiguo ausente.
 - Grep: sin "30 días"/"7 días" en política de devoluciones (las apariciones restantes son filtros admin, cupones, protocolo de creatina y comentarios). Sin `#5DD62C` fuera de un comentario CSS.
 
+## Corrección de contraste (texto blanco invisible)
+
+El tema es claro (`body` = fondo blanco, texto `#0F172A`), pero varias vistas públicas aún usaban colores de tema oscuro (`text-white/*`, `text-white`), quedando invisibles. Corregido a `text-sport-text` / `text-sport-textMuted` en:
+
+- `src/app/(public)/blog/page.tsx` y `blog/[slug]/page.tsx` (cuerpo, categoría, meta).
+- `src/components/blog/BlogCard.tsx` (categoría, extracto, meta).
+- `src/app/(public)/favoritos/page.tsx` (estado vacío).
+- `src/app/(public)/not-found.tsx` (texto del 404).
+- `src/app/(public)/reset-password/page.tsx` (título, labels, inputs y placeholders sobre card blanca).
+- `src/components/layout/SearchBox.tsx` (ícono y dropdown sobre blanco).
+- `src/components/layout/CartDrawer.tsx` (~25 casos: items, subtotal, total, cupón, regalo, recompensa).
+
+Se dejaron intactos los `text-white` que **sí** están sobre fondos de color (botones `bg-sport-green`/`bg-sport-orange`, badge WhatsApp `#25D366`, overlay negro de categorías y avatares). Verificado en el render real: sin `text-white/50` ni `text-white/80` en blog, blog post, favoritos y 404.
+
 ## Capturas "después" (`docs/capturas/`)
 
 - `despues-home-390.png` (390×2600, full)
 - `despues-home-390-fold.png` (390×844, above-the-fold)
 - `despues-home-1280.png` (1280×800, above-the-fold)
+- `despues-blog-390.png` y `despues-favoritos-390.png` (contraste corregido)
 
 > Nota: Chrome headless falla al escribir capturas con viewports muy altos (≥1400 px) en este entorno; por eso el desktop se captura a la altura de pantalla estándar.
 
 ## Pendientes (no bloqueantes)
 
-1. **Prueba social / escasez / reseñas**: se conservaron (avatares "+500", "quedan X unidades", reseñas) por decisión explícita. La spec pedía limpiar; queda como tarea aparte antes de publicar.
-2. **Assets faltantes**: recorte limpio de producto, fotos de lotes reales, logo vectorial definitivo.
-3. **Inspección visual**: las capturas se generaron pero no pudieron revisarse con el modelo (sin entrada de imagen); validar a ojo antes del deploy.
+1. **Assets faltantes**: recorte limpio de producto, fotos de lotes reales, logo vectorial definitivo.
+2. **Inspección visual**: las capturas se generaron pero no pudieron revisarse con el modelo (sin entrada de imagen); validar a ojo antes del deploy.
 
 ## Checklist post-deploy
 

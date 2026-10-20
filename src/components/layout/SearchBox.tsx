@@ -42,7 +42,7 @@ export default function SearchBox({ className }: { className?: string }) {
       <form onSubmit={onSubmit}>
         <Search
           size={16}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50"
+          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sport-textMuted"
         />
         <input
           value={query}
@@ -80,7 +80,7 @@ export default function SearchBox({ className }: { className?: string }) {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold leading-snug">{p.name}</p>
-                    <p className="text-[11px] text-white/50">{p.categoryLabel}</p>
+                    <p className="text-[11px] text-sport-textMuted">{p.categoryLabel}</p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-sm font-bold text-sport-orange">{formatPrice(p.price)}</p>

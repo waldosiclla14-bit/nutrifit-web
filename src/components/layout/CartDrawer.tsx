@@ -263,7 +263,7 @@ export default function CartDrawer() {
           <h3 className="font-display text-xl uppercase tracking-wide">
             {placed ? 'Pedido enviado' : 'Tu Carrito'}
             {!placed && itemCount > 0 && (
-              <span className="ml-1 text-sm font-normal text-white/50">({itemCount})</span>
+              <span className="ml-1 text-sm font-normal text-sport-textMuted">({itemCount})</span>
             )}
           </h3>
           <button
@@ -287,11 +287,11 @@ export default function CartDrawer() {
               <CheckCircle2 size={32} />
             </motion.div>
             <p className="font-display text-2xl uppercase tracking-wide">¡Pedido casi listo!</p>
-            <p className="text-sm leading-relaxed text-white/50">
+            <p className="text-sm leading-relaxed text-sport-textMuted">
               Abrimos WhatsApp con tu pedido listo para enviar. Solo presiona enviar y te
               confirmamos el punto de entrega en tu estación de metro.
             </p>
-            <p className="text-xs leading-relaxed text-white/40">
+            <p className="text-xs leading-relaxed text-sport-textMuted">
               ¿WhatsApp se abrió sin el mensaje? Pega con Ctrl/Cmd+V: tu pedido quedó en el
               portapapeles.
             </p>
@@ -303,7 +303,7 @@ export default function CartDrawer() {
             )}
             <p
               className={`text-xs font-semibold ${
-                syncStatus === 'ok' ? 'text-sport-orange' : 'text-white/50'
+                syncStatus === 'ok' ? 'text-sport-orange' : 'text-sport-textMuted'
               }`}
             >
               {syncStatus === 'ok'
@@ -316,7 +316,7 @@ export default function CartDrawer() {
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-sport-orange">
                   <Plus size={13} /> ¿Agregas un complemento?
                 </p>
-                <p className="mt-2 text-sm font-semibold text-white">
+                <p className="mt-2 text-sm font-semibold text-sport-text">
                   Añádelo a tu pedido y lo incluimos sin costo de envío
                 </p>
                 <div className="mt-4 grid gap-3">
@@ -338,7 +338,7 @@ export default function CartDrawer() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold">{p.name}</p>
-                          <p className="text-xs text-white/50">{formatPrice(p.price)}</p>
+                          <p className="text-xs text-sport-textMuted">{formatPrice(p.price)}</p>
                         </div>
                         <button
                           type="button"
@@ -368,7 +368,7 @@ export default function CartDrawer() {
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
             <ShoppingBagEmpty />
             <p className="font-semibold">Tu carrito está vacío</p>
-            <p className="text-sm text-white/50">Agrega tus suplementos favoritos y finaliza tu pedido por WhatsApp.</p>
+            <p className="text-sm text-sport-textMuted">Agrega tus suplementos favoritos y finaliza tu pedido por WhatsApp.</p>
             <Link href="/productos" onClick={closeCart} className="btn-primary mt-2">
               Ver catálogo
             </Link>
@@ -392,14 +392,14 @@ export default function CartDrawer() {
                   {hasGift && giftProduct ? (
                     <div className="mt-2 flex items-center gap-2 rounded-xl bg-sport-green/20 px-3 py-2">
                       <Gift size={14} className="shrink-0 text-sport-orange" />
-                      <p className="text-xs font-semibold text-white">
+                      <p className="text-xs font-semibold text-sport-text">
                         ¡Recibes un regalo! {giftProduct.name}
                       </p>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-white/50">
+                    <p className="mt-2 text-xs text-sport-textMuted">
                       Te faltan{' '}
-                      <span className="font-semibold text-white">{formatPrice(giftRemaining)}</span>{' '}
+                      <span className="font-semibold text-sport-text">{formatPrice(giftRemaining)}</span>{' '}
                       para {settings.giftLabel ?? 'recibir un regalo'}
                     </p>
                   )}
@@ -416,7 +416,7 @@ export default function CartDrawer() {
                       transition={{ duration: 0.6 }}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-white/50">
+                  <p className="mt-2 text-xs text-sport-textMuted">
                     {rewardDiscount > 0 ? (
                       <span className="font-semibold text-sport-orange">
                         ¡Tienes {settings.rewardPercent}% de descuento aplicado!
@@ -424,7 +424,7 @@ export default function CartDrawer() {
                     ) : (
                       <>
                         Te faltan{' '}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-sport-text">
                           {formatPrice(rewardRemaining)}
                         </span>{' '}
                         para un {settings.rewardPercent}% de descuento
@@ -434,7 +434,7 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              <p className="mt-3 text-[11px] font-semibold text-white/50">
+              <p className="mt-3 text-[11px] font-semibold text-sport-textMuted">
                 <span className="text-sport-orange">Entrega en Metro de Santiago</span> · Líneas 1, 2,
                 3, 4, 4A, 5 y 6
               </p>
@@ -498,7 +498,7 @@ export default function CartDrawer() {
                               type="button"
                               onClick={() => removeItem(item.key)}
                               aria-label="Eliminar producto"
-                              className="flex h-8 w-8 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-red-900/30 hover:text-red-500"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-sport-textMuted transition-colors hover:bg-red-900/30 hover:text-red-500"
                             >
                               <Trash2 size={15} />
                             </button>
@@ -506,7 +506,7 @@ export default function CartDrawer() {
                         </div>
                         <div className="mt-1 flex items-center gap-2">
                           {item.discount > 0 && !item.isGift && (
-                            <span className="text-xs text-white/50 line-through">
+                            <span className="text-xs text-sport-textMuted line-through">
                               {formatPrice((item.price + item.discount) * item.quantity)}
                             </span>
                           )}
@@ -522,7 +522,7 @@ export default function CartDrawer() {
 
               {suggested.length > 0 && (
                 <div className="mt-6 border-t border-sport-border pt-5">
-                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-white/50">
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-sport-textMuted">
                     Completa tu pedido
                   </p>
                   <div className="flex flex-col gap-3">
@@ -545,7 +545,7 @@ export default function CartDrawer() {
                           >
                             {p.name}
                           </Link>
-                          <p className="text-xs text-white/50">{formatPrice(p.price)}</p>
+                          <p className="text-xs text-sport-textMuted">{formatPrice(p.price)}</p>
                         </div>
                         <button
                           type="button"
@@ -576,7 +576,7 @@ export default function CartDrawer() {
             <div className="border-t border-sport-border px-5 py-4">
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-white/50">Subtotal</span>
+                  <span className="text-sport-textMuted">Subtotal</span>
                   <span className="font-semibold">{formatPrice(subtotal)}</span>
                 </div>
                 {couponCode ? (
@@ -595,12 +595,12 @@ export default function CartDrawer() {
                   </div>
                 ) : null}
                 {couponCode && (
-                  <p className="text-[11px] font-semibold text-white/50">
+                  <p className="text-[11px] font-semibold text-sport-textMuted">
                     El cupón reemplaza cualquier otro descuento automático.
                   </p>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-white/50">Entrega en metro</span>
+                  <span className="text-sport-textMuted">Entrega en metro</span>
                   <span className="font-semibold">
                     {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}
                   </span>
@@ -677,8 +677,8 @@ export default function CartDrawer() {
                   {couponCode && (
                     <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-sport-green/15 px-3 py-2">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-white">Cupón aplicado</p>
-                        <p className="text-[11px] text-white/50">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-sport-text">Cupón aplicado</p>
+                        <p className="text-[11px] text-sport-textMuted">
                           {couponCode} · {couponPercent}% OFF
                         </p>
                       </div>
@@ -696,7 +696,7 @@ export default function CartDrawer() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-white/50">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-sport-textMuted">
                   <span className="flex items-center gap-1">
                     <ShieldCheck size={13} className="text-sport-orange" /> Garantía 10 días
                   </span>
@@ -714,13 +714,13 @@ export default function CartDrawer() {
             <div className="shrink-0 border-t border-sport-border bg-sport-card px-5 py-4">
               {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-white/50">Total</span>
+                <span className="text-sm font-semibold text-sport-textMuted">Total</span>
                 <span className="font-display text-xl">{formatPrice(total)}</span>
               </div>
               <button type="submit" form="checkout-form" className="btn-accent w-full">
                 Finalizar compra por WhatsApp
               </button>
-              <p className="mt-2 text-center text-[11px] leading-relaxed text-white/50">
+              <p className="mt-2 text-center text-[11px] leading-relaxed text-sport-textMuted">
                 Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
                 estación de metro.
               </p>
@@ -735,7 +735,7 @@ export default function CartDrawer() {
 function ShoppingBagEmpty() {
   return (
     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-sport-surface">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/50" role="img" aria-label="Carrito vacío">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-sport-textMuted" role="img" aria-label="Carrito vacío">
         <circle cx="9" cy="21" r="1" />
         <circle cx="20" cy="21" r="1" />
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
