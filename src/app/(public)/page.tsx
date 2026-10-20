@@ -6,6 +6,7 @@ import UGCProof from '@/components/home/UGCProof';
 import StickyBottomBar from '@/components/home/StickyBottomBar';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
+import Packs from '@/components/home/Packs';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import CrossSell from '@/components/home/CrossSell';
 import Benefits from '@/components/home/Benefits';
@@ -78,6 +79,7 @@ export default function Home() {
       <FeaturedCarousel />
       <CrossSell />
       <Categories />
+      <Packs />
       <Benefits />
       <HowTo />
       <Guarantee />
