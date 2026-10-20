@@ -39,13 +39,6 @@ const whatsappUrl =
   waMeUrl(BRAND.whatsappDigits, WHATSAPP_MESSAGE) ??
   `https://wa.me/${BRAND.whatsappDigits}`;
 
-const SOCIAL_PROOF = [
-  { name: 'Matías R.', initials: 'MR' },
-  { name: 'Camila F.', initials: 'CF' },
-  { name: 'Jorge P.', initials: 'JP' },
-  { name: 'Ana S.', initials: 'AS' },
-];
-
 export default function HeroSection() {
   const { addBundle } = useCart();
   const [flavor, setFlavor] = useState<Flavor>(FLAVORS[0]);
@@ -56,7 +49,6 @@ export default function HeroSection() {
   const totalReviews = (whey?.reviews ?? 0) + (creatina?.reviews ?? 0);
   const avgRating =
     whey && creatina ? +((whey.rating + creatina.rating) / 2).toFixed(1) : 4.9;
-  const stockLeft = (whey?.publicPublished ? (whey?.publicStock ?? whey?.stock ?? 0) : (whey?.stock ?? 0)) + (creatina?.publicPublished ? (creatina?.publicStock ?? creatina?.stock ?? 0) : (creatina?.stock ?? 0));
 
   const addPack = () => {
     if (!pack) return;
@@ -117,10 +109,6 @@ export default function HeroSection() {
             <span className="h-3.5 w-px bg-gray-100" />
             <span className="text-[13px] text-gray-400">
               {totalReviews.toLocaleString('es-CL')} reseñas
-            </span>
-            <span className="h-3.5 w-px bg-gray-100" />
-            <span className="text-[13px] text-gray-400">
-              +500 pedidos entregados
             </span>
           </motion.div>
 
@@ -198,13 +186,11 @@ export default function HeroSection() {
             className="mt-4 flex items-center gap-2"
           >
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-orange opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-orange" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-green opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
             </span>
             <p className="text-[13px] font-semibold text-gray-600">
-              ¡Quedan solo{' '}
-              <span className="font-extrabold text-sport-orange">{stockLeft} unidades</span>{' '}
-              en stock!
+              Disponible para entrega en Metro hoy
             </p>
           </motion.div>
 
@@ -259,34 +245,6 @@ export default function HeroSection() {
             <span className="flex items-center gap-1.5">
               <Truck size={13} className="text-sport-green" /> Entrega en Metro
             </span>
-          </motion.div>
-
-          {/* Social proof avatars */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
-            className="mt-6 flex items-center gap-3"
-          >
-            <div className="flex -space-x-2.5">
-              {SOCIAL_PROOF.map((person, i) => (
-                <div
-                  key={person.name}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[10px] font-extrabold text-white"
-                  style={{
-                    backgroundColor: ['#72BF44', '#F97316', '#3B82F6', '#8B5CF6'][i],
-                    zIndex: 4 - i,
-                  }}
-                  title={person.name}
-                >
-                  {person.initials}
-                </div>
-              ))}
-            </div>
-            <p className="text-[13px] text-gray-500">
-              <span className="font-semibold text-gray-600">+500 deportistas</span>{' '}
-              ya tienen su pack
-            </p>
           </motion.div>
         </div>
 
