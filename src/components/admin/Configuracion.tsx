@@ -31,7 +31,6 @@ export function Configuracion({
 }) {
   const [businessName, setBusinessName] = useState('NutriFit Chile');
   const [whatsapp, setWhatsapp] = useState('+56923883826');
-  const [minFreeShipping, setMinFreeShipping] = useState('30000');
   const [shippingCost, setShippingCost] = useState('2500');
   const [vatRate, setVatRate] = useState('19');
 
@@ -87,16 +86,7 @@ export function Configuracion({
             <Smartphone size={16} className="text-sport-green" />
             <h3 className="font-display text-base uppercase tracking-wide text-ink">Logística & Despachos</h3>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
-            <div>
-              <label className="block font-bold text-muted mb-1">Mínimo Envío Gratis en Metro ($)</label>
-              <input
-                type="number"
-                value={minFreeShipping}
-                onChange={(e) => setMinFreeShipping(e.target.value)}
-                className="w-full rounded-xl border border-line bg-surface p-2.5 text-ink"
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
             <div>
               <label className="block font-bold text-muted mb-1">Costo Entrega Metro Estándar ($)</label>
               <input

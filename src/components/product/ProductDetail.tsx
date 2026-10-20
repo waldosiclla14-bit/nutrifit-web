@@ -80,7 +80,7 @@ export default function ProductDetail({
     () => [
       { icon: Truck, text: 'Entrega en metro, todas las líneas' },
       { icon: ShieldCheck, text: 'Producto 100% original, sello de garantía' },
-      { icon: Check, text: 'Garantía de satisfacción de 30 días' },
+      { icon: Check, text: 'Garantía de satisfacción de 10 días' },
     ],
     [],
   );
@@ -252,7 +252,7 @@ export default function ProductDetail({
           </div>
           <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
-            Envío gratis en metro sobre {formatPrice(getSettings().freeShippingFrom)}.
+            Entrega coordinada por WhatsApp en estaciones de Metro.
           </p>
         </div>
       </div>

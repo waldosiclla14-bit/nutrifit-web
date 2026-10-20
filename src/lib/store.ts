@@ -5,7 +5,6 @@ const CHANGE_EVENT = 'nutrifit:store:changed';
 
 export const DEFAULT_SETTINGS: Settings = {
   whatsapp: '56923883826',
-  freeShippingFrom: 30000,
   shipping: 1000,
   giftProductId: undefined,
   giftThreshold: 0,
@@ -34,9 +33,6 @@ export function loadDB(): DB {
     }
     const parsed = JSON.parse(raw) as Partial<DB>;
     const settings = { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) };
-    if (settings.freeShippingFrom === 40000) {
-      settings.freeShippingFrom = DEFAULT_SETTINGS.freeShippingFrom;
-    }
     if (settings.shipping === 2000) {
       settings.shipping = DEFAULT_SETTINGS.shipping;
     }

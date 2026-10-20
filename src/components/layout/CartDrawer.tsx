@@ -13,7 +13,6 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
-  Truck,
   X,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
@@ -44,7 +43,6 @@ export default function CartDrawer() {
     shipping,
     total,
     itemCount,
-    freeShippingFrom,
     clearCart,
     addItem,
     applyCoupon,
@@ -96,8 +94,6 @@ export default function CartDrawer() {
   const rewardRemaining = Math.max(0, (settings.rewardThreshold ?? 0) - subtotal);
 
   const selectedLine = METRO_LINES.find((l) => l.line === metroLine);
-  const remaining = Math.max(0, freeShippingFrom - subtotal);
-  const progress = Math.min(100, (subtotal / freeShippingFrom) * 100);
 
   useEffect(() => {
     if (!couponCode || !couponPhone) return;
@@ -223,8 +219,7 @@ export default function CartDrawer() {
       itemsNext.push({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image });
     }
     const subtotalNext = lastOrder.subtotal + p.price;
-    const shippingNext =
-      subtotalNext >= settings.freeShippingFrom ? 0 : settings.shipping;
+    const shippingNext = settings.shipping;
     const message = buildWhatsAppMessage({
       ...lastOrder,
       items: itemsNext,
@@ -381,23 +376,8 @@ export default function CartDrawer() {
         ) : (
           <>
             <div className="min-h-0 flex-1 overflow-y-auto">
+            {(giftEnabled || (!couponCode && rewardEnabled)) && (
             <div className="border-b border-sport-border px-5 py-3">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="flex items-center gap-1.5 text-white/50">
-                  <Truck size={14} /> Envío gratis en metro
-                </span>
-                <span className="text-sport-orange">
-                  {remaining > 0 ? `Te faltan ${formatPrice(remaining)}` : '¡Aplicado!'}
-                </span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-sport-surface">
-                <motion.div
-                  className="h-full rounded-full bg-sport-green"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.6 }}
-                />
-              </div>
 
               {giftEnabled && (
                 <div className="mt-3">
@@ -459,6 +439,7 @@ export default function CartDrawer() {
                 3, 4, 4A, 5 y 6
               </p>
             </div>
+            )}
 
             <div className="px-5 py-4">
               <ul className="space-y-4">
@@ -620,7 +601,7 @@ export default function CartDrawer() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-white/50">Entrega en metro</span>
-                  <span className={`font-semibold ${shipping === 0 ? 'text-sport-orange' : ''}`}>
+                  <span className="font-semibold">
                     {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}
                   </span>
                 </div>
@@ -717,7 +698,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-white/50">
                   <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-sport-orange" /> Garantía 30 días
+                    <ShieldCheck size={13} className="text-sport-orange" /> Garantía 10 días
                   </span>
                   <span className="flex items-center gap-1">
                     <BadgeCheck size={13} className="text-sport-orange" /> Productos originales

@@ -13,7 +13,6 @@ export const BRAND = {
   city: 'Santiago, Chile',
   url: SITE_URL,
   hours: 'Lunes a Sábado, 10:00–20:00 hrs',
-  freeShippingFrom: 30000,
   rating: 4.9,
   orders: 500,
 };
@@ -1006,9 +1005,9 @@ export const BUNDLES: Bundle[] = [
 
 export const BANNERS: Banner[] = [
   {
-    id: 'envio-gratis',
-    title: 'Envío gratis en metro',
-    subtitle: 'Sobre $30.000. Coordinamos la entrega en tu estación de metro, todas las líneas.',
+    id: 'entrega-metro',
+    title: 'Entrega en tu estación de Metro',
+    subtitle: 'Coordinamos la entrega por WhatsApp en cualquier estación, todas las líneas.',
     image: '/img/producto1.webp',
     link: '/productos',
     cta: 'Ver catálogo',

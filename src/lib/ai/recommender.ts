@@ -3,7 +3,6 @@ import { BRAND } from '@/data/seed';
 import { formatPrice } from '@/lib/utils';
 
 export interface RecommendContext {
-  freeShippingFrom: number;
   whatsapp?: string;
 }
 
@@ -453,9 +452,7 @@ export function generateRecommendation(
 ): string {
   const intent = detectIntent(rawQuery);
   const q = norm(rawQuery);
-  const shippingLine = ctx.freeShippingFrom > 0
-    ? `Envío gratis en compras sobre ${formatPrice(ctx.freeShippingFrom)}.`
-    : 'Tenemos envío coordinado.';
+  const shippingLine = 'Entrega coordinada por WhatsApp en estaciones de Metro.';
 
   // Explicit product name/link matching
   const slug = rawQuery.match(/\/productos\/([a-z0-9-]+)/i)?.[1];
@@ -490,7 +487,7 @@ No manejamos tarjetas ni pago online por ahora, pero es súper simple. ¿En qué
     case 'warranty': {
       return `🛡️ Tu compra está protegida:
 - 100% productos originales con sello y trazabilidad.
-- Garantía de satisfacción de 30 días en productos sin abrir y con sello intacto.
+- Garantía de satisfacción de 10 días en productos sin abrir y con sello intacto.
 - Si algo no te convence, te devolvemos tu dinero. ¿Necesitas más info?`;
     }
     case 'trust': {
@@ -563,7 +560,7 @@ export function quickChips(): string[] {
     'Quiero ganar músculo',
     'Creatina para fuerza',
     'Energía pre-entreno',
-    '¿Tienen envío gratis?',
+    '¿Cómo es la entrega?',
     'Omega 3',
     'Vegano',
   ];

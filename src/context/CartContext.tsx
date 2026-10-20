@@ -38,7 +38,6 @@ type CartValue = {
   shipping: number;
   total: number;
   itemCount: number;
-  freeShippingFrom: number;
   addItem: (item: Omit<CartItem, 'key'>) => void;
   addBundle: (bundle: Bundle, variants?: Record<number, string>) => void;
   applyCoupon: (code: string, phone: string) => Promise<AppliedCoupon>;
@@ -296,8 +295,7 @@ const addBundle = useCallback(
         ? Math.round((subtotal * rewardPercent) / 100)
         : 0;
     const activeDiscount = couponDiscount > 0 ? couponDiscount : rewardDiscount;
-    const shipping =
-      subtotal === 0 || subtotal >= settings.freeShippingFrom ? 0 : settings.shipping;
+    const shipping = subtotal === 0 ? 0 : settings.shipping;
     const itemCount = items
       .filter((i) => !i.isGift)
       .reduce((acc, i) => acc + i.quantity, 0);
@@ -315,7 +313,6 @@ const addBundle = useCallback(
       shipping,
       total: Math.max(0, subtotal - activeDiscount + shipping),
       itemCount,
-      freeShippingFrom: settings.freeShippingFrom,
       addItem,
       addBundle,
       applyCoupon,
@@ -329,7 +326,6 @@ const addBundle = useCallback(
   }, [
     items,
     isOpen,
-    settings.freeShippingFrom,
     settings.shipping,
     rewardThreshold,
     rewardPercent,

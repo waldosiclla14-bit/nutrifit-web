@@ -19,7 +19,7 @@ export default function LegalPage() {
       <div className="mx-auto max-w-3xl space-y-10">
         <section id="politicas-envio" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Políticas de Entrega</h2>
-          <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-white/80">
+          <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
             <li>
               Hacemos entregas en estaciones de metro de las líneas 1, 2, 3, 4, 4A, 5 y 6, en todas
               las estaciones.
@@ -32,7 +32,10 @@ export default function LegalPage() {
               Las entregas normalmente se coordinan dentro de las 24 a 48 horas desde la confirmación
               del pedido.
             </li>
-            <li>En compras sobre $30.000 la entrega en metro es sin costo adicional.</li>
+            <li>
+              El costo de entrega se informa al confirmar el pedido por WhatsApp y depende de la
+              zona dentro de Santiago.
+            </li>
             <li>
               Los productos viajan sellados y protegidos. En caso de productos dañados, contáctanos
               al {BRAND.whatsapp} dentro de las 24 horas siguientes a la recepción.
@@ -42,8 +45,8 @@ export default function LegalPage() {
 
         <section id="terminos" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Términos y Condiciones</h2>
-          <p className="mt-4 text-sm text-white/80">Al comprar en NutriFit aceptas los siguientes términos:</p>
-          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-white/80">
+          <p className="mt-4 text-sm text-gray-600">Al comprar en NutriFit aceptas los siguientes términos:</p>
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
             <li>Los precios publicados están expresados en pesos chilenos (CLP) e incluyen IVA.</li>
             <li>
               Las ofertas y descuentos pueden cambiar sin previo aviso y son válidas mientras dure el
@@ -58,7 +61,7 @@ export default function LegalPage() {
               pago por WhatsApp.
             </li>
             <li>
-              Garantía de satisfacción de 30 días en productos sin abrir, con su sello de garantía
+              Garantía de satisfacción de 10 días en productos sin abrir, con su sello de garantía
               intacto.
             </li>
           </ul>
@@ -66,8 +69,8 @@ export default function LegalPage() {
 
         <section id="privacidad" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Política de Privacidad</h2>
-          <p className="mt-4 text-sm text-white/80">En NutriFit respetamos tu privacidad:</p>
-          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-white/80">
+          <p className="mt-4 text-sm text-gray-600">En NutriFit respetamos tu privacidad:</p>
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
             <li>
               Los datos que compartes (nombre, teléfono, línea y estación de metro) se usan
               únicamente para procesar y coordinar tu pedido.

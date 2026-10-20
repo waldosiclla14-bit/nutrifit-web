@@ -1,5 +1,11 @@
 import type { Product } from '@/types';
 import { BRAND } from '@/data/seed';
+import {
+  RETURN_DAYS,
+  SHIPPING_BLUE_FEE,
+  SHIPPING_METRO_FEE,
+  SHIPPING_STARKEN_FEE,
+} from '@/lib/policies';
 
 /**
  * Configuración central de datos estructurados de comercio (Google Merchant /
@@ -8,14 +14,14 @@ import { BRAND } from '@/data/seed';
  *   - Tarifas y plazos de envío (shippingDetails)
  *   - SKU y formato de códigos de producto
  *
- * Editar aquí y en ningún otro lado. Ver docs/SEO-MERCHANT.md.
+ * Los plazos y tarifas salen de src/lib/policies.ts. Ver docs/SEO-MERCHANT.md.
  */
 
 export const MERCHANT_RETURN_POLICY = {
   '@type': 'MerchantReturnPolicy',
   applicableCountry: 'CL',
   returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-  merchantReturnDays: 30,
+  merchantReturnDays: RETURN_DAYS,
   returnMethod: 'https://schema.org/ReturnByMail',
   returnFees: 'https://schema.org/ReturnShippingFees',
 } as const;
@@ -39,7 +45,7 @@ export const SHIPPING_ZONES: ShippingZone[] = [
   {
     id: 'metro',
     label: 'Metro Santiago (cualquier estación)',
-    rate: 1000,
+    rate: SHIPPING_METRO_FEE,
     destination: { country: 'CL', region: 'RM' },
     handling: [0, 1],
     transit: [0, 1],
@@ -47,7 +53,7 @@ export const SHIPPING_ZONES: ShippingZone[] = [
   {
     id: 'blue',
     label: 'Blue Express (Santiago centro)',
-    rate: 4000,
+    rate: SHIPPING_BLUE_FEE,
     destination: { country: 'CL', region: 'RM' },
     handling: [0, 1],
     transit: [1, 2],
@@ -55,7 +61,7 @@ export const SHIPPING_ZONES: ShippingZone[] = [
   {
     id: 'starken',
     label: 'Starken (regiones)',
-    rate: 4000,
+    rate: SHIPPING_STARKEN_FEE,
     destination: { country: 'CL' },
     handling: [0, 1],
     transit: [3, 4],

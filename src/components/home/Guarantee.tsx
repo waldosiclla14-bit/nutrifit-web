@@ -9,7 +9,7 @@ const ITEMS = [
   },
   {
     icon: RefreshCcw,
-    title: 'Garantía 30 días',
+    title: 'Garantía 10 días',
     text: 'Si algo no te convence, te devolvemos tu dinero. Sin preguntas, sin drama. Solo productos sin abrir.',
   },
   {

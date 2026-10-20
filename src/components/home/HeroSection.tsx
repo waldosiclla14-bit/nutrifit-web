@@ -40,7 +40,7 @@ const SOCIAL_PROOF = [
 ];
 
 export default function HeroSection() {
-  const { addBundle, subtotal, freeShippingFrom } = useCart();
+  const { addBundle } = useCart();
   const [flavor, setFlavor] = useState<Flavor>(FLAVORS[0]);
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
 
@@ -55,9 +55,6 @@ export default function HeroSection() {
     if (!pack) return;
     addBundle(pack, { 4: flavor.name });
   };
-
-  const remaining = Math.max(0, freeShippingFrom - subtotal);
-  const pct = Math.min(100, Math.round((subtotal / freeShippingFrom) * 100));
 
   return (
     <section className="relative overflow-hidden bg-sport-bg text-gray-900">
@@ -230,7 +227,7 @@ export default function HeroSection() {
             className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gray-500"
           >
             <span className="flex items-center gap-1.5">
-              <ShieldCheck size={13} className="text-sport-green" /> Garantía 30 días
+              <ShieldCheck size={13} className="text-sport-green" /> Garantía 10 días
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
@@ -238,33 +235,8 @@ export default function HeroSection() {
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
-              <Truck size={13} className="text-sport-green" /> Envío gratis en Metro
+              <Truck size={13} className="text-sport-green" /> Entrega en Metro
             </span>
-          </motion.div>
-
-          {/* Free shipping progress */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.65 }}
-            className="mt-4 max-w-md"
-          >
-            <div className="flex items-center justify-between text-[12px]">
-              <span className="text-gray-400">
-                {remaining > 0
-                  ? `Te faltan ${formatPrice(remaining)} para envío gratis`
-                  : '¡Tienes envío gratis!'}
-              </span>
-              <span className="font-bold text-sport-green">{pct}%</span>
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
-              <motion.div
-                className="h-full rounded-full bg-sport-green"
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-              />
-            </div>
           </motion.div>
 
           {/* Social proof avatars */}

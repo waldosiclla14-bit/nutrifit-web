@@ -1,6 +1,7 @@
 import type { Product } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { DEFAULT_SETTINGS } from '@/lib/store';
+import { RETURN_DAYS } from '@/lib/policies';
 import {
   MERCHANT_RETURN_POLICY,
   SHIPPING_ZONES,
@@ -96,7 +97,7 @@ describe('buildProductJsonLd — campos mínimos', () => {
     const rp = (json.offers as any).hasMerchantReturnPolicy;
     expect(rp).toEqual(MERCHANT_RETURN_POLICY);
     expect(rp.applicableCountry).toBe('CL');
-    expect(rp.merchantReturnDays).toBe(30);
+    expect(rp.merchantReturnDays).toBe(RETURN_DAYS);
     expect(rp.returnPolicyCategory).toContain('MerchantReturnFiniteReturnWindow');
   });
 

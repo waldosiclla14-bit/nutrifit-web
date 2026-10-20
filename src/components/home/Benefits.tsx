@@ -19,7 +19,7 @@ const ITEMS = [
   },
   {
     icon: ShieldCheck,
-    title: 'Garantía de 30 días',
+    title: 'Garantía de 10 días',
     text: 'Garantía de satisfacción en productos sin abrir con sello intacto.',
   },
   {

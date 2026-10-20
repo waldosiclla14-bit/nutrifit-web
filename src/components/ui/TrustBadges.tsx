@@ -3,7 +3,7 @@ import { cx } from '@/lib/utils';
 
 const ITEMS = [
   { icon: Truck, title: 'Entrega en metro', text: 'Todas las líneas de Santiago' },
-  { icon: RefreshCcw, title: 'Cambios garantizados', text: 'Hasta 30 días' },
+  { icon: RefreshCcw, title: 'Cambios garantizados', text: 'Hasta 10 días' },
   { icon: BadgeCheck, title: 'Productos originales', text: 'Sello de garantía' },
   { icon: MessageCircle, title: 'Confirmación por WhatsApp', text: 'Respuesta rápida' },
 ];

@@ -71,7 +71,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
     lines.push(`*Cupón:* ${order.couponCode}`);
   }
   lines.push(
-    `*Entrega:* ${order.shipping === 0 ? 'GRATIS EN METRO' : formatPrice(order.shipping)}`,
+    `*Entrega:* ${order.shipping === 0 ? 'SIN COSTO' : formatPrice(order.shipping)}`,
   );
   lines.push(`*TOTAL:* ${formatPrice(order.total)}`);
   lines.push('');

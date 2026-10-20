@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { BRAND } from '@/data/seed';
 import {
   ShieldCheck,
@@ -40,7 +41,7 @@ const VALUES = [
   },
   {
     icon: Heart,
-    title: 'Garantía 30 días',
+    title: 'Garantía 10 días',
     text: 'Si no estás satisfecho, te devolvemos tu dinero. Así de simple.',
   },
 ];
@@ -54,7 +55,7 @@ const TIMELINE = [
 
 export default function SobreNosotrosPage() {
   return (
-    <div className="bg-sport-bg text-white">
+    <div className="bg-sport-bg text-gray-900">
       {/* Hero */}
       <section className="container-px py-16 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
@@ -65,7 +66,7 @@ export default function SobreNosotrosPage() {
             Suplementos originales,{' '}
             <span className="text-sport-green">entregados en tu Metro</span>
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-white/60">
+          <p className="mt-6 text-lg leading-relaxed text-gray-500">
             NutriFit nació para resolver un problema simple: en Chile, comprar suplementos
             originales era caro, lento y lleno de dudas. Creamos una forma mejor.
           </p>
@@ -80,8 +81,8 @@ export default function SobreNosotrosPage() {
             <h2 className="mt-4 font-display text-3xl uppercase tracking-wide">
               Nuestra misión
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/60">
-              Que cada deportista en Chile tenga acceso a suplementos <strong className="text-white">100% originales</strong> a
+            <p className="mt-4 text-base leading-relaxed text-gray-500">
+              Que cada deportista en Chile tenga acceso a suplementos <strong className="text-gray-900">100% originales</strong> a
               precios justos, con la comodidad de recibirlos en su estación de Metro el mismo día.
             </p>
           </div>
@@ -105,7 +106,7 @@ export default function SobreNosotrosPage() {
                 </span>
                 <div>
                   <h3 className="font-display text-lg uppercase tracking-wide">{v.title}</h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-white/50">{v.text}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{v.text}</p>
                 </div>
               </article>
             ))}
@@ -131,7 +132,7 @@ export default function SobreNosotrosPage() {
                       <div className="mt-2 h-full w-px bg-sport-border/50" />
                     )}
                   </div>
-                  <p className="pt-2 text-sm leading-relaxed text-white/60">{t.event}</p>
+                  <p className="pt-2 text-sm leading-relaxed text-gray-500">{t.event}</p>
                 </div>
               ))}
             </div>
@@ -152,7 +153,7 @@ export default function SobreNosotrosPage() {
               <p className="font-display text-3xl uppercase tracking-wide text-sport-green sm:text-4xl">
                 {s.value}
               </p>
-              <p className="mt-1 text-xs text-white/40">{s.label}</p>
+              <p className="mt-1 text-xs text-gray-400">{s.label}</p>
             </div>
           ))}
         </div>
@@ -165,15 +166,15 @@ export default function SobreNosotrosPage() {
           <h2 className="mt-4 font-display text-3xl uppercase tracking-wide">
             Únete a la comunidad
           </h2>
-          <p className="mt-3 text-sm text-white/50">
+          <p className="mt-3 text-sm text-gray-500">
             +500 deportistas ya compran en NutriFit. Prueba la diferencia.
           </p>
-          <a
+          <Link
             href="/"
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-sport-green px-6 py-3 text-sm font-extrabold text-white shadow-sportGlow transition-colors hover:bg-sport-greenLight"
           >
             <MapPin size={16} /> Ver catálogo
-          </a>
+          </Link>
         </div>
       </section>
     </div>

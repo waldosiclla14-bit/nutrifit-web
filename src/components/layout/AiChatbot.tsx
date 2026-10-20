@@ -59,11 +59,9 @@ export default function AiChatbot() {
     setLoading(true);
 
     window.setTimeout(() => {
-      const reply = generateRecommendation(
-        value,
-        PRODUCTS,
-        { freeShippingFrom: getSettings().freeShippingFrom },
-      );
+      const reply = generateRecommendation(value, PRODUCTS, {
+        whatsapp: getSettings().whatsapp,
+      });
       setMessages((m) => [...m, { role: 'bot', text: reply }]);
       setLoading(false);
     }, 450);

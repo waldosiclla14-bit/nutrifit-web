@@ -151,7 +151,6 @@ export type Order = {
 
 export type Settings = {
   whatsapp: string;
-  freeShippingFrom: number;
   shipping: number;
   giftProductId?: number;
   giftThreshold?: number;
