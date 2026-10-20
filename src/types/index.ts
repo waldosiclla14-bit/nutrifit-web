@@ -37,6 +37,7 @@ export type Product = {
   goal: string[];
   tags: string[];
   bestseller?: boolean;
+  newArrival?: boolean;
   variants?: ProductVariant[];
 };
 

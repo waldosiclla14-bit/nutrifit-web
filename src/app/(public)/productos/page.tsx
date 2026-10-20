@@ -11,8 +11,15 @@ export const metadata: Metadata = {
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; q?: string }>;
+  searchParams: Promise<{ cat?: string; q?: string; marca?: string; goal?: string }>;
 }) {
   const params = await searchParams;
-  return <Catalog initialCat={params.cat} initialQ={params.q} />;
+  return (
+    <Catalog
+      initialCat={params.cat}
+      initialQ={params.q}
+      initialMarca={params.marca}
+      initialGoal={params.goal}
+    />
+  );
 }

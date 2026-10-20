@@ -477,6 +477,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['salud', 'bienestar', 'energia'],
     tags: ['resveratrol', 'nmn', 'nad', 'sirtuinas', 'longevidad', 'anti-envejecimiento', 'fnl', 'capsulas'],
     bestseller: true,
+    newArrival: true,
   },
   {
     id: 25,
@@ -521,6 +522,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['salud', 'bienestar'],
     tags: ['cola de pavo', 'turkey tail', 'coriolus', 'hongos', 'inmunidad', 'microbiota', 'fnl', 'capsulas'],
     bestseller: true,
+    newArrival: true,
   },
   {
     id: 27,
@@ -680,6 +682,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['vegano', 'ganancia-muscular', 'rendimiento'],
     tags: ['vegan', 'vegana', 'proteina vegetal', 'guisante', 'pea protein', 'vegetariano', 'sin lactosa', 'sin gluten', 'sin soya', 'fnl', '900g', 'masa muscular', 'fitness'],
     bestseller: true,
+    newArrival: true,
   },
   {
     id: 34,
@@ -707,6 +710,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['ganancia-muscular', 'rendimiento'],
     tags: ['whey', 'proteina', 'prostar', 'ultimate nutrition', '5lb', 'banana', 'suero', 'aminoacidos', 'recuperacion', 'isolado'],
     bestseller: true,
+    newArrival: true,
   },
   {
     id: 35,
@@ -763,6 +767,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['ganancia-muscular', 'rendimiento'],
     tags: ['ostrovit', 'whey', 'proteina', '700g', 'chocolate', 'chocolate-dream', 'bcaa', 'suero'],
     bestseller: true,
+    newArrival: true,
   },
   {
     id: 37,
@@ -792,6 +797,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     goal: ['ganancia-muscular', 'rendimiento', 'control-peso'],
     tags: ['whey', 'proteina', 'fnl', '947g', 'chocolate', 'chocolate-suizo', 'lactasa', 'sin-lactosa', 'sin-azucar', 'saciedad'],
     bestseller: true,
+    newArrival: true,
   },
 ];
 
@@ -839,6 +845,14 @@ export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
   slug: slugify(p.name),
   ...(PRODUCT_SKUS[p.id] ? { sku: PRODUCT_SKUS[p.id] } : {}),
 }));
+
+// Marcas reales derivadas del catálogo (fuente única). Ordenadas por cantidad
+// de productos descendente y luego alfabéticamente.
+export const PRODUCT_BRANDS: string[] = Array.from(new Set(PRODUCTS.map((p) => p.brand))).sort((a, b) => {
+  const countA = PRODUCTS.filter((p) => p.brand === a).length;
+  const countB = PRODUCTS.filter((p) => p.brand === b).length;
+  return countB - countA || a.localeCompare(b);
+});
 
 export const PRODUCT_ALIASES: Record<string, string> = {
   'fullenergic-100-whey-protein-vainilla-1kg': 'fullenergic-100-whey-protein-1kg',
