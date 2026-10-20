@@ -1,8 +1,7 @@
 import type { OrderItem } from '@/types';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { BRAND } from '@/data/seed';
-
-const SITE_URL = 'https://nutrifitsuplementos.cl';
+import { SITE_URL } from '@/lib/site';
 
 // Largo máximo seguro de la URL wa.me (límite práctico de api.whatsapp.com).
 // Más allá de esto WhatsApp puede descartar el texto precargado.

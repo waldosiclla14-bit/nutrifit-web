@@ -1,16 +1,17 @@
 import type { Banner, Bundle, Category, Combo, Product, Review, Testimonial } from '@/types';
 import { slugify } from '@/lib/utils';
+import { SITE_URL } from '@/lib/site';
 
 export const BRAND = {
   name: 'NutriFit',
-  tagline: 'Nutrición • Energía • Resultados',
+  tagline: 'Nutrici��n �?� Energ��a �?� Resultados',
   whatsapp: '+56 9 2388 3826',
   whatsappDigits: '56923883826',
   instagram: '@nutrifitsuplementos_cl',
   instagramUrl: 'https://www.instagram.com/nutrifitsuplementos_cl',
   mapsUrl: 'https://maps.app.goo.gl/b1c9NbrUXhUmRGU18?g_st=ic',
   city: 'Santiago, Chile',
-  url: 'https://nutrifitsuplementos.cl',
+  url: SITE_URL,
   hours: 'Lunes a Sábado, 10:00–20:00 hrs',
   freeShippingFrom: 30000,
   rating: 4.9,

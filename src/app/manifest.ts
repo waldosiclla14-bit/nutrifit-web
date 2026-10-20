@@ -2,17 +2,17 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Nutrifit Store',
-    short_name: 'Nutrifit',
+    name: 'NutriFit Chile | Suplementos Originales',
+    short_name: 'NutriFit',
     description:
-      'Tienda online de suplementos y nutrición deportiva Nutrifit. Compra proteínas, creatina y más.',
+      'Suplementos deportivos originales en Chile: whey, creatina y vitaminas. Compra por WhatsApp y recibe en Metro.',
     start_url: '/',
     id: '/',
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#0B0B0B',
-    theme_color: '#0B0B0B',
+    background_color: '#FFFFFF',
+    theme_color: '#FFFFFF',
     lang: 'es',
     categories: ['shopping', 'food'],
     shortcuts: [
@@ -43,7 +43,7 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'any',
       },
       {
-        src: '/icons/icon-512.png',
+        src: '/icons/icon-512-maskable.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Bebas_Neue, Inter } from 'next/font/google';
 import PWA from '@/components/layout/PWA';
 import { SonnerToaster } from '@/lib/feedback';
+import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const bebasNeue = Bebas_Neue({
@@ -18,40 +19,42 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Nutrifit Store',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
+    template: '%s | NutriFit',
+  },
   description:
-    'Tienda online de suplementos y nutrición deportiva Nutrifit. Compra proteínas, creatina y más.',
-  applicationName: 'Nutrifit',
+    'Suplementos deportivos originales en Chile: whey protein, creatina y vitaminas. Compra por WhatsApp y recibe en tu estación de Metro de Santiago.',
+  applicationName: 'NutriFit',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'Nutrifit',
-    statusBarStyle: 'black-translucent',
-  },
-  icons: {
-    apple: '/icons/icon-192.png',
+    title: 'NutriFit',
+    statusBarStyle: 'default',
   },
   formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
     locale: 'es_CL',
-    siteName: 'Nutrifit Store',
-    title: 'Nutrifit — Suplementos y Nutrición Deportiva',
+    url: SITE_URL,
+    siteName: 'NutriFit Chile',
+    title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
-      'Compra proteínas, creatina y suplementos con entrega en Metro de Santiago.',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Nutrifit Store' }],
+      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit whey y creatina originales' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nutrifit — Suplementos y Nutrición Deportiva',
+    title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
-      'Compra proteínas, creatina y suplementos con entrega en Metro de Santiago.',
-    images: ['/og.png'],
+      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+    images: ['/opengraph-image'],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0B0B0B',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

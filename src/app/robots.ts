@@ -1,13 +1,21 @@
 import type { MetadataRoute } from 'next';
-import { BRAND } from '@/data/seed';
+import { SITE_URL } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin', '/pos', '/login'],
+      disallow: [
+        '/admin',
+        '/pos',
+        '/login',
+        '/favoritos',
+        '/reset-password',
+        // Filtros y búsquedas combinadas: solo se indexa la URL limpia.
+        '/productos?',
+      ],
     },
-    sitemap: `${BRAND.url}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

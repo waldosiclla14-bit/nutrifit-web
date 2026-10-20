@@ -17,16 +17,6 @@ export const metadata: Metadata = {
   },
   description:
     'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
-  keywords: [
-    'suplementos deportivos chile',
-    'whey protein',
-    'creatina',
-    'vitaminas',
-    'proteína',
-    'nutrición deportiva',
-    'NUTRIFIT',
-    'suplementos Santiago',
-  ],
   authors: [{ name: 'NutriFit' }],
   openGraph: {
     type: 'website',
@@ -46,7 +36,6 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
-  icons: { icon: '/img/logo-fallback.png' },
 };
 
 export default function PublicLayout({

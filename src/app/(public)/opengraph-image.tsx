@@ -1,11 +1,13 @@
 import { ImageResponse } from 'next/og';
-import { BRAND } from '@/data/seed';
 
 export const runtime = 'edge';
 
-export const alt = 'NUTRIFIT — Suplementos originales en Chile';
+export const alt = 'NutriFit — Whey + Creatina originales en Chile';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+
+const GREEN = '#72BF44';
+const PACK_PRICE = '$27.500';
 
 export default async function Image() {
   return new ImageResponse(
@@ -16,70 +18,110 @@ export default async function Image() {
           height: '100%',
           display: 'flex',
           position: 'relative',
-          overflow: 'hidden',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          background: '#0b0b0b',
+          background: '#0A0A0A',
           color: '#ffffff',
-          padding: 72,
+          padding: 60,
           fontFamily: 'sans-serif',
         }}
       >
         <div
           style={{
             position: 'absolute',
-            right: -120,
-            top: -180,
-            width: 620,
-            height: 620,
-            borderRadius: 999,
-            background: '#5DD62C',
-            opacity: 0.9,
+            inset: 0,
+            display: 'flex',
+            background:
+              'radial-gradient(circle at 88% 12%, rgba(114,191,68,0.28), transparent 46%)',
           }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div
+              style={{
+                display: 'flex',
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: GREEN,
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0A0A0A',
+                fontSize: 26,
+                fontWeight: 900,
+              }}
+            >
+              NF
+            </div>
+            <div style={{ display: 'flex', fontSize: 30, fontWeight: 800, letterSpacing: 0.5 }}>
+              Nutri<span style={{ color: GREEN }}>Fit</span>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                marginLeft: 8,
+                fontSize: 18,
+                fontWeight: 700,
+                letterSpacing: 3,
+                color: 'rgba(255,255,255,0.62)',
+              }}
+            >
+              SUPLEMENTOS ORIGINALES
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                fontSize: 94,
+                fontWeight: 900,
+                lineHeight: 0.96,
+                letterSpacing: -1,
+              }}
+            >
+              <span>Whey + Creatina</span>
+              <span style={{ color: GREEN }}>originales</span>
+            </div>
+            <div style={{ display: 'flex', fontSize: 32, color: 'rgba(255,255,255,0.80)' }}>
+              Packs desde {PACK_PRICE} · Envío en estaciones de Metro
+            </div>
+          </div>
+
           <div
             style={{
               display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              justifyContent: 'center',
-              width: 420,
-              height: 180,
-              borderRadius: 30,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              overflow: 'hidden',
+              borderTop: '1px solid rgba(255,255,255,0.14)',
+              paddingTop: 26,
             }}
           >
-            <img
-              src={`${BRAND.url}/img/logo-fallback.png`}
-              alt="Logo NutriFit"
-              width={420}
-              height={180}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-            />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#5DD62C', letterSpacing: 3 }}>
-            PRODUCTOS ORIGINALES · SANTIAGO
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', fontSize: 82, fontWeight: 900, lineHeight: 0.98 }}>
-            <span>WHEY +</span>
-            <span style={{ color: '#5DD62C' }}>CREATINA</span>
-          </div>
-          <div style={{ fontSize: 32, color: 'rgba(255,255,255,0.78)' }}>
-            Packs desde $27.500 · Elige tu sabor
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative' }}>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>
-            Compra por WhatsApp · Entrega en estaciones de Metro
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#0b0b0b', background: '#5DD62C', padding: '12px 20px', borderRadius: 999 }}>
-            {BRAND.whatsapp}
+            <div style={{ display: 'flex', fontSize: 26, color: 'rgba(255,255,255,0.78)' }}>
+              Compra por WhatsApp · Garantía 10 días
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 26,
+                fontWeight: 800,
+                color: '#0A0A0A',
+                background: GREEN,
+                padding: '14px 24px',
+                borderRadius: 999,
+              }}
+            >
+              nutrifitsuplementos.cl
+            </div>
           </div>
         </div>
       </div>
