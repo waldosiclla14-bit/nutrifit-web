@@ -27,8 +27,14 @@
   --soft-2: 235 238 230;
   --muted: 108 112 105;
   --line: rgba(11, 11, 11, 0.09);
-  --accent: 178 242 55;
-  --accent-deep: 79 126 17;
+  --accent: 114 191 68;
+  --accent-deep: 61 106 32;
+
+  /* Identidad NutriFit — verde unificado (antes #5DD62C) */
+  --brand-green: #72BF44;
+  --brand-green-deep: #3D6A20;
+  --brand-orange: #F97316;
+  --focus-ring: #3D6A20;
 
   /* shadcn/ui variables — NO collision with --muted, --accent, --line */
   --background: 0 0% 100%;
@@ -101,7 +107,7 @@
   }
 
   ::selection {
-    background: rgb(93 214 44 / 0.3);
+    background: rgb(114 191 68 / 0.3);
     color: #0F172A;
   }
 
@@ -118,7 +124,7 @@
     border: 2px solid #F1F5F9;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #5DD62C;
+    background: #72BF44;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -142,25 +148,39 @@
     @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
   }
 
+  /* Foco visible AA reutilizable (contraste sobre superficies claras) */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: var(--focus-ring);
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-orange px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-orange px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    --tw-ring-color: var(--focus-ring);
   }
 
   .btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-green px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow disabled:pointer-events-none disabled:opacity-50;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    background-color: var(--brand-green);
+    --tw-ring-color: var(--focus-ring);
   }
 
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 hover:border-sport-green focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-sport-border bg-white px-7 py-3.5 text-sm font-bold tracking-wide text-sport-text transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    --tw-ring-color: var(--focus-ring);
   }
+  .btn-outline:hover { border-color: var(--brand-green); }
 
   .chip {
     @apply inline-flex items-center rounded-full border border-sport-border px-3 py-1 text-xs font-medium transition-colors;
   }
 
   .input {
-    @apply w-full rounded-xl border border-sport-border bg-white px-4 py-3 text-sm text-sport-text outline-none transition focus:border-sport-green focus:bg-white focus:ring-2 focus:ring-sport-green/40;
+    @apply w-full rounded-xl border border-sport-border bg-white px-4 py-3 text-sm text-sport-text outline-none transition focus:outline-none focus:ring-2 focus:ring-offset-1;
   }
+  .input:focus { border-color: var(--brand-green); --tw-ring-color: var(--brand-green); }
 
   .label {
     @apply mb-1.5 block text-xs font-semibold uppercase tracking-widest text-sport-textMuted;
@@ -171,11 +191,11 @@
   }
 
   .section-title {
-    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight lg:text-[36px];
+    @apply mt-2 text-[28px] font-extrabold leading-tight tracking-tight lg:text-[36px];
   }
 
   .section-title-dark {
-    @apply mt-2 text-[28px] font-bold leading-tight tracking-tight text-sport-text lg:text-[36px];
+    @apply mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-sport-text lg:text-[36px];
   }
 
   .reveal {
@@ -236,7 +256,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    background: #5DD62C;
+    background: #72BF44;
     color: #0B0B0B;
     border-radius: var(--radius-control);
     font-weight: 700;

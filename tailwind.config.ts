@@ -23,8 +23,8 @@ const config: Config = {
           border: '#E2E8F0',
           text: '#0F172A',
           textMuted: '#64748B',
-          green: '#5DD62C',
-          greenLight: '#7AE84E',
+          green: '#72BF44',
+          greenLight: '#8ACF63',
           orange: '#F97316',
         },
         border: 'var(--border)',
@@ -60,8 +60,8 @@ const config: Config = {
       boxShadow: {
         soft: '0 12px 40px -14px rgba(11, 11, 11, 0.14)',
         card: '0 2px 14px -4px rgba(11, 11, 11, 0.08)',
-        glow: '0 14px 44px -16px rgba(93, 214, 44, 0.5)',
-        sportGlow: '0 14px 44px -16px rgba(93, 214, 44, 0.4)',
+        glow: '0 14px 44px -16px rgba(114, 191, 68, 0.5)',
+        sportGlow: '0 14px 44px -16px rgba(114, 191, 68, 0.4)',
         sportCard: '0 8px 32px -8px rgba(0, 0, 0, 0.4)',
       },
       borderRadius: {

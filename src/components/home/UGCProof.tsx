@@ -9,7 +9,7 @@ const REVIEWS = [
     id: 1,
     name: 'Matías R.',
     initials: 'MR',
-    color: '#5DD62C',
+    color: '#72BF44',
     rating: 5,
     text: 'La whey de vainilla es la primera que se me disuelve bien solo con agua, sin grumos y sin ese sabor químico. Me la dejaron en Los Leones al día siguiente.',
     verified: true,

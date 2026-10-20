@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 
-export const CHART_GREEN = '#5DD62C';
+export const CHART_GREEN = '#72BF44';
 export const CHART_ORANGE = '#F97316';
 export const CHART_MUTED = '#CBD5E1';
 export const CHART_BLUE = '#38BDF8';
