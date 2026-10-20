@@ -10,9 +10,10 @@
 - Se inyecta en `src/app/(public)/productos/[slug]/page.tsx` (Next.js `<script
   type="application/ld+json">`).
 - Campos declarados: `@type: Product`, `name`, `description`, `image`, `sku`,
-  `brand`, `offers` (`Offer` con `price`, `priceCurrency: CLP`,
-  `availability`, `url`, `priceValidUntil` = fin de mes), `hasMerchantReturnPolicy`
-  y `shippingDetails`.
+  `brand`, y `offers` (`Offer` con `price`, `priceCurrency: CLP`,
+  `availability`, `url`, `priceValidUntil` = fin de mes,
+  `hasMerchantReturnPolicy` y `shippingDetails` — estos dos últimos van
+  **dentro de `offers`**, como exige schema.org para ofertas).
 - `sku` solo se incluye si el producto real tiene SKU (ya no se genera
   `seed-<slug>` sintético).
 
@@ -70,7 +71,21 @@
 - `src/lib/sku.test.ts` (5 tests): normalización y validación de SKU.
 - Ambos corren en CI con el resto de la suite (`npx jest`).
 
-## 6. Verificación manual (Google)
+## 6. Verificación end-to-end (Fase 4, 2026-10-19)
+
+Se validó el HTML estático real generado por `npm run build` (39 archivos en
+`.next/server/app/productos/`):
+
+- **33/33 páginas de producto** tienen JSON-LD `Product` completo: `sku`
+  (`NF-...`), `brand`, `offers` con `availability`, `priceValidUntil`,
+  `hasMerchantReturnPolicy` (30 días) y `shippingDetails` (3 zonas).
+- Las 6 páginas restantes son **alias** de slugs antiguos
+  (`PRODUCT_ALIASES` en `seed.ts`); redirigen con `redirect()` al slug
+  canónico. No llevan JSON-LD propio: el buscador sigue la redirección.
+- Suites: frontend 78/78, backend 125/125, `tsc` (frontend y backend) 0
+  errores, ESLint 0 errores, `npm run build` exitoso.
+
+## 7. Verificación manual (Google)
 
 1. Elegir 3 productos de la tienda pública.
 2. Abrir https://search.google.com/test/rich-results → "Prueba de resultados
