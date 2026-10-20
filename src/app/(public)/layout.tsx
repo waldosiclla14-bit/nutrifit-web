@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
+import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
 import MetaPixel from '@/components/analytics/MetaPixel';
 import GA4 from '@/components/analytics/GA4';
 
@@ -64,6 +65,7 @@ export default function PublicLayout({
           <TrustStrip />
           <main>{children}</main>
           <Footer />
+          <WhatsAppFloat />
           <CartDrawer />
           <MetaPixel />
           <GA4 />

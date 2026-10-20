@@ -4,18 +4,26 @@ import { BRAND } from '@/data/seed';
 import { openWhatsApp } from '@/lib/whatsapp';
 import { getSettings } from '@/lib/store';
 
+/**
+ * Botón flotante de WhatsApp. Visible en desktop y mobile; en mobile se eleva
+ * por encima de la barra inferior fija (StickyBottomBar) usando safe-area.
+ */
 export default function WhatsAppFloat() {
   return (
     <a
-      href="#"
+      href={`https://wa.me/${BRAND.whatsappDigits}`}
+      target="_blank"
+      rel="noopener noreferrer"
       onClick={(e) => {
         e.preventDefault();
-        openWhatsApp(getSettings().whatsapp, 'Hola! Necesito ayuda con mi pedido o una recomendación.', {
-          copy: true,
-        });
+        openWhatsApp(
+          getSettings().whatsapp,
+          'Hola! Necesito ayuda con mi pedido o una recomendación.',
+          { copy: true },
+        );
       }}
-      className="fixed bottom-5 right-5 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110 lg:flex"
-      aria-label={`Contactar por WhatsApp (${BRAND.hours})`}
+      className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:bottom-5 sm:right-5"
+      aria-label={`Contactar por WhatsApp. Atención: ${BRAND.hours}`}
       title={`Atención: ${BRAND.hours}`}
     >
       <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

@@ -7,14 +7,14 @@ import {
   ShieldCheck,
   Truck,
   ShoppingBag,
-  BadgeCheck,
   Lock,
-  Sparkles,
   ChevronRight,
+  MessageCircle,
 } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
+import { waMeUrl } from '@/lib/whatsapp';
 import Stars from '@/components/ui/Stars';
 import { BRAND } from '@/data/seed';
 
@@ -31,6 +31,13 @@ const FLAVORS: Flavor[] = [
 const PACK_OLD = 30000;
 const PACK_PRICE = 27500;
 const OFF = Math.round((1 - PACK_PRICE / PACK_OLD) * 100);
+
+const WHATSAPP_MESSAGE =
+  'Hola NutriFit 👋 Quiero comprar el pack Whey + Creatina originales. ¿Me ayudan?';
+
+const whatsappUrl =
+  waMeUrl(BRAND.whatsappDigits, WHATSAPP_MESSAGE) ??
+  `https://wa.me/${BRAND.whatsappDigits}`;
 
 const SOCIAL_PROOF = [
   { name: 'Matías R.', initials: 'MR' },
@@ -82,7 +89,8 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="mt-4 max-w-xl font-display text-[2.6rem] uppercase leading-[0.95] tracking-wide sm:text-6xl lg:text-[4.2rem]"
           >
-            Tu proteína y creatina, en tu Metro <span className="text-sport-green">hoy</span>
+            Whey + Creatina{' '}
+            <span className="text-sport-green">originales</span>
           </motion.h1>
 
           <motion.p
@@ -91,8 +99,8 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-4 max-w-md text-[15px] leading-relaxed text-gray-500"
           >
-            Suplementos originales con sello de garantía. Coordinas por WhatsApp y
-            te los llevo a tu estación de Metro el mismo día.
+            Pack más vendido con sello de garantía. Coordinas por WhatsApp y te lo
+            llevamos a tu estación de Metro.
           </motion.p>
 
           {/* Rating */}
@@ -201,23 +209,37 @@ export default function HeroSection() {
           </motion.div>
 
           {/* CTA */}
-          <motion.button
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="button"
-            onClick={addPack}
-            className="group mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-sport-green text-base font-extrabold text-white shadow-sportGlow transition-colors hover:bg-sport-greenLight lg:max-w-md"
+            className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center lg:max-w-xl"
           >
-            <ShoppingBag size={20} />
-            Agregar al carrito · {formatPrice(PACK_PRICE)}
-            <ChevronRight
-              size={18}
-              className="transition-transform group-hover:translate-x-1"
-            />
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="button"
+              onClick={addPack}
+              className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-sport-green text-base font-extrabold text-white shadow-sportGlow transition-colors hover:bg-sport-greenLight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-auto sm:px-8"
+            >
+              <ShoppingBag size={20} />
+              Agregar · {formatPrice(PACK_PRICE)}
+              <ChevronRight
+                size={18}
+                className="transition-transform group-hover:translate-x-1"
+              />
+            </motion.button>
+
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-14 w-full items-center justify-center gap-2.5 rounded-full border-2 border-sport-green bg-white text-base font-extrabold text-sport-green transition-colors hover:bg-sport-green/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-auto sm:px-8"
+            >
+              <MessageCircle size={20} />
+              Comprar por WhatsApp
+            </a>
+          </motion.div>
 
           {/* Trust badges */}
           <motion.div
@@ -318,39 +340,15 @@ export default function HeroSection() {
                 </div>
               </div>
 
-              {/* Glassmorphism badges */}
-              <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
-                <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 backdrop-blur-md">
-                  <BadgeCheck size={13} className="text-sport-green" />
-                  <span className="text-[11px] font-bold text-gray-900">
-                    24g Proteína por Scoop
-                  </span>
-                </div>
-              </div>
-
-              <div className="absolute right-3 top-3 sm:right-4 sm:top-4">
-                <div className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 backdrop-blur-md">
-                  <ShieldCheck size={13} className="text-sport-green" />
-                  <span className="text-[11px] font-bold text-gray-900">
-                    Productos originales
-                  </span>
-                </div>
-              </div>
-
               {/* Same-day delivery badge */}
               <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full border border-sport-green/30 bg-sport-green/15 px-3 py-1.5 text-[11px] font-extrabold text-sport-green backdrop-blur-md sm:bottom-4 sm:left-4">
-                <Truck size={12} /> Entrega mismo día
+                <Truck size={12} /> Entrega en Metro
               </span>
             </div>
 
             {/* OFF badge floating */}
             <span className="absolute -right-2 top-4 rounded-full border border-white/10 bg-sport-orange px-3 py-1.5 text-[12px] font-extrabold text-white shadow-lg sm:-right-3 sm:top-6">
               -{OFF}% OFF
-            </span>
-
-            {/* Metro badge floating */}
-            <span className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full border border-gray-200 bg-sport-bg px-3.5 py-1.5 text-[12px] font-bold text-gray-900 shadow-lg sm:-bottom-4">
-              <Truck size={13} className="text-sport-green" /> Entrega en Metro
             </span>
           </motion.div>
         </div>
