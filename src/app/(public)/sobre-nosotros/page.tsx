@@ -13,11 +13,12 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: `Sobre nosotros | ${BRAND.name}`,
-  description: `Conoce a ${BRAND.name}: suplementos deportivos originales con entrega en Metro de Santiago. Envío mismo día, atención por WhatsApp.`,
+  title: 'Sobre nosotros',
+  description: `Conoce a ${BRAND.name}: suplementos deportivos originales con entrega en Metro de Santiago. Atención por WhatsApp.`,
+  alternates: { canonical: '/sobre-nosotros' },
   openGraph: {
     title: `Sobre nosotros | ${BRAND.name}`,
-    description: `Suplementos originales con entrega en Metro de Santiago.`,
+    description: 'Suplementos originales con entrega en Metro de Santiago.',
     url: `${BRAND.url}/sobre-nosotros`,
     siteName: BRAND.name,
   },

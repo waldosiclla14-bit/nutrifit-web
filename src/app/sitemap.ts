@@ -4,24 +4,27 @@ import { BLOG_POSTS } from '@/data/blog';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = BRAND.url;
-  const staticRoutes = ['', '/productos', '/favoritos', '/legal', '/blog'].map((route) => ({
-    url: `${base}${route}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
-    priority: route === '' ? 1 : 0.7,
-  }));
+  const lastModified = new Date();
 
-  const productRoutes = PRODUCTS.map((p) => ({
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: base, lastModified, changeFrequency: 'weekly', priority: 1 },
+    { url: `${base}/productos`, lastModified, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${base}/blog`, lastModified, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${base}/sobre-nosotros`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${base}/legal`, lastModified, changeFrequency: 'yearly', priority: 0.3 },
+  ];
+
+  const productRoutes: MetadataRoute.Sitemap = PRODUCTS.map((p) => ({
     url: `${base}/productos/${p.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly' as const,
+    lastModified,
+    changeFrequency: 'weekly',
     priority: 0.8,
   }));
 
-  const blogRoutes = BLOG_POSTS.map((post) => ({
+  const blogRoutes: MetadataRoute.Sitemap = BLOG_POSTS.map((post) => ({
     url: `${base}/blog/${post.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'monthly' as const,
+    lastModified,
+    changeFrequency: 'monthly',
     priority: 0.6,
   }));
 

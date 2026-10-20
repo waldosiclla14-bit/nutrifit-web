@@ -1,6 +1,6 @@
 import Reveal from '@/components/ui/Reveal';
 
-const FAQS = [
+export const FAQS = [
   {
     q: '¿Cómo hago mi pedido?',
     a: 'Agrega los productos al carrito, completa tus datos de entrega y pago, y presiona "Finalizar compra por WhatsApp". Recibirás un resumen para confirmar y listo.',
@@ -27,9 +27,23 @@ const FAQS = [
   },
 ];
 
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQS.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+
 export default function FAQ() {
   return (
     <section className="bg-sport-bg py-14 lg:py-[100px]" id="faq">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="container-px">
         <Reveal className="mb-10 text-center">
           <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">PREGUNTAS FRECUENTES</p>

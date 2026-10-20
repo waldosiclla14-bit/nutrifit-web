@@ -16,6 +16,9 @@ import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 
 export const metadata: Metadata = {
+  title: 'Suplementos Deportivos en Santiago',
+  description:
+    'Compra whey protein, creatina y vitaminas originales en Chile. Packs desde $27.500 con entrega coordinada por WhatsApp en estaciones de Metro de Santiago.',
   alternates: { canonical: '/' },
 };
 
