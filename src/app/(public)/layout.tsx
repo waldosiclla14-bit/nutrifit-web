@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/CartContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import TopBar from '@/components/layout/TopBar';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
@@ -61,6 +62,7 @@ export default function PublicLayout({
       />
       <FavoritesProvider>
         <CartProvider>
+          <TopBar />
           <Header />
           <TrustStrip />
           <main>{children}</main>
