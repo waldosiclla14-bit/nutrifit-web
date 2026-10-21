@@ -20,6 +20,13 @@ export const SHIPPING_STARKEN_FEE = 4000;
  * Fuente: https://www.blue.cl/emprendedores/plataforma-emprendedores
  * (tabla "CON ENTREGA A DOMICILIO" · zona misma región). Consultada 2026-10-20.
  *
+ * Son la TARIFA DE LISTA publicada por Blue Express, no un precio negociado:
+ * NutriFit no tiene contrato comercial con la empresa. Blue Express permite
+ * registrarse como cliente empresarial sin costo de apertura y sin mínimos de
+ * envíos ("solo pagas por lo que envías"), por lo que estas tarifas son las
+ * que se pagan sin acuerdo previo. Si más adelante se firma un contrato con
+ * precios por volumen, actualiza aquí (y SHIPPING_BLUE_FEE para el JSON-LD).
+ *
  * Fase inicial: solo Santiago y tallas S/M. Los packs de suplementos entran en
  * talla S (hasta 3 kg) o M (hasta 6 kg) según su peso real; hasta medir cada
  * producto, el cliente elige la talla en el carrito. No modificar sin

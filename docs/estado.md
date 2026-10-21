@@ -123,6 +123,12 @@ Express**, además del retiro en Metro ya existente.
 - **Tarifas**: tabla oficial de Blue Express (entrega a domicilio, misma región), consultada
   el 2026-10-20 en `blue.cl/emprendedores/plataforma-emprendedores`. Registradas en
   `src/lib/policies.ts` con su fuente y fecha.
+- **NutriFit NO tiene contrato comercial con Blue Express** (confirmado por el dueño el
+  2026-10-21). Las cifras aplicadas son la **tarifa de lista** publicada por Blue Express.
+  Blue Express permite registrarse como cliente empresarial sin costo de apertura y sin
+  mínimos de envíos ("solo pagas por lo que envías"), por lo que esas tarifas son las que
+  se pagan sin acuerdo previo. Queda anotado en `policies.ts` para que nadie asuma un
+  precio negociado.
 - **Tallas sin peso real por producto**: el cliente elige la talla (S hasta 3 kg, M hasta
   6 kg) porque el catálogo no tiene pesos. Queda pendiente medir cada producto.
 - **Sin integración con la API de Blue Express** en esta fase: se cotiza y se confirma por
@@ -165,17 +171,25 @@ Express**, además del retiro en Metro ya existente.
 ### Pendiente / requiere validación humana
 - **Medir el peso real de cada producto** para asignar la talla automáticamente y dejar de
   pedirla al cliente.
-- **Contrato con Blue Express**: la tarifa aplicada es la tarifa pública; confirmar con el
-  contrato comercial si hay precio negociado.
+- **Abrir la cuenta de Blue Express (paso operativo bloqueante)**: hasta registrarse en
+  `app.bluex.cl` como cliente empresarial no se pueden generar etiquetas ni despachar. Es
+  gratis, sin mínimos y sin costo de apertura. Mientras tanto, la opción de domicilio del
+  carrito existe en el sitio pero no se puede cumplir.
+- **Flujo manual por pedido**: sin integración con la API, hay que generar la etiqueta en
+  `app.bluex.cl`, imprimirla y dejar el paquete en un Punto Blue Express. Blue Express
+  permite "envío por pagar", en que el cliente paga el despacho al courier en la entrega
+  (coincide con el pago en efectivo de NutriFit).
 - **Cobertura a regiones**: hoy la tarifa de referencia es Santiago. Si se amplía, revisar
-  la tabla oficial completa y `SHIPPING_ZONES` del JSON-LD.
+  la tabla oficial completa y `SHIPPING_ZONES` del JSON-LD. Ojo: Blue Express públicamente
+  suspendió los envíos desde Puntos en Arica, Parinacota y Tarapacá, aunque las entregas
+  en esas regiones siguen operativas.
 - **Integración real con Blue Express** (generación de etiqueta y seguimiento) queda para
   una fase aparte; hoy se coordina por WhatsApp.
 - Los pedidos a domicilio **no aparecen en el tablero de Entregas** (ese tablero usa el
   modelo `Delivery`, que solo se crea para Metro). Se ven en Órdenes.
 
 ### Siguiente paso
-Decidir push a producción y revisar el flujo de domicilio en el admin.
+Push a producción y revisión del flujo de domicilio en el admin.
 
 ---
 
