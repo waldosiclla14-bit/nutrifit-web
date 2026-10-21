@@ -65,7 +65,7 @@ export default function ProductDetail({
 
   const infoCards = useMemo(
     () => [
-      { icon: Truck, text: 'Entrega en metro, todas las líneas' },
+      { icon: Truck, text: 'Entrega en metro o a domicilio' },
       { icon: ShieldCheck, text: 'Producto 100% original, sello de garantía' },
       { icon: Check, text: 'Garantía de satisfacción de 10 días' },
     ],
@@ -236,8 +236,8 @@ export default function ProductDetail({
           </div>
           <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
-            Entrega coordinada por WhatsApp en estaciones de Metro. Aceptamos efectivo y
-            transferencia (pago contra entrega).
+            Entrega coordinada por WhatsApp: retiro en estaciones de Metro o envío a domicilio en
+            Santiago. Aceptamos efectivo y transferencia (pago contra entrega).
           </p>
         </div>
       </div>
