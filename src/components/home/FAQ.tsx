@@ -15,7 +15,7 @@ export const FAQS = [
   },
   {
     q: '¿Hacen despachos a domicilio?',
-    a: 'Por el momento no hacemos despacho a domicilio. Las entregas son en estaciones de metro de todas las líneas.',
+    a: 'Sí. Puedes elegir envío a domicilio por Blue Express en Santiago (Región Metropolitana) o retirar en cualquier estación de Metro. Al finalizar la compra te cotizamos la tarifa y coordinamos la entrega por WhatsApp.',
   },
   {
     q: '¿Los productos son originales?',
@@ -23,7 +23,7 @@ export const FAQS = [
   },
   {
     q: '¿Cuánto demora la entrega?',
-    a: 'Coordinamos la entrega en la estación que elijas, normalmente dentro de las 24 a 48 horas desde la confirmación del pedido por WhatsApp.',
+    a: 'Coordinamos la entrega en la estación que elijas, normalmente dentro de las 24 a 48 horas desde la confirmación del pedido por WhatsApp. El envío a domicilio se coordina según disponibilidad de Blue Express.',
   },
 ];
 

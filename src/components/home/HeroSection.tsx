@@ -181,7 +181,7 @@ export default function HeroSection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
             </span>
             <p className="text-[13px] font-semibold text-gray-600">
-              Disponible para entrega en Metro hoy
+              Disponible para entrega en Metro o domicilio hoy
             </p>
           </motion.div>
 
@@ -233,7 +233,7 @@ export default function HeroSection() {
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
-              <Truck size={13} className="text-sport-green" /> Entrega en Metro
+              <Truck size={13} className="text-sport-green" /> Entrega en Metro o domicilio
             </span>
           </motion.div>
         </div>
@@ -290,7 +290,7 @@ export default function HeroSection() {
 
               {/* Same-day delivery badge */}
               <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full border border-sport-green/30 bg-sport-green/15 px-3 py-1.5 text-[11px] font-extrabold text-sport-green backdrop-blur-md sm:bottom-4 sm:left-4">
-                <Truck size={12} /> Entrega en Metro
+                <Truck size={12} /> Retiro en Metro
               </span>
             </div>
 

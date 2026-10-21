@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'NutriFit Chile | Suplementos Originales',
     short_name: 'NutriFit',
     description:
-      'Suplementos deportivos originales en Chile: whey, creatina y vitaminas. Compra por WhatsApp y recibe en Metro.',
+      'Suplementos deportivos originales en Chile: whey, creatina y vitaminas. Compra por WhatsApp y recibe en Metro o a domicilio.',
     start_url: '/',
     id: '/',
     scope: '/',

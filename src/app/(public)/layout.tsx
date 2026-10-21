@@ -14,7 +14,7 @@ import GA4 from '@/components/analytics/GA4';
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
   description:
-    'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+    'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago o en tu domicilio.',
   robots: { index: true, follow: true },
 };
 

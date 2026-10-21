@@ -494,8 +494,9 @@ export default function CartDrawer() {
               )}
 
               <p className="mt-3 text-[11px] font-semibold text-sport-textMuted">
-                <span className="text-sport-orange">Entrega en Metro de Santiago</span> · Líneas 1, 2,
-                3, 4, 4A, 5 y 6
+                <span className="text-sport-orange">Retiro en Metro de Santiago</span> · Líneas 1, 2,
+                3, 4, 4A, 5 y 6 · o{' '}
+                <span className="text-sport-orange">envío a domicilio</span> en Santiago
               </p>
             </div>
             )}

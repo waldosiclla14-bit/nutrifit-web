@@ -9,8 +9,8 @@ const ITEMS = [
   },
   {
     icon: Truck,
-    title: 'Entrega en Metro',
-    text: 'Te esperamos en tu estación de las líneas 1, 2, 3, 4, 4A, 5 y 6.',
+    title: 'Metro o domicilio',
+    text: 'Retira en tu estación de las líneas 1, 2, 3, 4, 4A, 5 y 6, o recibe en Santiago por Blue Express.',
   },
   {
     icon: MessageCircle,

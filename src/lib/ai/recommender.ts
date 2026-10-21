@@ -452,7 +452,7 @@ export function generateRecommendation(
 ): string {
   const intent = detectIntent(rawQuery);
   const q = norm(rawQuery);
-  const shippingLine = 'Entrega coordinada por WhatsApp en estaciones de Metro.';
+  const shippingLine = 'Entrega coordinada por WhatsApp en estaciones de Metro o a domicilio.';
 
   // Explicit product name/link matching
   const slug = rawQuery.match(/\/productos\/([a-z0-9-]+)/i)?.[1];
@@ -473,6 +473,7 @@ export function generateRecommendation(
     case 'shipping': {
       return `🚇 ¡Claro! Arreglamos así la entrega:
 - Entregamos en todas las estaciones de Metro de Santiago (líneas 1, 2, 3, 4, 4A, 5 y 6).
+- También hacemos envío a domicilio en Santiago con Blue Express, con tarifa según el tamaño del paquete.
 - ${shippingLine}
 - Coordinamos la estación y el horario por WhatsApp, normalmente en 24–48 hrs.
 

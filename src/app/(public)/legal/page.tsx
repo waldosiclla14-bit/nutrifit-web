@@ -21,20 +21,22 @@ export default function LegalPage() {
           <h2 className="font-display text-2xl uppercase tracking-wide">Políticas de Entrega</h2>
           <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
             <li>
-              Hacemos entregas en estaciones de metro de las líneas 1, 2, 3, 4, 4A, 5 y 6, en todas
-              las estaciones.
+              Puedes elegir entre dos modalidades: retiro en estaciones de metro de las líneas 1, 2,
+              3, 4, 4A, 5 y 6 (todas las estaciones), o envío a domicilio en Santiago (Región
+              Metropolitana) a través de Blue Express.
             </li>
             <li>
               Al confirmar tu pedido por WhatsApp, coordinamos el punto exacto (estación y acceso),
-              el día y la hora de la entrega.
+              o la dirección de entrega, el día y la hora.
             </li>
             <li>
               Las entregas normalmente se coordinan dentro de las 24 a 48 horas desde la confirmación
-              del pedido.
+              del pedido. Los envíos a domicilio se coordinan según disponibilidad de Blue Express.
             </li>
             <li>
-              El costo de entrega se informa al confirmar el pedido por WhatsApp y depende de la
-              zona dentro de Santiago.
+              El costo de entrega se informa en el carrito antes de confirmar: retiro en metro tiene
+              tarifa fija y el envío a domicilio se cobra según el tamaño del paquete (tallas S y M).
+              Si estás fuera de Santiago, lo confirmamos por WhatsApp.
             </li>
             <li>
               Los productos viajan sellados y protegidos. En caso de productos dañados, contáctanos
