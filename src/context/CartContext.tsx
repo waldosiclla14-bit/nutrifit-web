@@ -9,11 +9,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Bundle, CartItem, Settings } from '@/types';
+import type { BlueSize, Bundle, CartItem, DeliveryMethod, Settings } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { getSettings, subscribeStore } from '@/lib/store';
 import { trackEvent } from '@/lib/analytics';
 import { apiFetch } from '@/lib/api';
+import { BLUE_DOMICILIO_REFERENCE_SIZE, BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
 
 type AppliedCoupon = {
   code: string;
@@ -38,6 +39,10 @@ type CartValue = {
   shipping: number;
   total: number;
   itemCount: number;
+  deliveryMethod: DeliveryMethod;
+  setDeliveryMethod: (method: DeliveryMethod) => void;
+  blueSize: BlueSize;
+  setBlueSize: (size: BlueSize) => void;
   addItem: (item: Omit<CartItem, 'key'>) => void;
   addBundle: (bundle: Bundle, variants?: Record<number, string>) => void;
   applyCoupon: (code: string, phone: string) => Promise<AppliedCoupon>;
@@ -69,6 +74,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] = useState<Settings>(() => getSettings());
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('metro');
+  const [blueSize, setBlueSize] = useState<BlueSize>(BLUE_DOMICILIO_REFERENCE_SIZE);
 
   useEffect(() => {
     setItems(loadCart());
@@ -295,7 +302,12 @@ const addBundle = useCallback(
         ? Math.round((subtotal * rewardPercent) / 100)
         : 0;
     const activeDiscount = couponDiscount > 0 ? couponDiscount : rewardDiscount;
-    const shipping = subtotal === 0 ? 0 : settings.shipping;
+    const shipping =
+      subtotal === 0
+        ? 0
+        : deliveryMethod === 'domicilio'
+          ? BLUE_DOMICILIO_SANTIAGO[blueSize]
+          : settings.shipping;
     const itemCount = items
       .filter((i) => !i.isGift)
       .reduce((acc, i) => acc + i.quantity, 0);
@@ -313,6 +325,10 @@ const addBundle = useCallback(
       shipping,
       total: Math.max(0, subtotal - activeDiscount + shipping),
       itemCount,
+      deliveryMethod,
+      setDeliveryMethod,
+      blueSize,
+      setBlueSize,
       addItem,
       addBundle,
       applyCoupon,
@@ -327,6 +343,8 @@ const addBundle = useCallback(
     items,
     isOpen,
     settings.shipping,
+    deliveryMethod,
+    blueSize,
     rewardThreshold,
     rewardPercent,
     coupon,

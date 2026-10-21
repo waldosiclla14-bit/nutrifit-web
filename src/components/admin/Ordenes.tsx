@@ -438,6 +438,13 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
                       {o.deliveryDay && <p className="text-muted-foreground">Día: {o.deliveryDay}</p>}
                       {o.deliveryTime && <p className="text-muted-foreground">Hora: {formatTime12(o.deliveryTime)}</p>}
                     </>
+                  ) : o.deliveryType === 'ENVIO_DOMICILIO' ? (
+                    <>
+                      <p>Domicilio (Blue Express)</p>
+                      <p className="text-muted-foreground break-words">
+                        {o.deliveryDetails || '—'}
+                      </p>
+                    </>
                   ) : (
                     <span className="text-muted-foreground">Retiro tienda</span>
                   )}
@@ -485,7 +492,11 @@ export function Ordenes({ token, initialStatus, onInitConsumed }: { token: strin
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {o.customer?.phone || ''}
-              {o.deliveryType === 'METRO' ? ` · Metro ${o.metroLine || ''} ${o.metroStation || ''}` : ' · Retiro tienda'}
+              {o.deliveryType === 'METRO'
+                ? ` · Metro ${o.metroLine || ''} ${o.metroStation || ''}`
+                : o.deliveryType === 'ENVIO_DOMICILIO'
+                  ? ` · Domicilio${o.deliveryDetails ? ` · ${o.deliveryDetails}` : ''}`
+                  : ' · Retiro tienda'}
               {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}{o.deliveryTime ? ` ${formatTime12(o.deliveryTime)}` : ''}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">

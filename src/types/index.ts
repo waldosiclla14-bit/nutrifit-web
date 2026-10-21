@@ -1,3 +1,7 @@
+export type DeliveryMethod = 'metro' | 'domicilio';
+
+export type BlueSize = 'S' | 'M';
+
 export type ProductVariant = {
   id?: string;
   name: string;
@@ -138,8 +142,13 @@ export type Order = {
   id: string;
   name: string;
   phone: string;
+  deliveryMethod?: DeliveryMethod;
   metroLine?: string;
   metroStation?: string;
+  address?: string;
+  comuna?: string;
+  region?: string;
+  blueSize?: BlueSize;
   couponCode?: string;
   items: OrderItem[];
   subtotal: number;
@@ -163,8 +172,13 @@ export type Settings = {
 export type CustomerProfile = {
   name: string;
   phone: string;
+  deliveryMethod?: DeliveryMethod;
   metroLine?: string;
   metroStation?: string;
+  address?: string;
+  comuna?: string;
+  region?: string;
+  blueSize?: BlueSize;
 };
 
 export type BlogBlock =

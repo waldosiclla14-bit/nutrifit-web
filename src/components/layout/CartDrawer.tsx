@@ -23,8 +23,9 @@ import { formatPrice, uid } from '@/lib/utils';
 import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
 import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon, saveOrder } from '@/lib/store';
 import { submitStoreOrder } from '@/lib/api';
+import { BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
 import TrustBadges from '@/components/ui/TrustBadges';
-import type { Order, OrderItem } from '@/types';
+import type { BlueSize, Order, OrderItem } from '@/types';
 
 export default function CartDrawer() {
   const {
@@ -43,6 +44,10 @@ export default function CartDrawer() {
     shipping,
     total,
     itemCount,
+    deliveryMethod,
+    setDeliveryMethod,
+    blueSize,
+    setBlueSize,
     clearCart,
     addItem,
     applyCoupon,
@@ -54,6 +59,8 @@ export default function CartDrawer() {
   const [phone, setPhone] = useState('');
   const [metroLine, setMetroLine] = useState('');
   const [metroStation, setMetroStation] = useState('');
+  const [address, setAddress] = useState('');
+  const [comuna, setComuna] = useState('');
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
@@ -82,9 +89,14 @@ export default function CartDrawer() {
     if (profile) {
       setName((v) => v || profile.name);
       setPhone((v) => v || profile.phone);
+      if (profile.deliveryMethod) setDeliveryMethod(profile.deliveryMethod);
+      if (profile.blueSize) setBlueSize(profile.blueSize);
       if (profile.metroLine) setMetroLine((v) => v || profile.metroLine!);
       if (profile.metroStation) setMetroStation((v) => v || profile.metroStation!);
+      if (profile.address) setAddress((v) => v || profile.address!);
+      if (profile.comuna) setComuna((v) => v || profile.comuna!);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Consume un cupón pendiente (p. ej. del modal de primera compra) al abrir
@@ -169,8 +181,13 @@ export default function CartDrawer() {
       setError('El cupón está ligado a otro teléfono.');
       return;
     }
-    if (!metroLine || !metroStation) {
-      setError('Elige tu línea y estación de metro.');
+    if (deliveryMethod === 'metro') {
+      if (!metroLine || !metroStation) {
+        setError('Elige tu línea y estación de metro.');
+        return;
+      }
+    } else if (!address.trim() || !comuna.trim()) {
+      setError('Ingresa tu dirección y comuna para el envío a domicilio.');
       return;
     }
 
@@ -178,8 +195,10 @@ export default function CartDrawer() {
       id: uid('NF'),
       name: name.trim(),
       phone: phone.trim(),
-      metroLine,
-      metroStation: metroStation.trim(),
+      deliveryMethod,
+      ...(deliveryMethod === 'metro'
+        ? { metroLine, metroStation: metroStation.trim() }
+        : { address: address.trim(), comuna: comuna.trim(), region: 'Región Metropolitana', blueSize }),
       couponCode: couponCode || undefined,
       items: toOrderItems(),
       subtotal,
@@ -194,8 +213,13 @@ export default function CartDrawer() {
     saveCustomerProfile({
       name: order.name,
       phone: order.phone,
+      deliveryMethod,
       metroLine: order.metroLine,
       metroStation: order.metroStation,
+      address: order.address,
+      comuna: order.comuna,
+      region: order.region,
+      blueSize: order.blueSize,
     });
     // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
     // texto, el cliente lo pega y el pedido no se pierde.
@@ -635,7 +659,11 @@ export default function CartDrawer() {
                   </p>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-sport-textMuted">Entrega en metro</span>
+                  <span className="text-sport-textMuted">
+                    {deliveryMethod === 'domicilio'
+                      ? 'Envío a domicilio (Blue Express)'
+                      : 'Entrega en metro'}
+                  </span>
                   <span className="font-semibold">
                     {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}
                   </span>
@@ -659,34 +687,107 @@ export default function CartDrawer() {
                   aria-label="Teléfono"
                   className="input"
                 />
-                <div className="grid grid-cols-2 gap-2.5">
-                  <select
-                    value={metroLine}
-                    onChange={(e) => setMetroLine(e.target.value)}
-                    aria-label="Línea de Metro"
-                    className="input"
+                <div
+                  className="grid grid-cols-2 gap-2.5"
+                  role="radiogroup"
+                  aria-label="Método de entrega"
+                >
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={deliveryMethod === 'metro'}
+                    onClick={() => setDeliveryMethod('metro')}
+                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
+                      deliveryMethod === 'metro'
+                        ? 'border-sport-green bg-sport-green/10 text-sport-text'
+                        : 'border-sport-border text-sport-textMuted hover:border-sport-green/40'
+                    }`}
                   >
-                    <option value="">Línea...</option>
-                    {METRO_LINES.map((l) => (
-                      <option key={l.line} value={l.line}>
-                        Línea {l.line}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={metroStation}
-                    onChange={(e) => setMetroStation(e.target.value)}
-                    aria-label="Estación de metro"
-                    className="input"
+                    Retiro en Metro
+                    <span className="mt-0.5 block text-[10px] font-normal text-sport-textMuted">
+                      Santiago · {formatPrice(settings.shipping)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={deliveryMethod === 'domicilio'}
+                    onClick={() => setDeliveryMethod('domicilio')}
+                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
+                      deliveryMethod === 'domicilio'
+                        ? 'border-sport-green bg-sport-green/10 text-sport-text'
+                        : 'border-sport-border text-sport-textMuted hover:border-sport-green/40'
+                    }`}
                   >
-                    <option value="">Estación...</option>
-                    {selectedLine?.stations.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    Envío a domicilio
+                    <span className="mt-0.5 block text-[10px] font-normal text-sport-textMuted">
+                      Blue Express · desde {formatPrice(BLUE_DOMICILIO_SANTIAGO.S)}
+                    </span>
+                  </button>
                 </div>
+                {deliveryMethod === 'metro' ? (
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <select
+                      value={metroLine}
+                      onChange={(e) => setMetroLine(e.target.value)}
+                      aria-label="Línea de Metro"
+                      className="input"
+                    >
+                      <option value="">Línea...</option>
+                      {METRO_LINES.map((l) => (
+                        <option key={l.line} value={l.line}>
+                          Línea {l.line}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={metroStation}
+                      onChange={(e) => setMetroStation(e.target.value)}
+                      aria-label="Estación de metro"
+                      className="input"
+                    >
+                      <option value="">Estación...</option>
+                      {selectedLine?.stations.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <input
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Dirección (calle, número, depto)"
+                      aria-label="Dirección de envío"
+                      className="input"
+                    />
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <input
+                        value={comuna}
+                        onChange={(e) => setComuna(e.target.value)}
+                        placeholder="Comuna"
+                        aria-label="Comuna"
+                        className="input"
+                      />
+                      <select
+                        value={blueSize}
+                        onChange={(e) => setBlueSize(e.target.value as BlueSize)}
+                        aria-label="Tamaño del paquete"
+                        className="input"
+                      >
+                        <option value="S">Tamaño S · {formatPrice(BLUE_DOMICILIO_SANTIAGO.S)}</option>
+                        <option value="M">Tamaño M · {formatPrice(BLUE_DOMICILIO_SANTIAGO.M)}</option>
+                      </select>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-sport-textMuted">
+                      Envío a domicilio por Blue Express. Tarifa de referencia para Santiago (Región
+                      Metropolitana); si estás en región, la confirmamos por WhatsApp. Tamaño S hasta
+                      3 kg, M hasta 6 kg.
+                    </p>
+                  </div>
+                )}
                 <div className="rounded-2xl border border-sport-border bg-sport-surface/50 p-3">
                   <div className="flex gap-2">
                     <input
@@ -756,8 +857,9 @@ export default function CartDrawer() {
                 Finalizar compra por WhatsApp
               </button>
               <p className="mt-2 text-center text-[11px] leading-relaxed text-sport-textMuted">
-                Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
-                estación de metro.
+                {deliveryMethod === 'domicilio'
+                  ? 'Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos el envío a domicilio por Blue Express.'
+                  : 'Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu estación de metro.'}
               </p>
               <p className="mt-1 text-center text-[11px] font-semibold text-sport-textMuted">
                 Aceptamos efectivo y transferencia (pago contra entrega).

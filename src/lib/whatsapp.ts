@@ -32,8 +32,13 @@ export function trustFooter() {
 type OrderPayload = {
   name: string;
   phone: string;
+  deliveryMethod?: 'metro' | 'domicilio';
   metroLine?: string;
   metroStation?: string;
+  address?: string;
+  comuna?: string;
+  region?: string;
+  blueSize?: string;
   couponCode?: string;
   items: OrderItem[];
   subtotal: number;
@@ -50,7 +55,12 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   lines.push('');
   lines.push(`*Nombre:* ${order.name}`);
   lines.push(`*Teléfono:* ${order.phone}`);
-  if (order.metroStation) {
+  if (order.deliveryMethod === 'domicilio') {
+    lines.push(
+      `*Entrega:* Envío a domicilio (Blue Express) — ${[order.address, order.comuna, order.region].filter(Boolean).join(', ')}`,
+    );
+    if (order.blueSize) lines.push(`*Tamaño del paquete:* ${order.blueSize}`);
+  } else if (order.metroStation) {
     lines.push(`*Entrega:* Metro ${order.metroStation} — Línea ${order.metroLine}`);
   }
   lines.push(`*Pago:* Efectivo o transferencia (contra entrega)`);
