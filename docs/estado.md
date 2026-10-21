@@ -176,3 +176,46 @@ Express**, además del retiro en Metro ya existente.
 
 ### Siguiente paso
 Decidir push a producción y revisar el flujo de domicilio en el admin.
+
+---
+
+## Sesión: coherencia de textos con el nuevo envío a domicilio
+
+### Objetivo
+La nueva modalidad de envío dejó **falsos** varios textos del sitio. Se corrigieron
+todos para que no se prometa (ni se niegue) algo que el negocio ya no cumple.
+
+### Decisiones tomadas
+- **El FAQ decía "Por el momento no hacemos despacho a domicilio"** → era falso. Ahora
+  describe las dos modalidades y sus alcances (Metro en todo Santiago; domicilio en
+  Santiago por Blue Express).
+- **Los títulos SEO se dejaron intactos** ("...con Entrega en Metro"): no son falsos y
+  cambiarlos habría alterado el posicionamiento ya ganado. Sí se actualizaron las
+  **descripciones** (metadatos, Open Graph, Twitter, manifest, ficha de producto).
+- Las políticas de entrega legales ahora mencionan las dos modalidades y que **el costo
+  se informa en el carrito** (antes decía que se informaba por WhatsApp).
+- No se tocó la línea de tiempo de "Sobre nosotros" (el hito de 2024 sobre Metro es
+  histórico) ni los textos internos del POS y del admin.
+
+### Archivos modificados
+`src/components/home/FAQ.tsx`, `TopBar.tsx`, `HeroSection.tsx`, `Benefits.tsx`,
+`MetroCoverage.tsx`; `src/components/layout/TopBar.tsx`, `Footer.tsx`, `CartDrawer.tsx`;
+`src/components/product/ProductDetail.tsx`; `src/components/ui/TrustBadges.tsx`;
+`src/lib/ai/recommender.ts`; `src/app/layout.tsx`, `manifest.ts`,
+`src/app/(public)/layout.tsx`, `page.tsx`, `legal/page.tsx`, `sobre-nosotros/page.tsx`,
+`productos/[slug]/page.tsx`.
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx jest` (**90/90**), `npx eslint`: sin errores.
+- En local: la home ya no contiene "no hacemos despacho a domicilio"; sí menciona entrega
+  a domicilio en la barra superior, el hero y las políticas legales.
+
+### Capturas
+`docs/capturas/blue-home-390.png`, `blue-home-1280.png`.
+
+### Pendiente / requiere validación humana
+- Revisar en producción que ninguna otra descripción (redes, Google Business, flyers)
+  siga diciendo "solo Metro" o "no hacemos domicilio".
+
+### Siguiente paso
+Push a producción de los commits de esta sesión y verificación en vivo.
