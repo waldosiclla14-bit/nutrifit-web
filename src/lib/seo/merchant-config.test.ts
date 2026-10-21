@@ -1,7 +1,7 @@
 import type { Product } from '@/types';
 import { PRODUCTS } from '@/data/seed';
 import { DEFAULT_SETTINGS } from '@/lib/store';
-import { RETURN_DAYS } from '@/lib/policies';
+import { RETURN_DAYS, BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
 import {
   MERCHANT_RETURN_POLICY,
   SHIPPING_ZONES,
@@ -117,9 +117,18 @@ describe('buildProductJsonLd — campos mínimos', () => {
 
   it('shippingDetails: región solo cuando aplica (starken no tiene)', () => {
     const sd = (json.offers as any).shippingDetails as any[];
-    expect(sd[0].shippingDestination.addressRegion).toBe('RM');
-    expect(sd[1].shippingDestination.addressRegion).toBe('RM');
-    expect(sd[2].shippingDestination.addressRegion).toBeUndefined();
+    const byId = (id: string) => sd.find((d) => d.shippingRate.value === SHIPPING_ZONES.find((z) => z.id === id)?.rate);
+    expect(byId('metro').shippingDestination.addressRegion).toBe('RM');
+    expect(byId('blue-s').shippingDestination.addressRegion).toBe('RM');
+    expect(byId('blue-m').shippingDestination.addressRegion).toBe('RM');
+    expect(byId('starken').shippingDestination.addressRegion).toBeUndefined();
+  });
+
+  it('shippingDetails: declara las dos tallas de Blue Express (lo que el checkout cobra)', () => {
+    const sd = (json.offers as any).shippingDetails as any[];
+    const rates = sd.map((d) => d.shippingRate.value);
+    expect(rates).toContain(BLUE_DOMICILIO_SANTIAGO.S);
+    expect(rates).toContain(BLUE_DOMICILIO_SANTIAGO.M);
   });
 
   it('shippingDetails: plazos coherentes (min <= max)', () => {
@@ -182,6 +191,13 @@ describe('SHIPPING_ZONES vs lo que cobra el checkout', () => {
   it('la zona metro cobra lo mismo que DEFAULT_SETTINGS.shipping', () => {
     const metro = SHIPPING_ZONES.find((z) => z.id === 'metro');
     expect(metro?.rate).toBe(DEFAULT_SETTINGS.shipping);
+  });
+
+  it('las zonas Blue coinciden con las tarifas del checkout', () => {
+    const blueS = SHIPPING_ZONES.find((z) => z.id === 'blue-s');
+    const blueM = SHIPPING_ZONES.find((z) => z.id === 'blue-m');
+    expect(blueS?.rate).toBe(BLUE_DOMICILIO_SANTIAGO.S);
+    expect(blueM?.rate).toBe(BLUE_DOMICILIO_SANTIAGO.M);
   });
 
   it('todas las zonas tienen tarifa, destino y plazos válidos', () => {

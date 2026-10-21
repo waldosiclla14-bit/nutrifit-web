@@ -37,7 +37,6 @@ type OrderPayload = {
   metroStation?: string;
   address?: string;
   comuna?: string;
-  region?: string;
   blueSize?: string;
   couponCode?: string;
   items: OrderItem[];
@@ -57,7 +56,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   lines.push(`*Teléfono:* ${order.phone}`);
   if (order.deliveryMethod === 'domicilio') {
     lines.push(
-      `*Entrega:* Envío a domicilio (Blue Express) — ${[order.address, order.comuna, order.region].filter(Boolean).join(', ')}`,
+      `*Entrega:* Envío a domicilio (Blue Express) — ${[order.address, order.comuna].filter(Boolean).join(', ')}`,
     );
     if (order.blueSize) lines.push(`*Tamaño del paquete:* ${order.blueSize}`);
   } else if (order.metroStation) {

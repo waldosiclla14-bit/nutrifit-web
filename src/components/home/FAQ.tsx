@@ -15,7 +15,7 @@ export const FAQS = [
   },
   {
     q: '¿Hacen despachos a domicilio?',
-    a: 'Sí. Puedes elegir envío a domicilio por Blue Express en Santiago (Región Metropolitana) o retirar en cualquier estación de Metro. Al finalizar la compra te cotizamos la tarifa y coordinamos la entrega por WhatsApp.',
+    a: 'Sí. Puedes elegir envío a domicilio por Blue Express en Santiago (Región Metropolitana) o retirar en cualquier estación de Metro. La tarifa de domicilio se muestra en el carrito, según el tamaño del paquete, y la confirmamos por WhatsApp.',
   },
   {
     q: '¿Los productos son originales?',

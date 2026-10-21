@@ -104,7 +104,7 @@ export function resetStore() {
   saveDB({ orders: [], settings: { ...DEFAULT_SETTINGS } });
 }
 
-// Perfil del cliente (nombre, teléfono, línea y estación de Metro) para
+// Perfil del cliente (nombre, teléfono, método de entrega y sus datos) para
 // autocompletar el checkout en compras recurrentes. Se guarda aparte del DB
 // de la tienda para no interferir con pedidos ni configuración.
 export function getCustomerProfile(): CustomerProfile | null {
@@ -117,18 +117,38 @@ export function getCustomerProfile(): CustomerProfile | null {
     return {
       name: parsed.name ?? '',
       phone: parsed.phone ?? '',
+      deliveryMethod: parsed.deliveryMethod,
       metroLine: parsed.metroLine,
       metroStation: parsed.metroStation,
+      address: parsed.address,
+      comuna: parsed.comuna,
+      blueSize: parsed.blueSize,
     };
   } catch {
     return null;
   }
 }
 
+/**
+ * Guarda el perfil conservando los datos de la modalidad de entrega que no
+ * usa el pedido actual. Así un cliente que compra hoy a domicilio y mañana
+ * retira en Metro no pierde su dirección, y viceversa.
+ */
 export function saveCustomerProfile(profile: CustomerProfile) {
   if (!isBrowser()) return;
   try {
-    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const current = getCustomerProfile();
+    const merged: CustomerProfile = {
+      ...current,
+      ...profile,
+      // Los datos de la otra modalidad se conservan si el pedido actual no los trae.
+      metroLine: profile.metroLine ?? current?.metroLine,
+      metroStation: profile.metroStation ?? current?.metroStation,
+      address: profile.address ?? current?.address,
+      comuna: profile.comuna ?? current?.comuna,
+      blueSize: profile.blueSize ?? current?.blueSize,
+    };
+    window.localStorage.setItem(PROFILE_KEY, JSON.stringify(merged));
   } catch {
     // storage may be unavailable (private mode) — ignore
   }

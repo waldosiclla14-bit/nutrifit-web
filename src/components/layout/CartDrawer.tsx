@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeCheck,
+  Check,
   CheckCircle2,
   Gift,
   MessageCircle,
@@ -25,7 +26,7 @@ import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon
 import { submitStoreOrder } from '@/lib/api';
 import { BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
 import TrustBadges from '@/components/ui/TrustBadges';
-import type { BlueSize, Order, OrderItem } from '@/types';
+import type { BlueSize, DeliveryMethod, Order, OrderItem } from '@/types';
 
 export default function CartDrawer() {
   const {
@@ -136,6 +137,40 @@ export default function CartDrawer() {
 
   const selectedLine = METRO_LINES.find((l) => l.line === metroLine);
 
+  // Opciones de entrega (radiogroup con navegación por flechas).
+  const deliveryGroupRef = useRef<HTMLDivElement>(null);
+  const deliveryOptions: { value: DeliveryMethod; label: string; detail: string }[] = [
+    {
+      value: 'metro',
+      label: 'Retiro en Metro',
+      detail: `Santiago · ${formatPrice(settings.shipping)}`,
+    },
+    {
+      value: 'domicilio',
+      label: 'Envío a domicilio',
+      detail: `Blue Express · desde ${formatPrice(BLUE_DOMICILIO_SANTIAGO.S)}`,
+    },
+  ];
+
+  const onDeliveryKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const current = deliveryOptions.findIndex((o) => o.value === deliveryMethod);
+    let next = current;
+    if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = deliveryOptions.length - 1;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+      next = (current + 1) % deliveryOptions.length;
+    else next = (current - 1 + deliveryOptions.length) % deliveryOptions.length;
+    const value = deliveryOptions[next].value;
+    setDeliveryMethod(value);
+    // Roving tabindex: el foco sigue a la opción seleccionada.
+    deliveryGroupRef.current
+      ?.querySelectorAll<HTMLButtonElement>('[role="radio"]')
+      [next]?.focus();
+  };
+
   useEffect(() => {
     if (!couponCode || !couponPhone) return;
     const currentPhone = phone.replace(/\D/g, '');
@@ -198,7 +233,7 @@ export default function CartDrawer() {
       deliveryMethod,
       ...(deliveryMethod === 'metro'
         ? { metroLine, metroStation: metroStation.trim() }
-        : { address: address.trim(), comuna: comuna.trim(), region: 'Región Metropolitana', blueSize }),
+        : { address: address.trim(), comuna: comuna.trim(), blueSize }),
       couponCode: couponCode || undefined,
       items: toOrderItems(),
       subtotal,
@@ -218,7 +253,6 @@ export default function CartDrawer() {
       metroStation: order.metroStation,
       address: order.address,
       comuna: order.comuna,
-      region: order.region,
       blueSize: order.blueSize,
     });
     // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
@@ -278,7 +312,12 @@ export default function CartDrawer() {
       itemsNext.push({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image });
     }
     const subtotalNext = lastOrder.subtotal + p.price;
-    const shippingNext = settings.shipping;
+    // El envío del pedido original se mantiene: si era a domicilio, se cobra
+    // la tarifa Blue Express de la talla elegida, no la de Metro.
+    const shippingNext =
+      lastOrder.deliveryMethod === 'domicilio'
+        ? BLUE_DOMICILIO_SANTIAGO[lastOrder.blueSize ?? 'S']
+        : settings.shipping;
     const message = buildWhatsAppMessage({
       ...lastOrder,
       items: itemsNext,
@@ -348,7 +387,10 @@ export default function CartDrawer() {
             <p className="font-display text-2xl uppercase tracking-wide">¡Pedido casi listo!</p>
             <p className="text-sm leading-relaxed text-sport-textMuted">
               Abrimos WhatsApp con tu pedido listo para enviar. Solo presiona enviar y te
-              confirmamos el punto de entrega en tu estación de metro.
+              confirmamos la entrega
+              {lastOrder?.deliveryMethod === 'domicilio'
+                ? ' a tu domicilio.'
+                : ' en tu estación de metro.'}
             </p>
             <p className="text-xs leading-relaxed text-sport-textMuted">
               ¿WhatsApp se abrió sin el mensaje? Pega con Ctrl/Cmd+V: tu pedido quedó en el
@@ -376,7 +418,7 @@ export default function CartDrawer() {
                   <Plus size={13} /> ¿Agregas un complemento?
                 </p>
                 <p className="mt-2 text-sm font-semibold text-sport-text">
-                  Añádelo a tu pedido y lo incluimos sin costo de envío
+                  Añádelo a tu pedido y lo despachamos con el mismo envío
                 </p>
                 <div className="mt-4 grid gap-3">
                   {offerProducts.map((p) => {
@@ -689,42 +731,43 @@ export default function CartDrawer() {
                   className="input"
                 />
                 <div
+                  ref={deliveryGroupRef}
                   className="grid grid-cols-2 gap-2.5"
                   role="radiogroup"
                   aria-label="Método de entrega"
+                  onKeyDown={onDeliveryKeyDown}
                 >
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={deliveryMethod === 'metro'}
-                    onClick={() => setDeliveryMethod('metro')}
-                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
-                      deliveryMethod === 'metro'
-                        ? 'border-sport-green bg-sport-green/10 text-sport-text'
-                        : 'border-sport-border text-sport-textMuted hover:border-sport-green/40'
-                    }`}
-                  >
-                    Retiro en Metro
-                    <span className="mt-0.5 block text-[10px] font-normal text-sport-textMuted">
-                      Santiago · {formatPrice(settings.shipping)}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={deliveryMethod === 'domicilio'}
-                    onClick={() => setDeliveryMethod('domicilio')}
-                    className={`rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
-                      deliveryMethod === 'domicilio'
-                        ? 'border-sport-green bg-sport-green/10 text-sport-text'
-                        : 'border-sport-border text-sport-textMuted hover:border-sport-green/40'
-                    }`}
-                  >
-                    Envío a domicilio
-                    <span className="mt-0.5 block text-[10px] font-normal text-sport-textMuted">
-                      Blue Express · desde {formatPrice(BLUE_DOMICILIO_SANTIAGO.S)}
-                    </span>
-                  </button>
+                  {deliveryOptions.map((opt) => {
+                    const checked = deliveryMethod === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={checked}
+                        tabIndex={checked ? 0 : -1}
+                        onClick={() => setDeliveryMethod(opt.value)}
+                        className={`relative rounded-2xl border px-3 py-2.5 text-left text-xs font-semibold transition-colors ${
+                          checked
+                            ? 'border-sport-green bg-sport-green/10 text-sport-text'
+                            : 'border-sport-border text-sport-textMuted hover:border-sport-green/40'
+                        }`}
+                      >
+                        {checked && (
+                          <span
+                            className="absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-sport-green text-white"
+                            aria-hidden="true"
+                          >
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                        )}
+                        {opt.label}
+                        <span className="mt-0.5 block text-[10px] font-normal text-sport-textMuted">
+                          {opt.detail}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
                 {deliveryMethod === 'metro' ? (
                   <div className="grid grid-cols-2 gap-2.5">

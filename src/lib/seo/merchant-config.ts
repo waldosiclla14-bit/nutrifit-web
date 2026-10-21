@@ -2,6 +2,7 @@ import type { Product } from '@/types';
 import { BRAND } from '@/data/seed';
 import {
   RETURN_DAYS,
+  BLUE_DOMICILIO_SANTIAGO,
   SHIPPING_BLUE_FEE,
   SHIPPING_METRO_FEE,
   SHIPPING_STARKEN_FEE,
@@ -37,9 +38,13 @@ export type ShippingZone = {
 
 /**
  * Zonas de envío declaradas en el JSON-LD. Debe coincidir con lo que cobra el
- * checkout (ver test merchant-config.test.ts que compara metro.rate con
- * DEFAULT_SETTINGS.shipping). Blue Express y Starken están declaradas para
- * Google aunque hoy el checkout solo ofrezca Metro.
+ * checkout (ver test merchant-config.test.ts, que compara metro.rate con
+ * DEFAULT_SETTINGS.shipping y las zonas Blue con BLUE_DOMICILIO_SANTIAGO).
+ *
+ * El envío a domicilio se declara con las dos tallas que ofrece el checkout
+ * (S y M), porque ambas son posibles para el mismo destino. Starken está
+ * declarada solo como referencia del alcance nacional; el checkout público hoy
+ * no ofrece envío a regiones.
  */
 export const SHIPPING_ZONES: ShippingZone[] = [
   {
@@ -51,9 +56,17 @@ export const SHIPPING_ZONES: ShippingZone[] = [
     transit: [0, 1],
   },
   {
-    id: 'blue',
-    label: 'Blue Express (Santiago centro)',
-    rate: SHIPPING_BLUE_FEE,
+    id: 'blue-s',
+    label: 'Blue Express a domicilio (Santiago) · paquete talla S',
+    rate: BLUE_DOMICILIO_SANTIAGO.S,
+    destination: { country: 'CL', region: 'RM' },
+    handling: [0, 1],
+    transit: [1, 2],
+  },
+  {
+    id: 'blue-m',
+    label: 'Blue Express a domicilio (Santiago) · paquete talla M',
+    rate: BLUE_DOMICILIO_SANTIAGO.M,
     destination: { country: 'CL', region: 'RM' },
     handling: [0, 1],
     transit: [1, 2],

@@ -147,7 +147,6 @@ export type Order = {
   metroStation?: string;
   address?: string;
   comuna?: string;
-  region?: string;
   blueSize?: BlueSize;
   couponCode?: string;
   items: OrderItem[];
@@ -177,7 +176,6 @@ export type CustomerProfile = {
   metroStation?: string;
   address?: string;
   comuna?: string;
-  region?: string;
   blueSize?: BlueSize;
 };
 

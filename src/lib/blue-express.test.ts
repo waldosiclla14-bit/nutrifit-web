@@ -53,7 +53,6 @@ describe('buildWhatsAppMessage con envío a domicilio', () => {
       deliveryMethod: 'domicilio',
       address: 'Av. Siempre Viva 742',
       comuna: 'Ñuñoa',
-      region: 'Región Metropolitana',
       blueSize: 'S',
     });
 
@@ -61,6 +60,19 @@ describe('buildWhatsAppMessage con envío a domicilio', () => {
     expect(msg).toContain('Av. Siempre Viva 742');
     expect(msg).toContain('Ñuñoa');
     expect(msg).toContain('Tamaño del paquete:* S');
+  });
+
+  it('no afirma una región que el cliente no informó', () => {
+    const msg = buildWhatsAppMessage({
+      ...base,
+      deliveryMethod: 'domicilio',
+      address: 'Av. Siempre Viva 742',
+      comuna: 'Rancagua',
+      blueSize: 'S',
+    });
+
+    expect(msg).not.toContain('Región Metropolitana');
+    expect(msg).toContain('Rancagua');
   });
 
   it('mantiene la entrega en metro cuando el método es metro', () => {

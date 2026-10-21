@@ -277,7 +277,6 @@ export async function submitStoreOrder(order: Order): Promise<void> {
           ? [
               order.address,
               order.comuna,
-              order.region,
               order.blueSize ? `Paquete talla ${order.blueSize}` : '',
             ]
               .filter(Boolean)
