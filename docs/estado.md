@@ -129,8 +129,8 @@ Express**, además del retiro en Metro ya existente.
   mínimos de envíos ("solo pagas por lo que envías"), por lo que esas tarifas son las que
   se pagan sin acuerdo previo. Queda anotado en `policies.ts` para que nadie asuma un
   precio negociado.
-- **Tallas sin peso real por producto**: el cliente elige la talla (S hasta 3 kg, M hasta
-  6 kg) porque el catálogo no tiene pesos. Queda pendiente medir cada producto.
+- **Tallas sin peso real por producto**: ver la sección siguiente ("talla calculada por el
+  local"), que corrigió este punto tras verificar las reglas oficiales de Blue Express.
 - **Sin integración con la API de Blue Express** en esta fase: se cotiza y se confirma por
   WhatsApp.
 - **El pedido llega al backend como `deliveryType: 'ENVIO_DOMICILIO'`** (mismo enum que el
@@ -319,3 +319,69 @@ Backend: `backend/src/orders/orders.service.ts` (+ spec),
 ### Siguiente paso
 Push a producción del frontend y despliegue del backend, luego verificación en vivo
 del flujo de domicilio.
+
+---
+
+## Sesión: regla oficial de talla Blue Express (el local la calcula)
+
+### Objetivo
+El dueño ya tiene cuenta en `app.bluex.cl`. Al revisar la **guía oficial de tallas**
+de Blue Express se confirmó que el diseño anterior (que el **cliente** eligiera la
+talla) era un riesgo económico y operativo. Se rediseñó.
+
+### Reglas verificadas (fuente oficial, 2026-10-20)
+`https://www.blue.cl/nosotros/centro-de-ayuda/tallas-envio` y el tarifario PYME
+`https://www.blue.cl/docs/enviar/tarifario-pyme.pdf` (enlazado desde esa misma guía):
+- La talla depende del **peso físico y del volumen** del paquete.
+- **Peso volumétrico = (largo × ancho × alto en cm) / 4000**; se cobra el **mayor**
+  entre el físico y el volumétrico.
+  Ejemplo de Blue: 1 kg en una caja de 30×30×30 → volumétrico 6,75 → **talla L**.
+- "Cuando un paquete supera el límite de peso o volumen de una talla, **pasa de
+  inmediato al siguiente tamaño**" (Blue lo reclasifica y lo cobra así).
+- "**Intenta siempre seleccionar la talla correcta para evitar la suspensión de tu
+  cuenta.**"
+- Tallas disponibles: XS, S, M, L. L admite hasta 20 kg; medidas máximas 70×70×70 cm.
+
+### Por qué cambió el diseño
+Si el cliente elegía "S" y la caja real era de 30×30×30, Blue la factura como L
+($5.400) pero el cliente solo había pagado $4.200: **la diferencia la absorbía el
+local**, y los reclasificaciones reiterados pueden **suspender la cuenta**.
+
+### Decisiones tomadas
+- **El cliente ya NO elige la talla.** La calcula el local con la fórmula oficial.
+- Se implementó `src/lib/blue-express.ts` con la fórmula de Blue, los límites por
+  talla y el cálculo del pedido (la talla mayor de todos sus productos, porque van
+  en el mismo paquete).
+- `Product` acepta `weightKg` y `packageDims` (cm) para calcular la talla por
+  producto. **Hoy el catálogo no tiene esos datos**, así que se usa la talla por
+  defecto del local (`BLUE_DEFAULT_SIZE = 'M'`, la más conservadora: una talla mayor
+  de la real la absorbe el local; una menor, el cliente).
+- El precio del envío a domicilio **se muestra en el carrito** con la talla ya
+  resuelta; el texto explica que el tamaño lo determina el local.
+- La talla viaja en el pedido (`Order.blueSize`) y en el mensaje de WhatsApp, para
+  que el vendedor genere la etiqueta en `app.bluex.cl` con la talla correcta.
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
+- `npx jest`: **103/103** (11 suites; 10 tests nuevos del cálculo de talla).
+- Los tests detectaron un **bug de la propia implementación**: la talla por defecto
+  "M" ganaba siempre y un pedido de productos chicos nunca daba talla S. Se corrigió
+  diferenciando "talla desconocida" (null) de "talla M".
+- En navegador real: el carrito ya **no muestra selector de talla**; el total con
+  domicilio es **$32.300** ($27.500 + $4.800, talla M) y el perfil sigue precargando
+  método, dirección y comuna.
+
+### Pendiente / requiere validación humana
+- **Medir cada producto**: peso en kg y medidas de la caja/embalaje en cm, para
+  cargar `weightKg` y `packageDims` en el seed y que la talla sea exacta. Con un
+  1 kg en caja de 30×30×30 el envío es talla L, no S.
+- **Contraste de la tabla de tallas**: los límites en kg están publicados en imágenes
+  en la guía oficial, no en texto. Confirmarlos con la calculadora de
+  `app.bluex.cl` (o con el tarifario PYME en PDF).
+- **Decidir el cobro del envío**: hoy el envío va dentro del total del carrito y el
+  cliente lo paga al local en la entrega. Blue Express permite "envío por pagar"
+  (el cliente paga el despacho al courier), que reduciría el riesgo de cobro. Es una
+  decisión comercial pendiente.
+
+### Siguiente paso
+Cargar pesos y medidas en el catálogo y decidir el esquema de cobro del envío.

@@ -27,10 +27,13 @@ export const SHIPPING_STARKEN_FEE = 4000;
  * que se pagan sin acuerdo previo. Si más adelante se firma un contrato con
  * precios por volumen, actualiza aquí (y SHIPPING_BLUE_FEE para el JSON-LD).
  *
- * Fase inicial: solo Santiago y tallas S/M. Los packs de suplementos entran en
- * talla S (hasta 3 kg) o M (hasta 6 kg) según su peso real; hasta medir cada
- * producto, el cliente elige la talla en el carrito. No modificar sin
- * re-verificar la tarifa oficial.
+ * Fase inicial: solo Santiago y tallas S/M. La talla NO la elige el cliente:
+ * Blue Express reclasifica sola el envío a la talla siguiente cuando el
+ * paquete la supera, y la diferencia la absorbería el local (además Blue
+ * advierte sobre la suspensión de la cuenta por talla incorrecta). El local la
+ * calcula con la fórmula oficial de peso volumétrico (ver src/lib/blue-express.ts)
+ * a partir del peso y las medidas del embalaje de cada producto. No modificar
+ * sin re-verificar la tarifa oficial.
  */
 export const BLUE_DOMICILIO_REFERENCE_SIZE = 'S';
 

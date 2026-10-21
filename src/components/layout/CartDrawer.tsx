@@ -48,7 +48,6 @@ export default function CartDrawer() {
     deliveryMethod,
     setDeliveryMethod,
     blueSize,
-    setBlueSize,
     clearCart,
     addItem,
     applyCoupon,
@@ -91,7 +90,6 @@ export default function CartDrawer() {
       setName((v) => v || profile.name);
       setPhone((v) => v || profile.phone);
       if (profile.deliveryMethod) setDeliveryMethod(profile.deliveryMethod);
-      if (profile.blueSize) setBlueSize(profile.blueSize);
       if (profile.metroLine) setMetroLine((v) => v || profile.metroLine!);
       if (profile.metroStation) setMetroStation((v) => v || profile.metroStation!);
       if (profile.address) setAddress((v) => v || profile.address!);
@@ -815,20 +813,12 @@ export default function CartDrawer() {
                         aria-label="Comuna"
                         className="input"
                       />
-                      <select
-                        value={blueSize}
-                        onChange={(e) => setBlueSize(e.target.value as BlueSize)}
-                        aria-label="Tamaño del paquete"
-                        className="input"
-                      >
-                        <option value="S">Tamaño S · {formatPrice(BLUE_DOMICILIO_SANTIAGO.S)}</option>
-                        <option value="M">Tamaño M · {formatPrice(BLUE_DOMICILIO_SANTIAGO.M)}</option>
-                      </select>
                     </div>
                     <p className="text-[10px] leading-relaxed text-sport-textMuted">
-                      Envío a domicilio por Blue Express. Tarifa de referencia para Santiago (Región
-                      Metropolitana); si estás en región, la confirmamos por WhatsApp. Tamaño S hasta
-                      3 kg, M hasta 6 kg.
+                      Envío a domicilio por Blue Express, en Santiago (Región Metropolitana). La
+                      tarifa de referencia es {formatPrice(BLUE_DOMICILIO_SANTIAGO[blueSize])} y
+                      depende del tamaño del paquete, que determinamos nosotros; si estás en
+                      región, la confirmamos por WhatsApp.
                     </p>
                   </div>
                 )}

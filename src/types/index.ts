@@ -42,6 +42,10 @@ export type Product = {
   tags: string[];
   bestseller?: boolean;
   newArrival?: boolean;
+  /** Peso del producto en kg, para calcular la talla de envío Blue Express. */
+  weightKg?: number;
+  /** Medidas del embalaje en cm (largo x ancho x alto), para el peso volumétrico. */
+  packageDims?: { length: number; width: number; height: number };
   variants?: ProductVariant[];
 };
 

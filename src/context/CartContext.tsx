@@ -14,7 +14,8 @@ import { PRODUCTS } from '@/data/seed';
 import { getSettings, subscribeStore } from '@/lib/store';
 import { trackEvent } from '@/lib/analytics';
 import { apiFetch } from '@/lib/api';
-import { BLUE_DOMICILIO_REFERENCE_SIZE, BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
+import { BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
+import { sizeForOrder } from '@/lib/blue-express';
 
 type AppliedCoupon = {
   code: string;
@@ -42,7 +43,6 @@ type CartValue = {
   deliveryMethod: DeliveryMethod;
   setDeliveryMethod: (method: DeliveryMethod) => void;
   blueSize: BlueSize;
-  setBlueSize: (size: BlueSize) => void;
   addItem: (item: Omit<CartItem, 'key'>) => void;
   addBundle: (bundle: Bundle, variants?: Record<number, string>) => void;
   applyCoupon: (code: string, phone: string) => Promise<AppliedCoupon>;
@@ -75,7 +75,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => getSettings());
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('metro');
-  const [blueSize, setBlueSize] = useState<BlueSize>(BLUE_DOMICILIO_REFERENCE_SIZE);
 
   useEffect(() => {
     setItems(loadCart());
@@ -302,6 +301,13 @@ const addBundle = useCallback(
         ? Math.round((subtotal * rewardPercent) / 100)
         : 0;
     const activeDiscount = couponDiscount > 0 ? couponDiscount : rewardDiscount;
+    // La talla la determina el local a partir del peso y el volumen del
+    // paquete (reglas de Blue Express), no la elige el cliente: Blue reclasifica
+    // solo el envío a la talla siguiente y la diferencia la absorbe el local.
+    const blueSize = sizeForOrder(
+      items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      PRODUCTS,
+    );
     const shipping =
       subtotal === 0
         ? 0
@@ -328,7 +334,6 @@ const addBundle = useCallback(
       deliveryMethod,
       setDeliveryMethod,
       blueSize,
-      setBlueSize,
       addItem,
       addBundle,
       applyCoupon,
@@ -344,7 +349,6 @@ const addBundle = useCallback(
     isOpen,
     settings.shipping,
     deliveryMethod,
-    blueSize,
     rewardThreshold,
     rewardPercent,
     coupon,
