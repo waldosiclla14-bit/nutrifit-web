@@ -231,5 +231,91 @@ todos para que no se prometa (ni se niegue) algo que el negocio ya no cumple.
 - Revisar en producción que ninguna otra descripción (redes, Google Business, flyers)
   siga diciendo "solo Metro" o "no hacemos domicilio".
 
+---
+
+## Sesión: auditoría de la feature de envío a domicilio
+
+### Objetivo
+Auditar el código de la modalidad de envío a domicilio **antes** de subirlo a
+producción, y corregir los errores encontrados. La auditoría se hizo en dos
+pasadas: una sobre el diff de la feature (web) y otra sobre el flujo completo
+de pedidos en el admin y el backend.
+
+### Bugs corregidos (web)
+| # | Bug | Impacto |
+|---|---|---|
+| 1 | `getCustomerProfile()` reconstruía el perfil solo con 4 campos y **descartaba** método, dirección, comuna y talla | La precarga del perfil era **código muerto**: el cliente reescribía su dirección en cada compra y el método de entrega volvía siempre a Metro |
+| 2 | El upsell post-compra cobraba **siempre la tarifa de Metro** | Un pedido a domicilio de $4.200 generaba un mensaje con "*Entrega:* $1.000" y un total mal calculado |
+| 3 | El upsell decía "lo incluimos sin costo de envío" | Prometía algo que no era cierto (ahora: "lo despachamos con el mismo envío") |
+| 4 | `EditOrderModal` degradaba cualquier tipo distinto de Metro a `'STORE'` | **`STORE` no existe en el enum de Prisma** → el backend respondía 400 en **cada** guardado de un pedido no-Metro. Afectaba también a `RETIRO_TIENDA` (bug previo) |
+| 5 | `save()` del admin sin `try/catch` | El error se perdía como *unhandled rejection*: el vendedor creería que guardó y el modal no se cerraba |
+| 6 | El admin nunca enviaba `deliveryDetails` | La dirección no era editable y quedaba a un paso de borrarse |
+| 7 | El admin anulaba `deliveryDay`/`deliveryTime` si el tipo no era Metro | Pérdida latente de la fecha de entrega |
+| 8 | `region` fija en "Región Metropolitana" con comuna de texto libre | **Dato falso** guardado y mostrado al cliente (mensaje de WhatsApp) y al vendedor. Se eliminó el campo: la comuna basta |
+| 9 | La pantalla "Pedido enviado" siempre confirmaba "en tu estación de metro" | Falso para pedidos a domicilio |
+| 10 | El Dashboard etiquetaba los pedidos a domicilio como "Retiro tienda" | El vendedor no veía la dirección al revisar los pedidos pendientes |
+| 11 | El FAQ decía "al finalizar la compra te cotizamos la tarifa" | Contradecía al carrito (tarifa fija visible) y a las políticas legales. Se publica además como JSON-LD `FAQPage` |
+| 12 | El radiogroup del selector de entrega sin roving tabindex ni flechas | El patrón ARIA se anunciaba pero las flechas no hacían nada. Ahora: flechas, Home/End, `tabindex` rotativo e indicador no cromático del estado activo |
+| 13 | El JSON-LD declaraba solo la tarifa S ($4.200) | Google veía una tarifa que no era la máxima posible. Ahora declara S **y** M |
+
+### Bugs corregidos (backend)
+| # | Bug | Impacto |
+|---|---|---|
+| 14 | No se creaba el registro `Delivery` para los pedidos públicos a domicilio | El pedido **no aparecía** en Entregas, Calendario ni el contador de entregas del día, y el vendedor no podía gestionarlo (sin código de entrega, sin "En ruta/Llegó") |
+| 15 | Las plantillas de notificación decían "Te esperamos en *Metro la estación*" | Un cliente de domicilio recibía "¡El repartidor llegó a la estación!" — y en **retiro en tienda** también |
+| 16 | El POS no enviaba la dirección en la orden | El admin mostraba "Domicilio —" sin dirección para las ventas de mostrador |
+| 17 | El recordatorio push decía siempre "🚇 Entrega en X min · Metro {estación}" | Mostraba "Metro " vacío en los envíos a domicilio |
+
+### Decisiones tomadas
+- **Se eliminó el campo `region`** en lugar de mantenerlo: con comuna de texto libre no
+  se puede saber la región sin inventar un listado de comunas. El pedido lleva
+  dirección + comuna, que es lo que el vendedor necesita.
+- El perfil del cliente **conserva los datos de la otra modalidad** al cambiar entre
+  compras (guardar un pedido a domicilio no borra la estación de Metro, ni al revés).
+- El tipo de entrega real (`METRO` / `RETIRO_TIENDA` / `ENVIO_DOMICILIO`) se usa en
+  todo el admin, con normalización del valor legado `STORE`.
+- Los **títulos SEO** se dejaron intactos a propósito: no son falsos y cambiarlos altera
+  el posicionamiento. Se actualizaron las descripciones.
+
+### Verificación ejecutada
+- Web: `npx tsc --noEmit`, `npm run build`, `npx jest` (**93/93**), `npx eslint`: sin
+  errores ni warnings.
+- Backend: `npx tsc --noEmit -p tsconfig.json`, `npm test` (**132/132**).
+- Accesibilidad del selector medida con Chrome DevTools Protocol
+  (`scripts/check-radiogroup.mjs`): `tabindex` rotativo `["0","-1"]`, las flechas
+  mueven foco y selección, Home/End correctos.
+- Persistencia del perfil verificada en navegador real (`scripts/check-profile.mjs`):
+  con un perfil de domicilio guardado, el carrito precarga método, dirección, comuna
+  y talla.
+- Flujo de compra reverificado: total **$31.700** en domicilio (27.500 + 4.200).
+
+### Archivos modificados
+Web: `src/lib/store.ts`, `src/lib/whatsapp.ts`, `src/lib/api.ts`, `src/lib/policies.ts`,
+`src/lib/blue-express.test.ts`, `src/lib/seo/merchant-config.ts` (+ test),
+`src/components/layout/CartDrawer.tsx`, `src/components/admin/EditOrderModal.tsx`,
+`src/components/admin/Resumen.tsx`, `src/components/admin/Entregas.tsx`,
+`src/components/admin/NotificationButton.tsx`, `src/components/pos/Pos.tsx`,
+`src/components/home/FAQ.tsx`, `src/types/index.ts`, `src/types/admin.ts`.
+Backend: `backend/src/orders/orders.service.ts` (+ spec),
+`backend/src/delivery/notification.service.ts` (+ spec nuevo),
+`backend/src/delivery/delivery.service.ts`.
+
+### Capturas
+`docs/capturas/audit-carrito-390.png`, `audit-carrito-1280.png`.
+
+### Pendiente / requiere validación humana
+- **El backend hay que desplegarlo**: los cambios de `backend/` (creación de la
+  entrega a domicilio y plantillas de notificación) no surten efecto hasta que
+  Render despliegue la API.
+- **Abrir la cuenta de Blue Express**: hasta registrarse en `app.bluex.cl` no se
+  pueden generar etiquetas ni despachar. La opción de domicilio está publicada en
+  el sitio pero no es operable sin esto.
+- Medir el peso real de cada producto para asignar la talla automáticamente.
+- Preexistentes fuera del alcance: `updateOrder` no sincroniza el registro
+  `Delivery` cuando se cambia la estación/fecha; `returnOrder` no cancela la
+  entrega asociada; dos warnings de `react-hooks/exhaustive-deps` en el POS
+  (`Pos.tsx:311` y `:449`).
+
 ### Siguiente paso
-Push a producción de los commits de esta sesión y verificación en vivo.
+Push a producción del frontend y despliegue del backend, luego verificación en vivo
+del flujo de domicilio.
