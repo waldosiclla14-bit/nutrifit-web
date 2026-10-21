@@ -13,14 +13,15 @@ describe('OrdersService', () => {
     $transaction: jest.Mock;
     order: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock; findMany: jest.Mock; count: jest.Mock; aggregate: jest.Mock; groupBy: jest.Mock; delete: jest.Mock; deleteMany: jest.Mock };
     productVariant: { findMany: jest.Mock; findUnique: jest.Mock };
-    customer: { update: jest.Mock };
+    customer: { update: jest.Mock; findFirst: jest.Mock };
     cashMovement: { create: jest.Mock };
     cashRegister: { findUnique: jest.Mock };
     auditLog: { create: jest.Mock };
     inventoryMovement: { create: jest.Mock; deleteMany: jest.Mock };
     orderItem: { deleteMany: jest.Mock; groupBy: jest.Mock };
-    delivery: { deleteMany: jest.Mock };
+    delivery: { deleteMany: jest.Mock; create: jest.Mock };
     deliveryAuditLog: { deleteMany: jest.Mock };
+    metroStation: { findFirst: jest.Mock };
     coupon: { updateMany: jest.Mock };
   };
 
@@ -44,14 +45,15 @@ describe('OrdersService', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
-      customer: { update: jest.fn() },
+      customer: { update: jest.fn(), findFirst: jest.fn() },
       cashMovement: { create: jest.fn() },
       cashRegister: { findUnique: jest.fn() },
       auditLog: { create: jest.fn() },
       inventoryMovement: { create: jest.fn(), deleteMany: jest.fn() },
       orderItem: { deleteMany: jest.fn(), groupBy: jest.fn() },
-      delivery: { deleteMany: jest.fn() },
+      delivery: { deleteMany: jest.fn(), create: jest.fn() },
       deliveryAuditLog: { deleteMany: jest.fn() },
+      metroStation: { findFirst: jest.fn() },
       coupon: { updateMany: jest.fn() },
     };
 
@@ -210,6 +212,80 @@ describe('OrdersService', () => {
           total: -500,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('auto-creación de Delivery según el tipo de entrega', () => {
+    const item = {
+      productId: 'p1',
+      variantId: null,
+      productName: 'P',
+      variantName: '',
+      sku: 'S',
+      unitPrice: 1000,
+      quantity: 1,
+      total: 1000,
+    };
+
+    beforeEach(() => {
+      prisma.$queryRaw
+        .mockResolvedValueOnce([{ next: 1 }])
+        .mockResolvedValueOnce([{ max_num: BigInt(0) }]);
+      prisma.$executeRaw.mockResolvedValue(undefined);
+      prisma.order.findUnique.mockResolvedValue(null);
+      prisma.productVariant.findMany.mockResolvedValue([]);
+      prisma.productVariant.findUnique.mockResolvedValue(null);
+      prisma.customer.findFirst = jest.fn().mockResolvedValue({ id: 'c1' });
+      prisma.delivery.create = jest.fn().mockResolvedValue({ id: 'del-1' });
+      prisma.metroStation.findFirst = jest.fn().mockResolvedValue(null);
+    });
+
+    it('crea la entrega para un pedido a domicilio, con la dirección y sin estación', async () => {
+      prisma.$transaction.mockResolvedValue([
+        { id: 'order-1', orderNumber: 'NF-000001', deliveryType: 'ENVIO_DOMICILIO' },
+      ]);
+
+      await service.create({
+        items: [item],
+        customerId: 'c1',
+        customerName: 'Ana Pérez',
+        customerPhone: '912345678',
+        deliveryType: 'ENVIO_DOMICILIO',
+        deliveryDetails: 'Av. Siempre Viva 742, Ñuñoa',
+        paymentMethod: 'EFECTIVO',
+        subtotal: 1000,
+        total: 1000,
+      });
+
+      // La creación de la entrega es asíncrona (fire and forget).
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(prisma.delivery.create).toHaveBeenCalledTimes(1);
+      const payload = prisma.delivery.create.mock.calls[0][0].data;
+      expect(payload.deliveryType).toBe('ENVIO_DOMICILIO');
+      expect(payload.address).toBe('Av. Siempre Viva 742, Ñuñoa');
+      expect(payload.stationId).toBeNull();
+    });
+
+    it('no crea entrega para un retiro en tienda', async () => {
+      prisma.$transaction.mockResolvedValue([
+        { id: 'order-2', orderNumber: 'NF-000002', deliveryType: 'RETIRO_TIENDA' },
+      ]);
+
+      await service.create({
+        items: [item],
+        customerId: 'c1',
+        customerName: 'Ana Pérez',
+        customerPhone: '912345678',
+        deliveryType: 'RETIRO_TIENDA',
+        paymentMethod: 'EFECTIVO',
+        subtotal: 1000,
+        total: 1000,
+      });
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(prisma.delivery.create).not.toHaveBeenCalled();
     });
   });
 

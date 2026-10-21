@@ -334,6 +334,8 @@ export function Entregas({ token }: { token: string }) {
                           meetingPoint: d.meetingPoint,
                           deliveryCode: d.deliveryCode,
                           commune: d.station?.commune,
+                          deliveryType: d.deliveryType,
+                          address: d.address,
                           status: d.status,
                         }}
                       />

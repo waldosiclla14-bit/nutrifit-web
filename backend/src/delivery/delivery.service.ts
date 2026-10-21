@@ -192,6 +192,8 @@ export class DeliveryService {
       customerPhone: delivery.order?.customerPhone,
       stationName: delivery.station?.name,
       lineName: delivery.station?.lineName,
+      deliveryType: delivery.deliveryType,
+      address: delivery.address,
       deliveryDate: delivery.deliveryDate,
       windowStart: delivery.windowStart,
       windowEnd: delivery.windowEnd,
@@ -260,6 +262,8 @@ export class DeliveryService {
         customerPhone: updated.order?.customerPhone,
         stationName: updated.station?.name,
         lineName: updated.station?.lineName,
+        deliveryType: updated.deliveryType,
+        address: updated.address,
         deliveryDate: updated.deliveryDate,
         windowStart: updated.windowStart,
         windowEnd: updated.windowEnd,
@@ -717,9 +721,13 @@ export class DeliveryService {
         continue;
       }
       const label = `${(d as any).order?.orderNumber || ''} · ${(d as any).order?.customerName || ''}`.trim();
+      const isDomicilio = (d as any).deliveryType === 'ENVIO_DOMICILIO';
+      const destino = isDomicilio
+        ? (d as any).address || 'Domicilio'
+        : `Metro ${(d as any).station?.name || ''}`;
       await this.push.broadcast({
-        title: `🚇 Entrega en ${Math.max(0, diff)} min`,
-        body: `${label} — Metro ${(d as any).station?.name || ''} ${(d as any).windowStart || ''}`.trim(),
+        title: `${isDomicilio ? '🏠' : '🚇'} Entrega en ${Math.max(0, diff)} min`,
+        body: `${label} — ${destino} ${(d as any).windowStart || ''}`.trim(),
         url: '/admin',
       });
       await this.audit(d.id, 'REMINDER_SENT', null, { minutesBefore: diff });
