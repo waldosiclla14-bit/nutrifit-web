@@ -106,3 +106,73 @@ WhatsApp, ficha, packs).
 
 ### Siguiente paso
 Deploy de los commits de conversión y verificación en producción.
+
+---
+
+## Sesión: envío a domicilio con Blue Express
+
+### Objetivo
+Agregar una segunda opción de entrega en el carrito: **envío a domicilio con Blue
+Express**, además del retiro en Metro ya existente.
+
+### Decisiones tomadas
+- **Solo domicilio** (sin retiro en Punto Blue Express) y **cobro al cliente** de la tarifa.
+- **Alcance inicial**: Santiago (Región Metropolitana), tallas **S** ($4.200) y **M**
+  ($4.800). Comuna de texto libre: si el cliente está en región, la tarifa se confirma
+  por WhatsApp.
+- **Tarifas**: tabla oficial de Blue Express (entrega a domicilio, misma región), consultada
+  el 2026-10-20 en `blue.cl/emprendedores/plataforma-emprendedores`. Registradas en
+  `src/lib/policies.ts` con su fuente y fecha.
+- **Tallas sin peso real por producto**: el cliente elige la talla (S hasta 3 kg, M hasta
+  6 kg) porque el catálogo no tiene pesos. Queda pendiente medir cada producto.
+- **Sin integración con la API de Blue Express** en esta fase: se cotiza y se confirma por
+  WhatsApp.
+- **El pedido llega al backend como `deliveryType: 'ENVIO_DOMICILIO'`** (mismo enum que el
+  POS: `METRO` / `RETIRO_TIENDA` / `ENVIO_DOMICILIO`).
+- **La dirección viaja en `Order.deliveryDetails`**: el modelo Prisma `Order` no tiene
+  columnas de dirección (esas están en el modelo `Delivery`, que solo se crea para Metro),
+  así que se usó el campo de texto libre existente, sin migración.
+- **El admin muestra "Domicilio"** con la dirección; antes mostraba "Retiro tienda" para
+  cualquier tipo distinto de Metro.
+- **JSON-LD alineado**: `SHIPPING_BLUE_FEE` pasó de $4.000 a $4.200 (talla S) para que
+  Google declare la misma tarifa que el checkout.
+
+### Archivos creados/modificados
+- `src/lib/policies.ts`: tarifas `BLUE_DOMICILIO_SANTIAGO` (S/M) con fuente y fecha;
+  `SHIPPING_BLUE_FEE` alineado a $4.200.
+- `src/types/index.ts`: `DeliveryMethod`, `BlueSize`; `Order` y `CustomerProfile` con
+  `deliveryMethod`, `address`, `comuna`, `region`, `blueSize`.
+- `src/context/CartContext.tsx`: estado `deliveryMethod`/`blueSize`; `shipping` deja de ser
+  fijo y depende del método (Metro = `settings.shipping`; domicilio = tarifa Blue por talla).
+- `src/components/layout/CartDrawer.tsx`: selector de método de entrega, campos de
+  domicilio, selector de talla, precio de envío dinámico, validación condicional.
+- `src/lib/whatsapp.ts`: el mensaje distingue entrega en Metro y domicilio (dirección,
+  comuna, tamaño del paquete).
+- `src/lib/api.ts`: `deliveryType` según método; dirección en `deliveryDetails`.
+- `src/types/admin.ts`, `src/components/admin/Ordenes.tsx`: mostrar domicilio y dirección.
+- `src/lib/blue-express.test.ts` (nuevo), `src/context/CartContext.test.tsx`: tests.
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
+- `npx jest`: **90/90** (10 suites; 12 tests nuevos).
+- En local (Chrome vía CDP, `scripts/capture-cart.mjs`): con un producto de $27.500,
+  el total da **$28.500** en Metro ($1.000) y **$31.700** en domicilio talla S ($4.200).
+  El radio "Envío a domicilio" queda con `aria-checked="true"`.
+
+### Capturas
+`docs/capturas/blue-carrito-390.png`, `blue-carrito-1280.png`, `blue-carrito-metro-1280.png`.
+
+### Pendiente / requiere validación humana
+- **Medir el peso real de cada producto** para asignar la talla automáticamente y dejar de
+  pedirla al cliente.
+- **Contrato con Blue Express**: la tarifa aplicada es la tarifa pública; confirmar con el
+  contrato comercial si hay precio negociado.
+- **Cobertura a regiones**: hoy la tarifa de referencia es Santiago. Si se amplía, revisar
+  la tabla oficial completa y `SHIPPING_ZONES` del JSON-LD.
+- **Integración real con Blue Express** (generación de etiqueta y seguimiento) queda para
+  una fase aparte; hoy se coordina por WhatsApp.
+- Los pedidos a domicilio **no aparecen en el tablero de Entregas** (ese tablero usa el
+  modelo `Delivery`, que solo se crea para Metro). Se ven en Órdenes.
+
+### Siguiente paso
+Decidir push a producción y revisar el flujo de domicilio en el admin.
