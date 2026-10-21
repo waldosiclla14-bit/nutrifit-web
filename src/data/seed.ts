@@ -840,10 +840,105 @@ export const PRODUCT_SKUS: Record<number, string> = {
   37: 'NF-PROT-FNL-WHEY-947G',
 };
 
+/**
+ * EMPAQUE PARA EL CÁLCULO DE LA TALLA DE ENVÍO (Blue Express)
+ *
+ * Blue Express cobra el mayor entre el peso físico y el peso volumétrico
+ * ((largo x ancho x alto) / 4000), y reclasifica solo el envío a la talla
+ * siguiente si el paquete la supera. Por eso hay que declarar la talla real.
+ *
+ * Datos provistos por el dueño (2026-10-21):
+ *  - "Frascos de pastillas: disponibles en capacidades que van desde 15 ml
+ *    hasta 100 ml."
+ *  - "Las dimensiones de un envase de 1 kg de plástico para proteínas pueden
+ *    variar, pero aquí hay algunas medidas comunes: envase de proteína en
+ *    polvo: mide aproximadamente 139.09 x 120 mm."
+ *
+ * Interpretación del envase de proteína: 139,09 mm de diámetro x 120 mm de
+ * alto (caja envolvente 13,9 x 13,9 x 12 cm). Es la lectura que hace
+ * cuadrar el volumen con 1 kg de polvo (~1,8 L a densidad ~0,6 kg/L).
+ *
+ * PESO: es el peso del contenido más el envase, no el contenido solo.
+ * PENDIENTE: confirmar con una báscula y una cinta métrica los formatos que
+ * aquí no están (bolsas de polvo, batidora) y cargar las medidas reales.
+ */
+type Packaging = {
+  weightKg: number;
+  packageDims: { length: number; width: number; height: number };
+};
+
+/** Envase de proteína en polvo de 1 kg (plástico). */
+const TUB_PROTEIN_1KG: Packaging = {
+  weightKg: 1.1,
+  packageDims: { length: 13.9, width: 13.9, height: 12 },
+};
+
+/** Frasco de pastillas de 60 a 90 cápsulas (capacidad 100 ml). */
+const BOTTLE_PILLS: Packaging = {
+  weightKg: 0.2,
+  packageDims: { length: 5.5, width: 5.5, height: 12 },
+};
+
+/** Bolsa de polvo (creatina 300 g / 1 kg). Sin medidas: aproximación conservadora. */
+const BAG_POWDER: Packaging = {
+  weightKg: 0.45,
+  packageDims: { length: 18, width: 12, height: 5 },
+};
+
+/** Botalla batidora 700 ml. */
+const SHAKER_BOTTLE: Packaging = {
+  weightKg: 0.25,
+  packageDims: { length: 8, width: 8, height: 26 },
+};
+
+const PACKAGING_BY_PRODUCT: Record<number, Packaging> = {
+  // Proteína en polvo en envase plástico (mismo formato de 1 kg).
+  4: TUB_PROTEIN_1KG, // FullEnergic 100% Whey Protein 1kg
+  6: TUB_PROTEIN_1KG, // FullEnergic 100% Vegan Protein Cookies & Cream 1kg
+  32: TUB_PROTEIN_1KG, // FNL Sport Nutrition Whey Protein Woman
+  33: TUB_PROTEIN_1KG, // FNL Vegan Protein 900g
+  34: TUB_PROTEIN_1KG, // Ultimate Nutrition ProStar Whey 5 Lb
+  36: TUB_PROTEIN_1KG, // OstroVit 100% Whey Protein 700g
+  37: TUB_PROTEIN_1KG, // Whey Protein FNL 947g
+
+  // Polvo en bolsa.
+  7: BAG_POWDER, // FullEnergic Creatina 300g
+  22: { ...BAG_POWDER, weightKg: 1.15 }, // FNL Creatina Monohidratada 1kg
+  31: BAG_POWDER, // Eco Naturales Creatina Monohidratada 300g
+
+  // Frascos de pastillas.
+  8: BOTTLE_PILLS,
+  9: BOTTLE_PILLS,
+  10: BOTTLE_PILLS,
+  11: BOTTLE_PILLS,
+  12: BOTTLE_PILLS,
+  13: BOTTLE_PILLS,
+  14: BOTTLE_PILLS,
+  15: BOTTLE_PILLS,
+  16: BOTTLE_PILLS,
+  17: BOTTLE_PILLS,
+  18: BOTTLE_PILLS,
+  19: BOTTLE_PILLS,
+  20: BOTTLE_PILLS,
+  21: BOTTLE_PILLS,
+  23: BOTTLE_PILLS,
+  24: BOTTLE_PILLS,
+  25: BOTTLE_PILLS,
+  26: BOTTLE_PILLS,
+  27: BOTTLE_PILLS,
+  28: BOTTLE_PILLS,
+  29: BOTTLE_PILLS,
+  30: BOTTLE_PILLS,
+
+  // Batidora.
+  35: SHAKER_BOTTLE,
+};
+
 export const PRODUCTS: Product[] = PRODUCT_RAW.map((p) => ({
   ...p,
   slug: slugify(p.name),
   ...(PRODUCT_SKUS[p.id] ? { sku: PRODUCT_SKUS[p.id] } : {}),
+  ...(PACKAGING_BY_PRODUCT[p.id] ? { ...PACKAGING_BY_PRODUCT[p.id] } : {}),
 }));
 
 // Marcas reales derivadas del catálogo (fuente única). Ordenadas por cantidad

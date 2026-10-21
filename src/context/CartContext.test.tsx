@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { CartProvider, useCart } from './CartContext';
 import { PRODUCTS } from '@/data/seed';
 import { BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
-import { BLUE_DEFAULT_SIZE } from '@/lib/blue-express';
+import { BLUE_DEFAULT_SIZE, sizeForOrder } from '@/lib/blue-express';
 import { DEFAULT_SETTINGS } from '@/lib/store';
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -159,7 +159,7 @@ describe('CartContext.shipping según método de entrega', () => {
     );
   });
 
-  it('la talla la determina el local, no el cliente', () => {
+  it('la talla la determina el local a partir del empaque, no el cliente', () => {
     const { result } = renderHook(() => useCart(), { wrapper });
     addProduct(result);
 
@@ -167,9 +167,11 @@ describe('CartContext.shipping según método de entrega', () => {
       result.current.setDeliveryMethod('domicilio');
     });
 
-    // Sin peso/medidas conocidos en el catálogo se usa la talla por defecto.
-    expect(result.current.blueSize).toBe(BLUE_DEFAULT_SIZE);
-    expect(result.current.shipping).toBe(BLUE_DOMICILIO_SANTIAGO[BLUE_DEFAULT_SIZE]);
+    // El catálogo tiene peso y medidas reales: la talla se calcula sola.
+    const product = PRODUCTS[0];
+    const expected = sizeForOrder([{ productId: product.id, quantity: 1 }], PRODUCTS);
+    expect(result.current.blueSize).toBe(expected);
+    expect(result.current.shipping).toBe(BLUE_DOMICILIO_SANTIAGO[expected]);
   });
 
   it('no cobra envío con el carrito vacío', () => {

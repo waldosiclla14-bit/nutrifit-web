@@ -47,10 +47,19 @@ export function volumetricWeight(dims: PackageDims): number {
 
 /**
  * Peso facturable de Blue Express: el mayor entre el físico y el volumétrico.
+ *
+ * Se redondea a 2 decimales: los acumulados de peso generan errores de coma
+ * flotante (3 botes de 1,1 kg dan 3,3000000000000003) y en el límite exacto
+ * de una talla eso clasificaría el paquete en la talla equivocada.
  */
 export function billableWeight(weightKg: number, dims?: PackageDims): number {
-  if (!dims) return weightKg;
-  return Math.max(weightKg, volumetricWeight(dims));
+  const physical = weightKg;
+  if (!dims) return round2(physical);
+  return round2(Math.max(physical, volumetricWeight(dims)));
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -83,27 +92,80 @@ export function sizeForProduct(product: {
   return sizeForWeight(billableWeight(product.weightKg, product.packageDims));
 }
 
+/** Holgura que se deja al embalar (cm) por lado, para no subestimar la caja. */
+const PACKING_ALLOWANCE_CM = 2;
+
+export type OrderPackage = {
+  /** Peso total del contenido y su envase (kg). */
+  weightKg: number;
+  /** Caja que envuelve todo el pedido (cm). */
+  dims: PackageDims;
+  /** Peso facturable de Blue: el mayor entre físico y volumétrico. */
+  billableKg: number;
+  /** Talla que corresponde a ese peso facturable. */
+  size: BlueSize;
+};
+
 /**
- * Talla de un pedido: la mayor entre las tallas de los productos, porque van
- * en el mismo paquete. Si algún producto no tiene peso/medidas conocidos se
- * aplica la talla por defecto del local, que es la más conservadora.
+ * Calcula el peso y la caja de un pedido completo.
+ *
+ * La caja se estima con la base más grande (largo x ancho máximos) y la altura
+ * acumulada de los productos, más una holgura de embalaje. El volumen
+ * resultante es equivalente al de una caja real con esos productos, y el peso
+ * físico suele dominar: es el que decide la talla en la mayoría de los casos.
+ *
+ * Si algún producto no tiene peso/medidas conocidos se usa la talla por
+ * defecto del local, que es la más conservadora.
+ */
+export function orderPackage(
+  items: { productId: number; quantity: number }[],
+  products: { id: number; weightKg?: number; packageDims?: PackageDims }[],
+): OrderPackage {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  let weightKg = 0;
+  let length = 0;
+  let width = 0;
+  let height = 0;
+  let unknown = false;
+
+  for (const item of items) {
+    const product = byId.get(item.productId);
+    if (!product || typeof product.weightKg !== 'number' || !product.packageDims) {
+      unknown = true;
+      continue;
+    }
+    const qty = Math.max(1, item.quantity);
+    weightKg += product.weightKg * qty;
+    length = Math.max(length, product.packageDims.length);
+    width = Math.max(width, product.packageDims.width);
+    height += product.packageDims.height * qty;
+  }
+
+  if (unknown || weightKg === 0) {
+    return {
+      weightKg: 0,
+      dims: { length: 0, width: 0, height: 0 },
+      billableKg: 0,
+      size: BLUE_DEFAULT_SIZE,
+    };
+  }
+
+  const dims: PackageDims = {
+    length: length + PACKING_ALLOWANCE_CM,
+    width: width + PACKING_ALLOWANCE_CM,
+    height: height + PACKING_ALLOWANCE_CM,
+  };
+  const billableKg = billableWeight(weightKg, dims);
+  return { weightKg, dims, billableKg, size: sizeForWeight(billableKg) };
+}
+
+/**
+ * Talla de un pedido: la del paquete completo (caja con todo lo que se
+ * envía), no la mayor de cada producto por separado, porque van juntos.
  */
 export function sizeForOrder(
   items: { productId: number; quantity: number }[],
   products: { id: number; weightKg?: number; packageDims?: PackageDims }[],
 ): BlueSize {
-  const byId = new Map(products.map((p) => [p.id, p]));
-  let worst: BlueSize | null = null;
-  for (const item of items) {
-    const product = byId.get(item.productId);
-    const size = product ? sizeForProduct(product) : null;
-    if (size === null) {
-      // Producto sin datos de peso/volumen: no se puede afinar la talla.
-      return BLUE_DEFAULT_SIZE;
-    }
-    if (worst === null || BLUE_SIZE_ORDER.indexOf(size) > BLUE_SIZE_ORDER.indexOf(worst)) {
-      worst = size;
-    }
-  }
-  return worst ?? BLUE_DEFAULT_SIZE;
+  return orderPackage(items, products).size;
 }

@@ -385,3 +385,65 @@ local**, y los reclasificaciones reiterados pueden **suspender la cuenta**.
 
 ### Siguiente paso
 Cargar pesos y medidas en el catálogo y decidir el esquema de cobro del envío.
+
+---
+
+## Sesión: datos reales de empaque y cálculo por pedido
+
+### Objetivo
+El dueño aportó las medidas reales de los empaques para que la talla Blue Express
+sea exacta y no una suposición.
+
+### Datos entregados (2026-10-21)
+- "Frascos de pastillas: disponibles en capacidades que van desde 15 ml hasta 100 ml."
+- "Las dimensiones de un envase de 1 kg de plástico para proteínas pueden variar,
+  pero aquí hay algunas medidas comunes: envase de proteína en polvo: mide
+  aproximadamente **139.09 x 120 mm**."
+
+### Interpretación y cálculo
+- El envase de proteína se interpretó como **13,9 cm de diámetro x 12 cm de alto**
+  (caja envolvente 13,9 x 13,9 x 12 cm). Es la lectura que hace cuadrar el volumen
+  con 1 kg de polvo (~1,8 L a densidad ~0,6 kg/L). **Falta confirmarlo con cinta
+  métrica**: si fuera largo x ancho (y el alto fuera mayor), la talla no cambia,
+  porque el peso físico sigue mandando.
+- Los frascos de pastillas (60 a 90 cápsulas, hasta 100 ml) se modelaron como
+  5,5 x 5,5 x 12 cm y 0,2 kg.
+- Las bolsas de polvo (creatina) y la batidora se modelaron con valores
+  **aproximados y documentados** (sin medidas reales del dueño).
+- Se cargó `weightKg` y `packageDims` en los **33 productos** del catálogo, así que
+  la talla **nunca** cae en el valor por defecto.
+- El cálculo del pedido se hizo sobre la **caja completa** (base máxima x altura
+  acumulada + 2 cm de holgura), no sobre la talla mayor de cada producto: 3 botes de
+  1 kg pesan 3,3 kg y eso ya es **talla M** aunque cada bote por sí solo sea S.
+- Se redondea el peso facturable a 2 decimales: los acumulados de coma flotante
+  (3,3000000000000003) podían tippingar el paquete en el límite exacto de una talla.
+
+### Resultado con los datos reales
+| Pedido | Peso | Talla | Envío |
+|---|---|---|---|
+| 1 bote de proteína 1 kg | 1,1 kg | S | $4.200 |
+| 1 frasco de pastillas | 0,2 kg | S | $4.200 |
+| 2 botes de 1 kg | 2,2 kg | S | $4.200 |
+| whey 1 kg + creatina 300 g | 1,55 kg | S | $4.200 |
+| **3 botes de 1 kg** | 3,3 kg | **M** | $4.800 |
+
+**Corrección importante:** con el default anterior (M) se cobraban $4.800 en
+pedidos que en realidad son talla S. Con los datos reales, un pedido de un solo
+producto cobra $4.200.
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
+- `npx jest`: **112/112** (12 suites; 9 tests nuevos del catálogo real).
+- En navegador real: el carrito con un bote de 1 kg en domicilio da **$31.700**
+  ($27.500 + $4.200, talla S).
+
+### Pendiente / requiere validación humana
+- **Confirmar las medidas con cinta métrica** y el peso con báscula, al menos de:
+  un bote de proteína de 1 kg, una bolsa de creatina de 300 g y la batidora.
+- **Definir el tamaño de la caja de courier** que se usa realmente para despachar:
+  el cálculo asume la caja ajustada al contenido + 2 cm. Si se usa una caja
+  estándar mayor, hay que cargarla.
+- **Confirmar los límites en kg por talla** con la calculadora de `app.bluex.cl`.
+
+### Siguiente paso
+Confirmar las medidas y decidir el esquema de cobro del envío.

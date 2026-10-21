@@ -85,7 +85,7 @@ await send('Page.addScriptToEvaluateOnNewDocument', {
     try {
       localStorage.setItem('nutrifit:cart', JSON.stringify([
         {
-          key: 'demo-1', productId: 1, slug: 'demo', name: 'FullEnergic 100% Whey Protein 1kg',
+          key: 'demo-1', productId: 4, slug: 'demo', name: 'FullEnergic 100% Whey Protein 1kg',
           price: 27500, oldPrice: 32000, discount: 4500, image: '/img/producto1.webp',
           quantity: 1, variant: 'Vainilla'
         }
