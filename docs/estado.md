@@ -424,31 +424,24 @@ sea exacta y no una suposición.
 - Se redondea el peso facturable a 2 decimales: los acumulados de coma flotante
   (3,3000000000000003) podían tippingar el paquete en el límite exacto de una talla.
 
-### La decisión que falta: ¿caja fija o producto suelto?
-Blue Express mide el **paquete que recibe**, así que la caja de courier es la que
-manda, no el producto:
+### La regla final: "suelto y en caja"
+Práctica del local (2026-10-21): **un solo producto va suelto** (el pote sellado, tal
+cual) y **los pedidos de varios productos van en caja**. Como Blue Express mide el
+paquete que recibe, eso fija la tarifa:
 
-| Escenario | 1 whey 1 kg | 1 frasco | 2 whey | 3 whey |
-|---|---|---|---|---|
-| **A) producto en su envase, sin caja** (16x16x23,5) | S · $4.200 | S · $4.200 | S · $4.200 | M · $4.800 |
-| **B) todo en caja fija 30x25x20** (3,75 kg volumétricos) | M · $4.800 | M · $4.800 | M · $4.800 | M · $4.800 |
+| Formato del pedido | Peso | Caja | Facturable | Talla | Envío |
+|---|---|---|---|---|---|
+| 1 whey 1 kg | 1,1 kg | 16x16x23,5 (suelto) | 1,50 kg | S | $4.200 |
+| 1 frasco de pastillas | 0,2 kg | 7,5x7,5x12,5 (suelto) | 0,20 kg | S | $4.200 |
+| 1 creatina 300 g | 0,45 kg | 11x11x17 (suelto) | 0,51 kg | S | $4.200 |
+| 1 batidora 700 ml | 0,2 kg | 11,5x11,5x24 (suelto) | 0,79 kg | S | $4.200 |
+| whey + 1 frasco | 1,3 kg | 25x20x25 (caja) | 3,13 kg | M | $4.800 |
+| whey + creatina | 1,55 kg | 25x20x25 (caja) | 3,13 kg | M | $4.800 |
+| 2 whey 1 kg | 2,2 kg | 30x25x20 (caja) | 3,75 kg | M | $4.800 |
+| 3 whey 1 kg | 3,3 kg | 44x16x23,5 (caja) | 4,14 kg | M | $4.800 |
 
-En el escenario B **incluso un frasco de pastillas sería talla M**, porque la caja
-sola pesa 3,75 kg volumétricos. Se dejó configurado el escenario **A**
-(`COURIER_BOX_CM = null` en `src/lib/blue-express.ts`), que es lo habitual en
-suplementos: el pote sellado se entrega tal cual. Si el local usa caja fija, hay
-que cambiar esa constante (y el precio del envío sube $600 en cada pedido).
-
-### Resultado con los datos reales (escenario A)
-| Pedido | Peso | Talla | Envío |
-|---|---|---|---|
-| 1 bote de proteína 1 kg | 1,1 kg | S | $4.200 |
-| 1 frasco de pastillas | 0,2 kg | S | $4.200 |
-| 1 creatina 300 g | 0,45 kg | S | $4.200 |
-| 1 batidora 700 ml | 0,2 kg | S | $4.200 |
-| whey 1 kg + creatina 300 g | 1,55 kg | S | $4.200 |
-| 2 botes de 1 kg | 2,2 kg | S | $4.200 |
-| **3 botes de 1 kg** | 3,3 kg | **M** | $4.800 |
+**Regla simple para el cliente: $4.200 si es un solo producto, $4.800 si son varios**
+(el volumen de la caja es lo que sube la talla).
 
 **Corrección importante:** con el default anterior (M) se cobraban $4.800 en
 pedidos que en realidad son talla S. Con los datos reales, un pedido de un solo
@@ -456,16 +449,20 @@ producto cobra $4.200.
 
 ### Verificación ejecutada
 - `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
-- `npx jest`: **116/116** (12 suites).
+- `npx jest`: **118/118** (12 suites).
 - En navegador real: el carrito con un bote de 1 kg en domicilio da **$31.700**
   ($27.500 + $4.200, talla S).
 
 ### Pendiente / requiere validación humana
-- **Decidir el empaque real**: ¿el pote va suelto a la courier o todo en una caja
-  fija 30x25x20? Es la diferencia entre $4.200 y $4.800 en cada pedido.
+- **Las cajas de courier son un supuesto**: se configuraron seis tamaños habituales
+  (20x15x10, 25x20x15, 30x20x15, 25x20x25, 30x25x20, 40x30x25) en
+  `COURIER_BOXES_CM`. Hay que cargar **las cajas que el local realmente tiene**:
+  de eso depende que un pedido de varios productos sea talla S ($4.200) o M
+  ($4.800). Por ejemplo, con una caja de 30x20x15 el pedido "whey + 1 frasco"
+  bajaría de M a S.
 - **Confirmar las medidas con cinta métrica** y el peso con báscula del pote de
   whey que vende NutriFit, del pote de creatina y de la batidora.
 - **Confirmar los límites en kg por talla** con la calculadora de `app.bluex.cl`.
 
 ### Siguiente paso
-Definir el empaque y cargar las medidas reales.
+Cargar las cajas reales del local y las medidas de los envases.

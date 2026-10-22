@@ -96,16 +96,33 @@ export function sizeForProduct(product: {
 const PACKING_ALLOWANCE_CM = 2;
 
 /**
- * Caja de courier fija, si se usa una.
+ * Cajas de courier disponibles para los pedidos de varios productos.
  *
- * DECISIÓN DEL LOCAL (importa mucho): Blue Express mide el PAQUETE que recibe.
- *  - `null` → cada producto va en su propio envase (el pote va suelto, sin caja).
- *    Es lo habitual en suplementos: el pote sellado se entrega tal cual.
- *  - `{ length: 30, width: 25, height: 20 }` → todo se manda en una caja
- *    estándar. Ojo: esa caja da 3,75 kg volumétricos (divisor 4.000), así que
- *    **incluso un solo frasco de pastillas sería talla M** y costaría $4.800.
+ * Blue Express mide el PAQUETE que recibe, así que la caja manda sobre el
+ * producto. Práctica del local (2026-10-21): "suelto y en caja" — un solo
+ * producto va suelto (el pote sellado, tal cual) y los pedidos de varios
+ * productos van en caja.
  *
- * Se deja en `null` porque es lo que hace el local; confirmar antes de publicar.
+ * OJO: una caja de 30 x 25 x 20 da 3,75 kg volumétricos (divisor 4.000), así
+ * que **todo lo que vaya en esa caja es talla M** ($4.800), aunque sea un
+ * frasco de pastillas. Si el local tiene cajas más pequeñas, se agregan aquí y
+ * el cálculo baja a talla S ($4.200) en los pedidos que quepan.
+ *
+ * PENDIENTE: cargar las cajas que el local realmente usa.
+ */
+export const COURIER_BOXES_CM: PackageDims[] = [
+  { length: 20, width: 15, height: 10 },
+  { length: 25, width: 20, height: 15 },
+  { length: 30, width: 20, height: 15 },
+  { length: 25, width: 20, height: 25 },
+  { length: 30, width: 25, height: 20 },
+  { length: 40, width: 30, height: 25 },
+];
+
+/**
+ * Caja de courier fija para TODO el pedido, si se usara una sola.
+ * `null` = cada pedido usa la caja más pequeña de `COURIER_BOXES_CM` que lo
+ * contenga (o va suelto si es un solo producto).
  */
 export const COURIER_BOX_CM: PackageDims | null = null;
 
@@ -118,17 +135,25 @@ export type OrderPackage = {
   billableKg: number;
   /** Talla que corresponde a ese peso facturable. */
   size: BlueSize;
+  /** `true` si el pedido va suelto (un solo producto, sin caja). */
+  loose: boolean;
 };
+
+/** ¿Cabe un conjunto de dimensiones dentro de la caja? (admite girar el paquete) */
+export function fitsInBox(dims: PackageDims, box: PackageDims): boolean {
+  const a = [dims.length, dims.width, dims.height].sort((x, y) => x - y);
+  const b = [box.length, box.width, box.height].sort((x, y) => x - y);
+  return a[0] <= b[0] && a[1] <= b[1] && a[2] <= b[2];
+}
 
 /**
  * Calcula el peso y la caja de un pedido completo.
  *
- * La caja se estima con la base más grande (largo x ancho máximos) y la altura
- * acumulada de los productos, más una holgura de embalaje. El volumen
- * resultante es equivalente al de una caja real con esos productos, y el peso
- * físico suele dominar: es el que decide la talla en la mayoría de los casos.
- *
- * Si `COURIER_BOX_CM` está configurado se usa esa caja (y su volumen manda).
+ * - Un solo producto va **suelto**: se mide su propio envase (+ holgura).
+ * - Varios productos van **en caja**: se usa la caja más pequeña de
+ *   `COURIER_BOXES_CM` que los contenga. Si ninguna los contiene, se usa la
+ *   caja ajustada al contenido (más alta), que es conservadora en volumen.
+ * - Si `COURIER_BOX_CM` está configurado, esa caja manda siempre.
  *
  * Si algún producto no tiene peso/medidas conocidos se usa la talla por
  * defecto del local, que es la más conservadora.
@@ -139,9 +164,10 @@ export function orderPackage(
 ): OrderPackage {
   const byId = new Map(products.map((p) => [p.id, p]));
   let weightKg = 0;
-  let length = 0;
-  let width = 0;
-  let height = 0;
+  let rowLength = 0;
+  let rowWidth = 0;
+  let rowHeight = 0;
+  let units = 0;
   let unknown = false;
 
   for (const item of items) {
@@ -151,10 +177,13 @@ export function orderPackage(
       continue;
     }
     const qty = Math.max(1, item.quantity);
+    units += qty;
     weightKg += product.weightKg * qty;
-    length = Math.max(length, product.packageDims.length);
-    width = Math.max(width, product.packageDims.width);
-    height += product.packageDims.height * qty;
+    // Los productos van en una fila (uno al lado del otro), no apilados: es
+    // como se embalan de verdad y evita inflar la altura de la caja.
+    rowLength += product.packageDims.length * qty;
+    rowWidth = Math.max(rowWidth, product.packageDims.width);
+    rowHeight = Math.max(rowHeight, product.packageDims.height);
   }
 
   if (unknown || weightKg === 0) {
@@ -163,24 +192,41 @@ export function orderPackage(
       dims: { length: 0, width: 0, height: 0 },
       billableKg: 0,
       size: BLUE_DEFAULT_SIZE,
+      loose: units <= 1,
     };
   }
 
   const snug: PackageDims = {
-    length: length + PACKING_ALLOWANCE_CM,
-    width: width + PACKING_ALLOWANCE_CM,
-    height: height + PACKING_ALLOWANCE_CM,
+    length: rowLength + PACKING_ALLOWANCE_CM,
+    width: rowWidth + PACKING_ALLOWANCE_CM,
+    height: rowHeight + PACKING_ALLOWANCE_CM,
   };
-  // Si hay caja fija y los productos entran, manda el volumen de la caja.
-  const fitsInCourierBox =
-    COURIER_BOX_CM !== null &&
-    snug.length <= COURIER_BOX_CM.length &&
-    snug.width <= COURIER_BOX_CM.width &&
-    snug.height <= COURIER_BOX_CM.height;
-  const dims = fitsInCourierBox ? COURIER_BOX_CM! : snug;
+
+  // Un solo producto va suelto; varios, en caja.
+  const loose = units <= 1;
+  let dims = snug;
+  if (!loose) {
+    if (COURIER_BOX_CM) {
+      dims = fitsInBox(snug, COURIER_BOX_CM) ? COURIER_BOX_CM : snug;
+    } else {
+      const box = [...COURIER_BOXES_CM]
+        .sort(
+          (a, b) =>
+            a.length * a.width * a.height - b.length * b.width * b.height,
+        )
+        .find((b) => fitsInBox(snug, b));
+      dims = box ?? snug;
+    }
+  }
 
   const billableKg = billableWeight(weightKg, dims);
-  return { weightKg: round2(weightKg), dims, billableKg, size: sizeForWeight(billableKg) };
+  return {
+    weightKg: round2(weightKg),
+    dims,
+    billableKg,
+    size: sizeForWeight(billableKg),
+    loose,
+  };
 }
 
 /**
