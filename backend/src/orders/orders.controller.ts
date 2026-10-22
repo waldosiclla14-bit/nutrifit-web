@@ -61,6 +61,7 @@ export class OrdersController {
     if (!body.customerPhone) {
       throw new HttpException('Se requiere customerPhone para pedidos públicos', 400);
     }
+    delete body.customerId;
     return this.ordersService.create({ ...body, createdById: null });
   }
 

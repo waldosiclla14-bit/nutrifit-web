@@ -384,7 +384,7 @@ export function Productos({
         sku_producto: p.sku || '',
         barcode: p.barcode || '',
         categoria: p.category?.name || '',
-        marca: p.brand || '',
+        marca: typeof p.brand === 'object' && p.brand ? (p.brand as any).name : (p.brandName || p.brand || ''),
         precio_base: p.price ?? '',
         costo_base: p.costPrice ?? '',
         precio_tachado: p.comparePrice ?? '',
