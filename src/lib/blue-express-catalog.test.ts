@@ -6,7 +6,7 @@
  * Ver src/data/seed.ts (PACKAGING_BY_PRODUCT) y src/lib/blue-express.ts.
  */
 import { PRODUCTS } from '@/data/seed';
-import { orderPackage, sizeForOrder, BLUE_DEFAULT_SIZE } from './blue-express';
+import { orderPackage, sizeForOrder, volumetricWeight, BLUE_DEFAULT_SIZE, COURIER_BOX_CM } from './blue-express';
 import { BLUE_DOMICILIO_SANTIAGO } from './policies';
 
 const WHEY_1KG = 4; // FullEnergic 100% Whey Protein 1kg
@@ -30,15 +30,20 @@ describe('empaque del catálogo', () => {
 describe('talla por producto (unidades sueltas)', () => {
   it('un bote de proteína de 1 kg es talla S', () => {
     const pkg = orderPackage([{ productId: WHEY_1KG, quantity: 1 }], PRODUCTS);
-    // Peso volumétrico: 15,9 x 15,9 x 14 = 3,38 kg / 4000 = 0,84 kg.
-    // Facturable = max(1,1 kg físico; 0,84 volumétrico) = 1,1 kg → S.
+    // Caja ajustada: 16 x 16 x 23,5 cm = 6.016 cm³ → volumétrico 1,50 kg.
+    // Facturable = max(1,1 kg físico; 1,50 volumétrico) = 1,50 kg → S.
     expect(pkg.weightKg).toBe(1.1);
-    expect(pkg.billableKg).toBe(1.1);
+    expect(pkg.billableKg).toBeCloseTo(1.5, 1);
     expect(pkg.size).toBe('S');
   });
 
   it('un frasco de pastillas es talla S', () => {
     const pkg = orderPackage([{ productId: OMEGA3, quantity: 1 }], PRODUCTS);
+    expect(pkg.size).toBe('S');
+  });
+
+  it('una creatina 300 g en pote es talla S', () => {
+    const pkg = orderPackage([{ productId: CREATINA_300, quantity: 1 }], PRODUCTS);
     expect(pkg.size).toBe('S');
   });
 });
@@ -69,8 +74,24 @@ describe('talla por pedido (varios productos en el mismo paquete)', () => {
 
   it('la altura de la caja acumula los productos', () => {
     const pkg = orderPackage([{ productId: WHEY_1KG, quantity: 2 }], PRODUCTS);
-    // 2 bystanders de 12 cm + 2 cm de holgura.
-    expect(pkg.dims.height).toBe(26);
+    // 2 potes de 21,5 cm + 2 cm de holgura.
+    expect(pkg.dims.height).toBe(45);
+  });
+});
+
+describe('caja de courier fija (decisión del local)', () => {
+  it('sin caja fija, el paquete es el ajustado al contenido', () => {
+    expect(COURIER_BOX_CM).toBeNull();
+  });
+
+  it('una caja de 30 x 25 x 20 con el divisor 4.000 da 3,75 kg volumétricos', () => {
+    // 30 x 25 x 20 = 15.000 cm³ / 4.000 = 3,75 kg → cualquier pedido sería M.
+    expect(volumetricWeight({ length: 30, width: 25, height: 20 })).toBe(3.75);
+  });
+
+  it('el divisor de Blue Express es 4.000 (confirmado en su guía oficial)', () => {
+    // 30 x 30 x 30 = 27.000 cm³ → 6,75 kg, el ejemplo de la propia guía.
+    expect(volumetricWeight({ length: 30, width: 30, height: 30 })).toBe(6.75);
   });
 });
 

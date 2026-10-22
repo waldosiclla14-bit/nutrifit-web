@@ -844,51 +844,53 @@ export const PRODUCT_SKUS: Record<number, string> = {
  * EMPAQUE PARA EL CÁLCULO DE LA TALLA DE ENVÍO (Blue Express)
  *
  * Blue Express cobra el mayor entre el peso físico y el peso volumétrico
- * ((largo x ancho x alto) / 4000), y reclasifica solo el envío a la talla
- * siguiente si el paquete la supera. Por eso hay que declarar la talla real.
+ * ((largo x ancho x alto) / 4.000, divisor confirmado en su guía oficial) y
+ * reclasifica solo el envío a la talla siguiente si el paquete la supera. Por
+ * eso hay que declarar la talla real.
  *
- * Datos provistos por el dueño (2026-10-21):
- *  - "Frascos de pastillas: disponibles en capacidades que van desde 15 ml
- *    hasta 100 ml."
- *  - "Las dimensiones de un envase de 1 kg de plástico para proteínas pueden
- *    variar, pero aquí hay algunas medidas comunes: envase de proteína en
- *    polvo: mide aproximadamente 139.09 x 120 mm."
- *
- * Interpretación del envase de proteína: 139,09 mm de diámetro x 120 mm de
- * alto (caja envolvente 13,9 x 13,9 x 12 cm). Es la lectura que hace
- * cuadrar el volumen con 1 kg de polvo (~1,8 L a densidad ~0,6 kg/L).
+ * Medidas orientativas aportadas por el dueño (2026-10-21), con ejemplos
+ * publicados de cada formato:
+ *  - Whey 1 kg, pote: 14-17 x 14-17 x 21-24 cm. Ejemplos publicados: 14 cm de
+ *    diámetro x 21,5 cm de alto, y 17 x 17 x 23 cm. El diámetro de 13,9 cm que
+ *    dio el dueño corresponde al primero, así que se usa 14 x 14 x 21,5.
+ *  - Creatina 300 g, pote: ~9 x 9 x 15 cm (cambia mucho entre pote y bolsa).
+ *  - Pote de cápsulas: ~5,5 x 5,5 x 10,5 cm (referencia de 120 cápsulas).
+ *  - Shaker: en el catálogo es de 700 ml (Botella Keep Sport Shaker 700 ml),
+ *    no de 500 ml: ~9,5 x 9,5 x 22 cm.
+ *  - "Frascos de pastillas: capacidades desde 15 ml hasta 100 ml."
  *
  * PESO: es el peso del contenido más el envase, no el contenido solo.
  * PENDIENTE: confirmar con una báscula y una cinta métrica los formatos que
- * aquí no están (bolsas de polvo, batidora) y cargar las medidas reales.
+ * aquí están aproximados (bolsas de polvo, batidora) y cargar las medidas
+ * reales del pote de whey que vende NutriFit.
  */
 type Packaging = {
   weightKg: number;
   packageDims: { length: number; width: number; height: number };
 };
 
-/** Envase de proteína en polvo de 1 kg (plástico). */
+/** Pote de proteína en polvo de 1 kg (plástico). */
 const TUB_PROTEIN_1KG: Packaging = {
   weightKg: 1.1,
-  packageDims: { length: 13.9, width: 13.9, height: 12 },
+  packageDims: { length: 14, width: 14, height: 21.5 },
 };
 
-/** Frasco de pastillas de 60 a 90 cápsulas (capacidad 100 ml). */
+/** Pote de creatina 300 g. */
+const POT_CREATINE_300: Packaging = {
+  weightKg: 0.45,
+  packageDims: { length: 9, width: 9, height: 15 },
+};
+
+/** Frasco de pastillas de 60 a 90 cápsulas. */
 const BOTTLE_PILLS: Packaging = {
   weightKg: 0.2,
-  packageDims: { length: 5.5, width: 5.5, height: 12 },
+  packageDims: { length: 5.5, width: 5.5, height: 10.5 },
 };
 
-/** Bolsa de polvo (creatina 300 g / 1 kg). Sin medidas: aproximación conservadora. */
-const BAG_POWDER: Packaging = {
-  weightKg: 0.45,
-  packageDims: { length: 18, width: 12, height: 5 },
-};
-
-/** Botalla batidora 700 ml. */
+/** Batidora de 700 ml del catálogo. */
 const SHAKER_BOTTLE: Packaging = {
-  weightKg: 0.25,
-  packageDims: { length: 8, width: 8, height: 26 },
+  weightKg: 0.2,
+  packageDims: { length: 9.5, width: 9.5, height: 22 },
 };
 
 const PACKAGING_BY_PRODUCT: Record<number, Packaging> = {
@@ -901,10 +903,10 @@ const PACKAGING_BY_PRODUCT: Record<number, Packaging> = {
   36: TUB_PROTEIN_1KG, // OstroVit 100% Whey Protein 700g
   37: TUB_PROTEIN_1KG, // Whey Protein FNL 947g
 
-  // Polvo en bolsa.
-  7: BAG_POWDER, // FullEnergic Creatina 300g
-  22: { ...BAG_POWDER, weightKg: 1.15 }, // FNL Creatina Monohidratada 1kg
-  31: BAG_POWDER, // Eco Naturales Creatina Monohidratada 300g
+  // Polvo en pote o bolsa.
+  7: POT_CREATINE_300, // FullEnergic Creatina 300g
+  22: { ...POT_CREATINE_300, weightKg: 1.15 }, // FNL Creatina Monohidratada 1kg
+  31: POT_CREATINE_300, // Eco Naturales Creatina Monohidratada 300g
 
   // Frascos de pastillas.
   8: BOTTLE_PILLS,

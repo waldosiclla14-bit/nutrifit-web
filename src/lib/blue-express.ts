@@ -95,6 +95,20 @@ export function sizeForProduct(product: {
 /** Holgura que se deja al embalar (cm) por lado, para no subestimar la caja. */
 const PACKING_ALLOWANCE_CM = 2;
 
+/**
+ * Caja de courier fija, si se usa una.
+ *
+ * DECISIÓN DEL LOCAL (importa mucho): Blue Express mide el PAQUETE que recibe.
+ *  - `null` → cada producto va en su propio envase (el pote va suelto, sin caja).
+ *    Es lo habitual en suplementos: el pote sellado se entrega tal cual.
+ *  - `{ length: 30, width: 25, height: 20 }` → todo se manda en una caja
+ *    estándar. Ojo: esa caja da 3,75 kg volumétricos (divisor 4.000), así que
+ *    **incluso un solo frasco de pastillas sería talla M** y costaría $4.800.
+ *
+ * Se deja en `null` porque es lo que hace el local; confirmar antes de publicar.
+ */
+export const COURIER_BOX_CM: PackageDims | null = null;
+
 export type OrderPackage = {
   /** Peso total del contenido y su envase (kg). */
   weightKg: number;
@@ -113,6 +127,8 @@ export type OrderPackage = {
  * acumulada de los productos, más una holgura de embalaje. El volumen
  * resultante es equivalente al de una caja real con esos productos, y el peso
  * físico suele dominar: es el que decide la talla en la mayoría de los casos.
+ *
+ * Si `COURIER_BOX_CM` está configurado se usa esa caja (y su volumen manda).
  *
  * Si algún producto no tiene peso/medidas conocidos se usa la talla por
  * defecto del local, que es la más conservadora.
@@ -150,13 +166,21 @@ export function orderPackage(
     };
   }
 
-  const dims: PackageDims = {
+  const snug: PackageDims = {
     length: length + PACKING_ALLOWANCE_CM,
     width: width + PACKING_ALLOWANCE_CM,
     height: height + PACKING_ALLOWANCE_CM,
   };
+  // Si hay caja fija y los productos entran, manda el volumen de la caja.
+  const fitsInCourierBox =
+    COURIER_BOX_CM !== null &&
+    snug.length <= COURIER_BOX_CM.length &&
+    snug.width <= COURIER_BOX_CM.width &&
+    snug.height <= COURIER_BOX_CM.height;
+  const dims = fitsInCourierBox ? COURIER_BOX_CM! : snug;
+
   const billableKg = billableWeight(weightKg, dims);
-  return { weightKg, dims, billableKg, size: sizeForWeight(billableKg) };
+  return { weightKg: round2(weightKg), dims, billableKg, size: sizeForWeight(billableKg) };
 }
 
 /**

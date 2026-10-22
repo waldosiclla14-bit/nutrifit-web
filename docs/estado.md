@@ -399,17 +399,23 @@ sea exacta y no una suposición.
 - "Las dimensiones de un envase de 1 kg de plástico para proteínas pueden variar,
   pero aquí hay algunas medidas comunes: envase de proteína en polvo: mide
   aproximadamente **139.09 x 120 mm**."
+- Medidas orientativas con ejemplos publicados:
+  | Artículo | Medida orientativa |
+  |---|---|
+  | Whey 1 kg, pote | 14-17 x 14-17 x 21-24 cm (ej.: 14 cm diámetro x 21,5 cm alto; 17x17x23) |
+  | Creatina 300 g, pote | ~9 x 9 x 15 cm |
+  | Pote de cápsulas | ~5,5 x 5,5 x 10,5 cm (referencia 120 cápsulas) |
+  | Shaker 500 ml | ~9 x 9 x 18-20 cm (hasta 24 cm con compartimentos) |
 
 ### Interpretación y cálculo
-- El envase de proteína se interpretó como **13,9 cm de diámetro x 12 cm de alto**
-  (caja envolvente 13,9 x 13,9 x 12 cm). Es la lectura que hace cuadrar el volumen
-  con 1 kg de polvo (~1,8 L a densidad ~0,6 kg/L). **Falta confirmarlo con cinta
-  métrica**: si fuera largo x ancho (y el alto fuera mayor), la talla no cambia,
-  porque el peso físico sigue mandando.
-- Los frascos de pastillas (60 a 90 cápsulas, hasta 100 ml) se modelaron como
-  5,5 x 5,5 x 12 cm y 0,2 kg.
-- Las bolsas de polvo (creatina) y la batidora se modelaron con valores
-  **aproximados y documentados** (sin medidas reales del dueño).
+- El **divisor de Blue Express es 4.000**, confirmado en su guía oficial ("el peso
+  volumétrico se calcula multiplicando alto x largo x ancho y dividiendo por
+  4.000"). No es 5.000.
+- El **shaker del catálogo es de 700 ml** (Botella Keep Sport Shaker 700 ml), no
+  de 500 ml: se modeló con 9,5 x 9,5 x 22 cm.
+- El pote de proteína se modeló como **14 x 14 x 21,5 cm** (el diámetro de 13,9 cm
+  del dueño corresponde al ejemplo de 14 cm de diámetro; la altura de 12 cm que se
+ -guessó al inicio- era incorrecta y se corrigió con la altura de 21,5 cm).
 - Se cargó `weightKg` y `packageDims` en los **33 productos** del catálogo, así que
   la talla **nunca** cae en el valor por defecto.
 - El cálculo del pedido se hizo sobre la **caja completa** (base máxima x altura
@@ -418,13 +424,30 @@ sea exacta y no una suposición.
 - Se redondea el peso facturable a 2 decimales: los acumulados de coma flotante
   (3,3000000000000003) podían tippingar el paquete en el límite exacto de una talla.
 
-### Resultado con los datos reales
+### La decisión que falta: ¿caja fija o producto suelto?
+Blue Express mide el **paquete que recibe**, así que la caja de courier es la que
+manda, no el producto:
+
+| Escenario | 1 whey 1 kg | 1 frasco | 2 whey | 3 whey |
+|---|---|---|---|---|
+| **A) producto en su envase, sin caja** (16x16x23,5) | S · $4.200 | S · $4.200 | S · $4.200 | M · $4.800 |
+| **B) todo en caja fija 30x25x20** (3,75 kg volumétricos) | M · $4.800 | M · $4.800 | M · $4.800 | M · $4.800 |
+
+En el escenario B **incluso un frasco de pastillas sería talla M**, porque la caja
+sola pesa 3,75 kg volumétricos. Se dejó configurado el escenario **A**
+(`COURIER_BOX_CM = null` en `src/lib/blue-express.ts`), que es lo habitual en
+suplementos: el pote sellado se entrega tal cual. Si el local usa caja fija, hay
+que cambiar esa constante (y el precio del envío sube $600 en cada pedido).
+
+### Resultado con los datos reales (escenario A)
 | Pedido | Peso | Talla | Envío |
 |---|---|---|---|
 | 1 bote de proteína 1 kg | 1,1 kg | S | $4.200 |
 | 1 frasco de pastillas | 0,2 kg | S | $4.200 |
-| 2 botes de 1 kg | 2,2 kg | S | $4.200 |
+| 1 creatina 300 g | 0,45 kg | S | $4.200 |
+| 1 batidora 700 ml | 0,2 kg | S | $4.200 |
 | whey 1 kg + creatina 300 g | 1,55 kg | S | $4.200 |
+| 2 botes de 1 kg | 2,2 kg | S | $4.200 |
 | **3 botes de 1 kg** | 3,3 kg | **M** | $4.800 |
 
 **Corrección importante:** con el default anterior (M) se cobraban $4.800 en
@@ -433,17 +456,16 @@ producto cobra $4.200.
 
 ### Verificación ejecutada
 - `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
-- `npx jest`: **112/112** (12 suites; 9 tests nuevos del catálogo real).
+- `npx jest`: **116/116** (12 suites).
 - En navegador real: el carrito con un bote de 1 kg en domicilio da **$31.700**
   ($27.500 + $4.200, talla S).
 
 ### Pendiente / requiere validación humana
-- **Confirmar las medidas con cinta métrica** y el peso con báscula, al menos de:
-  un bote de proteína de 1 kg, una bolsa de creatina de 300 g y la batidora.
-- **Definir el tamaño de la caja de courier** que se usa realmente para despachar:
-  el cálculo asume la caja ajustada al contenido + 2 cm. Si se usa una caja
-  estándar mayor, hay que cargarla.
+- **Decidir el empaque real**: ¿el pote va suelto a la courier o todo en una caja
+  fija 30x25x20? Es la diferencia entre $4.200 y $4.800 en cada pedido.
+- **Confirmar las medidas con cinta métrica** y el peso con báscula del pote de
+  whey que vende NutriFit, del pote de creatina y de la batidora.
 - **Confirmar los límites en kg por talla** con la calculadora de `app.bluex.cl`.
 
 ### Siguiente paso
-Confirmar las medidas y decidir el esquema de cobro del envío.
+Definir el empaque y cargar las medidas reales.
