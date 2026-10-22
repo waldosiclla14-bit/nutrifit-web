@@ -5,8 +5,6 @@ import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { CartProvider, useCart } from './CartContext';
 import { PRODUCTS } from '@/data/seed';
-import { BLUE_DOMICILIO_SANTIAGO } from '@/lib/policies';
-import { BLUE_DEFAULT_SIZE, sizeForOrder } from '@/lib/blue-express';
 import { DEFAULT_SETTINGS } from '@/lib/store';
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -140,46 +138,11 @@ describe('CartContext.shipping según método de entrega', () => {
     const { result } = renderHook(() => useCart(), { wrapper });
     addProduct(result);
 
-    expect(result.current.deliveryMethod).toBe('metro');
     expect(result.current.shipping).toBe(DEFAULT_SETTINGS.shipping);
-  });
-
-  it('aplica la tarifa Blue Express al elegir domicilio', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    addProduct(result);
-
-    act(() => {
-      result.current.setDeliveryMethod('domicilio');
-    });
-
-    const rate = BLUE_DOMICILIO_SANTIAGO[result.current.blueSize];
-    expect(result.current.shipping).toBe(rate);
-    expect(result.current.total).toBe(
-      result.current.subtotal - result.current.activeDiscount + rate,
-    );
-  });
-
-  it('la talla la determina el local a partir del empaque, no el cliente', () => {
-    const { result } = renderHook(() => useCart(), { wrapper });
-    addProduct(result);
-
-    act(() => {
-      result.current.setDeliveryMethod('domicilio');
-    });
-
-    // El catálogo tiene peso y medidas reales: la talla se calcula sola.
-    const product = PRODUCTS[0];
-    const expected = sizeForOrder([{ productId: product.id, quantity: 1 }], PRODUCTS);
-    expect(result.current.blueSize).toBe(expected);
-    expect(result.current.shipping).toBe(BLUE_DOMICILIO_SANTIAGO[expected]);
   });
 
   it('no cobra envío con el carrito vacío', () => {
     const { result } = renderHook(() => useCart(), { wrapper });
-
-    act(() => {
-      result.current.setDeliveryMethod('domicilio');
-    });
 
     expect(result.current.shipping).toBe(0);
   });
