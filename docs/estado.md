@@ -509,3 +509,42 @@ retiro en estación de Metro de Santiago.
 Cuando el dueño decida reactivar el envío a domicilio, restaurar el selector
 en el carrito y conectar el backend de `ENVIO_DOMICILIO` (actualmente listo
 pero sin uso).
+
+---
+
+## Sesión: Fase 6A - Notificaciones push (PWA) de pedidos web
+
+### Objetivo
+Implementar la base del sistema de notificaciones push (Web Push con VAPID) para que el administrador reciba alertas en su dispositivo cuando ocurran eventos de pedidos en la página web.
+
+### Decisiones tomadas
+- **No usar servicios de pago de terceros**: se usa Web Push estándar (VAPID) con la librería `web-push` ya instalada en el backend.
+- **Webhook compartido**: el frontend envía eventos al endpoint `/api/notificaciones/evento` con un secreto compartido (`WEBHOOK_SECRET`), que los reenvía al backend de NutriFit (`/push/evento`).
+- **Anti-duplicado**: la tabla `notificaciones_enviadas` evita notificar dos veces el mismo evento (tipo + referencia).
+- **Preferencias por usuario**: cada usuario puede activar/deshabilitar cada tipo de evento mediante `preferencias_notificacion`.
+- **Mensajes sin datos personales**: las notificaciones no incluyen nombre, teléfono ni dirección del cliente.
+
+### Archivos creados/modificados
+- `public/manifest.webmanifest` (nuevo): manifiesto PWA con iconos 192/512, `display: standalone`, `theme_color`, atajos.
+- `src/app/api/notificaciones/evento/route.ts` (nuevo): endpoint que valida `WEBHOOK_SECRET` y reenvía al backend.
+- `backend/prisma/schema.prisma`: agregadas tablas `PreferenciaNotificacion`, `NotificacionEnviada`; agregado campo `activa` a `PushSubscription`.
+- `backend/src/push/push.service.ts`: agregado método `procesarEventoPedido` y tipo `EventoPedido`.
+- `backend/src/push/push.controller.ts`: endpoint `POST /push/evento` sin JWT (valida secreto compartido).
+- `backend/.env` y `backend/.env.example`: agregadas `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `WEBHOOK_SECRET`.
+- `.env.local` y `.env.example` (frontend): agregada `WEBHOOK_SECRET`.
+
+### Verificación ejecutada
+- `npx tsc --noEmit` (frontend y backend): sin errores.
+- `npm run build` (frontend): compilado exitosamente.
+- `npx jest`: **107/107** (11 suites) en frontend.
+- El servidor backend no se pudo verificar localmente porque no hay PostgreSQL corriendo en el puerto 5433 (necesario para `prisma db push`).
+
+### Pendiente / requiere validación humana
+- **Ejecutar `prisma db push`** cuando haya una base de datos PostgreSQL disponible (local o remota) para crear las tablas `PreferenciaNotificacion` y `NotificacionEnviada`.
+- **Generar claves VAPID** (`npx web-push generate-vapid-keys`) y configurarlas en las variables de entorno del backend y Vercel.
+- **Configurar Database Webhooks** en Supabase/Render para que los eventos de pedidos lleguen a `/api/notificaciones/evento`.
+- **Configurar tareas programadas** (recordatorio 20:00, stock bajo 09:00, resumen diario 21:00, hora Santiago) usando pg_cron de Supabase o cron externo.
+- **Probar en iPhone real**: instalar PWA, aceptar notificaciones, verificar que llegan.
+
+### Siguiente paso
+Sub-fase 6B: webhook de pedidos y eventos `nueva_venta`, `pago_recibido`, `pedido_agendado` con anti-duplicado.
