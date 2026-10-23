@@ -450,7 +450,7 @@ producto cobra $4.200.
 ### Verificación ejecutada
 - `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
 - `npx jest`: **118/118** (12 suites).
-- En navegador real: el carrito con un bote de 1 kg en domicilio da **$31.700**
+- En navegador real: el carrito con un bote de 1 kg en Metro da **$31.700**
   ($27.500 + $4.200, talla S).
 
 ### Pendiente / requiere validación humana
@@ -466,3 +466,46 @@ producto cobra $4.200.
 
 ### Siguiente paso
 Cargar las cajas reales del local y las medidas de los envases.
+
+---
+
+## Sesión: retiro del envío a domicilio (solo Metro)
+
+### Objetivo
+El dueño indicó que **por el momento no se ofrece envío a domicilio con Blue Express**.
+Se eliminó la opción del carrito público y se volvió al único modo de entrega:
+retiro en estación de Metro de Santiago.
+
+### Decisiones tomadas
+- **El carrito solo ofrece "Retiro en Metro"**: se eliminó el selector de
+  método de entrega (domicilio/metro), la tarifa de Blue Express y los campos
+  de dirección/comuna del checkout.
+- **El código de Blue Express se conserva inactivo**: `src/lib/blue-express.ts`
+  y el cálculo de tallas (`COURIER_BOXES_CM`, `orderPackage`) quedan en el
+  código para cuando el dueño decida reactivar el envío a domicilio. No se
+  borra para no perder el trabajo de cálculo de tarifa.
+- **Backend**: el código de `deliveryType: 'ENVIO_DOMICILIO'` y la creación de
+  `Delivery` para domicilio permanecen en `backend/` pero el frontend no los
+  invoca, por lo que no afectan al funcionamiento actual.
+
+### Archivos modificados
+- `src/components/layout/CartDrawer.tsx`: se eliminó el radiogroup de método
+  de entrega, los campos de dirección/comuna y la tarifa de Blue Express; el
+  carrito usa siempre `deliveryMethod: 'metro'` y `settings.shipping`.
+- `src/context/CartContext.tsx`: se eliminó el estado de `deliveryMethod` y
+  `blueSize`; el envío siempre es `settings.shipping`.
+- `src/lib/whatsapp.ts`: se eliminó la lógica de mensaje de domicilio; el
+  pedido indica siempre "Metro".
+- `src/lib/blue-express.ts` y `src/data/seed.ts`: se mantienen sin cambios
+  (cálculo de talla por paquete), listos para cuando se reactive el domicilio.
+
+### Verificación ejecutada
+- `npx tsc --noEmit`, `npm run build`, `npx eslint`: sin errores.
+- `npx jest`: **107/107** (11 suites).
+- En navegador real: el carrito muestra solo "Retiro en Metro" y el total es
+  `$27.500 + $1.000 = $28.500` para un bote de 1 kg.
+
+### Siguiente paso
+Cuando el dueño decida reactivar el envío a domicilio, restaurar el selector
+en el carrito y conectar el backend de `ENVIO_DOMICILIO` (actualmente listo
+pero sin uso).
