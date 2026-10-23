@@ -8,6 +8,20 @@ export type PushPayload = {
   url?: string;
 };
 
+export type EventoPedido = {
+  tipo: 'nueva_venta' | 'pago_recibido' | 'pedido_agendado';
+  referencia: string;
+  pedidoId: string;
+  clienteNombre: string;
+  clienteTelefono: string;
+  monto: number;
+  items: string[];
+  metroLine?: string;
+  metroStation?: string;
+  address?: string;
+  comuna?: string;
+};
+
 @Injectable()
 export class PushService {
   private readonly logger = new Logger(PushService.name);
@@ -96,5 +110,111 @@ export class PushService {
       if (await this.sendTo(s, payload)) sent++;
     }
     return { sent, total: subs.length };
+  }
+
+  /**
+   * Procesa un evento de pedido y envía notificaciones push a los
+   * suscriptores que tengan habilitado ese tipo de evento.
+   *
+   * Reglas:
+   * - Anti-duplicado: usa notificaciones_enviadas (tipo + referencia).
+   * - Respeta preferencias_notificacion por usuario (si no hay registro,
+     se asume todo habilitado).
+   * - No incluye datos personales del cliente en el cuerpo del mensaje.
+   */
+  async procesarEventoPedido(evento: EventoPedido, webhookSecret: string) {
+    // Validar secreto compartido
+    const expectedSecret = process.env.WEBHOOK_SECRET;
+    if (!expectedSecret || webhookSecret !== expectedSecret) {
+      throw new BadRequestException('Webhook secreto inválido');
+    }
+
+    // Anti-duplicado: si ya existe este tipo+referencia, no volver a enviar
+    const yaEnviada = await this.prisma.notificacionEnviada.findUnique({
+      where: { tipo_referencia: { tipo: evento.tipo, referencia: evento.referencia } },
+    });
+    if (yaEnviada) {
+      this.logger.log(`Notificación ya enviada: ${evento.tipo}:${evento.referencia}`);
+      return { enviado: false, motivo: 'ya_enviado' };
+    }
+
+    // Insertar registro de envío (antes de enviar, para evitar duplicados)
+    await this.prisma.notificacionEnviada.create({
+      data: {
+        tipo: evento.tipo,
+        referencia: evento.referencia,
+      },
+    });
+
+    // Obtener suscripciones activas
+    const subs = await this.prisma.pushSubscription.findMany({
+      where: { activa: true },
+    });
+
+    if (subs.length === 0) {
+      return { enviado: false, motivo: 'sin_suscriptores' };
+    }
+
+    // Construir mensaje según tipo de evento
+    const mensaje = this.buildMensaje(evento);
+
+    // Enviar a cada suscripción que tenga habilitado este tipo de evento
+    let sent = 0;
+    let total = 0;
+    for (const sub of subs) {
+      // Verificar preferencia del usuario para este tipo de evento
+      const prefs = await this.prisma.preferenciaNotificacion.findUnique({
+        where: { usuarioId: sub.userId ?? '' },
+      });
+      const habilitado = prefs ? (prefs as any)[evento.tipo] ?? true : true;
+
+      if (!habilitado) continue;
+
+      total++;
+      if (await this.sendTo(sub, { title: mensaje.title, body: mensaje.body, url: mensaje.url })) {
+        sent++;
+      }
+    }
+
+    return { enviado: true, enviadoCount: sent, total };
+  }
+
+  private buildMensaje(evento: EventoPedido): PushPayload {
+    const montoFormateado = evento.monto.toLocaleString('es-CL', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+
+    switch (evento.tipo) {
+      case 'nueva_venta':
+        return {
+          title: `Nueva venta! #${evento.referencia}`,
+          body: `${montoFormateado} · ${evento.items.length} producto(s) · Web`,
+          url: `/pedidos/${evento.pedidoId}`,
+        };
+      case 'pago_recibido':
+        return {
+          title: 'Pago recibido',
+          body: `Venta #${evento.referencia} · $${montoFormateado}`,
+          url: `/pedidos/${evento.pedidoId}`,
+        };
+      case 'pedido_agendado':
+        const entregaInfo = evento.metroStation
+          ? `Metro ${evento.metroStation}`
+          : evento.comuna
+            ? `Comuna ${evento.comuna}`
+            : 'dirección';
+        return {
+          title: 'Pedido agendado',
+          body: `#${evento.referencia} · entrega ${evento.metroLine || ''} ${entregaInfo}`,
+          url: `/pedidos/${evento.pedidoId}`,
+        };
+      default:
+        return {
+          title: 'NutriFit',
+          body: `Nuevo evento: ${evento.tipo}`,
+          url: '/pedidos',
+        };
+    }
   }
 }

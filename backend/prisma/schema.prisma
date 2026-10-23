@@ -946,6 +946,7 @@ model PushSubscription {
   auth      String
   userId    String?
   userAgent String?
+  activa    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -964,3 +965,39 @@ model DeliverySettings {
 
   @@map("delivery_settings")
 }
+
+// ───────────────────────────────────────────────
+// PUSH — Suscripciones y preferencias de notificación
+// ───────────────────────────────────────────────
+
+model PreferenciaNotificacion {
+  id                  String   @id @default(uuid())
+  usuarioId           String   @unique
+  nuevaVenta          Boolean  @default(true)
+  pagoRecibido        Boolean  @default(true)
+  pedidoAgendado      Boolean  @default(true)
+  recordatorioAgendados Boolean  @default(true)
+  stockBajo           Boolean  @default(true)
+  resumenDiario       Boolean  @default(true)
+  silencioDesde       String?  // HH:MM en horario de Santiago
+  silencioHasta       String?  // HH:MM en horario de Santiago
+  creadaEn            DateTime @default(now())
+  actualizadaEn       DateTime @updatedAt
+
+  @@index([usuarioId])
+  @@map("preferencias_notificacion")
+}
+
+model NotificacionEnviada {
+  id          String   @id @default(uuid())
+  tipo        String   // nueva_venta | pago_recibido | pedido_agendado | recordatorio_agendados | stock_bajo | resumen_diario
+  referencia  String   // id de pedido o fecha (yyyy-mm-dd) para los diarios
+  enviadaEn   DateTime @default(now())
+
+  @@unique([tipo, referencia])
+  @@map("notificaciones_enviadas")
+}
+
+// ───────────────────────────────────────────────
+// NUTRIFIT DELIVERY — Configuración
+// ───────────────────────────────────────────────
