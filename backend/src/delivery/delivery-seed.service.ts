@@ -24,6 +24,20 @@ const DEFAULT_SETTINGS = [
   { key: 'reminder_before_minutes', value: 60 },
 ];
 
+/**
+ * Version del seed de estaciones de metro.
+ *
+ * SUBIR ESTA CADENA cada vez que cambie METRO_STATIONS (agregar, quitar o
+ * corregir una estacion). Es lo unico que dispara la resincronizacion.
+ *
+ * Si NO se sube, el arranque asume que la tabla esta al dia y no la toca.
+ */
+const METRO_SEED_VERSION = '2026-10-27.1';
+const METRO_SEED_VERSION_KEY = 'metro_seed_version';
+
+/** Upserts en paralelo por lote. 10 mantiene comodo el pool (connection_limit=5). */
+const UPSERT_CHUNK = 10;
+
 @Injectable()
 export class DeliverySeedService implements OnModuleInit {
   private readonly logger = new Logger(DeliverySeedService.name);
@@ -31,16 +45,72 @@ export class DeliverySeedService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
 
   async onModuleInit() {
-    await this.seedStations();
+    await this.seedStationsIfNeeded();
     await this.seedSettings();
     await this.syncScheduleWindow();
   }
 
+  // --------------------------- estaciones ---------------------------
+
+  /**
+   * Solo sincroniza si la version del seed cambio o si el numero de
+   * estaciones en la tabla no cuadra con el seed.
+   *
+   * Antes: 143 upserts secuenciales en CADA arranque (~96 s).
+   * Ahora: 2 consultas cuando no hay cambios (~1 s).
+   */
+  private async seedStationsIfNeeded() {
+    const esperado = METRO_STATIONS.length;
+    let versionGuardada: string | null = null;
+    let enTabla = 0;
+
+    try {
+      const [row, count] = await Promise.all([
+        this.prisma.config.findUnique({ where: { key: METRO_SEED_VERSION_KEY } }),
+        this.prisma.metroStation.count(),
+      ]);
+      versionGuardada = row?.value ?? null;
+      enTabla = count;
+    } catch (e: any) {
+      // Si la verificacion falla, se sincroniza: es mas seguro que quedarse corto.
+      this.logger.warn(
+        `No se pudo verificar el seed de estaciones, se sincroniza por precaucion: ${e?.message ?? e}`,
+      );
+    }
+
+    if (versionGuardada === METRO_SEED_VERSION && enTabla === esperado) {
+      this.logger.log(
+        `Metro stations al dia (v${METRO_SEED_VERSION}, ${enTabla} estaciones) - sin sincronizar`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `Metro stations sync requerido: version ${versionGuardada ?? 'ninguna'} -> ${METRO_SEED_VERSION}, ` +
+        `en tabla ${enTabla}/${esperado}`,
+    );
+
+    await this.seedStations();
+    await this.saveSeedVersion();
+  }
+
+  private async saveSeedVersion() {
+    try {
+      await this.prisma.config.upsert({
+        where: { key: METRO_SEED_VERSION_KEY },
+        update: { value: METRO_SEED_VERSION },
+        create: { key: METRO_SEED_VERSION_KEY, value: METRO_SEED_VERSION },
+      });
+    } catch (e: any) {
+      this.logger.warn(`No se pudo guardar metro_seed_version: ${e?.message ?? e}`);
+    }
+  }
+
   private async seedStations() {
-    this.logger.log('Syncing metro stations with seed data...');
+    this.logger.log(`Syncing metro stations with seed data (${METRO_STATIONS.length})...`);
 
     // Build set of valid station keys from seed
-    const validKeys = new Set(METRO_STATIONS.map(s => `${s.name}|${s.line}`));
+    const validKeys = new Set(METRO_STATIONS.map((s) => `${s.name}|${s.line}`));
 
     // Remove stations not in seed (old/wrong data)
     const existing = await this.prisma.metroStation.findMany({
@@ -49,7 +119,11 @@ export class DeliverySeedService implements OnModuleInit {
     let removed = 0;
     for (const station of existing) {
       if (!validKeys.has(`${station.name}|${station.line}`)) {
-        await this.prisma.metroStation.delete({ where: { id: station.id } }).catch(() => {});
+        // Individual y tolerante a fallos: Delivery referencia MetroStation,
+        // asi que una estacion con entregas no se puede borrar y debe seguir.
+        await this.prisma.metroStation
+          .delete({ where: { id: station.id } })
+          .catch(() => {});
         removed++;
       }
     }
@@ -57,47 +131,66 @@ export class DeliverySeedService implements OnModuleInit {
       this.logger.log(`Removed ${removed} obsolete stations`);
     }
 
-    // Upsert all stations from seed
+    // Upsert all stations from seed, en lotes paralelos
     let upserted = 0;
-    for (const station of METRO_STATIONS) {
-      try {
-        await this.prisma.metroStation.upsert({
-          where: { name_line: { name: station.name, line: station.line } },
-          update: {
-            lineName: station.lineName,
-            commune: station.commune,
-            latitude: station.latitude,
-            longitude: station.longitude,
-            defaultMeetingPoint: station.defaultMeetingPoint || 'Acceso principal',
-            notes: station.notes || null,
-            sortOrder: station.sortOrder,
-            normalizedName: normalize(station.name),
-            active: true,
-            deliveryEnabled: true,
-          },
-          create: {
-            name: station.name,
-            normalizedName: normalize(station.name),
-            line: station.line,
-            lineName: station.lineName,
-            commune: station.commune,
-            latitude: station.latitude,
-            longitude: station.longitude,
-            active: true,
-            deliveryEnabled: true,
-            defaultMeetingPoint: station.defaultMeetingPoint || 'Acceso principal',
-            notes: station.notes || null,
-            sortOrder: station.sortOrder,
-          },
-        });
-        upserted++;
-      } catch (e: any) {
-        this.logger.warn(`Failed to upsert station ${station.name} (${station.line}): ${e?.message}`);
-      }
+    let failed = 0;
+
+    for (let i = 0; i < METRO_STATIONS.length; i += UPSERT_CHUNK) {
+      const lote = METRO_STATIONS.slice(i, i + UPSERT_CHUNK);
+
+      const resultados = await Promise.all(
+        lote.map((station) =>
+          this.prisma.metroStation
+            .upsert({
+              where: { name_line: { name: station.name, line: station.line } },
+              update: {
+                lineName: station.lineName,
+                commune: station.commune,
+                latitude: station.latitude,
+                longitude: station.longitude,
+                defaultMeetingPoint: station.defaultMeetingPoint || 'Acceso principal',
+                notes: station.notes || null,
+                sortOrder: station.sortOrder,
+                normalizedName: normalize(station.name),
+                active: true,
+                deliveryEnabled: true,
+              },
+              create: {
+                name: station.name,
+                normalizedName: normalize(station.name),
+                line: station.line,
+                lineName: station.lineName,
+                commune: station.commune,
+                latitude: station.latitude,
+                longitude: station.longitude,
+                active: true,
+                deliveryEnabled: true,
+                defaultMeetingPoint: station.defaultMeetingPoint || 'Acceso principal',
+                notes: station.notes || null,
+                sortOrder: station.sortOrder,
+              },
+            })
+            .then(() => true)
+            .catch((e: any) => {
+              failed++;
+              this.logger.warn(
+                `Failed to upsert station ${station.name} (${station.line}): ${e?.message}`,
+              );
+              return false;
+            }),
+        ),
+      );
+
+      upserted += resultados.filter(Boolean).length;
     }
 
-    this.logger.log(`Metro stations synced: ${upserted} upserted, ${removed} removed`);
+    this.logger.log(
+      `Metro stations synced: ${upserted} upserted, ${removed} removed` +
+        (failed > 0 ? `, ${failed} fallidas` : ''),
+    );
   }
+
+  // --------------------------- settings ---------------------------
 
   private async seedSettings() {
     const count = await this.prisma.deliverySettings.count();
