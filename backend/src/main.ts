@@ -67,7 +67,10 @@ async function bootstrap() {
       .setVersion('1.0')
       .addBearerAuth()
       .build();
-    if (process.env.NODE_ENV !== 'production') {
+    // Swagger CERRADO por defecto (fail-closed): solo se publica si
+    // ENABLE_SWAGGER=true de forma explicita. Antes dependia de NODE_ENV, que
+    // en produccion nunca estuvo definido y dejaba /api/docs expuesto.
+    if (process.env.ENABLE_SWAGGER === 'true') {
       const document = SwaggerModule.createDocument(app, config);
       SwaggerModule.setup('api/docs', app, document);
     }
