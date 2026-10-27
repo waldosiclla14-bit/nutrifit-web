@@ -67,6 +67,7 @@ export class TodoistService implements OnModuleInit {
   private projectId: string | null = null;
   private projectName = 'Entregas NutriFit';
   private ready = false;
+  private resolvePromise: Promise<void> | null = null;
 
   constructor(private config: ConfigService) {}
 
@@ -81,13 +82,29 @@ export class TodoistService implements OnModuleInit {
       return;
     }
     this.token = token;
-    try {
-      this.projectId = await this.ensureProject(this.projectName);
-      this.ready = true;
-      this.logger.log(`Todoist habilitado (proyecto=${this.projectName})`);
-    } catch (e: any) {
-      this.logger.error(`Todoist no disponible: ${e?.message}`);
-    }
+    // La resolucion del proyecto es una llamada HTTPS a Todoist. Antes se
+    // esperaba aqui y podia bloquear el arranque hasta 15 s (timeout de req()).
+    // Ahora se lanza en segundo plano: el boot NO la espera.
+    void this.resolveProject();
+  }
+
+  /**
+   * Resuelve el projectId de Todoist una sola vez. Idempotente: llamadas
+   * concurrentes comparten la misma promesa. Nunca lanza.
+   */
+  private resolveProject(): Promise<void> {
+    if (this.resolvePromise) return this.resolvePromise;
+    this.resolvePromise = (async () => {
+      try {
+        this.projectId = await this.ensureProject(this.projectName);
+        this.ready = true;
+        this.logger.log(`Todoist habilitado (proyecto=${this.projectName})`);
+      } catch (e: any) {
+        this.resolvePromise = null; // permite reintento en la proxima llamada
+        this.logger.error(`Todoist no disponible: ${e?.message}`);
+      }
+    })();
+    return this.resolvePromise;
   }
 
   private async req(path: string, init: RequestInit = {}): Promise<any> {
