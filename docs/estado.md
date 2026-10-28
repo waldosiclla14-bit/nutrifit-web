@@ -694,3 +694,43 @@ Ahora vive en `PushWebhookController`, sin guards, y la autorización la hace `p
 ### Siguiente paso
 
 Confirmar el 200 del cron con `CRON_SECRET` real y una entrega de prueba; decidir qué hacer con los textos de envío a domicilio.
+
+---
+
+## Sesión: bugs encontrados verificando el sitio publicado
+
+### Corregidos
+
+| # | Bug | Evidencia | Estado |
+|---|---|---|---|
+| 1 | `addBundle` hacía `p.variants!.indexOf(variant!)` con `variants` opcional | Clic en "Agregar · $27.500" de la portada: `TypeError: Cannot read properties of undefined (reading 'indexOf')`, 0 diálogos, 0 productos | ✅ |
+| 2 | `src/lib/reviews.ts` pedía `/reviews/...` sin el prefijo `/api` | `/reviews/product/<slug>` → 404; `/api/reviews/product/<slug>` → 200. La ficha nunca mostraba reseñas y publicar fallaba | ✅ |
+| 3 | `api/notificaciones/evento` reenviaba a `/push/evento` sin `/api` | 404, encadenado al guard de clase que ya se quitó | ✅ |
+| 4 | `POST /api/push/evento` exigía JWT (`@UseGuards()` vacío no anula los guards de clase) | 401 en el 100% de los envíos | ✅ |
+
+El **#1 rompía el CTA principal de la portada**: el pack más vendido no se podía agregar.
+
+### Verificación en producción (post-deploy)
+
+| Comprobación | Resultado |
+|---|---|
+| Clic en el pack de portada | Carrito abre, **2 productos**, **0 errores** |
+| Ficha de producto | 200, **0 errores de consola** (antes: 404 de reseñas) |
+| `/productos` | 200, 66 tarjetas, 0 desbordamiento horizontal |
+| `/marcas`, `/sobre-nosotros`, `/blog` | 200, 0 errores |
+| `POST /api/push/evento` sin secreto | 400 "Webhook secreto inválido" (ya no 401 de guard) |
+| `npx tsc --noEmit` (frontend y backend) | exit 0 |
+| `npx jest` (frontend / backend) | **112/112** (12 suites) / **151/151** (16 suites) |
+
+### Incoherencia de negocio detectada (no corregida)
+
+El carrito muestra la insignia **"METRO O DOMICILIO — Retiro en Santiago o envío"** y el texto "o envío a domicilio en Santiago", pero los únicos campos son línea y estación de Metro, y el pedido se crea con `deliveryMethod: 'metro'`. Lo mismo en hero, FAQ, barra superior, legal y sobre nosotros.
+
+Según `docs/estado.md` (sesión del 23-oct), el domicilio se retiró a propósito y el selector se restauraría "cuando el dueño decida reactivarlo". Hay dos salidas y ninguna es técnica:
+
+- **reactivar el domicilio** en el carrito (el backend `ENVIO_DOMICILIO` y `src/lib/blue-express.ts` ya están listos);
+- **quitar las menciones de domicilio** del sitio mientras siga desactivado.
+
+### Siguiente paso
+
+Decidir lo del domicilio y confirmar `WEBHOOK_SECRET` y las claves VAPID en Render/Vercel.
