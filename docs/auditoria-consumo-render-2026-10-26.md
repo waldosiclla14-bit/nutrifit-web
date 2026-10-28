@@ -1562,7 +1562,7 @@ nutrifit-api-635n.onrender.com/api/health  → 200
 
 **72 segundos** entre el guardado y el efecto. Eso indica que el build ya estaba hecho y la instancia nueva estaba esperando pasar el health check: en cuanto el sondeo apuntó a `/api/health`, la instancia se marcó sana y Render enrutó el tráfico. **PROBABLE (alta)**, no se pudo leer el evento exacto del deploy.
 
-### 27.5 La prueba que queda pendiente: ¿duerme ya el servicio?
+### 27.5 La prueba: ¿duerme ya el servicio?
 
 Es la hipótesis de §26.6 y el objetivo original de toda la auditoría (las 750 h).
 
@@ -1601,7 +1601,25 @@ El entorno de medición va **113–114 segundos adelantado** respecto al servido
 
 **Descartado también:** no hay caché de por medio. `cf-cache-status: DYNAMIC` tanto con como sin cache-buster (`?cb=<epoch>`), y el campo `time` del cuerpo avanza en cada llamada. Las respuestas son reales y del origen.
 
-**Test corregido en curso:** 22 minutos de silencio (margen de 7 min sobre el umbral) medidos contra la hora del servidor, con una sola petición de medición.
+**Test corregido: 22 minutos de silencio reales** (7 min de margen sobre el umbral), medidos contra la hora del servidor, con una sola petición de medición.
+
+### 27.5.2 Resultado: el servicio NO duerme
+
+Ejecutado el 28-10. Silencio de **22 min 10 s** sin ninguna petición externa. Referencia temporal: header `date` del servidor = `02:37:58 UTC`.
+
+| Medición | Latencia | Respuesta |
+|---|---|---|
+| Primera petición tras el silencio | **1.994 ms** | HTTP 200 · 59 B · `{"status":"ok","db":"ok"}` |
+| Segunda petición (3 s después) | **768 ms** | HTTP 200 · 59 B |
+
+**CONFIRMADO: el servicio no entró en reposo.** Una instancia de Render dormida tarda 25–40 s en la primera respuesta; aquí respondió en **2 s**. El primer acceso pagó ~1,2 s de calentamiento (pool de conexiones, primer hit a la BD), no un arranque de contenedor.
+
+**Consecuencia sobre la hipótesis de §26.6:** el servicio permanece despierto pese a no recibir tráfico de usuarios, y la única fuente de peticiones conocida son los **health checks HTTP de Render**, que sondean la instancia cada pocos segundos. El *path* configurado (`/api/health`) es irrelevante a este efecto: lo que cuenta es que exista un health check HTTP.
+
+**PROBABLE (alta), no CONFIRMADO:** no se puede leer el log de arranque de Render desde aquí, así que "los health checks son la causa" sigue siendo inferencia. Lo que **sí** está confirmado es el hecho: no durmió.
+
+**Corolario práctico:** para que la instancia durmiera habría que **borrar** el `healthCheckPath` y dejar que Render use un sondeo TCP. **No se recomienda** — ver §28.
+
 
 ### 27.6 Estado consolidado
 
@@ -1617,4 +1635,57 @@ El entorno de medición va **113–114 segundos adelantado** respecto al servido
 
 ---
 
-*Última modificación aplicada: A4 (health check → `/api/health`) y despliegue de `f1ee815`, §26–§27. Anteriores: A3.1 (`1546a4a`) y A3.2 + A3b (`9fd7cdd`, §23), A2 (`16c2d00`, §21.6), `keep-alive.yml` deshabilitado (§16). Swagger **cerrado y verificado** (§27.2). Pendiente: prueba de spin-down (§27.5), `NODE_ENV`, caché de build (§26.7), parches P2002, `/api/auth/bootstrap`. A3.3 analizado y **no aplicado** (§23.4). `render.yaml` **no se modificó** (§24.3). Ningún cambio de esquema ni de datos.*
+## 28. Conclusión de cuota: la alarma original no aplicaba
+
+### 28.1 El cálculo que lo cierra
+
+| Dato | Valor |
+|---|---|
+| Horas incluidas | 750 h |
+| Días de un servicio 24/7 que cubren 750 h | 750 / 24 = **31,25 días** |
+| Duración de octubre | **744 h** (31 días) |
+| Consumo real medido | 626,77 h |
+| Proyección a fin de mes | ≈ **720,4 h** (~96 %) |
+| Servicios activos (panel de facturación) | **1** |
+| Pipeline de builds | 7 min / 500 |
+| Ancho de banda | 98 MB / 5 GB |
+
+Un servicio encendido los 31 días del mes consume **744 h como máximo**. Como 744 < 750, **es matemáticamente imposible que un único servicio agote la cuota**.
+
+**CONFIRMADO:** el pico de 626,77 h no era una anomalía. Era el paso normal del tiempo dentro de un mes de 31 días.
+
+**La premisa inicial de esta auditoría —"consumo al 100 % de Render, riesgo de suspensión"— era incorrecta.** El riesgo habría existido con **dos o más** servicios.
+
+### 28.2 Objetivos que quedan descartados
+
+| Objetivo original | Veredicto | Motivo |
+|---|---|---|
+| Reducir horas de instancia | ❌ descartado | La cuota no se agota con 1 servicio |
+| Forzar el spin-down | ❌ descartado | Empeora la UX (25–40 s al primer acceso) por cero beneficio de cuota |
+| Limpiar la caché de build (§26.7) | ❌ descartado | 7 min de 500: irrelevante |
+
+### 28.3 Lo que sí aportó la auditoría
+
+Aunque el objetivo de cuota no existía, el trabajo destapó **fallos reales** que ya están corregidos y desplegados:
+
+| Hallazgo | Impacto real | Estado |
+|---|---|---|
+| A2 — latido del frontend | Peticiones perpetuas desde cada pestaña abierta | ✅ `16c2d00` |
+| A3.1 — seed de 143 upserts por arranque | Arranque lento y carga innecesaria en Supabase | ✅ `1546a4a` |
+| A3.2 — Todoist bloqueando el arranque | Si la API externa fallaba, el arranque se colgaba | ✅ `9fd7cdd` |
+| A3b — Swagger abierto en producción | Exposición pública de la superficie de la API | ✅ `f1ee815` (verificado: 404) |
+| A4 — `healthCheckPath` roto (`/api/docs`) | **Todos los deploys en `update_failed`** | ✅ corregido en el panel |
+
+El hallazgo de mayor valor no fue el consumo: fue el **canal de despliegue roto** (§27), que llevaba tiempo impidiendo publicar backend sin que nadie lo notara.
+
+### 28.4 Riesgo real que queda: un segundo servicio
+
+`backend/render.yaml` declara un servicio **`nutrifit-api-staging`**. Hoy **no existe** (el panel de facturación muestra 1 servicio).
+
+Si alguna vez se activa: 2 × 744 h = **1.488 h/mes** → la cuota de 750 h se agotaría a mitad de mes y los servicios se suspenderían.
+
+**Recomendación:** si se necesita staging, que sea con `autoDeploy: false` y encendido solo durante pruebas — o no usar Render para staging. No crear el servicio sin decidir esto antes.
+
+
+
+*Última modificación aplicada: §28 (conclusión de cuota tras el test de spin-down de 22 min, §27.5.2) y migración `20261028_push_preferencias` en la rama `release/landing-2026-10`. Anteriores: A4 (health check → `/api/health`) y despliegue de `f1ee815`, §26–§27; A3.1 (`1546a4a`) y A3.2 + A3b (`9fd7cdd`, §23); A2 (`16c2d00`, §21.6); `keep-alive.yml` deshabilitado (§16). Swagger **cerrado y verificado** (§27.2). Resultado del spin-down: **el servicio NO duerme** (§27.5.2). Cuota: **no es un riesgo con 1 servicio** (§28). Pendiente: `NODE_ENV`, parches P2002, `/api/auth/bootstrap`, PR #2. A3.3 analizado y **no aplicado** (§23.4). `render.yaml` **no se modificó** (§24.3).*
