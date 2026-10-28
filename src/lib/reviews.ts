@@ -1,9 +1,15 @@
 import type { UserReview } from '@/types';
 import { API_BASE } from '@/lib/api';
 
+// El backend expone las rutas bajo el prefijo global `/api` (main.ts:
+// setGlobalPrefix('api')). Sin ese prefijo la petición llegaba a
+// `/reviews/...`, que no existe: 404 en la ficha de producto y al enviar
+// una reseña. El resto del cliente lo resuelve con el rewrite `/erp`.
+const REVIEWS_URL = `${API_BASE}/api/reviews`;
+
 export async function getProductReviews(productSlug: string): Promise<UserReview[]> {
   try {
-    const res = await fetch(`${API_BASE}/reviews/product/${productSlug}`);
+    const res = await fetch(`${REVIEWS_URL}/product/${productSlug}`);
     if (!res.ok) return [];
     const data = await res.json();
     return (data || []).map((r: any) => ({
@@ -29,7 +35,7 @@ export async function saveReview(
 ): Promise<UserReview> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/reviews`, {
+    res = await fetch(REVIEWS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productSlug, name: name.trim(), rating, text: text.trim(), verified: !!verified }),
