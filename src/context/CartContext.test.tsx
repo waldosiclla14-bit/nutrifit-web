@@ -4,7 +4,7 @@
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { CartProvider, useCart } from './CartContext';
-import { PRODUCTS } from '@/data/seed';
+import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { DEFAULT_SETTINGS } from '@/lib/store';
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -115,6 +115,52 @@ describe('CartContext.addItem', () => {
       result.current.removeItem(key);
     });
     expect(result.current.items).toHaveLength(0);
+  });
+});
+
+describe('CartContext.addBundle', () => {
+  it('agrega el pack de portada sin reventar (producto sin variantes)', () => {
+    // Producción: el botón "Agregar · $27.500" de la portada lanzaba
+    // "Cannot read properties of undefined (reading 'indexOf')" porque
+    // `addBundle` hacía `p.variants!.indexOf(...)` sobre un producto que no
+    // declara variantes. El carrito no se abría y no se agregaba nada.
+    const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
+    expect(pack).toBeDefined();
+
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    expect(() => {
+      act(() => {
+        result.current.addBundle(pack!, { 4: 'Vainilla' });
+      });
+    }).not.toThrow();
+
+    expect(result.current.items.length).toBeGreaterThan(0);
+    for (const item of result.current.items) {
+      expect(typeof item.variantId).toBe('number');
+      expect(item.variantId).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('usa variantId 0 cuando el producto no tiene variantes', () => {
+    const sinVariantes = PRODUCTS.find((p) => !(p.variants?.length) && p.stock > 0);
+    expect(sinVariantes).toBeDefined();
+
+    const bundle = {
+      id: 'pack-test',
+      title: 'Pack de prueba',
+      items: [{ productId: sinVariantes!.id, quantity: 1 }],
+      pricing: 'sum' as const,
+    };
+
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    act(() => {
+      result.current.addBundle(bundle);
+    });
+
+    expect(result.current.items).toHaveLength(1);
+    expect(result.current.items[0].variantId).toBe(0);
   });
 });
 

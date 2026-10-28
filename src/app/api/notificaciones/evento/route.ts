@@ -21,7 +21,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     const body = await req.json();
 
     // 2. Reenviar al backend de NutriFit para procesar el evento
-    const res = await fetch(`${API_BASE}/push/evento`, {
+    // El backend usa setGlobalPrefix('api'): sin `/api` esto respondía 404 y
+    // ninguna notificación de pedido se procesaba.
+    const res = await fetch(`${API_BASE}/api/push/evento`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
