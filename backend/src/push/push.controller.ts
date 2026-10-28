@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -52,14 +52,5 @@ export class PushController {
       body: String(body?.body || ''),
       url: String(body?.url || '/admin'),
     });
-  }
-
-  // Evento de pedido (webhook desde frontend). Valida secreto compartido.
-  @Post('evento')
-  @UseGuards() // Sin JWT: valida secreto compartido en el servicio
-  async evento(@Request() req: any) {
-    const body = await readJsonBody(req);
-    const webhookSecret = req.headers['x-webhook-secret'] as string;
-    return this.push.procesarEventoPedido(body, webhookSecret);
   }
 }
