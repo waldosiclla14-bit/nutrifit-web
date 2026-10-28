@@ -590,3 +590,59 @@ Sub-fase 6B: webhook de pedidos y eventos `nueva_venta`, `pago_recibido`, `pedid
 ### Siguiente paso
 
 Revisar el preview → fusionar `release/landing-2026-10` a `main` → verificar que Render aplica `20261028_push_preferencias` en el arranque y que un cambio de estado de entrega sigue funcionando.
+
+---
+
+## Sesión: revisión de errores en backend (entregas y push)
+
+### Hallazgos
+
+Antes de tocar código se comprobó producción: `/api/health`, `/api/products` y `/api/metro-stations` responden 200, la portada de Vercel renderiza sin errores y Swagger sigue en 404. Los 404 de `/api/categories` y `/api/blog` **no son fallos**: esas páginas son estáticas y no consultan la API.
+
+Los defectos reales estaban en el camino de entregas y notificaciones:
+
+| # | Defecto | Impacto | Estado |
+|---|---|---|---|
+| 1 | `push.service.ts`: `vapid()` se llamaba **fuera** del `try` de `sendTo` | Sin claves VAPID, la excepción subía hasta `dispatchReminders`: el cron respondía **500 y perdía el lote entero** de recordatorios | ✅ corregido |
+| 2 | `broadcast()` y `sendToUser()` no filtraban por `activa` | Se seguía notificando a dispositivos **desactivados** (los recordatorios usan `broadcast`) | ✅ corregido |
+| 3 | `procesarEventoPedido()` creaba la marca `notificaciones_enviadas` **antes** de enviar y no la liberaba | Un fallo transitorio, o no tener suscriptores, daba el aviso por **enviado para siempre**, sin reintento posible | ✅ corregido |
+| 4 | `dispatchReminders()` hacía `await push.broadcast()` sin `try/catch` dentro del bucle | Un fallo cortaba los **recordatorios restantes** y devolvía 500 al cron | ✅ corregido |
+| 5 | Carrera `autoCreateDelivery` vs `POST /api/deliveries` sobre `deliveries.orderId` (`docs/propuesta-p2002-delivery.md`) | El vendedor recibía **500 aunque la entrega existiera** | ✅ corregido (parches A y B) |
+
+Además, `dispatchReminders` ahora **no** marca `REMINDER_SENT` si no hubo destinatarios: se reintenta en la siguiente pasada.
+
+### Identificado pero NO corregido (requiere decisión)
+
+`POST /api/auth/bootstrap` no exige sesión y **resetea la contraseña de cualquier usuario** usando `ADMIN_PASSWORD` como clave. Tiene throttle (3 / 5 min) y comparación timing-safe, pero:
+
+- quien conozca `ADMIN_PASSWORD` puede cambiar la contraseña de **cualquier** cuenta, no solo del admin;
+- no deja rastro en auditoría.
+
+No se tocó porque desactivarlo elimina la única vía de recuperación si se pierde el acceso. Las opciones son: exigir `ALLOW_BOOTSTRAP=true` (fail-closed, como se hizo con Swagger) o limitarlo a usuarios `ADMIN` y registrar auditoría.
+
+### Archivos modificados
+
+- `backend/src/push/push.service.ts`
+- `backend/src/delivery/delivery.service.ts`
+- `backend/src/orders/orders.service.ts`
+- Pruebas: `push.service.spec.ts`, `delivery.service.spec.ts`, `orders.service.spec.ts`
+
+### Verificación ejecutada
+
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Tipos backend | `npx tsc --noEmit -p tsconfig.json` | exit 0 |
+| Pruebas backend | `npx jest` | **142/142**, 14 suites, exit 0 (antes 132) |
+| Pruebas frontend | `npx jest` | 78/78, 9 suites |
+
+Se añadieron 10 pruebas que cubren cada caso. La de `orders.service.spec.ts` falló al principio porque el mock no tenía `delivery.findUnique`: se detectó y se corrigió el mock, no se relajó la aserción.
+
+### Pendiente / requiere validación humana
+
+- Decidir qué hacer con `/api/auth/bootstrap`.
+- Sigue pendiente de 6A: claves VAPID, Database Webhooks, tareas programadas, prueba en iPhone.
+- `xlsx` (alto, sin parche en npm) se usa para **leer planillas subidas** en el admin.
+
+### Siguiente paso
+
+Los arreglos van en la rama del release (PR #3), en un commit propio. Tras fusionar: verificar que el cron `POST /api/deliveries/reminders/dispatch` responde 200 y no 500, y que un cambio de estado de entrega funciona.
