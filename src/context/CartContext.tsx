@@ -195,8 +195,12 @@ const addBundle = useCallback(
             item: it,
             product: p,
             variant,
-            // --- NUEVO: obtener variantId del catálogo ---
-            variantId: p.variants!.indexOf(variant!) ?? 0,
+            // `variants` es opcional en el tipo Product: si el producto no
+            // declara variantes, `p.variants!.indexOf(...)` lanzaba
+            // "Cannot read properties of undefined (reading 'indexOf')" y el
+            // botón del pack no agregaba nada al carrito. Sin variante el
+            // índice es 0, igual que hacía antes cuando sí existía la primera.
+            variantId: p.variants && variant ? p.variants.indexOf(variant) : 0,
             regularLine: p.price * it.quantity,
           };
         })
