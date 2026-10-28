@@ -73,9 +73,15 @@ export class PushService {
     return { ok: true };
   }
 
+  // `vapid()` lanza si faltan las claves. Antes se llamaba FUERA del try, así que
+  // una configuración incompleta propagaba la excepción y tumbaba el lote entero:
+  // los recordatorios de entrega respondían 500 y no se enviaba ninguno.
+  // Ahora se trata como un envío fallido y se avisa una sola vez.
+  private vapidWarned = false;
+
   private async sendTo(sub: { id: string; endpoint: string; p256dh: string; auth: string }, payload: PushPayload) {
-    const { publicKey, privateKey } = this.vapid();
     try {
+      const { publicKey, privateKey } = this.vapid();
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } } as any,
         JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/admin' }),
@@ -87,6 +93,15 @@ export class PushService {
       if (e?.statusCode === 404 || e?.statusCode === 410) {
         await this.prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => undefined);
         this.logger.log(`Push sub muerta eliminada: ${sub.id}`);
+      } else if (e instanceof BadRequestException) {
+        // Configuración incompleta (VAPID): no es un fallo por suscripción.
+        // Se registra una vez para no inundar el log en cada envío.
+        if (!this.vapidWarned) {
+          this.vapidWarned = true;
+          this.logger.warn(
+            'Push omitido: VAPID no configurado. No se enviarán avisos hasta configurarlo.',
+          );
+        }
       } else {
         this.logger.warn(`Push falló a ${sub.id}: ${e?.message || e}`);
       }
@@ -95,7 +110,7 @@ export class PushService {
   }
 
   async sendToUser(userId: string, payload: PushPayload) {
-    const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
+    const subs = await this.prisma.pushSubscription.findMany({ where: { userId, activa: true } });
     let sent = 0;
     for (const s of subs) {
       if (await this.sendTo(s, payload)) sent++;
@@ -104,7 +119,10 @@ export class PushService {
   }
 
   async broadcast(payload: PushPayload) {
-    const subs = await this.prisma.pushSubscription.findMany();
+    // Solo dispositivos activos: `procesarEventoPedido` ya filtra por `activa`,
+    // pero `broadcast` (que usan los recordatorios de entrega) no lo hacía y
+    // seguía enviando a suscripciones desactivadas.
+    const subs = await this.prisma.pushSubscription.findMany({ where: { activa: true } });
     let sent = 0;
     for (const s of subs) {
       if (await this.sendTo(s, payload)) sent++;
@@ -152,6 +170,10 @@ export class PushService {
     });
 
     if (subs.length === 0) {
+      // No se envió a nadie: se libera la marca para que el evento pueda
+      // notificarse cuando haya dispositivos suscritos. Antes quedaba como
+      // "enviada" y el aviso se perdía para siempre.
+      await this.liberarMarca(evento);
       return { enviado: false, motivo: 'sin_suscriptores' };
     }
 
@@ -176,7 +198,23 @@ export class PushService {
       }
     }
 
+    if (sent === 0) {
+      // Ningún envío se entregó (VAPID sin configurar, dispositivos muertos,
+      // todo silenciado). Se libera la marca: dejarla puesta hacía que el aviso
+      // se diera por enviado y no hubiera forma de reintentarlo.
+      await this.liberarMarca(evento);
+      return { enviado: false, motivo: total === 0 ? 'sin_preferencias' : 'no_entregado', total };
+    }
+
     return { enviado: true, enviadoCount: sent, total };
+  }
+
+  private async liberarMarca(evento: EventoPedido) {
+    await this.prisma.notificacionEnviada
+      .delete({
+        where: { tipo_referencia: { tipo: evento.tipo, referencia: evento.referencia } },
+      })
+      .catch(() => undefined);
   }
 
   private buildMensaje(evento: EventoPedido): PushPayload {

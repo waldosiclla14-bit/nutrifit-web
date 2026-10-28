@@ -19,7 +19,7 @@ describe('OrdersService', () => {
     auditLog: { create: jest.Mock };
     inventoryMovement: { create: jest.Mock; deleteMany: jest.Mock };
     orderItem: { deleteMany: jest.Mock; groupBy: jest.Mock };
-    delivery: { deleteMany: jest.Mock; create: jest.Mock };
+    delivery: { deleteMany: jest.Mock; create: jest.Mock; findUnique: jest.Mock };
     deliveryAuditLog: { deleteMany: jest.Mock };
     metroStation: { findFirst: jest.Mock };
     coupon: { updateMany: jest.Mock };
@@ -51,7 +51,7 @@ describe('OrdersService', () => {
       auditLog: { create: jest.fn() },
       inventoryMovement: { create: jest.fn(), deleteMany: jest.fn() },
       orderItem: { deleteMany: jest.fn(), groupBy: jest.fn() },
-      delivery: { deleteMany: jest.fn(), create: jest.fn() },
+      delivery: { deleteMany: jest.fn(), create: jest.fn(), findUnique: jest.fn() },
       deliveryAuditLog: { deleteMany: jest.fn() },
       metroStation: { findFirst: jest.fn() },
       coupon: { updateMany: jest.fn() },
@@ -237,6 +237,7 @@ describe('OrdersService', () => {
       prisma.productVariant.findUnique.mockResolvedValue(null);
       prisma.customer.findFirst = jest.fn().mockResolvedValue({ id: 'c1' });
       prisma.delivery.create = jest.fn().mockResolvedValue({ id: 'del-1' });
+      prisma.delivery.findUnique = jest.fn().mockResolvedValue(null);
       prisma.metroStation.findFirst = jest.fn().mockResolvedValue(null);
     });
 
@@ -265,6 +266,64 @@ describe('OrdersService', () => {
       expect(payload.deliveryType).toBe('ENVIO_DOMICILIO');
       expect(payload.address).toBe('Av. Siempre Viva 742, Ñuñoa');
       expect(payload.stationId).toBeNull();
+    });
+
+    it('no duplica la entrega si otra vía ya la creó para la orden', async () => {
+      // El POS puede crear la entrega por su propio POST mientras el
+      // auto-create corre en paralelo. `deliveries.orderId` es @unique, así
+      // que el segundo create terminaba en P2002 y ruido en el log.
+      prisma.delivery.findUnique = jest.fn().mockResolvedValue({ id: 'del-ya-existe' });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'order-3', orderNumber: 'NF-000003', deliveryType: 'ENVIO_DOMICILIO' },
+      ]);
+
+      await service.create({
+        items: [item],
+        customerId: 'c1',
+        customerName: 'Ana Pérez',
+        customerPhone: '912345678',
+        deliveryType: 'ENVIO_DOMICILIO',
+        deliveryDetails: 'Av. Siempre Viva 742, Ñuñoa',
+        paymentMethod: 'EFECTIVO',
+        subtotal: 1000,
+        total: 1000,
+      });
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(prisma.delivery.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { orderId: 'order-3' } }),
+      );
+      expect(prisma.delivery.create).not.toHaveBeenCalled();
+    });
+
+    it('trata un P2002 como carrera, no como error', async () => {
+      // Si la verificación previa pasa pero otra petición gana la carrera,
+      // Prisma lanza P2002. No debe quedar como ERROR en el log.
+      prisma.$transaction.mockResolvedValue([
+        { id: 'order-4', orderNumber: 'NF-000004', deliveryType: 'ENVIO_DOMICILIO' },
+      ]);
+      const p2002: any = new Error('Unique constraint failed on the fields: (`orderId`)');
+      p2002.code = 'P2002';
+      prisma.delivery.create = jest.fn().mockRejectedValue(p2002);
+      const errorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+
+      await service.create({
+        items: [item],
+        customerId: 'c1',
+        customerName: 'Ana Pérez',
+        customerPhone: '912345678',
+        deliveryType: 'ENVIO_DOMICILIO',
+        deliveryDetails: 'Av. Siempre Viva 742, Ñuñoa',
+        paymentMethod: 'EFECTIVO',
+        subtotal: 1000,
+        total: 1000,
+      });
+
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
     });
 
     it('no crea entrega para un retiro en tienda', async () => {

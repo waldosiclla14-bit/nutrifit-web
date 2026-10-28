@@ -544,6 +544,18 @@ export class OrdersService implements OnModuleInit {
         ? String(data.deliveryDetails || data.address || '').trim() || null
         : null;
 
+      // Idempotencia: si el POS ya creó la entrega por su vía
+      // (DeliveryService.create), no duplicar. `deliveries.orderId` es @unique,
+      // así que el segundo create terminaba en P2002 y ruido en el log.
+      const yaExiste = await this.prisma.delivery.findUnique({
+        where: { orderId: order.id },
+        select: { id: true },
+      });
+      if (yaExiste) {
+        this.logger.log(`Delivery ya existía para orden ${order.orderNumber}`);
+        return;
+      }
+
       await this.prisma.delivery.create({
         data: {
           orderId: order.id,
@@ -561,6 +573,11 @@ export class OrdersService implements OnModuleInit {
       });
       this.logger.log(`Delivery auto-creada para orden ${order.orderNumber}`);
     } catch (e: any) {
+      // Carrera perdida contra el POS: la entrega ya existe, no es un error.
+      if (e?.code === 'P2002') {
+        this.logger.log(`Delivery ya existía (carrera) para orden ${order.orderNumber}`);
+        return;
+      }
       this.logger.error(`Error auto-creando delivery: ${e?.message}`);
     }
   }

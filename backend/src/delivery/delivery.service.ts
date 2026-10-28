@@ -131,24 +131,43 @@ export class DeliveryService {
 
     const deliveryCode = crypto.randomInt(1000, 9999).toString();
 
-    const delivery = await this.prisma.delivery.create({
-      data: {
-        orderId: data.orderId,
-        customerId: data.customerId,
-        deliveryType: data.deliveryType,
-        stationId: data.stationId || null,
-        address: data.address || null,
-        deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
-        windowStart: data.windowStart || null,
-        windowEnd: data.windowEnd || null,
-        meetingPoint: data.meetingPoint || null,
-        notes: data.notes || null,
-        assignedTo: data.assignedTo || null,
-        deliveryCode,
-        status: DeliveryStatus.CREATED,
-      },
-      include: { station: true, order: true },
-    });
+    const delivery = await this.prisma.delivery
+      .create({
+        data: {
+          orderId: data.orderId,
+          customerId: data.customerId,
+          deliveryType: data.deliveryType,
+          stationId: data.stationId || null,
+          address: data.address || null,
+          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          windowStart: data.windowStart || null,
+          windowEnd: data.windowEnd || null,
+          meetingPoint: data.meetingPoint || null,
+          notes: data.notes || null,
+          assignedTo: data.assignedTo || null,
+          deliveryCode,
+          status: DeliveryStatus.CREATED,
+        },
+        include: { station: true, order: true },
+      })
+      .catch(async (e: any) => {
+        // Carrera con autoCreateDelivery(): el findUnique de arriba pasó, pero
+        // otra petición creó la entrega en el intertanto. Devolvemos la que ganó
+        // en vez de un 500 al vendedor (P2002 en deliveries.orderId).
+        if (e?.code === 'P2002') {
+          const concurrent = await this.prisma.delivery.findUnique({
+            where: { orderId: data.orderId },
+            include: { station: true, order: true },
+          });
+          if (concurrent) {
+            this.logger.warn(
+              `Entrega ya creada por otra petición (orden ${data.orderId}); se reutiliza`,
+            );
+            return concurrent;
+          }
+        }
+        throw e;
+      });
 
     await this.audit(delivery.id, 'CREATED', null, { deliveryType: data.deliveryType, stationId: data.stationId });
 
@@ -725,11 +744,26 @@ export class DeliveryService {
       const destino = isDomicilio
         ? (d as any).address || 'Domicilio'
         : `Metro ${(d as any).station?.name || ''}`;
-      await this.push.broadcast({
-        title: `${isDomicilio ? '🏠' : '🚇'} Entrega en ${Math.max(0, diff)} min`,
-        body: `${label} — ${destino} ${(d as any).windowStart || ''}`.trim(),
-        url: '/admin',
-      });
+      try {
+        const envio = await this.push.broadcast({
+          title: `${isDomicilio ? '🏠' : '🚇'} Entrega en ${Math.max(0, diff)} min`,
+          body: `${label} — ${destino} ${(d as any).windowStart || ''}`.trim(),
+          url: '/admin',
+        });
+        // Sin destinatarios (push sin configurar, dispositivos desactivados) no
+        // se marca como avisado: se reintenta en la siguiente pasada del cron.
+        if (!envio || envio.sent === 0) {
+          this.logger.warn(`Recordatorio sin destinatarios: entrega ${d.id}; se reintentará`);
+          skipped++;
+          continue;
+        }
+      } catch (e: any) {
+        // Un fallo de push no debe abortar el lote: antes una sola excepción
+        // cortaba los recordatorios restantes y el cron recibía 500.
+        this.logger.warn(`Recordatorio push falló: entrega ${d.id}: ${e?.message || e}`);
+        skipped++;
+        continue;
+      }
       await this.audit(d.id, 'REMINDER_SENT', null, { minutesBefore: diff });
       reminded++;
     }
