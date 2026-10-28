@@ -646,3 +646,51 @@ Se añadieron 10 pruebas que cubren cada caso. La de `orders.service.spec.ts` fa
 ### Siguiente paso
 
 Los arreglos van en la rama del release (PR #3), en un commit propio. Tras fusionar: verificar que el cron `POST /api/deliveries/reminders/dispatch` responde 200 y no 500, y que un cambio de estado de entrega funciona.
+
+---
+
+## Sesión: publicación del landing en nutrifitsuplementos.cl
+
+### Diagnóstico (CONFIRMADO)
+
+El dominio no tenía ningún problema de DNS ni de Vercel: `A → 76.76.21.21`, `www → cname.vercel-dns.com`, NS en Cloudflare. Servía **exactamente** el mismo HTML que `nutrifit-web-nu.vercel.app` (280.105 B, mismos chunks).
+
+La causa era otra: **`main` no tenía los cambios**. Vercel publica `main`; los 36 commits del landing vivían solo en `release/landing-2026-10`.
+
+Prueba: el HTML de producción contenía `Stock actualizado hoy` (componente `TopStockBanner`, que el release elimina) y no contenía `HomeCarousel` ni el bloque de sets/packs.
+
+### Publicado
+
+PR **#3** fusionado a `main` (`4bddc73`) con checks en verde (Backend, Frontend, deploy, Vercel). Tras el deploy, el dominio pasó de 280.105 B a 620.518 B y ahora contiene "Sets y packs", "Ofertas", "Recién llegados" y el enlace `/marcas`; ya no contiene el marcador viejo.
+
+### Bug encontrado y corregido al verificar el deploy
+
+`POST /api/push/evento` respondía **401 siempre** en producción. Vivía en `PushController`, con `@UseGuards(JwtAuthGuard, RolesGuard)` de clase; `@UseGuards()` vacío en el método **no anula** los guards de clase (Nest los concatena). El frontend solo manda `x-webhook-secret`, así que ninguna notificación de pedido se enviaba.
+
+Ahora vive en `PushWebhookController`, sin guards, y la autorización la hace `procesarEventoPedido` comparando el secreto. PR **#5**.
+
+### Bootstrap de contraseñas
+
+`POST /api/auth/bootstrap` quedó restringido a cuentas `ADMIN`, con registro en `audit_logs` (`BOOTSTRAP_PASSWORD_RESET` + IP) y con `ENABLE_BOOTSTRAP=false` como interruptor para desactivarlo del todo. En producción responde "Bootstrap no configurado" porque `ADMIN_PASSWORD` no está definida: hoy el endpoint está inerte.
+
+### Verificación ejecutada
+
+| Comprobación | Resultado |
+|---|---|
+| `/api/health` | 200 `{"status":"ok","db":"ok"}` |
+| `/api/ping` | 200 `{"ok":true,"db":1}` |
+| `/api/products` | 200 |
+| `/api/docs-json` | 404 (correcto) |
+| `POST /api/deliveries/reminders/dispatch` sin secreto | 401 (nunca más 500) |
+| `npx tsc --noEmit` (backend) | exit 0 |
+| `npx jest` (backend) | **151/151**, 16 suites |
+
+### Pendiente / requiere acceso al panel
+
+- **`WEBHOOK_SECRET` igual en Render y Vercel**: sin eso el webhook sigue en 401.
+- **Claves VAPID** (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`): sin ellas no se envía ningún push, aunque el cron ya no falla.
+- Los textos del sitio siguen ofreciendo **envío a domicilio por Blue Express**, pero el carrito fija `deliveryMethod: 'metro'` y no hay selector de domicilio. Es una decisión de negocio, no se tocó.
+
+### Siguiente paso
+
+Confirmar el 200 del cron con `CRON_SECRET` real y una entrega de prueba; decidir qué hacer con los textos de envío a domicilio.
