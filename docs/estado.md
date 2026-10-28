@@ -548,3 +548,45 @@ Implementar la base del sistema de notificaciones push (Web Push con VAPID) para
 
 ### Siguiente paso
 Sub-fase 6B: webhook de pedidos y eventos `nueva_venta`, `pago_recibido`, `pedido_agendado` con anti-duplicado.
+
+---
+
+## Sesión: release del landing + migración push + auditoría de cuota
+
+### Decisiones tomadas y por qué
+
+- **No subir `nutrifit 2.0\restored`**: es del 20-ago y producción es del 20-oct. Las secciones que le sobran a producción (`Testimonials`, `Combos`, `BundlesSection`, `FlashSaleCountdown`, `ExitIntentPopup`, `Storytelling`) se eliminaron a propósito en `9c09e47` y `cd2afe8` por no ser verificables. Subirlas sería un retroceso de dos meses (SEO, tema visual, credibilidad).
+- **La copia de trabajo real es `Documentos\nutrifit-web`** (clon con `origin` correcto). Al inicio tenía 30 commits propios sin subir y 5 por detrás de `main`.
+- **Release por rama, no directo a `main`**: `release/landing-2026-10`, con tag de respaldo `respaldo-antes-release-2026-10-28`. Producción no cambia hasta aprobación humana.
+- **Migración añadida antes de fusionar**: los 30 commits cambian `schema.prisma` sin migración, y `db-push.yml` no se ejecuta desde el 12-ago. Sin migración, `delivery.service.ts:728` (`await this.push.broadcast(...)` **sin try/catch**) rompería todo cambio de estado de entrega. La convención del repo es migración **idempotente**, porque `prisma/baseline.js` solo marca 3 migraciones como aplicadas y el resto se re-ejecuta en cada arranque.
+
+### Archivos creados/modificados
+
+- `backend/prisma/migrations/20261028_push_preferencias/migration.sql` (nuevo): `ALTER TABLE push_subscriptions ADD COLUMN activa`, tablas `preferencias_notificacion` y `notificaciones_enviadas`, más sus índices.
+- `docs/auditoria-consumo-render-2026-10-26.md`: §27.5.2 (resultado del test de spin-down) y §28 (conclusión de cuota).
+- Sin cambios en `src/`: el merge de `origin/main` se resolvió solo y eliminó el latido de `src/lib/api.ts` (32 líneas).
+
+### Verificación ejecutada
+
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Tipos frontend | `npx tsc --noEmit` | exit 0 |
+| Tipos backend | `npx prisma generate` + `npx tsc --noEmit` | exit 0 |
+| Esquema válido | `npx prisma validate` | válido |
+| Migración == delta real de Prisma | `prisma migrate diff` + comparación operación por operación | **6/6 idénticas, 0 faltantes, 0 extra** |
+| Invariantes de la auditoría | `api.ts` sin latido, `ENABLE_SWAGGER === 'true'`, seed con guarda de versión, Todoist no bloqueante | intactas |
+| Build de producción | `npm run build` | compila y genera todas las rutas, pero **exit 1** por el aviso de seguridad de Next.js (ver abajo) |
+
+- El `exit 1` del build **no es un fallo del código**: es `SecurityFatalError`, una función del propio Next.js 16.4.0 (`experimental.agentUpgrade`, política por defecto `'security'` en `next/dist/server/config-shared.js`) que interrumpe builds lanzados por un agente cuando hay avisos de seguridad abiertos. No viene del repo (`next.config.mjs` no la declara) y **no afecta a Vercel**: el bloqueo solo actúa si detecta un agente o hay TTY interactiva, y en CI ninguna de las dos se cumple.
+- Los avisos son reales y verificados contra el registro de npm: `next@16.4.0` acumula **3 avisos**, dos de ellos **críticos** — RCE no autenticado en la Image Optimization API usando SVG (`GHSA-2464-fhr4-w9xw`) y RCE en funciones `use cache` que devuelven typed arrays (`GHSA-673q-mjm6-r5xr`). Última versión publicada: **16.4.3**.
+
+### Pendiente / requiere validación humana
+
+- **Aprobar el merge a `main`** después de revisar el preview de Vercel de la rama.
+- **Actualizar Next.js 16.4.0 → 16.4.3** por los dos avisos críticos. No se hizo: exige rebuild, prueba del landing y no estaba autorizado.
+- Sigue pendiente desde 6A: claves VAPID, Database Webhooks, tareas programadas y prueba en iPhone real.
+- `NODE_ENV` sin definir en Render; `/api/auth/bootstrap` sin arreglar; PR #2 (parche de seguridad) sigue abierto.
+
+### Siguiente paso
+
+Revisar el preview → fusionar `release/landing-2026-10` a `main` → verificar que Render aplica `20261028_push_preferencias` en el arranque y que un cambio de estado de entrega sigue funcionando.
