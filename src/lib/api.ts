@@ -267,9 +267,21 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       customerId: customer.id,
       customerName: order.name,
       customerPhone: order.phone,
-      deliveryType: 'METRO',
+      deliveryType: order.deliveryMethod === 'domicilio' ? 'ENVIO_DOMICILIO' : 'METRO',
       metroLine: order.metroLine,
       metroStation: order.metroStation,
+      // El modelo Order del backend no tiene columnas de dirección: la
+      // información del domicilio viaja en deliveryDetails (texto libre).
+      deliveryDetails:
+        order.deliveryMethod === 'domicilio'
+          ? [
+              order.address,
+              order.comuna,
+              order.blueSize ? `Paquete talla ${order.blueSize}` : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : undefined,
       subtotal: order.subtotal,
       discount: order.discount ?? 0,
       couponCode: order.couponCode ?? undefined,

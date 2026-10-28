@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: '%s | NutriFit',
   },
   description:
-    'Suplementos deportivos originales en Chile: whey protein, creatina y vitaminas. Compra por WhatsApp y recibe en tu estación de Metro de Santiago.',
+    'Suplementos deportivos originales en Chile: whey protein, creatina y vitaminas. Compra por WhatsApp y recibe en tu estación de Metro de Santiago o en tu domicilio.',
   applicationName: 'NutriFit',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -41,14 +41,14 @@ export const metadata: Metadata = {
     siteName: 'NutriFit Chile',
     title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
-      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago o en tu domicilio.',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'NutriFit whey y creatina originales' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'NutriFit Chile | Suplementos Originales con Entrega en Metro',
     description:
-      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+      'Suplementos deportivos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago o en tu domicilio.',
     images: ['/opengraph-image'],
   },
 };

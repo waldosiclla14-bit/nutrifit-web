@@ -12,7 +12,7 @@ export function generateStaticParams() {
 function productDescription(product: (typeof PRODUCTS)[number]): string {
   const price = `$${product.price.toLocaleString('es-CL')}`;
   const base = `${product.name} original en Chile. ${product.desc}`;
-  const tail = ` Compra por WhatsApp y recibe en Metro. Desde ${price}.`;
+  const tail = ` Compra por WhatsApp y recibe en Metro o a domicilio. Desde ${price}.`;
   const full = base + tail;
   return full.length <= 155 ? full : `${full.slice(0, 154).trimEnd()}…`;
 }

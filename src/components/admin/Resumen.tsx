@@ -21,6 +21,13 @@ import { CountUp, HourBars, PayDonut, SalesArea, Spark, TopBars } from './charts
 import { GoalEditor } from './GoalEditor';
 import LowStockBySupplier from './LowStockBySupplier';
 
+/** Etiqueta de cada canal de entrega en los reportes del admin. */
+const CHANNEL_LABEL: Record<string, string> = {
+  RETIRO_TIENDA: 'Local',
+  METRO: 'Metro',
+  ENVIO_DOMICILIO: 'Domicilio',
+};
+
 const RANGES = [
   ['7d', '7 días'],
   ['30d', '30 días'],
@@ -300,12 +307,6 @@ export function Resumen({
     }
     return { hour, total };
   }, [byHour]);
-
-  const CHANNEL_LABEL: Record<string, string> = {
-    RETIRO_TIENDA: 'Local',
-    METRO: 'Metro',
-    ENVIO_DOMICILIO: 'Domicilio',
-  };
 
   const byChannel = useMemo(() => {
     if (!report) return [];
@@ -644,7 +645,9 @@ export function Resumen({
                   <p className="mt-0.5 text-[11px] text-[var(--text-secondary)]">
                     {o.deliveryType === 'METRO'
                       ? `Metro ${o.metroLine || ''} ${o.metroStation || ''}`
-                      : 'Retiro tienda'}
+                      : o.deliveryType === 'ENVIO_DOMICILIO'
+                        ? `Domicilio${o.deliveryDetails ? ` · ${o.deliveryDetails}` : ''}`
+                        : 'Retiro tienda'}
                     {o.deliveryDay ? ` · ${o.deliveryDay}` : ''}
                     {o.deliveryTime ? ` ${formatTime12(o.deliveryTime)}` : ''}
                   </p>

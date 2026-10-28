@@ -14,11 +14,11 @@ import {
 
 export const metadata: Metadata = {
   title: 'Sobre nosotros',
-  description: `Conoce a ${BRAND.name}: suplementos deportivos originales con entrega en Metro de Santiago. Atención por WhatsApp.`,
+  description: `Conoce a ${BRAND.name}: suplementos deportivos originales con entrega en Metro de Santiago o a domicilio. Atención por WhatsApp.`,
   alternates: { canonical: '/sobre-nosotros' },
   openGraph: {
     title: `Sobre nosotros | ${BRAND.name}`,
-    description: 'Suplementos originales con entrega en Metro de Santiago.',
+    description: 'Suplementos originales con entrega en Metro de Santiago o a domicilio.',
     url: `${BRAND.url}/sobre-nosotros`,
     siteName: BRAND.name,
   },
@@ -32,8 +32,8 @@ const VALUES = [
   },
   {
     icon: Truck,
-    title: 'Entrega en Metro',
-    text: 'Coordinamos la entrega en tu estación de Metro de Santiago. Mismo día, sin envíos caros.',
+    title: 'Entrega en Metro o a domicilio',
+    text: 'Coordinamos la entrega en tu estación de Metro de Santiago, o la hacemos llegar a tu casa en Santiago con Blue Express.',
   },
   {
     icon: MessageCircle,

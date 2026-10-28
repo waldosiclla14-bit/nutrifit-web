@@ -29,6 +29,8 @@ export type AdminOrder = {
   deliveryTime?: string;
   deliveryTimeEnd?: string;
   shippingAddress?: string;
+  /** Datos de entrega en texto libre (usado en envíos a domicilio). */
+  deliveryDetails?: string;
   notes?: string;
   discountCode?: string | null;
   couponId?: string | null;

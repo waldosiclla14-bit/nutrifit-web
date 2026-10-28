@@ -1,3 +1,7 @@
+export type DeliveryMethod = 'metro' | 'domicilio';
+
+export type BlueSize = 'S' | 'M';
+
 export type ProductVariant = {
   id?: string;
   name: string;
@@ -37,6 +41,11 @@ export type Product = {
   goal: string[];
   tags: string[];
   bestseller?: boolean;
+  newArrival?: boolean;
+  /** Peso del producto en kg, para calcular la talla de envío Blue Express. */
+  weightKg?: number;
+  /** Medidas del embalaje en cm (largo x ancho x alto), para el peso volumétrico. */
+  packageDims?: { length: number; width: number; height: number };
   variants?: ProductVariant[];
 };
 
@@ -137,8 +146,12 @@ export type Order = {
   id: string;
   name: string;
   phone: string;
+  deliveryMethod?: DeliveryMethod;
   metroLine?: string;
   metroStation?: string;
+  address?: string;
+  comuna?: string;
+  blueSize?: BlueSize;
   couponCode?: string;
   items: OrderItem[];
   subtotal: number;
@@ -157,6 +170,17 @@ export type Settings = {
   giftLabel?: string;
   rewardThreshold?: number;
   rewardPercent?: number;
+};
+
+export type CustomerProfile = {
+  name: string;
+  phone: string;
+  deliveryMethod?: DeliveryMethod;
+  metroLine?: string;
+  metroStation?: string;
+  address?: string;
+  comuna?: string;
+  blueSize?: BlueSize;
 };
 
 export type BlogBlock =

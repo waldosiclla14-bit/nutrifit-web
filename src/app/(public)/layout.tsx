@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/CartContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import TopBar from '@/components/layout/TopBar';
 import TrustStrip from '@/components/home/TrustStrip';
 import CartDrawer from '@/components/layout/CartDrawer';
 import WhatsAppFloat from '@/components/layout/WhatsAppFloat';
@@ -13,7 +14,7 @@ import GA4 from '@/components/analytics/GA4';
 export const metadata: Metadata = {
   metadataBase: new URL(BRAND.url),
   description:
-    'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago.',
+    'Suplementos originales en Chile. Compra por WhatsApp y recibe en Metro de Santiago o en tu domicilio.',
   robots: { index: true, follow: true },
 };
 
@@ -61,6 +62,7 @@ export default function PublicLayout({
       />
       <FavoritesProvider>
         <CartProvider>
+          <TopBar />
           <Header />
           <TrustStrip />
           <main>{children}</main>

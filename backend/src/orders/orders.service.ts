@@ -472,8 +472,14 @@ export class OrdersService implements OnModuleInit {
           this.logger.warn(`No se pudo crear recordatorio para orden ${order.orderNumber}: ${e?.message}`),
         );
 
-        // Auto-create Delivery record for METRO orders
+        // Auto-create Delivery record for METRO and ENVIO_DOMICILIO orders.
+        // Sin esto el pedido a domicilio no aparece en Entregas ni Calendario
+        // y el vendedor no puede gestionarlo como entrega.
         if (deliveryType === 'METRO' && data.metroStation) {
+          this.autoCreateDelivery(order, data).catch((e) =>
+            this.logger.warn(`No se pudo crear entrega para orden ${order.orderNumber}: ${e?.message}`),
+          );
+        } else if (deliveryType === 'ENVIO_DOMICILIO' && (data.deliveryDetails || data.address)) {
           this.autoCreateDelivery(order, data).catch((e) =>
             this.logger.warn(`No se pudo crear entrega para orden ${order.orderNumber}: ${e?.message}`),
           );
@@ -497,12 +503,20 @@ export class OrdersService implements OnModuleInit {
 
   private async autoCreateDelivery(order: any, data: any) {
     try {
-      // Find the station by name to get the stationId
-      const station = await this.prisma.metroStation.findFirst({
-        where: { name: data.metroStation, active: true, deliveryEnabled: true },
-      });
-      if (!station) {
-        this.logger.warn(`Estación "${data.metroStation}" no encontrada o deshabilitada`);
+      const isDomicilio = order.deliveryType === 'ENVIO_DOMICILIO';
+
+      // Find the station by name to get the stationId (solo para retiro en Metro)
+      let station: any = null;
+      if (!isDomicilio) {
+        station = await this.prisma.metroStation.findFirst({
+          where: { name: data.metroStation, active: true, deliveryEnabled: true },
+        });
+        if (!station) {
+          this.logger.warn(`Estación "${data.metroStation}" no encontrada o deshabilitada`);
+          return;
+        }
+      } else if (!data.deliveryDetails && !data.address) {
+        this.logger.warn(`Orden ${order.orderNumber} sin dirección de domicilio`);
         return;
       }
 
@@ -525,22 +539,45 @@ export class OrdersService implements OnModuleInit {
       const crypto = await import('crypto');
       const deliveryCode = crypto.randomInt(1000, 9999).toString();
 
+      // El domicilio usa el campo address (texto libre); el Metro, la estación.
+      const address = isDomicilio
+        ? String(data.deliveryDetails || data.address || '').trim() || null
+        : null;
+
+      // Idempotencia: si el POS ya creó la entrega por su vía
+      // (DeliveryService.create), no duplicar. `deliveries.orderId` es @unique,
+      // así que el segundo create terminaba en P2002 y ruido en el log.
+      const yaExiste = await this.prisma.delivery.findUnique({
+        where: { orderId: order.id },
+        select: { id: true },
+      });
+      if (yaExiste) {
+        this.logger.log(`Delivery ya existía para orden ${order.orderNumber}`);
+        return;
+      }
+
       await this.prisma.delivery.create({
         data: {
           orderId: order.id,
           customerId: customer.id,
-          deliveryType: 'METRO',
-          stationId: station.id,
+          deliveryType: isDomicilio ? 'ENVIO_DOMICILIO' : 'METRO',
+          stationId: station?.id ?? null,
+          address,
           deliveryDate: order.deliveryDay ? new Date(order.deliveryDay) : null,
           windowStart: order.deliveryTime || null,
           windowEnd: windowEnd || null,
-          meetingPoint: station.defaultMeetingPoint || 'Acceso principal',
+          meetingPoint: station?.defaultMeetingPoint || 'Acceso principal',
           deliveryCode,
           status: 'CREATED',
         },
       });
       this.logger.log(`Delivery auto-creada para orden ${order.orderNumber}`);
     } catch (e: any) {
+      // Carrera perdida contra el POS: la entrega ya existe, no es un error.
+      if (e?.code === 'P2002') {
+        this.logger.log(`Delivery ya existía (carrera) para orden ${order.orderNumber}`);
+        return;
+      }
       this.logger.error(`Error auto-creando delivery: ${e?.message}`);
     }
   }

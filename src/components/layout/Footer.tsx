@@ -16,7 +16,8 @@ export default function Footer() {
             </span>
           </div>
           <p className="mt-4 text-sm leading-relaxed text-gray-600">
-            Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en Metro.
+            Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en
+            Metro o a domicilio.
           </p>
           <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sport-green">
             {BRAND.tagline}

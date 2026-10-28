@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
-import TopStockBanner from '@/components/home/TopStockBanner';
 import HeroSection from '@/components/home/HeroSection';
 import NutritionalTransparency from '@/components/home/NutritionalTransparency';
 import UGCProof from '@/components/home/UGCProof';
 import StickyBottomBar from '@/components/home/StickyBottomBar';
 import FirstOrderOffer from '@/components/home/FirstOrderOffer';
 import Categories from '@/components/home/Categories';
+import Packs from '@/components/home/Packs';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import CrossSell from '@/components/home/CrossSell';
 import Benefits from '@/components/home/Benefits';
@@ -18,7 +18,7 @@ import FAQ from '@/components/home/FAQ';
 export const metadata: Metadata = {
   title: 'Suplementos Deportivos en Santiago',
   description:
-    'Compra whey protein, creatina y vitaminas originales en Chile. Packs desde $27.500 con entrega coordinada por WhatsApp en estaciones de Metro de Santiago.',
+    'Compra whey protein, creatina y vitaminas originales en Chile. Packs desde $27.500 con entrega coordinada por WhatsApp en estaciones de Metro de Santiago o a domicilio.',
   alternates: { canonical: '/' },
 };
 
@@ -73,13 +73,13 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
       />
-      <TopStockBanner />
       <HeroSection />
       <NutritionalTransparency />
       <UGCProof />
       <FeaturedCarousel />
       <CrossSell />
       <Categories />
+      <Packs />
       <Benefits />
       <HowTo />
       <Guarantee />

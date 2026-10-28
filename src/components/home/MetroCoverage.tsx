@@ -15,7 +15,8 @@ export default function MetroCoverage() {
             </h2>
             <p className="mt-4 text-base leading-relaxed text-gray-500">
               Entregamos en todas las estaciones del Metro de Santiago. Coordinamos la estación y
-              el horario que más te convenga, sin mínimo de compra.
+              el horario que más te convenga, sin mínimo de compra. Si prefieres que llegue a tu
+              casa, también enviamos a domicilio en Santiago con Blue Express.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               {['L1', 'L2', 'L3', 'L4', 'L4A', 'L5', 'L6'].map((line) => (

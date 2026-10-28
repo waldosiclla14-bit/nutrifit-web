@@ -5,6 +5,7 @@ import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { CartProvider, useCart } from './CartContext';
 import { PRODUCTS } from '@/data/seed';
+import { DEFAULT_SETTINGS } from '@/lib/store';
 
 function wrapper({ children }: { children: ReactNode }) {
   return <CartProvider>{children}</CartProvider>;
@@ -88,8 +89,7 @@ describe('CartContext.addItem', () => {
     expect(result.current.subtotal).toBe(48000);
   });
 
-  it('updateQuantity and removeItem work', () => {
-    const product = PRODUCTS[0];
+  it('updateQuantity and removeItem work', () => {    const product = PRODUCTS[0];
 
     const { result } = renderHook(() => useCart(), { wrapper });
 
@@ -115,5 +115,35 @@ describe('CartContext.addItem', () => {
       result.current.removeItem(key);
     });
     expect(result.current.items).toHaveLength(0);
+  });
+});
+
+describe('CartContext.shipping según método de entrega', () => {
+  function addProduct(result: { current: ReturnType<typeof useCart> }) {
+    const product = PRODUCTS[0];
+    act(() => {
+      result.current.addItem({
+        productId: product.id,
+        slug: product.slug,
+        name: product.name,
+        price: 16000,
+        discount: 0,
+        image: product.image,
+        quantity: 1,
+      });
+    });
+  }
+
+  it('usa la tarifa de metro por defecto', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+    addProduct(result);
+
+    expect(result.current.shipping).toBe(DEFAULT_SETTINGS.shipping);
+  });
+
+  it('no cobra envío con el carrito vacío', () => {
+    const { result } = renderHook(() => useCart(), { wrapper });
+
+    expect(result.current.shipping).toBe(0);
   });
 });

@@ -8,15 +8,12 @@ import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { formatPrice, getDiscount, cx } from '@/lib/utils';
-import { openWhatsApp, webFooter } from '@/lib/whatsapp';
-import { getSettings } from '@/lib/store';
 import RatingSummary from '@/components/ui/RatingSummary';
 import ProductCard from '@/components/product/ProductCard';
 import BuyTogether from '@/components/product/BuyTogether';
 import ProductReviews from '@/components/product/ProductReviews';
 import StockUrgency from '@/components/product/StockUrgency';
 import BundleOffers from '@/components/product/BundleOffers';
-import LiveViewers from '@/components/product/LiveViewers';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -61,24 +58,14 @@ export default function ProductDetail({
   };
 
   const orderViaWhatsApp = () => {
-    const message = [
-      'HOLA NUTRIFIT',
-      'QUIERO ESTE PRODUCTO',
-      '─'.repeat(24),
-      '',
-      `*Producto:* ${cartName}`,
-      `*Cantidad:* ${qty}`,
-      `*Precio:* ${formatPrice(product.price * qty)}`,
-      '',
-      '¿Está disponible? Quiero coordinar mi entrega en metro.',
-      webFooter(),
-    ].join('\n');
-    openWhatsApp(getSettings().whatsapp, message, { copy: true });
+    // Envía al carrito para capturar nombre, teléfono y estación de Metro antes
+    // de generar el pedido por WhatsApp (evita que el vendedor pregunte todo).
+    addToCart(qty);
   };
 
   const infoCards = useMemo(
     () => [
-      { icon: Truck, text: 'Entrega en metro, todas las líneas' },
+      { icon: Truck, text: 'Entrega en metro o a domicilio' },
       { icon: ShieldCheck, text: 'Producto 100% original, sello de garantía' },
       { icon: Check, text: 'Garantía de satisfacción de 10 días' },
     ],
@@ -158,9 +145,6 @@ export default function ProductDetail({
                 Ahorras {formatPrice((product.oldPrice ?? 0) - product.price)}
               </span>
             )}
-          </div>
-          <div className="mt-3">
-            <LiveViewers productId={product.id} />
           </div>
           <p className="mt-5 text-sm leading-relaxed text-gray-700">{product.desc}</p>
           {product.registroIsp && (
@@ -252,7 +236,8 @@ export default function ProductDetail({
           </div>
           <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
-            Entrega coordinada por WhatsApp en estaciones de Metro.
+            Entrega coordinada por WhatsApp: retiro en estaciones de Metro o envío a domicilio en
+            Santiago. Aceptamos efectivo y transferencia (pago contra entrega).
           </p>
         </div>
       </div>

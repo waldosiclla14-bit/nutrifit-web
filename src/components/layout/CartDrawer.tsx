@@ -2,10 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeCheck,
+  Check,
   CheckCircle2,
   Gift,
   MessageCircle,
@@ -21,7 +22,7 @@ import { PRODUCTS } from '@/data/seed';
 import { METRO_LINES } from '@/data/metro';
 import { formatPrice, uid } from '@/lib/utils';
 import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
-import { getSettings, saveOrder } from '@/lib/store';
+import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon, saveOrder } from '@/lib/store';
 import { submitStoreOrder } from '@/lib/api';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
@@ -72,8 +73,38 @@ export default function CartDrawer() {
   }, [isOpen]);
 
   useEffect(() => {
-    setMetroStation('');
+    if (!metroLine) return;
+    setMetroStation((prev) => (prev && METRO_LINES.some((l) => l.line === metroLine && l.stations.includes(prev)) ? prev : ''));
   }, [metroLine]);
+
+  // Precarga los datos del cliente en compras recurrentes (una sola vez).
+  useEffect(() => {
+    const profile = getCustomerProfile();
+    if (profile) {
+      setName((v) => v || profile.name);
+      setPhone((v) => v || profile.phone);
+      if (profile.metroLine) setMetroLine((v) => v || profile.metroLine!);
+      if (profile.metroStation) setMetroStation((v) => v || profile.metroStation!);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Consume un cupón pendiente (p. ej. del modal de primera compra) al abrir
+  // el carrito. Si ya hay teléfono, se aplica automáticamente.
+  const pendingHandled = useRef(false);
+  useEffect(() => {
+    if (!isOpen || pendingHandled.current) return;
+    pendingHandled.current = true;
+    const code = takePendingCoupon();
+    if (!code) return;
+    setCouponInput(code);
+    if (phone.trim() && items.length > 0) {
+      applyCoupon(code, phone)
+        .then(() => setCouponInput(''))
+        .catch((err: unknown) => setCouponError((err as Error)?.message || 'Cupón inválido.'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const giftEnabled = (settings.giftThreshold ?? 0) > 0 && !!settings.giftProductId;
   const giftProgress =
@@ -162,6 +193,13 @@ export default function CartDrawer() {
     };
 
     saveOrder(order);
+    saveCustomerProfile({
+      name: order.name,
+      phone: order.phone,
+      deliveryMethod: 'metro',
+      metroLine: order.metroLine,
+      metroStation: order.metroStation,
+    });
     // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
     // texto, el cliente lo pega y el pedido no se pierde.
     setWaFailed(
@@ -219,6 +257,8 @@ export default function CartDrawer() {
       itemsNext.push({ productId: p.id, name: p.name, price: p.price, quantity: 1, image: p.image });
     }
     const subtotalNext = lastOrder.subtotal + p.price;
+    // El envío del pedido original se mantiene: si era a domicilio, se cobra
+    // la tarifa Blue Express de la talla elegida, no la de Metro.
     const shippingNext = settings.shipping;
     const message = buildWhatsAppMessage({
       ...lastOrder,
@@ -317,7 +357,7 @@ export default function CartDrawer() {
                   <Plus size={13} /> ¿Agregas un complemento?
                 </p>
                 <p className="mt-2 text-sm font-semibold text-sport-text">
-                  Añádelo a tu pedido y lo incluimos sin costo de envío
+                  Añádelo a tu pedido y lo despachamos con el mismo envío
                 </p>
                 <div className="mt-4 grid gap-3">
                   {offerProducts.map((p) => {
@@ -435,8 +475,9 @@ export default function CartDrawer() {
               )}
 
               <p className="mt-3 text-[11px] font-semibold text-sport-textMuted">
-                <span className="text-sport-orange">Entrega en Metro de Santiago</span> · Líneas 1, 2,
-                3, 4, 4A, 5 y 6
+                <span className="text-sport-orange">Retiro en Metro de Santiago</span> · Líneas 1, 2,
+                3, 4, 4A, 5 y 6 · o{' '}
+                <span className="text-sport-orange">envío a domicilio</span> en Santiago
               </p>
             </div>
             )}
@@ -723,6 +764,9 @@ export default function CartDrawer() {
               <p className="mt-2 text-center text-[11px] leading-relaxed text-sport-textMuted">
                 Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
                 estación de metro.
+              </p>
+              <p className="mt-1 text-center text-[11px] font-semibold text-sport-textMuted">
+                Aceptamos efectivo y transferencia (pago contra entrega).
               </p>
             </div>
           </>

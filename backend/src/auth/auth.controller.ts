@@ -101,6 +101,10 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 300000 } })
   async bootstrap(@Req() req: any) {
     const dto: { bootstrapKey: string; email: string; newPassword: string } = await readJsonBody(req);
-    return this.authService.bootstrapPassword(dto.bootstrapKey, dto.email, dto.newPassword);
+    const ip =
+      (typeof req.ip === 'string' && req.ip) ||
+      String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim() ||
+      undefined;
+    return this.authService.bootstrapPassword(dto.bootstrapKey, dto.email, dto.newPassword, ip);
   }
 }

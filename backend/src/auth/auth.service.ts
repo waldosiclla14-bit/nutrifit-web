@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Response } from 'express';
 
@@ -65,7 +66,29 @@ export class AuthService {
     return { ok: true };
   }
 
-  async bootstrapPassword(bootstrapKey: string, email: string, newPassword: string) {
+  /**
+   * Recuperación de acceso sin sesión.
+   *
+   * Antes reseteaba la contraseña de CUALQUIER usuario conociendo
+   * ADMIN_PASSWORD, sin distinguir rol ni dejar rastro: quien tuviera esa
+   * clave podía tomar la cuenta de un vendedor o de reparto.
+   *
+   * Ahora:
+   * - solo cuentas con rol ADMIN (la recuperación legítima del dueño);
+   * - queda registrado en audit_logs con la IP del solicitante;
+   * - `ENABLE_BOOTSTRAP=false` lo desactiva por completo (fail-closed
+   *   voluntario, igual que ENABLE_SWAGGER). Sin esa variable sigue activo
+   *   para no perder la única vía de recuperación.
+   */
+  async bootstrapPassword(
+    bootstrapKey: string,
+    email: string,
+    newPassword: string,
+    ip?: string,
+  ) {
+    if (process.env.ENABLE_BOOTSTRAP === 'false') {
+      throw new UnauthorizedException('Bootstrap deshabilitado');
+    }
     const adminKey = process.env.ADMIN_PASSWORD;
     if (!adminKey) {
       throw new UnauthorizedException('Bootstrap no configurado');
@@ -79,10 +102,29 @@ export class AuthService {
     if (!newPassword || newPassword.length < 6) {
       throw new UnauthorizedException('La nueva contraseña debe tener al menos 6 caracteres');
     }
-    const user = await this.prisma.user.findUnique({ where: { email: String(email).trim().toLowerCase() } });
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    const user = await this.prisma.user.findUnique({
+      where: { email: String(email).trim().toLowerCase() },
+    });
+    // Mismo mensaje para "no existe" y "no es admin": no se revela qué
+    // correos están registrados en el sistema.
+    if (!user || user.role !== Role.ADMIN) {
+      throw new UnauthorizedException('No se puede restablecer esa cuenta');
+    }
     const hashed = await bcrypt.hash(newPassword, 10);
     await this.prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
+    await this.prisma.auditLog
+      .create({
+        data: {
+          userId: user.id,
+          action: 'BOOTSTRAP_PASSWORD_RESET',
+          entity: 'User',
+          entityId: user.id,
+          newValue: { email: user.email, reason: 'bootstrap' },
+          ipAddress: ip || null,
+        },
+      })
+      // El reset ya se aplicó: un fallo al auditar no debe convertirlo en error.
+      .catch(() => undefined);
     return { ok: true, email: user.email };
   }
 }

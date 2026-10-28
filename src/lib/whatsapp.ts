@@ -53,7 +53,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   if (order.metroStation) {
     lines.push(`*Entrega:* Metro ${order.metroStation} — Línea ${order.metroLine}`);
   }
-  lines.push(`*Pago:* Contra entrega`);
+  lines.push(`*Pago:* Efectivo o transferencia (contra entrega)`);
   lines.push('');
   lines.push('*PRODUCTOS:*');
   order.items.forEach((item, index) => {

@@ -14,9 +14,7 @@ import {
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
-import { waMeUrl } from '@/lib/whatsapp';
 import Stars from '@/components/ui/Stars';
-import { BRAND } from '@/data/seed';
 
 type Flavor = { name: string; color: string; image: string };
 
@@ -31,13 +29,6 @@ const FLAVORS: Flavor[] = [
 const PACK_OLD = 30000;
 const PACK_PRICE = 27500;
 const OFF = Math.round((1 - PACK_PRICE / PACK_OLD) * 100);
-
-const WHATSAPP_MESSAGE =
-  'Hola NutriFit 👋 Quiero comprar el pack Whey + Creatina originales. ¿Me ayudan?';
-
-const whatsappUrl =
-  waMeUrl(BRAND.whatsappDigits, WHATSAPP_MESSAGE) ??
-  `https://wa.me/${BRAND.whatsappDigits}`;
 
 export default function HeroSection() {
   const { addBundle } = useCart();
@@ -190,7 +181,7 @@ export default function HeroSection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
             </span>
             <p className="text-[13px] font-semibold text-gray-600">
-              Disponible para entrega en Metro hoy
+              Disponible para entrega en Metro o domicilio hoy
             </p>
           </motion.div>
 
@@ -216,15 +207,14 @@ export default function HeroSection() {
               />
             </motion.button>
 
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={addPack}
               className="flex h-14 w-full items-center justify-center gap-2.5 rounded-full border-2 border-sport-green bg-white text-base font-extrabold text-sport-green transition-colors hover:bg-sport-green/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-auto sm:px-8"
             >
               <MessageCircle size={20} />
               Comprar por WhatsApp
-            </a>
+            </button>
           </motion.div>
 
           {/* Trust badges */}
@@ -243,7 +233,7 @@ export default function HeroSection() {
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
-              <Truck size={13} className="text-sport-green" /> Entrega en Metro
+              <Truck size={13} className="text-sport-green" /> Entrega en Metro o domicilio
             </span>
           </motion.div>
         </div>
@@ -300,7 +290,7 @@ export default function HeroSection() {
 
               {/* Same-day delivery badge */}
               <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full border border-sport-green/30 bg-sport-green/15 px-3 py-1.5 text-[11px] font-extrabold text-sport-green backdrop-blur-md sm:bottom-4 sm:left-4">
-                <Truck size={12} /> Entrega en Metro
+                <Truck size={12} /> Retiro en Metro
               </span>
             </div>
 

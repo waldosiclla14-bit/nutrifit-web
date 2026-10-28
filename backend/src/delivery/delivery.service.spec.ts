@@ -368,5 +368,40 @@ describe('DeliveryService', () => {
       expect(res.minutes).toBe(240);
       expect(res.total).toBe(0);
     });
+
+    it('no aborta el lote si el push falla para una entrega', async () => {
+      // Antes la excepción subía hasta el cron y se perdían los recordatorios
+      // restantes (respuesta 500).
+      prismaMock.delivery.findMany.mockResolvedValue([
+        { ...baseDel, id: 'd1', windowStart: chileNowPlus(20) },
+        { ...baseDel, id: 'd2', windowStart: chileNowPlus(40) },
+      ]);
+      prismaMock.deliveryAuditLog.findFirst.mockResolvedValue(null);
+      prismaMock.deliveryAuditLog.create.mockResolvedValue({});
+      pushMock.broadcast
+        .mockRejectedValueOnce(new Error('push caído'))
+        .mockResolvedValueOnce({ sent: 1, total: 1 });
+
+      const res = await service.dispatchReminders(60);
+
+      expect(res).toEqual(expect.objectContaining({ total: 2, reminded: 1, skipped: 1 }));
+      expect(pushMock.broadcast).toHaveBeenCalledTimes(2);
+    });
+
+    it('no marca REMINDER_SENT si no hubo destinatarios', async () => {
+      // Sin destinatarios (push sin configurar) no debe darse por avisado:
+      // si no, no se reintenta nunca.
+      prismaMock.delivery.findMany.mockResolvedValue([
+        { ...baseDel, id: 'd1', windowStart: chileNowPlus(20) },
+      ]);
+      prismaMock.deliveryAuditLog.findFirst.mockResolvedValue(null);
+      pushMock.broadcast.mockResolvedValue({ sent: 0, total: 0 });
+
+      const res = await service.dispatchReminders(60);
+
+      expect(res.reminded).toBe(0);
+      expect(res.skipped).toBe(1);
+      expect(prismaMock.deliveryAuditLog.create).not.toHaveBeenCalled();
+    });
   });
 });

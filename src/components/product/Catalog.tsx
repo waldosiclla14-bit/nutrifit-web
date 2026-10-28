@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal } from 'lucide-react';
-import { CATEGORIES, GOALS, PRODUCTS } from '@/data/seed';
+import { CATEGORIES, GOALS, PRODUCTS, PRODUCT_BRANDS } from '@/data/seed';
 import ProductCard from '@/components/product/ProductCard';
 import Reveal from '@/components/ui/Reveal';
 import { cx, getDiscount } from '@/lib/utils';
@@ -17,22 +18,36 @@ const PRICE_PRESETS = [
   { key: '25000+', label: 'Más de $25.000', test: (p: number) => p > 25000 },
 ];
 
-const BRANDS = ['NutriFit', 'FullEnergic', 'Rain', 'FNL'];
-
 export default function Catalog({
   initialCat,
   initialQ,
+  initialMarca,
+  initialGoal,
 }: {
   initialCat?: string;
   initialQ?: string;
+  initialMarca?: string;
+  initialGoal?: string;
 }) {
+  const searchParams = useSearchParams();
   const [cat, setCat] = useState(initialCat ?? '');
   const [q, setQ] = useState(initialQ ?? '');
   const [sort, setSort] = useState<SortKey>('relevancia');
-  const [brands, setBrands] = useState<string[]>([]);
-  const [goals, setGoals] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>(initialMarca ? [initialMarca] : []);
+  const [goals, setGoals] = useState<string[]>(initialGoal ? [initialGoal] : []);
   const [price, setPrice] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Sincroniza filtros cuando cambian los parámetros de la URL (p. ej. al
+  // navegar desde el menú a /productos?marca=Rain sin remontar el componente).
+  useEffect(() => {
+    setCat(searchParams.get('cat') ?? '');
+    setQ(searchParams.get('q') ?? '');
+    const marca = searchParams.get('marca');
+    const goal = searchParams.get('goal');
+    setBrands(marca ? [marca] : []);
+    setGoals(goal ? [goal] : []);
+  }, [searchParams]);
 
   const toggleBrand = (b: string) =>
     setBrands((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
@@ -165,7 +180,7 @@ export default function Catalog({
             <div>
               <h3 className="label">Marca</h3>
               <div className="flex flex-wrap gap-2">
-                {BRANDS.map((b) => (
+                {PRODUCT_BRANDS.map((b) => (
                   <button
                     key={b}
                     type="button"

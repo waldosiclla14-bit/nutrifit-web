@@ -810,6 +810,10 @@ export function Pos({ token, onLogout }: { token: string; onLogout: () => void }
           deliveryDay: (mode === 'METRO' || mode === 'DELIVERY') ? deliveryDay : undefined,
           deliveryTime: (mode === 'METRO' || mode === 'DELIVERY') ? deliveryTime : undefined,
           address: mode === 'DELIVERY' ? deliveryAddress.trim() : undefined,
+          // La dirección también viaja en la orden (deliveryDetails) para que
+          // el panel de Órdenes la muestre: el campo `address` solo existe en
+          // el registro de entrega, no en la orden.
+          deliveryDetails: mode === 'DELIVERY' ? deliveryAddress.trim() : undefined,
           subtotal,
           discount: discountAmount,
           shippingCost,

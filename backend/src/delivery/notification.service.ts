@@ -8,6 +8,10 @@ export interface DeliveryNotificationData {
   customerPhone?: string;
   stationName?: string;
   lineName?: string;
+  /** Tipo de entrega: METRO, ENVIO_DOMICILIO o RETIRO_TIENDA. */
+  deliveryType?: string;
+  /** Dirección de entrega (solo para envíos a domicilio). */
+  address?: string | null;
   deliveryDate?: Date | null;
   windowStart?: string | null;
   windowEnd?: string | null;
@@ -53,7 +57,14 @@ export class NotificationService {
   }
 
   buildDeliveryStatusMessage(status: DeliveryStatus, data: DeliveryNotificationData): string | null {
-    const label = STATUS_LABELS[status] || status;
+    const isDomicilio = data.deliveryType === 'ENVIO_DOMICILIO';
+    const isRetiroTienda = data.deliveryType === 'RETIRO_TIENDA';
+    // La etiqueta depende del tipo de entrega ("Llegó a la estación" no aplica
+    // a un envío a domicilio).
+    const label =
+      status === DeliveryStatus.ARRIVED && isDomicilio
+        ? 'Llegó a tu domicilio'
+        : STATUS_LABELS[status] || status;
     const lines: string[] = [];
 
     lines.push('NUTRIFIT · ACTUALIZACIÓN DE ENTREGA');
@@ -72,6 +83,9 @@ export class NotificationService {
     }
     if (data.stationName) {
       lines.push(`🚇 Metro ${data.stationName} · ${data.lineName || ''}`);
+    }
+    if (isDomicilio && data.address) {
+      lines.push(`🏠 ${data.address}`);
     }
     if (data.meetingPoint) {
       lines.push(`📍 ${data.meetingPoint}`);
@@ -99,20 +113,34 @@ export class NotificationService {
       case DeliveryStatus.SCHEDULED:
       case DeliveryStatus.CONFIRMED:
         lines.push('');
-        lines.push(`Te esperamos en *Metro ${data.stationName || 'la estación'}*.`);
-        if (data.meetingPoint) {
-          lines.push(`Punto de encuentro: *${data.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
+        if (isDomicilio) {
+          lines.push(`Te lo enviamos a tu domicilio${data.address ? ` (${data.address})` : ''}.`);
+        } else if (isRetiroTienda) {
+          lines.push('Te esperamos en el local para retirar tu pedido.');
+        } else {
+          lines.push(`Te esperamos en *Metro ${data.stationName || 'la estación'}*.`);
+          if (data.meetingPoint) {
+            lines.push(`Punto de encuentro: *${data.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
+          }
         }
         break;
 
       case DeliveryStatus.IN_ROUTE:
         lines.push('');
-        lines.push('¡Tu pedido va en camino! El repartidor llegará pronto a la estación.');
+        lines.push(
+          isDomicilio
+            ? '¡Tu pedido va en camino! El repartidor llegará pronto a tu domicilio.'
+            : '¡Tu pedido va en camino! El repartidor llegará pronto a la estación.',
+        );
         break;
 
       case DeliveryStatus.ARRIVED:
         lines.push('');
-        lines.push('¡El repartidor llegó a la estación!');
+        lines.push(
+          isDomicilio
+            ? '¡El repartidor llegó a tu domicilio!'
+            : '¡El repartidor llegó a la estación!',
+        );
         if (data.meetingPoint) {
           lines.push(`Búscalo en: *${data.meetingPoint}* (cerca a los torniquetes o cambio de andén)`);
         }

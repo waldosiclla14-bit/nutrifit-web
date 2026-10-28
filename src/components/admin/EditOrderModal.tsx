@@ -9,6 +9,21 @@ import { METRO_LINES } from '@/data/metro';
 import { PAYMENT_LABEL } from '@/lib/admin/constants';
 import type { AdminOrder } from '@/types/admin';
 
+/** Tipos de entrega que acepta el backend (ver enum DeliveryType de Prisma). */
+type DeliveryTypeValue = 'METRO' | 'RETIRO_TIENDA' | 'ENVIO_DOMICILIO';
+
+/**
+ * Normaliza el tipo de entrega guardado. El backend nunca ha guardado 'STORE'
+ * (ese valor no existe en el enum), pero el modal lo usaba antes y por eso los
+ * pedidos ajenos a Metro se degradaban y el guardado fallaba con 400.
+ */
+function normalizeDeliveryType(value?: string): DeliveryTypeValue {
+  const v = String(value || '').toUpperCase();
+  if (v === 'METRO') return 'METRO';
+  if (v === 'ENVIO_DOMICILIO') return 'ENVIO_DOMICILIO';
+  return 'RETIRO_TIENDA';
+}
+
 export function EditOrderModal({
   order,
   token,
@@ -36,9 +51,10 @@ export function EditOrderModal({
       quantity: i.quantity,
     })),
   );
-  const [deliveryType, setDeliveryType] = useState<'METRO' | 'STORE'>(order.deliveryType === 'METRO' ? 'METRO' : 'STORE');
+  const [deliveryType, setDeliveryType] = useState<DeliveryTypeValue>(normalizeDeliveryType(order.deliveryType));
   const [metroLine, setMetroLine] = useState(order.metroLine || '1');
   const [metroStation, setMetroStation] = useState(order.metroStation || '');
+  const [deliveryDetails, setDeliveryDetails] = useState(order.deliveryDetails || '');
   const [deliveryDay, setDeliveryDay] = useState(order.deliveryDay || '');
   const [deliveryTime, setDeliveryTime] = useState(order.deliveryTime || '');
   const [method, setMethod] = useState(order.paymentMethod || 'TRANSFERENCIA');
@@ -66,9 +82,10 @@ export function EditOrderModal({
             quantity: i.quantity,
           })),
         );
-        if (full.deliveryType) setDeliveryType(full.deliveryType === 'METRO' ? 'METRO' : 'STORE');
+        if (full.deliveryType) setDeliveryType(normalizeDeliveryType(full.deliveryType));
         if (full.metroLine) setMetroLine(full.metroLine);
         if (full.metroStation) setMetroStation(full.metroStation);
+        if (full.deliveryDetails) setDeliveryDetails(full.deliveryDetails);
         if (full.deliveryDay) setDeliveryDay(full.deliveryDay);
         if (full.deliveryTime) setDeliveryTime(full.deliveryTime);
         if (full.paymentMethod) setMethod(full.paymentMethod);
@@ -161,27 +178,35 @@ export function EditOrderModal({
       quantity: l.quantity,
       total: l.unitPrice * l.quantity,
     }));
-    await apiFetch(`/orders/${order.id}`, {
-      method: 'PATCH',
-      token,
-      body: {
-        customerId: order.customer?.id,
-        customerName: order.customer?.name || order.customerName || '',
-        customerPhone: order.customer?.phone || order.customerPhone || '',
-        deliveryType,
-        metroLine: deliveryType === 'METRO' ? metroLine : undefined,
-        metroStation: deliveryType === 'METRO' ? metroStation : undefined,
-        deliveryDay: deliveryType === 'METRO' ? deliveryDay || null : null,
-        deliveryTime: deliveryType === 'METRO' ? deliveryTime || null : null,
-        subtotal,
-        discount: disc,
-        shippingCost: ship,
-        total,
-        paymentMethod: method,
-        items,
-      },
-    });
-    onSaved();
+    try {
+      await apiFetch(`/orders/${order.id}`, {
+        method: 'PATCH',
+        token,
+        body: {
+          customerId: order.customer?.id,
+          customerName: order.customer?.name || order.customerName || '',
+          customerPhone: order.customer?.phone || order.customerPhone || '',
+          deliveryType,
+          metroLine: deliveryType === 'METRO' ? metroLine : undefined,
+          metroStation: deliveryType === 'METRO' ? metroStation : undefined,
+          // La dirección se guarda siempre: no mandarla como null la borraría.
+          deliveryDetails: deliveryDetails.trim() || undefined,
+          deliveryDay: deliveryDay || null,
+          deliveryTime: deliveryTime || null,
+          subtotal,
+          discount: disc,
+          shippingCost: ship,
+          total,
+          paymentMethod: method,
+          items,
+        },
+      });
+      onSaved();
+    } catch (err) {
+      const message =
+        (err as { message?: string })?.message || 'No se pudo guardar la orden.';
+      toast.error(message);
+    }
   };
 
   const stationOptions = METRO_LINES.find((l) => l.line === metroLine)?.stations || [];
@@ -271,11 +296,12 @@ export function EditOrderModal({
               <span className="text-xs font-semibold text-muted">Tipo</span>
               <select
                 value={deliveryType}
-                onChange={(e) => setDeliveryType(e.target.value as 'METRO' | 'STORE')}
+                onChange={(e) => setDeliveryType(e.target.value as DeliveryTypeValue)}
                 className="input mt-1"
               >
                 <option value="METRO">Entrega en Metro</option>
-                <option value="STORE">Retiro tienda</option>
+                <option value="ENVIO_DOMICILIO">Envío a domicilio</option>
+                <option value="RETIRO_TIENDA">Retiro en tienda</option>
               </select>
             </label>
             {deliveryType === 'METRO' && (
@@ -304,6 +330,21 @@ export function EditOrderModal({
                     ))}
                   </select>
                 </label>
+              </>
+            )}
+            {deliveryType === 'ENVIO_DOMICILIO' && (
+              <label className="block sm:col-span-2">
+                <span className="text-xs font-semibold text-muted">Dirección de entrega</span>
+                <input
+                  value={deliveryDetails}
+                  onChange={(e) => setDeliveryDetails(e.target.value)}
+                  placeholder="Calle, número, depto, comuna"
+                  className="input mt-1"
+                />
+              </label>
+            )}
+            {deliveryType !== 'RETIRO_TIENDA' && (
+              <>
                 <label className="block">
                   <span className="text-xs font-semibold text-muted">Día</span>
                   <input type="date" value={deliveryDay} onChange={(e) => setDeliveryDay(e.target.value)} className="input mt-1" />
