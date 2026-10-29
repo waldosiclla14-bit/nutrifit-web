@@ -734,3 +734,63 @@ Según `docs/estado.md` (sesión del 23-oct), el domicilio se retiró a propósi
 ### Siguiente paso
 
 Decidir lo del domicilio y confirmar `WEBHOOK_SECRET` y las claves VAPID en Render/Vercel.
+
+
+---
+
+## Sesión: Fase 0 — reconocimiento y auditoría (29-oct-2026)
+
+### Objetivo
+Ejecutar la Fase 0 de `docs/MEJORAS.md`: reconocimiento sin cambios de código, línea base de
+rendimiento y `docs/AUDIT.md`. Una fase por sesión; no se avanzó a Fase 1.
+
+### Decisiones tomadas
+- **La Fase 0 no toca código de producto.** Solo se agregaron documentos y capturas.
+- **PSI estaba sin cuota**, así que la línea base se midió con Lighthouse 12 CLI en modo móvil
+  (emulación Moto G Power, throttling simulado) + Playwright/Chrome con viewport 390×844.
+- **Las capturas válidas se hacen con emulación móvil.** Las de `chrome --headless
+  --screenshot` sin emulación recortaban el layout y simulaban un desbordamiento que no existe.
+- **No se inventaron datos.** Todo lo que requiere al dueño quedó como decisión pendiente en
+  `docs/AUDIT.md` §6, incluida la contradicción de domicilio ya registrada antes.
+
+### Archivos creados/modificados
+- `docs/MEJORAS.md` (nuevo): plan completo del dueño.
+- `docs/AUDIT.md` (nuevo): stack, modelo de datos, inventario de imágenes, línea base y 30
+  hallazgos clasificados (CONFIRMADO / PROBABLE / NO VERIFICADO).
+- `docs/capturas/fase-0/`: `home-390.png`, `catalogo-390.png`, `ficha-390.png`, `carrito-390.png`.
+- `docs/estado.md`: esta entrada.
+
+### Hallazgos que cambian el orden de la Fase 1
+1. **El service worker recarga la página en cada visita.** Con SW bloqueado hay 1 documento; con
+   SW activo hay 2 (el segundo con `navigation.type = 'reload'`). `sw.js` hace `skipWaiting()` +
+   `clients.claim()` y `PWA.tsx` recarga al activarse. Infla el LCP de Lighthouse (4,4 s catálogo,
+   5,8 s ficha) y produce un parpadeo en cada visita.
+2. **La home no emite LCP**: `NO_LCP` en Lighthouse y `LCP = 0` con `PerformanceObserver` real.
+   Causa probable: el hero entra con `opacity: 0` (Framer Motion, animación de compositor).
+3. **Encoding roto acotado a una línea**: `src/data/seed.ts:7` (`BRAND.tagline`), no todo el repo.
+   `package.json` está sano.
+4. **Packs con imágenes equivocadas confirmadas**: Set Bienestar muestra óxido nítrico, Set Pump
+   Total muestra una creatina, los packs con shaker muestran solo whey.
+
+### Qué se probó y cómo
+| Comprobación | Comando / método | Resultado |
+|---|---|---|
+| Tests frontend | `npx jest --silent` | **112/112**, 12 suites |
+| Lint | `npm run lint` | **falla**: 19 errores preexistentes, casi todos en `backend/` y `backend/dist/` |
+| Build | `npm run build` | exit 1 en el primer intento (aviso de seguridad de Next 16.4.0); **exit 0 al reintentar** |
+| Lighthouse home / catálogo / ficha | `npx lighthouse@12 … --form-factor=mobile` | 521 / 676 / 426 KiB; LCP home `NO_LCP`, 4,4 s, 5,8 s |
+| Métricas reales 390×844 | Playwright + `PerformanceObserver` | LCP home 0; catálogo 1.060 ms; ficha 556 ms; CLS 0 |
+| Doble carga por SW | Playwright con `serviceWorkers: block` vs `allow` | 1 vs 2 documentos (`reload`) |
+| Desbordamiento horizontal | `scrollWidth` vs `innerWidth` a 390 | **0 px** en las 3 páginas |
+| Encoding | script sobre 514 archivos + HTML de producción | 1 línea con U+FFFD, confirmada en el footer publicado |
+| sitemap / robots | `GET` a producción | 200, 42 URLs |
+
+### Pendientes y decisiones que requieren validación humana
+- Aprobación del dueño para pasar a Fase 1 y para el orden propuesto (adelantar el bug del SW y
+  el encoding antes de las imágenes de packs).
+- Decisiones 1–8 de `docs/MEJORAS.md` §6 y 9–12 nuevas (domicilio, stock real, testimonios,
+  recarga del SW) en `docs/AUDIT.md` §6.
+
+### Siguiente paso
+PR con `docs/MEJORAS.md`, `docs/AUDIT.md` y las capturas. **No fusionar** hasta el OK del dueño
+para la Fase 1.
