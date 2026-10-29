@@ -4,7 +4,7 @@ import { SITE_URL } from '@/lib/site';
 
 export const BRAND = {
   name: 'NutriFit',
-  tagline: 'Nutrici��n �?� Energ��a �?� Resultados',
+  tagline: 'Nutrición · Energía · Resultados',
   whatsapp: '+56 9 2388 3826',
   whatsappDigits: '56923883826',
   instagram: '@nutrifitsuplementos_cl',
