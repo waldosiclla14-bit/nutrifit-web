@@ -4,16 +4,18 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag } from 'lucide-react';
-import { BUNDLES } from '@/data/seed';
+import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
-import { formatPrice } from '@/lib/utils';
-
-const PACK_PRICE = 27500;
+import { bundlePricing, formatPrice } from '@/lib/utils';
 
 export default function StickyBottomBar() {
   const { addBundle } = useCart();
   const [visible, setVisible] = useState(false);
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
+  const price = pack
+    ? bundlePricing(pack, (id) => PRODUCTS.find((p) => p.id === id)).price
+    : 0;
+  const title = pack?.title ?? 'Pack Proteína + Creatina';
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 400);
@@ -50,11 +52,9 @@ export default function StickyBottomBar() {
 
             {/* Info */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-bold text-gray-900">
-                Pack Proteína + Creatina
-              </p>
+              <p className="truncate text-[13px] font-bold text-gray-900">{title}</p>
               <p className="font-display text-xl tracking-wide text-sport-green">
-                {formatPrice(PACK_PRICE)}
+                {formatPrice(price)}
               </p>
             </div>
 

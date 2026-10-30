@@ -4,13 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import type { Product } from '@/types';
-import { formatPrice, getDiscount } from '@/lib/utils';
+import { formatPrice, getDiscount, verifiedOldPrice, lineDiscount } from '@/lib/utils';
+import { summarizeRatings } from '@/lib/ratings';
 import { useCart } from '@/context/CartContext';
 import Stars from '@/components/ui/Stars';
 import StockUrgency from '@/components/product/StockUrgency';
 
 export default function BestSellerCard({ product }: { product: Product }) {
   const discount = getDiscount(product);
+  const ratings = summarizeRatings([product]);
   const { addItem, openCart } = useCart();
 
   const addToCart = () => {
@@ -20,8 +22,8 @@ export default function BestSellerCard({ product }: { product: Product }) {
       slug: product.slug,
       name: variant ? `${product.name} (${variant.name})` : product.name,
       price: product.price,
-      oldPrice: product.oldPrice,
-      discount: 0,
+      oldPrice: verifiedOldPrice(product),
+      discount: lineDiscount(product),
       image: variant?.image ?? product.image,
       quantity: 1,
       variant: variant?.name,
@@ -63,14 +65,20 @@ export default function BestSellerCard({ product }: { product: Product }) {
           {product.name}
         </Link>
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
-          <Stars rating={product.rating} size={13} />
-          <span className="font-semibold text-gray-600">{product.rating.toFixed(1)}</span>
-          <span>({product.reviews})</span>
+          {ratings ? (
+            <>
+              <Stars rating={ratings.rating} size={13} />
+              <span className="font-semibold text-gray-600">{ratings.rating.toFixed(1)}</span>
+              <span>({ratings.count})</span>
+            </>
+          ) : (
+            <span>Sin reseñas todavía</span>
+          )}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
-            {product.oldPrice && (
+            {discount && product.oldPrice && (
               <span className="text-sm text-gray-400 line-through">{formatPrice(product.oldPrice)}</span>
             )}
             <span className="text-[18px] font-bold leading-none text-gray-900">

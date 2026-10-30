@@ -4,6 +4,16 @@ import { OrdersService } from './orders.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { RemindersService } from '../reminders/reminders.service';
+import { todayChileISO } from '../common/date-range';
+
+/**
+ * Suma días a una fecha YYYY-MM-DD sin pasar por la zona horaria del runner:
+ * el servicio compara días calendario de America/Santiago, no instantes.
+ */
+function addDaysISO(iso: string, days: number): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -708,11 +718,9 @@ describe('OrdersService', () => {
     it('creates AGENDADO with future scheduledAt', async () => {
       mockCreateInfra();
       mockVariantOk();
-      // Fecha local explícita (no toISOString: UTC te cambia el día de noche)
-      const t = new Date();
-      t.setDate(t.getDate() + 2);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const future = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+      // Fecha en el calendario de Chile: con `new Date()` local, el runner en UTC
+      // de noche calcula un día distinto al del servicio (F-31).
+      const future = addDaysISO(todayChileISO(), 2);
 
       await service.create(basePayload({ scheduledAt: future }));
 
@@ -724,9 +732,7 @@ describe('OrdersService', () => {
     it('same-day scheduledAt stays PENDING', async () => {
       mockCreateInfra();
       mockVariantOk();
-      const n = new Date();
-      const pad = (n2: number) => String(n2).padStart(2, '0');
-      const today = `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`;
+      const today = todayChileISO();
 
       await service.create(basePayload({ scheduledAt: today }));
 

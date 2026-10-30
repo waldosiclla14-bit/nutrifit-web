@@ -2,6 +2,15 @@
 
 import { useEffect } from 'react';
 
+/**
+ * Registra el service worker.
+ *
+ * Importante: no se recarga la página cuando hay una versión nueva. Antes se
+ * hacía `window.location.reload()` al activarse el worker, y como `sw.js` se
+ * autoactivaba (`skipWaiting`), **cada visita cargaba el sitio dos veces**.
+ * Ahora el worker nuevo queda en espera y toma el control en la siguiente
+ * navegación completa, cuando la pestaña ya no depende del HTML anterior.
+ */
 export default function PWA() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -13,22 +22,8 @@ export default function PWA() {
         const reg = await navigator.serviceWorker.register('/sw.js', {
           updateViaCache: 'none',
         });
-
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'activated') {
-              window.location.reload();
-            }
-          });
-        });
-
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-
-        reg.update();
+        // Busca actualizaciones sin forzar la activación.
+        reg.update().catch(() => {});
       } catch {
         // sin SW no afecta al uso normal
       }

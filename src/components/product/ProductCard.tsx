@@ -8,7 +8,8 @@ import { Heart, ShoppingBag } from 'lucide-react';
 import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
-import { formatPrice, getDiscount } from '@/lib/utils';
+import { formatPrice, getDiscount, verifiedOldPrice, lineDiscount } from '@/lib/utils';
+import { summarizeRatings } from '@/lib/ratings';
 import Stars from '@/components/ui/Stars';
 import StockUrgency from '@/components/product/StockUrgency';
 import { cx } from '@/lib/utils';
@@ -19,6 +20,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const discount = getDiscount(product);
+  const ratings = summarizeRatings([product]);
   const fav = isFavorite(product.id);
   const hasVariants = !!product.variants && product.variants.length > 0;
 
@@ -32,8 +34,8 @@ export default function ProductCard({ product }: { product: Product }) {
       slug: product.slug,
       name: product.name,
       price: product.price,
-      oldPrice: product.oldPrice,
-      discount: Math.max(0, (product.oldPrice ?? product.price) - product.price),
+      oldPrice: verifiedOldPrice(product),
+      discount: lineDiscount(product),
       image: product.image,
       quantity: 1,
     });
@@ -99,14 +101,20 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.name}
         </Link>
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
-          <Stars rating={product.rating} size={13} />
-          <span className="font-semibold text-gray-900">{product.rating.toFixed(1)}</span>
-          <span>({product.reviews})</span>
+          {ratings ? (
+            <>
+              <Stars rating={ratings.rating} size={13} />
+              <span className="font-semibold text-gray-900">{ratings.rating.toFixed(1)}</span>
+              <span>({ratings.count})</span>
+            </>
+          ) : (
+            <span className="text-gray-400">Sin reseñas todavía</span>
+          )}
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
-            {product.oldPrice && (
+            {discount && product.oldPrice && (
               <span className="text-sm text-gray-500 line-through">
                 {formatPrice(product.oldPrice)}
               </span>

@@ -7,7 +7,13 @@ type Props = {
   className?: string;
 };
 
+/**
+ * Nota y estrellas de un producto. No se renderiza si no hay reseñas:
+ * antes se mostraba "4.9 · 0 opiniones" en productos sin ninguna.
+ */
 export default function RatingSummary({ rating, count, className }: Props) {
+  if (!count || count < 1) return null;
+
   return (
     <div className={cx('flex items-center gap-2.5', className)}>
       <Stars rating={rating} size={14} />

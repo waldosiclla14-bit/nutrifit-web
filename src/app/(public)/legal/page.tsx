@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { BRAND } from '@/data/seed';
+import { siteConfig } from '@/lib/site-config';
 
 export const metadata: Metadata = {
   title: 'Información Legal',
@@ -63,8 +64,7 @@ export default function LegalPage() {
               pago por WhatsApp.
             </li>
             <li>
-              Garantía de satisfacción de 10 días en productos sin abrir, con su sello de garantía
-              intacto.
+              {siteConfig.warranty.text}
             </li>
           </ul>
         </section>

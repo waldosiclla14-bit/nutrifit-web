@@ -1,0 +1,9 @@
+# El backend (NestJS) tiene su propio lint en `backend/package.json`.
+# El lint raíz es solo del frontend: si recorre `backend/` aplica las reglas
+# de Next a archivos que no lo son y falla con errores ajenos al sitio.
+node_modules/
+.next/
+out/
+build/
+coverage/
+backend/

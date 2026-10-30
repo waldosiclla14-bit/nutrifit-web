@@ -1,4 +1,4 @@
-const CACHE = 'nutrifit-v5';
+const CACHE = 'nutrifit-v6';
 const PRECACHE = [
   '/',
   '/icons/icon-192.png',
@@ -8,12 +8,12 @@ const PRECACHE = [
 
 const PRECACHE_URLS = new Set(PRECACHE);
 
+// El service worker NO se autoactiva: si lo hiciera, la pestaña abierta seguiría
+// con el HTML viejo y podría pedir chunks que el nuevo despliegue ya borró.
+// Se activa solo cuando el usuario cierra la pestaña o en la visita siguiente.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)),
   );
 });
 

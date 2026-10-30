@@ -20,10 +20,11 @@ import { useCart } from '@/context/CartContext';
 import { useSettings } from '@/lib/store-hooks';
 import { PRODUCTS } from '@/data/seed';
 import { METRO_LINES } from '@/data/metro';
-import { formatPrice, uid } from '@/lib/utils';
+import { formatPrice, uid, verifiedOldPrice, lineDiscount } from '@/lib/utils';
 import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
 import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon, saveOrder } from '@/lib/store';
 import { submitStoreOrder } from '@/lib/api';
+import { siteConfig } from '@/lib/site-config';
 import TrustBadges from '@/components/ui/TrustBadges';
 import type { Order, OrderItem } from '@/types';
 
@@ -597,8 +598,8 @@ export default function CartDrawer() {
                               slug: p.slug,
                               name: p.name,
                               price: p.price,
-                              oldPrice: p.oldPrice,
-                              discount: Math.max(0, (p.oldPrice ?? p.price) - p.price),
+                              oldPrice: verifiedOldPrice(p),
+                              discount: lineDiscount(p),
                               image: p.image,
                               quantity: 1,
                             })
@@ -739,7 +740,7 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-sport-textMuted">
                   <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-sport-orange" /> Garantía 10 días
+                    <ShieldCheck size={13} className="text-sport-orange" /> {siteConfig.warranty.short}
                   </span>
                   <span className="flex items-center gap-1">
                     <BadgeCheck size={13} className="text-sport-orange" /> Productos originales

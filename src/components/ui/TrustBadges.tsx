@@ -1,9 +1,10 @@
 import { BadgeCheck, MessageCircle, RefreshCcw, Truck } from 'lucide-react';
 import { cx } from '@/lib/utils';
+import { siteConfig } from '@/lib/site-config';
 
 const ITEMS = [
   { icon: Truck, title: 'Metro o domicilio', text: 'Retiro en Santiago o envío' },
-  { icon: RefreshCcw, title: 'Cambios garantizados', text: 'Hasta 10 días' },
+  { icon: RefreshCcw, title: siteConfig.warranty.short, text: 'Productos sin abrir' },
   { icon: BadgeCheck, title: 'Productos originales', text: 'Sello de garantía' },
   { icon: MessageCircle, title: 'Confirmación por WhatsApp', text: 'Respuesta rápida' },
 ];

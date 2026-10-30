@@ -4,7 +4,7 @@ import { SITE_URL } from '@/lib/site';
 
 export const BRAND = {
   name: 'NutriFit',
-  tagline: 'Nutrici��n �?� Energ��a �?� Resultados',
+  tagline: 'Nutrición · Energía · Resultados',
   whatsapp: '+56 9 2388 3826',
   whatsappDigits: '56923883826',
   instagram: '@nutrifitsuplementos_cl',
@@ -74,7 +74,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     rating: 4.9,
     reviews: 88,
     badge: 'Oferta',
-    image: '/img/FullEnergic 100% Vegan Protein Cookies & Cream 1kg.png',
+    image: '/img/fullenergic-vegan-protein-cookies-cream-1kg.png',
     modoUso: 'Mezclar 1 scoop (30 g) en 200–250 ml de agua o bebida vegetal (almendra, soya, avena). Ideal después del entrenamiento o como refuerzo proteico durante el día.',
     nutrientes: [['Energía', '~110 kcal'], ['Proteínas', '27 g (por porción de 30 g)'], ['Proteína por 100 g', '~91 g'], ['Grasas', 'Baja'], ['Carbohidratos', 'Bajo'], ['Gluten', 'Libre'], ['Lactosa', 'Libre']],
     ingredientes: ['Proteína aislada de soya (90%)', 'Proteína de arveja (10%)', 'Saborizante natural Cookies & Cream', 'Sin azúcares añadidos', 'Libre de gluten', 'Libre de lactosa'],
@@ -96,7 +96,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     rating: 5.0,
     reviews: 156,
     badge: 'Oferta',
-    image: '/img/creatina full energic 300g.png',
+    image: '/img/creatina-full-energic-300g.png',
     modoUso: 'Consumir 1 porción (5 g = 1 scoop) al día, mezclada con 200–300 ml de agua o jugo. Puede tomarse antes o después del entrenamiento, idealmente todos los días para mantener la saturación muscular.',
     nutrientes: [['Creatina por porción', '5 g'], ['Porciones', '60 por porción de 5 g'], ['Energía', '~0 kcal'], ['Gluten', 'Libre']],
     ingredientes: ['100% Creatina Monohidrato', 'Sin azúcares añadidos', 'Sin saborizantes ni colorantes', 'Libre de gluten'],
@@ -790,7 +790,7 @@ const PRODUCT_RAW: ProductRaw[] = [
     rating: 4.9,
     reviews: 0,
     badge: 'Oferta',
-    image: '/img/Whey Protein FNL 947g Chocolate Suizo.png',
+    image: '/img/whey-protein-fnl-947g-chocolate-suizo.png',
     modoUso: 'Disolver 1 porción en 200–250 ml de agua fría o leche descremada, preferentemente justo después de entrenar o como refuerzo proteico durante el día.',
     nutrientes: [['Porciones por envase', '30'], ['Peso neto', '947 g'], ['Proteínas por porción', '24 g'], ['Lactosa', 'Apta para intolerantes (adición de lactasa)'], ['Azúcar añadida', 'Sin azúcar añadida']],
     ingredientes: ['Proteína de leche (concentrado de proteína de suero)', 'Lecitina de girasol', 'Fosfato de calcio', 'Sabor idéntico al natural', 'Lactasa', 'Sucralosa'],
@@ -1055,7 +1055,6 @@ export const BUNDLES: Bundle[] = [
     ],
     pricing: 'fixed',
     fixedPrice: 27500,
-    image: '/img/producto1.webp',
     tag: 'Ahorras $2.500',
   },
   {
@@ -1070,7 +1069,6 @@ export const BUNDLES: Bundle[] = [
     ],
     pricing: 'fixed',
     fixedPrice: 32000,
-    image: '/img/producto1.webp',
     tag: 'Ahorras $4.000',
   },
   {
@@ -1083,7 +1081,6 @@ export const BUNDLES: Bundle[] = [
     ],
     pricing: 'fixed',
     fixedPrice: 29000,
-    image: '/img/producto4.webp',
     tag: 'Ahorras $4.000',
   },
   {
@@ -1096,7 +1093,6 @@ export const BUNDLES: Bundle[] = [
     ],
     pricing: 'fixed',
     fixedPrice: 27000,
-    image: '/img/producto8.webp',
     tag: 'Ahorras $3.000',
   },
   {
@@ -1109,7 +1105,6 @@ export const BUNDLES: Bundle[] = [
     ],
     pricing: 'fixed',
     fixedPrice: 29000,
-    image: '/img/producto9.webp',
     tag: 'Ahorras $4.000',
   },
 ];
@@ -1128,7 +1123,7 @@ export const BANNERS: Banner[] = [
     id: 'pack-proteina-creatina',
     title: 'Pack Proteína + Creatina',
     subtitle: 'Whey FullEnergic 1kg + Creatina Eco Naturales por solo $27.500. Elige tu sabor.',
-    image: '/img/proteina whey full energic + creatina eco naturales 300g.png',
+    image: '/img/proteina-whey-full-energic-creatina-eco-naturales-300g.png',
     link: '/#sets',
     cta: 'Ver el pack',
     active: true,

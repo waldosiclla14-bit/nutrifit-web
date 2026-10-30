@@ -1,4 +1,5 @@
 import type { CustomerProfile, Order, Settings } from '@/types';
+import { siteConfig } from '@/lib/site-config';
 
 export const STORAGE_KEY = 'nutrifit:store:v1';
 const PROFILE_KEY = 'nutrifit:customer:v1';
@@ -6,12 +7,12 @@ const CHANGE_EVENT = 'nutrifit:store:changed';
 
 export const DEFAULT_SETTINGS: Settings = {
   whatsapp: '56923883826',
-  shipping: 1000,
+  shipping: siteConfig.delivery.metroFee,
   giftProductId: undefined,
   giftThreshold: 0,
   giftLabel: 'recibir un regalo',
-  rewardThreshold: 60000,
-  rewardPercent: 5,
+  rewardThreshold: siteConfig.offers.rewardThreshold,
+  rewardPercent: siteConfig.offers.rewardPercent,
 };
 
 export type DB = {

@@ -1,9 +1,10 @@
 import { BadgeCheck, ShieldCheck, Train, Truck } from 'lucide-react';
+import { siteConfig } from '@/lib/site-config';
 
 const PROMISES = [
-  { icon: Truck, title: 'Entrega 24–48 hrs', text: 'Coordinada por WhatsApp' },
+  { icon: Truck, title: `Entrega ${siteConfig.delivery.promiseShort}`, text: 'Coordinada por WhatsApp' },
   { icon: Train, title: 'Todas las líneas de Metro', text: '+140 estaciones en Santiago' },
-  { icon: ShieldCheck, title: 'Garantía 10 días', text: 'Productos sin abrir, respuesta rápida' },
+  { icon: ShieldCheck, title: siteConfig.warranty.short, text: siteConfig.warranty.textShort },
   { icon: BadgeCheck, title: '100% originales', text: 'Sello de garantía NutriFit' },
 ];
 

@@ -1,5 +1,96 @@
 # Estado del proyecto NutriFit
 
+## Sesión: Fase 1 — P0 errores y confianza (`fix/fase-1`)
+
+### Objetivo
+Ejecutar la Fase 1 de `docs/MEJORAS.md` (1.1 a 1.7) sin cambiar precios, stock ni
+políticas reales, dejando cada valor de negocio en un solo archivo y cada decisión
+del dueño detrás de un flag reversible.
+
+### Decisiones tomadas
+- **Una sola fuente de verdad** (`src/lib/site-config.ts`): tarifa de entrega en Metro,
+  umbral de envío gratis, umbral y % del premio por monto, umbral de stock bajo,
+  garantía, plazo de entrega, medios de pago, horario y flags de visualización.
+  `DEFAULT_SETTINGS` de `src/lib/store.ts` ahora se deriva de ahí.
+- **Precio "antes" sin verificar no se muestra** (`siteConfig.offers.requireVerifiedCompareAt`
+  = `true` y `compareAtVerified` por defecto `false`). Consecuencia: hoy no hay tachado
+  ni `-N%` en productos; los packs sí muestran su ahorro porque se calcula sumando los
+  precios actuales de sus componentes, no un precio inventado.
+- **Conteo de reseñas**: `summarizeRatings` / `summarizeBundleRatings` ponderan por
+  cantidad de reseñas y devuelven `null` si no hay ninguna ⇒ sin estrellas ni nota.
+  El hero del pack muestra **629** (617 whey + 12 creatina Eco Naturales), no 773.
+- **Chip "Verificada" eliminado** de `UGCProof.tsx`: los 10 testimonios son fijos y no
+  existe verificación de compra registrada. Los testimonios siguen visibles hasta que el
+  dueño decida qué se mantiene (1.4).
+- **Plazo de entrega unificado** en `siteConfig.delivery.promise`:
+  «Entrega coordinada por WhatsApp, normalmente en 24 a 48 horas.» Se quitó "hoy" del
+  hero porque no hay registro que lo respalde. **[DECISIÓN DEL DUEÑO]** si la entrega
+  real es el mismo día, se cambia solo ese texto.
+- **Escasez**: `siteConfig.stock.showCounts = false` ⇒ no se muestra "Solo quedan N" ni
+  "Stock disponible: N uds." aunque el umbral esté configurado.
+- **1.4 se entrega solo como reporte**. No se ocultó ni reescribió copy: cada hallazgo
+  necesita decisión del dueño sobre qué se mantiene, qué se reescribe y con qué respaldo.
+- **Imágenes**: se renombraron 4 archivos con espacios/`%`/`+` a slugs y se actualizaron
+  las rutas del seed; el optimizador de Next devolvía 500/404 con esos nombres.
+- **Fuera de alcance respetado**: no se tocó el envío a domicilio (sigue pendiente de
+  decisión), ni `backend/render.yaml`, ni `keep-alive.yml`. No se ejecutó
+  `next upgrade --agent=security` (vive en `security/next-16.4.3`, PR #4).
+
+### Archivos creados/modificados
+- **Nuevos**: `src/lib/site-config.ts`, `src/lib/ratings.ts` (+`.test.ts`),
+  `src/lib/bundles.ts` (+`.test.ts`), `src/components/ui/BundleImages.tsx`,
+  `scripts/scan-claims.ts`, `docs/claims-review.md`, `docs/capturas/fase-1/*.png`.
+- **Datos y tipos**: `src/data/seed.ts` (packs sin imagen propia, rutas renombradas),
+  `src/types/index.ts` (`compareAtVerified`), `src/lib/store.ts` (defaults desde config).
+- **Cálculo**: `src/lib/utils.ts` (`getDiscount` con gating, `verifiedOldPrice`,
+  `lineDiscount`) y `src/lib/utils.test.ts`.
+- **Componentes**: `ProductCard`, `BestSellerCard`, `ProductDetail`, `ProductReviews`,
+  `RatingSummary`, `StockUrgency`, `FeaturedCarousel`, `CartDrawer`, `HeroSection`,
+  `Packs`, `BundleOffers`, `StickyBottomBar`, `TrustStrip`, `TrustBadges`, `Guarantee`,
+  `Benefits`, `FAQ`, `UGCProof`.
+- **Páginas y copy**: `sobre-nosotros`, `legal`, `opengraph-image`, `lib/ai/recommender.ts`.
+- **Imágenes**: `public/img/fullenergic-vegan-protein-cookies-cream-1kg.png`,
+  `creatina-full-energic-300g.png`, `whey-protein-fnl-947g-chocolate-suizo.png`,
+  `proteina-whey-full-energic-creatina-eco-naturales-300g.png`.
+- **Plan**: `docs/MEJORAS.md` marca 1.1–1.3 y 1.5–1.7 como hechas; 1.4 como reporte.
+
+### Verificación ejecutada
+- `npx jest`: **14 suites / 125 tests OK** (incluye 13 tests nuevos de ratings, bundles y
+  gating de precios).
+- `npm run lint`: exit 0 (0 errores, 3 warnings preexistentes de `<img>` y hooks en admin).
+- `npm run build`: exit 0 **al segundo intento**; el primero falla por el aviso de
+  seguridad de Next 16.4.0 → sigue abierto como **F-30**.
+- `npx next start -p 3100` + Playwright (390×844): `/`, `/productos`,
+  `/productos/fullenergic-100-whey-protein-1kg`, `/sobre-nosotros` y `/legal` responden
+  **200**; 0 errores de página. Comprobado en el DOM: catálogo **sin** tachados ni
+  "En oferta" vacía, sin "Solo quedan", sin "Verificada"; el pack del hero muestra
+  4.9 / 629 reseñas / `$27.500` / `-8%`.
+- `/_next/image` de las 4 imágenes renombradas: **200** (antes 500/404 con `URIError`).
+- `npm run scan:claims`: **45 hallazgos** (30 alta, 14 media, 1 baja) en
+  `docs/claims-review.md`.
+
+### Capturas
+`docs/capturas/fase-1/home-390.png`, `catalogo-390.png`, `ficha-390.png`,
+`carrito-390.png`, `packs-390.png` (comparar con `docs/capturas/fase-0/`).
+
+### Pendiente / requiere validación humana
+- **1.4 claims**: decidir qué testimonios y textos se mantienen, cuáles se reescriben y
+  cuáles se quitan. Hay 30 hallazgos de severidad alta (enfermedad, cura, hormonas,
+  "resultados garantizados"). Mientras no haya decisión, el contenido sigue publicado.
+- **Precios "antes"**: confirmar cuáles son reales para marcar `compareAtVerified: true`;
+  hasta entonces el sitio no muestra descuentos en productos.
+- **Stock real**: decidir si se publica el conteo (`siteConfig.stock.showCounts`).
+- **Entrega**: confirmar plazo real (24–48 h vs mismo día) y si el domicilio se habilita.
+- **F-06 domicilio** sigue sin tocar: el checkout solo permite Metro.
+- **F-30** (build falla al primer intento por el aviso de Next) sigue abierto.
+- INP no medido (TBT como proxy); PSI sin cuota; indexación sin Search Console.
+
+### Siguiente paso
+Revisión del dueño sobre 1.4 y los precios "antes". Con su OK se fusiona el PR de
+`fix/fase-1` y se abre la Fase 2 (checkout y conversión).
+
+---
+
 ## Sesión: adaptación de referencia chilesuplementos.cl
 
 ### Objetivo

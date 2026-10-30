@@ -24,6 +24,12 @@ export type Product = {
   categoryLabel: string;
   price: number;
   oldPrice?: number;
+  /**
+   * `true` solo si el precio "antes" (`oldPrice`) es un precio realmente
+   * practicado y el dueño lo confirmó. Mientras no esté en `true` no se
+   * muestra tachado ni porcentaje de descuento (ver `siteConfig.offers`).
+   */
+  compareAtVerified?: boolean;
   desc: string;
   benefits: string[];
   stock: number;

@@ -3,6 +3,9 @@ import {
   formatTime12,
   slugify,
   discountOf,
+  getDiscount,
+  verifiedOldPrice,
+  lineDiscount,
   clamp,
   bundlePricing,
 } from './utils';
@@ -55,6 +58,34 @@ describe('discountOf', () => {
     expect(discountOf(20000, 20000)).toBeUndefined();
     expect(discountOf(20000)).toBeUndefined();
     expect(discountOf(22000, 20000)).toBeUndefined();
+  });
+});
+
+describe('getDiscount', () => {
+  // `siteConfig.offers.requireVerifiedCompareAt` está en `true`: un precio
+  // "antes" sin verificar no debe producir tachado ni porcentaje (F-12).
+  it('oculta el descuento si el precio anterior no está verificado', () => {
+    expect(getDiscount({ price: 16000, oldPrice: 18000 })).toBeUndefined();
+    expect(getDiscount({ price: 16000, oldPrice: 18000, compareAtVerified: false })).toBeUndefined();
+  });
+
+  it('muestra el descuento cuando el precio anterior está verificado', () => {
+    expect(getDiscount({ price: 16000, oldPrice: 20000, compareAtVerified: true })).toBe(20);
+  });
+
+  it('no inventa descuento si el precio anterior es menor o igual', () => {
+    expect(getDiscount({ price: 20000, oldPrice: 20000, compareAtVerified: true })).toBeUndefined();
+    expect(getDiscount({ price: 22000, oldPrice: 20000, compareAtVerified: true })).toBeUndefined();
+  });
+
+  it('verifiedOldPrice y lineDiscount respetan la verificación', () => {
+    const sinVerificar = { price: 16000, oldPrice: 18000 };
+    expect(verifiedOldPrice(sinVerificar)).toBeUndefined();
+    expect(lineDiscount(sinVerificar)).toBe(0);
+
+    const verificado = { price: 16000, oldPrice: 18000, compareAtVerified: true };
+    expect(verifiedOldPrice(verificado)).toBe(18000);
+    expect(lineDiscount(verificado)).toBe(2000);
   });
 });
 
