@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { siteConfig } from '@/lib/site-config';
 
 export const runtime = 'edge';
 
@@ -107,7 +108,7 @@ export default async function Image() {
             }}
           >
             <div style={{ display: 'flex', fontSize: 26, color: 'rgba(255,255,255,0.78)' }}>
-              Compra por WhatsApp · Garantía 10 días
+              Compra por WhatsApp · {siteConfig.warranty.short}
             </div>
             <div
               style={{

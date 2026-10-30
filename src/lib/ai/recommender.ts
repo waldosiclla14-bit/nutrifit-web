@@ -1,6 +1,7 @@
 import type { Product } from '@/types';
 import { BRAND } from '@/data/seed';
 import { formatPrice } from '@/lib/utils';
+import { siteConfig } from '@/lib/site-config';
 
 export interface RecommendContext {
   whatsapp?: string;
@@ -475,7 +476,8 @@ export function generateRecommendation(
 - Entregamos en todas las estaciones de Metro de Santiago (líneas 1, 2, 3, 4, 4A, 5 y 6).
 - También hacemos envío a domicilio en Santiago con Blue Express, con tarifa según el tamaño del paquete.
 - ${shippingLine}
-- Coordinamos la estación y el horario por WhatsApp, normalmente en 24–48 hrs.
+- Coordinamos la estación y el horario por WhatsApp.
+- ${siteConfig.delivery.promise}
 
 ¿Quieres que te recomiende algo para tu pedido?`;
     }
@@ -488,7 +490,7 @@ No manejamos tarjetas ni pago online por ahora, pero es súper simple. ¿En qué
     case 'warranty': {
       return `🛡️ Tu compra está protegida:
 - 100% productos originales con sello y trazabilidad.
-- Garantía de satisfacción de 10 días en productos sin abrir y con sello intacto.
+- ${siteConfig.warranty.text}
 - Si algo no te convence, te devolvemos tu dinero. ¿Necesitas más info?`;
     }
     case 'trust': {

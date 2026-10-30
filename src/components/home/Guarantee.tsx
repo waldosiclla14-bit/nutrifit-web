@@ -1,5 +1,6 @@
 import { RefreshCcw, ShieldCheck, Truck } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
+import { siteConfig } from '@/lib/site-config';
 
 const ITEMS = [
   {
@@ -9,8 +10,8 @@ const ITEMS = [
   },
   {
     icon: RefreshCcw,
-    title: 'Garantía 10 días',
-    text: 'Si algo no te convence, te devolvemos tu dinero. Sin preguntas, sin drama. Solo productos sin abrir.',
+    title: siteConfig.warranty.short,
+    text: siteConfig.warranty.text,
   },
   {
     icon: Truck,

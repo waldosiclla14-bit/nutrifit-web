@@ -1,4 +1,5 @@
 import Reveal from '@/components/ui/Reveal';
+import { siteConfig } from '@/lib/site-config';
 
 export const FAQS = [
   {
@@ -22,8 +23,12 @@ export const FAQS = [
     a: '100% originales. Trabajamos con distribuidores oficiales y todos los productos tienen sello de garantía y fecha de vencimiento visible.',
   },
   {
+    q: '¿Qué pasa si no me convence el producto?',
+    a: `${siteConfig.warranty.text} Escríbenos por WhatsApp y coordinamos el cambio o la devolución.`,
+  },
+  {
     q: '¿Cuánto demora la entrega?',
-    a: 'Coordinamos la entrega en la estación que elijas, normalmente dentro de las 24 a 48 horas desde la confirmación del pedido por WhatsApp. El envío a domicilio se coordina según disponibilidad de Blue Express.',
+    a: `${siteConfig.delivery.promise} El envío a domicilio se coordina según disponibilidad de Blue Express.`,
   },
 ];
 

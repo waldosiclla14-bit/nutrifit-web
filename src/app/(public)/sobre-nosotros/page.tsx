@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BRAND } from '@/data/seed';
+import { siteConfig } from '@/lib/site-config';
 import {
   ShieldCheck,
   Truck,
@@ -42,8 +43,8 @@ const VALUES = [
   },
   {
     icon: Heart,
-    title: 'Garantía 10 días',
-    text: 'Si no estás satisfecho, te devolvemos tu dinero. Así de simple.',
+    title: siteConfig.warranty.short,
+    text: `${siteConfig.warranty.text} Escríbenos por WhatsApp y lo coordinamos.`,
   },
 ];
 
@@ -84,7 +85,8 @@ export default function SobreNosotrosPage() {
             </h2>
             <p className="mt-4 text-base leading-relaxed text-gray-500">
               Que cada deportista en Chile tenga acceso a suplementos <strong className="text-gray-900">100% originales</strong> a
-              precios justos, con la comodidad de recibirlos en su estación de Metro el mismo día.
+              precios justos, con la comodidad de recibirlos en su estación de Metro o en su
+              domicilio en Santiago.
             </p>
           </div>
         </div>
@@ -148,7 +150,7 @@ export default function SobreNosotrosPage() {
             { value: '+500', label: 'Pedidos entregados' },
             { value: '140+', label: 'Estaciones de Metro' },
             { value: '4.9★', label: 'Calificación Google' },
-            { value: '24–48h', label: 'Tiempo de entrega' },
+            { value: siteConfig.delivery.promiseShort, label: 'Tiempo de entrega' },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <p className="font-display text-3xl uppercase tracking-wide text-sport-green sm:text-4xl">

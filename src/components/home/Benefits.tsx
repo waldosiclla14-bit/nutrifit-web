@@ -1,5 +1,6 @@
 import { BadgeCheck, MessageCircle, ShieldCheck, Truck, Wallet } from 'lucide-react';
 import Reveal from '@/components/ui/Reveal';
+import { siteConfig } from '@/lib/site-config';
 
 const ITEMS = [
   {
@@ -19,8 +20,8 @@ const ITEMS = [
   },
   {
     icon: ShieldCheck,
-    title: 'Garantía de 10 días',
-    text: 'Garantía de satisfacción en productos sin abrir con sello intacto.',
+    title: siteConfig.warranty.short,
+    text: siteConfig.warranty.text,
   },
   {
     icon: Wallet,
