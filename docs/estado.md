@@ -55,7 +55,7 @@ del dueño detrás de un flag reversible.
 - **Plan**: `docs/MEJORAS.md` marca 1.1–1.3 y 1.5–1.7 como hechas; 1.4 como reporte.
 
 ### Verificación ejecutada
-- `npx jest`: **14 suites / 121 tests OK** (incluye 9 tests nuevos de ratings, bundles y
+- `npx jest`: **14 suites / 125 tests OK** (incluye 13 tests nuevos de ratings, bundles y
   gating de precios).
 - `npm run lint`: exit 0 (0 errores, 3 warnings preexistentes de `<img>` y hooks en admin).
 - `npm run build`: exit 0 **al segundo intento**; el primero falla por el aviso de
