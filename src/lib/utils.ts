@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { siteConfig } from '@/lib/site-config'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -48,8 +49,44 @@ export function discountOf(price: number, oldPrice?: number) {
   return Math.round((1 - price / oldPrice) * 100);
 }
 
-export function getDiscount(product: { price: number; oldPrice?: number }) {
+/**
+ * Descuento mostrable de un producto.
+ *
+ * Si `siteConfig.offers.requireVerifiedCompareAt` está activo, el precio
+ * "antes" debe estar marcado con `compareAtVerified: true`. Un `oldPrice` sin
+ * verificar no genera ni tachado ni porcentaje (ver docs/AUDIT.md, F-12).
+ */
+export function getDiscount(product: {
+  price: number;
+  oldPrice?: number;
+  compareAtVerified?: boolean;
+}) {
+  if (siteConfig.offers.requireVerifiedCompareAt && !product.compareAtVerified) {
+    return undefined;
+  }
   return discountOf(product.price, product.oldPrice);
+}
+
+/**
+ * Precio "antes" que se puede mostrar, o `undefined` si no está verificado.
+ * Se usa al agregar al carrito para no arrastrar un tachado sin respaldo.
+ */
+export function verifiedOldPrice(product: {
+  price: number;
+  oldPrice?: number;
+  compareAtVerified?: boolean;
+}) {
+  return getDiscount(product) ? product.oldPrice : undefined;
+}
+
+/** Ahorro por unidad que se puede mostrar (0 si el precio "antes" no es verificable). */
+export function lineDiscount(product: {
+  price: number;
+  oldPrice?: number;
+  compareAtVerified?: boolean;
+}) {
+  const oldPrice = verifiedOldPrice(product);
+  return oldPrice ? Math.max(0, oldPrice - product.price) : 0;
 }
 
 export function formatDate(timestamp: number) {

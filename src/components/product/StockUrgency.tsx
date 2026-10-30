@@ -1,9 +1,10 @@
 'use client';
 
 import { cx } from '@/lib/utils';
+import { siteConfig } from '@/lib/site-config';
 
-const URGENT = 5;
-const LOW = 10;
+const URGENT = siteConfig.offers.lowStockThreshold;
+const LOW = siteConfig.offers.lowStockThreshold * 2;
 
 export default function StockUrgency({
   stock,
@@ -12,6 +13,9 @@ export default function StockUrgency({
   stock: number;
   variant?: 'badge' | 'bar';
 }) {
+  // El stock del catálogo todavía no viene del inventario real: mostrar
+  // "solo quedan N unidades" sería inventar escasez (ver docs/AUDIT.md, F-11).
+  if (!siteConfig.stock.showCounts) return null;
   if (stock > LOW) return null;
 
   const low = stock <= URGENT;
