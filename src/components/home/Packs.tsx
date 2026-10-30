@@ -1,11 +1,12 @@
 'use client';
 
-import Image from 'next/image';
 import { useState } from 'react';
 import { Gift } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { bundlePricing, formatPrice } from '@/lib/utils';
+import { bundleComponents } from '@/lib/bundles';
+import BundleImages from '@/components/ui/BundleImages';
 import Reveal from '@/components/ui/Reveal';
 
 /**
@@ -42,22 +43,17 @@ export default function Packs() {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {BUNDLES.map((bundle, i) => {
           const pricing = bundlePricing(bundle, (id) => resolve(id));
-          const variantItem = bundle.items
-            .map((it) => ({ ...it, product: resolve(it.productId) }))
-            .find((it) => it.product?.variants?.length);
+          const components = bundleComponents(bundle, resolve);
+          const variantItem = components.find((it) => it.product.variants?.length);
           return (
             <Reveal key={bundle.id} delay={i * 50}>
               <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-sport-border/50 bg-sport-card transition-all duration-300 hover:-translate-y-1 hover:border-sport-green/40">
                 <div className="relative aspect-[4/3] overflow-hidden bg-sport-surface">
-                  {bundle.image && (
-                    <Image
-                      src={bundle.image}
-                      alt={bundle.title}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 33vw"
-                      className="object-contain p-6"
-                    />
-                  )}
+                  <BundleImages
+                    products={components.map((it) => it.product)}
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    padding="p-4"
+                  />
                   {pricing.percent > 0 && (
                     <span className="absolute left-3 top-3 rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
                       -{pricing.percent}%
@@ -74,7 +70,7 @@ export default function Packs() {
                     </p>
                   )}
 
-                  {variantItem && variantItem.product && (
+                  {variantItem && (
                     <label className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                       <span className="shrink-0 font-semibold">Sabor</span>
                       <select

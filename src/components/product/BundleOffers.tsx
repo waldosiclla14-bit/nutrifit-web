@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Gift } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
 import { bundlePricing, formatPrice } from '@/lib/utils';
+import { bundleComponents } from '@/lib/bundles';
+import BundleImages from '@/components/ui/BundleImages';
 
 export default function BundleOffers({ productId }: { productId: number }) {
   const { addBundle } = useCart();
@@ -25,28 +26,20 @@ export default function BundleOffers({ productId }: { productId: number }) {
     <div className="mt-8 flex flex-col gap-4">
       {matches.map((bundle) => {
         const pricing = bundlePricing(bundle, (id) => resolve(id));
-        const variantItems = bundle.items
-          .map((it) => ({ ...it, product: resolve(it.productId) }))
-          .filter(
-            (it): it is { productId: number; quantity: number; product: NonNullable<ReturnType<typeof resolve>> } =>
-              !!it.product?.variants?.length,
-          );
+        const components = bundleComponents(bundle, resolve);
+        const variantItems = components.filter((it) => !!it.product.variants?.length);
         const variantItem = variantItems[0];
         return (
           <div
             key={bundle.id}
             className="flex flex-col gap-4 rounded-3xl border border-sport-green/60 bg-sport-green/10 p-5 sm:flex-row sm:items-center"
           >
-            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-sport-surface">
-              {bundle.image && (
-                <Image
-                  src={bundle.image}
-                  alt={bundle.title}
-                  fill
-                  sizes="80px"
-                  className="object-contain p-2"
-                />
-              )}
+            <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-2xl bg-sport-surface">
+              <BundleImages
+                products={components.map((it) => it.product)}
+                sizes="128px"
+                padding="p-1.5"
+              />
             </div>
             <div className="flex-1">
               <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-sport-orange">

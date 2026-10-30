@@ -13,7 +13,10 @@ import {
 } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
-import { formatPrice } from '@/lib/utils';
+import { bundlePricing, formatPrice } from '@/lib/utils';
+import { bundleComponents } from '@/lib/bundles';
+import { summarizeBundleRatings } from '@/lib/ratings';
+import { siteConfig } from '@/lib/site-config';
 import Stars from '@/components/ui/Stars';
 
 type Flavor = { name: string; color: string; image: string };
@@ -26,20 +29,19 @@ const FLAVORS: Flavor[] = [
   { name: 'Manjar', color: '#F2C94C', image: '/img/producto6.webp' },
 ];
 
-const PACK_OLD = 30000;
-const PACK_PRICE = 27500;
-const OFF = Math.round((1 - PACK_PRICE / PACK_OLD) * 100);
-
 export default function HeroSection() {
   const { addBundle } = useCart();
   const [flavor, setFlavor] = useState<Flavor>(FLAVORS[0]);
   const pack = BUNDLES.find((b) => b.id === 'pack-proteina-creatina');
+  const resolve = (id: number) => PRODUCTS.find((p) => p.id === id);
 
-  const whey = PRODUCTS.find((p) => p.id === 4);
-  const creatina = PRODUCTS.find((p) => p.id === 7);
-  const totalReviews = (whey?.reviews ?? 0) + (creatina?.reviews ?? 0);
-  const avgRating =
-    whey && creatina ? +((whey.rating + creatina.rating) / 2).toFixed(1) : 4.9;
+  // Precio y reseñas se calculan con los productos que el pack realmente
+  // contiene (whey + creatina Eco Naturales), no con ids escritos a mano.
+  const packProducts = pack ? bundleComponents(pack, resolve).map((it) => it.product) : [];
+  const pricing = pack
+    ? bundlePricing(pack, resolve)
+    : { sum: 0, price: 0, saving: 0, percent: 0 };
+  const ratings = summarizeBundleRatings(packProducts, siteConfig.reviews.minCount);
 
   const addPack = () => {
     if (!pack) return;
@@ -86,24 +88,26 @@ export default function HeroSection() {
             llevamos a tu estación de Metro.
           </motion.p>
 
-          {/* Rating */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-5 flex flex-wrap items-center gap-3"
-          >
-            <div className="flex items-center gap-1.5">
-              <Stars rating={avgRating} size={15} />
-              <span className="text-sm font-bold">{avgRating}</span>
-            </div>
-            <span className="h-3.5 w-px bg-gray-100" />
-            <span className="text-[13px] text-gray-400">
-              {totalReviews.toLocaleString('es-CL')} reseñas
-            </span>
-          </motion.div>
+          {/* Rating: solo si los productos del pack tienen reseñas */}
+          {ratings && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-5 flex flex-wrap items-center gap-3"
+            >
+              <div className="flex items-center gap-1.5">
+                <Stars rating={ratings.rating} size={15} />
+                <span className="text-sm font-bold">{ratings.rating.toFixed(1)}</span>
+              </div>
+              <span className="h-3.5 w-px bg-gray-100" />
+              <span className="text-[13px] text-gray-400">
+                {ratings.count.toLocaleString('es-CL')} reseñas
+              </span>
+            </motion.div>
+          )}
 
-          {/* Price */}
+          {/* Price: el "antes" es la suma de los precios actuales del pack */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -111,14 +115,18 @@ export default function HeroSection() {
             className="mt-6 flex items-baseline gap-3"
           >
             <span className="font-display text-5xl tracking-wide sm:text-6xl">
-              {formatPrice(PACK_PRICE)}
+              {formatPrice(pricing.price)}
             </span>
-            <span className="text-lg text-gray-400 line-through">
-              {formatPrice(PACK_OLD)}
-            </span>
-            <span className="rounded-full bg-sport-orange/20 px-2.5 py-1 text-[11px] font-extrabold text-sport-orange ring-1 ring-sport-orange/40">
-              -{OFF}% OFF
-            </span>
+            {pricing.saving > 0 && (
+              <span className="text-lg text-gray-400 line-through">
+                {formatPrice(pricing.sum)}
+              </span>
+            )}
+            {pricing.percent > 0 && (
+              <span className="rounded-full bg-sport-orange/20 px-2.5 py-1 text-[11px] font-extrabold text-sport-orange ring-1 ring-sport-orange/40">
+                -{pricing.percent}% OFF
+              </span>
+            )}
           </motion.div>
 
           {/* Flavor picker */}
@@ -181,7 +189,7 @@ export default function HeroSection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
             </span>
             <p className="text-[13px] font-semibold text-gray-600">
-              Disponible para entrega en Metro o domicilio hoy
+              {siteConfig.delivery.coverage}
             </p>
           </motion.div>
 
@@ -200,7 +208,7 @@ export default function HeroSection() {
               className="group flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-sport-green text-base font-extrabold text-white shadow-sportGlow transition-colors hover:bg-sport-greenLight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-auto sm:px-8"
             >
               <ShoppingBag size={20} />
-              Agregar · {formatPrice(PACK_PRICE)}
+              Agregar · {formatPrice(pricing.price)}
               <ChevronRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
@@ -225,11 +233,11 @@ export default function HeroSection() {
             className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-gray-500"
           >
             <span className="flex items-center gap-1.5">
-              <ShieldCheck size={13} className="text-sport-green" /> Garantía 10 días
+              <ShieldCheck size={13} className="text-sport-green" /> {siteConfig.warranty.short}
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
-              <Lock size={13} className="text-sport-green" /> Pago seguro
+              <Lock size={13} className="text-sport-green" /> {siteConfig.payment.label}
             </span>
             <span className="h-3 w-px bg-gray-100" />
             <span className="flex items-center gap-1.5">
@@ -295,9 +303,11 @@ export default function HeroSection() {
             </div>
 
             {/* OFF badge floating */}
-            <span className="absolute -right-2 top-4 rounded-full border border-white/10 bg-sport-orange px-3 py-1.5 text-[12px] font-extrabold text-white shadow-lg sm:-right-3 sm:top-6">
-              -{OFF}% OFF
-            </span>
+            {pricing.percent > 0 && (
+              <span className="absolute -right-2 top-4 rounded-full border border-white/10 bg-sport-orange px-3 py-1.5 text-[12px] font-extrabold text-white shadow-lg sm:-right-3 sm:top-6">
+                -{pricing.percent}% OFF
+              </span>
+            )}
           </motion.div>
         </div>
       </div>
