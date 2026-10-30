@@ -21,7 +21,6 @@ export default function ProductReviews({
   const [name, setName] = useState('');
   const [rating, setRating] = useState(5);
   const [text, setText] = useState('');
-  const [verified, setVerified] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -52,13 +51,14 @@ export default function ProductReviews({
     setSubmitting(true);
     setError('');
     try {
-      const review = await saveReview(productSlug, name, rating, text.trim(), verified);
+      // El cliente no puede marcar su propia reseña como verificada: eso lo
+      // decide la tienda al comprobar el pedido.
+      const review = await saveReview(productSlug, name, rating, text.trim(), false);
       setReviews((prev) => [review, ...prev]);
       setDone(true);
       setName('');
       setRating(5);
       setText('');
-      setVerified(false);
     } catch (err: any) {
       setError(err?.message || 'Error al guardar la reseña.');
     } finally {
@@ -149,15 +149,10 @@ export default function ProductReviews({
             className="input resize-none"
           />
           {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-gray-500">
-            <input
-              type="checkbox"
-              checked={verified}
-              onChange={(e) => setVerified(e.target.checked)}
-              className="h-4 w-4 accent-emerald-600"
-            />
-            Compré este producto (compra verificada)
-          </label>
+          <p className="text-[11px] leading-relaxed text-gray-500">
+            Las reseñas se publican como opiniones de clientes. El sello «compra verificada» solo
+            lo asigna la tienda cuando puede comprobar el pedido.
+          </p>
           <button type="submit" disabled={submitting} className="btn-accent">
             <Star size={16} /> {submitting ? 'Publicando…' : 'Publicar reseña'}
           </button>

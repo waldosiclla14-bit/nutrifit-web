@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Star, BadgeCheck, Camera, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Camera, ExternalLink } from 'lucide-react';
 
 const REVIEWS = [
   {
@@ -12,7 +12,6 @@ const REVIEWS = [
     color: '#72BF44',
     rating: 5,
     text: 'La whey de vainilla es la primera que se me disuelve bien solo con agua, sin grumos y sin ese sabor químico. Me la dejaron en Los Leones al día siguiente.',
-    verified: true,
     tag: 'Whey Vainilla',
   },
   {
@@ -22,7 +21,6 @@ const REVIEWS = [
     color: '#F97316',
     rating: 5,
     text: 'La creatina es original, con su código de verificación en la lata. Llevo un mes usándola y noté más aguante en los WOD. Más barata que en las tiendas grandes.',
-    verified: true,
     tag: 'Creatina 300g',
   },
   {
@@ -32,7 +30,6 @@ const REVIEWS = [
     color: '#3B82F6',
     rating: 5,
     text: 'Pedí el pack de proteína + creatina y llegó todo bien sellado con sus precintos. La de frutilla es buenísima, ya le pasé el dato a mi hermano.',
-    verified: true,
     tag: 'Pack Proteína + Creatina',
   },
   {
@@ -42,7 +39,6 @@ const REVIEWS = [
     color: '#8B5CF6',
     rating: 5,
     text: 'Super rápida la entrega, me avisaron por WhatsApp y coordinamos al tiro. Los productos son originales, se nota en la calidad del sello.',
-    verified: true,
     tag: 'Entrega Express',
   },
   {
@@ -52,7 +48,6 @@ const REVIEWS = [
     color: '#EC4899',
     rating: 5,
     text: 'Llevo 3 meses comprando aquí. La berberina me ayudó con la digestión y la omega 3 es de las mejores que he probado. 100% recomendado.',
-    verified: true,
     tag: 'Berberina + Omega 3',
   },
   {
@@ -62,7 +57,6 @@ const REVIEWS = [
     color: '#14B8A6',
     rating: 5,
     text: 'Pagué con transferencia y me confirmaron al toque. La proteína vegan cookies & cream es riquísima, mejor que otras que probé. El empaque super cuidado.',
-    verified: true,
     tag: 'Whey Vegana',
   },
   {
@@ -72,7 +66,6 @@ const REVIEWS = [
     color: '#F59E0B',
     rating: 4,
     text: 'Buen precio y entrega rápida. El omega 3 no deja ese regusto tan fuerte como otros. Lo único: demoré un poco en coordinar la hora de entrega por metro.',
-    verified: true,
     tag: 'Omega 3',
   },
   {
@@ -82,7 +75,6 @@ const REVIEWS = [
     color: '#6366F1',
     rating: 5,
     text: 'Compré por primera vez y quedaré-cliente fija. La colágeno hidrolizada se nota de calidad. Me la dejaron en Tobalaba y todo perfecto. Los recomiendo.',
-    verified: true,
     tag: 'Colágeno Hidrolizada',
   },
   {
@@ -92,7 +84,6 @@ const REVIEWS = [
     color: '#EF4444',
     rating: 5,
     text: 'La pre-entreno FullEnergic es potentísima. Me la recomendaron por WhatsApp y no me arrepentí. Pago en efectivo en la estación, súper práctico.',
-    verified: true,
     tag: 'Pre-entreno',
   },
   {
@@ -102,7 +93,6 @@ const REVIEWS = [
     color: '#8B5CF6',
     rating: 5,
     text: 'La glutamina con electrolíticos me ayudó caleta con la recuperación post-crossfit. Producto original y buen precio. Ya hice mi segunda compra.',
-    verified: true,
     tag: 'Glutamina + Electrolíticos',
   },
 ];
@@ -201,11 +191,6 @@ export default function UGCProof() {
                     ))}
                   </div>
                 </div>
-                {review.verified && (
-                  <span className="flex items-center gap-1 rounded-full bg-sport-green/15 px-2 py-0.5 text-[10px] font-bold text-sport-green">
-                    <BadgeCheck size={10} /> Verificada
-                  </span>
-                )}
               </div>
 
               {/* Tag */}
