@@ -7,7 +7,8 @@ import { Check, ChevronRight, Heart, MessageCircle, Minus, Plus, ShoppingBag, Sh
 import type { Product } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
-import { formatPrice, getDiscount, cx } from '@/lib/utils';
+import { formatPrice, getDiscount, cx, verifiedOldPrice, lineDiscount } from '@/lib/utils';
+import { siteConfig } from '@/lib/site-config';
 import RatingSummary from '@/components/ui/RatingSummary';
 import ProductCard from '@/components/product/ProductCard';
 import BuyTogether from '@/components/product/BuyTogether';
@@ -48,8 +49,8 @@ export default function ProductDetail({
       slug: product.slug,
       name: cartName,
       price: product.price,
-      oldPrice: product.oldPrice,
-      discount: Math.max(0, (product.oldPrice ?? product.price) - product.price),
+      oldPrice: verifiedOldPrice(product),
+      discount: lineDiscount(product),
       image: img,
       quantity: q,
       variant: selected?.name,
@@ -67,7 +68,7 @@ export default function ProductDetail({
     () => [
       { icon: Truck, text: 'Entrega en metro o a domicilio' },
       { icon: ShieldCheck, text: 'Producto 100% original, sello de garantía' },
-      { icon: Check, text: 'Garantía de satisfacción de 10 días' },
+      { icon: Check, text: siteConfig.warranty.text },
     ],
     [],
   );
@@ -135,14 +136,14 @@ export default function ProductDetail({
             <span className="font-display text-4xl leading-none tracking-wide">
               {formatPrice(product.price)}
             </span>
-            {product.oldPrice && (
+            {discount && product.oldPrice && (
               <span className="pb-1 text-base text-gray-500 line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             )}
-            {discount && (
+            {discount && product.oldPrice && (
               <span className="mb-1 rounded-full bg-sport-green px-2 py-0.5 text-xs font-extrabold text-white">
-                Ahorras {formatPrice((product.oldPrice ?? 0) - product.price)}
+                Ahorras {formatPrice(product.oldPrice - product.price)}
               </span>
             )}
           </div>
@@ -205,9 +206,11 @@ export default function ProductDetail({
                 <Plus size={16} />
               </button>
             </div>
-            <p className="text-xs text-gray-500">
-              Stock disponible: <strong className="text-gray-900">{stock} uds.</strong>
-            </p>
+            {siteConfig.stock.showCounts && (
+              <p className="text-xs text-gray-500">
+                Stock disponible: <strong className="text-gray-900">{stock} uds.</strong>
+              </p>
+            )}
             <button
               type="button"
               onClick={() => toggleFavorite(product.id)}
