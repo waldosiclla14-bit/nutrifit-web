@@ -34,34 +34,39 @@
 
 ## Fase 1 — P0: errores y confianza
 
-**1.1 Imágenes de packs incorrectas**
+> **Estado: cerrada en la rama `fix/fase-1`** (commits `9a06b80`…`9b5169e`).
+> 1.1, 1.2, 1.3, 1.5, 1.6 y 1.7 implementadas y verificadas. 1.4 queda **solo
+> como reporte** (`docs/claims-review.md`) a la espera de la decisión del dueño.
+> Bitácora y pruebas en `docs/estado.md`.
+
+**1.1 Imágenes de packs incorrectas** — ✅ hecho
 - Hoy: "Pack Proteína + Creatina + Shaker" y "Set Masa + Fuerza" muestran solo el pote de whey (`producto1.webp`); "Set Bienestar" (omega 3 + berberina) muestra óxido nítrico; "Set Pump Total" parece mostrar creatina (posible desfase de índices en el mapeo).
 - Hacer: cada pack/set muestra la composición real (imagen de cada componente con "+", como el hero). Si falta foto del shaker u otro componente, deja placeholder neutro y lístalo en `docs/AUDIT.md`.
 - Aceptación: ningún pack usa la imagen de un producto que no contiene; test que verifica que cada componente del pack aparece en su visual.
 
-**1.2 Conteo de reseñas engañoso**
+**1.2 Conteo de reseñas engañoso** — ✅ hecho
 - Hoy: "773 reseñas" en el pack hero = 617 (whey) + 156 (creatina FullEnergic), pero el pack lleva Eco Naturales (12 reseñas).
 - Hacer: calcular desde datos reales del pack o del producto; si no hay dato propio, no mostrar conteo.
 - Ocultar estrellas y nota cuando `reviewCount === 0` (hoy OstroVit y FNL Whey 947g muestran 4.9 con 0).
 
-**1.3 Reseñas "Verificada"**
+**1.3 Reseñas "Verificada"** — ✅ hecho
 - Mostrar el chip solo si `verified === true` en los datos. Si no existe el campo, crearlo en `false` y quitar el chip hasta que el dueño confirme cómo se verifica.
 
-**1.4 Claims de salud y testimonios [DECISIÓN DEL DUEÑO]**
+**1.4 Claims de salud y testimonios [DECISIÓN DEL DUEÑO]** — ⏳ reporte entregado, falta decisión
 - Escribir un script `scripts/scan-claims.ts` que recorra catálogo, sets, FAQ, hero y reseñas y genere `docs/claims-review.md` con cada texto que sugiera efecto terapéutico o resultado garantizado. Términos de partida: *colesterol, corazón, metabolismo, digestión, quemador, testo, "sin grasas", "rápido aumento muscular", "ayudó con"*, y similares.
 - Implementar `reviewStatus: 'approved' | 'pending'` en reseñas y textos de sets. Default `pending` para los detectados; los `pending` no se renderizan.
 - Reescribir solo el copy propio de los sets a descripción neutra de contenido (ej. "Omega 3 + Berberina"). No borres testimonios: quedan ocultos y listados.
 - Nota: la normativa sanitaria chilena restringe declarar propiedades terapéuticas en suplementos; esto lo valida un abogado o asesor sanitario, no el código.
 
-**1.5 Escasez y precios "antes"**
+**1.5 Escasez y precios "antes"** — ✅ hecho
 - "¡Solo quedan N unidades!" solo si existe `stock` real y `stock <= umbral` (umbral en `siteConfig`). Sin campo de stock: no mostrar.
 - Mostrar precio tachado solo si `compareAtPrice > price` y el campo está marcado `compareAtVerified: true`. Crear el campo; default `false` ⇒ no se muestra tachado ni % de descuento. **[DECISIÓN DEL DUEÑO]**: confirmar qué precios "antes" son reales.
 - Limitar la sección "En oferta" a máximo 8 productos con descuento verificado.
 
-**1.6 Encoding roto**
+**1.6 Encoding roto** — ✅ hecho
 - Footer: el tagline sale con caracteres de reemplazo (`U+FFFD`) en vez de «Nutrición · Energía · Resultados». Buscar `U+FFFD` y secuencias mojibake en todo el repo y en datos, corregir a UTF-8, confirmar `<meta charset>` y que los archivos estén guardados en UTF-8. Texto final: `Nutrición · Energía · Resultados`.
 
-**1.7 Promesas inconsistentes → una sola fuente de verdad**
+**1.7 Promesas inconsistentes → una sola fuente de verdad** — ✅ hecho
 - Centralizar en `siteConfig`: `deliveryPromise`, `warrantyPolicy`, `paymentMethods`, `deliveryFees`, `businessHours`.
 - Corregir: hero dice "entrega hoy" y el FAQ "24–48 hrs"; la garantía aparece como "devolvemos tu dinero, sin preguntas", "cambios garantizados" y "solo productos sin abrir". **[DECISIÓN DEL DUEÑO]** texto único; propuesta por defecto: *"Garantía de 10 días en productos sin abrir y con sello intacto."*
 - Reemplazar el badge "Pago seguro" por "Pago contra entrega o transferencia" mientras no exista pasarela online.
