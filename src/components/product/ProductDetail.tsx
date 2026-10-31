@@ -239,8 +239,9 @@ export default function ProductDetail({
           </div>
           <BundleOffers productId={product.id} />
           <p className="mt-3 text-center text-xs text-gray-500 sm:text-left">
-            Entrega coordinada por WhatsApp: retiro en estaciones de Metro o envío a domicilio en
-            Santiago. Aceptamos efectivo y transferencia (pago contra entrega).
+            Entrega coordinada por WhatsApp: retiro en estaciones de Metro (
+            {formatPrice(siteConfig.delivery.metroFee)}) o envío a domicilio en Santiago. Aceptamos
+            efectivo y transferencia (pago contra entrega).
           </p>
         </div>
       </div>

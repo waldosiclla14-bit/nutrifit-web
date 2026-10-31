@@ -1,14 +1,15 @@
 import Reveal from '@/components/ui/Reveal';
 import { siteConfig } from '@/lib/site-config';
+import { formatPrice } from '@/lib/utils';
 
 export const FAQS = [
   {
     q: '¿Cómo hago mi pedido?',
-    a: 'Agrega los productos al carrito, completa tus datos de entrega y pago, y presiona "Finalizar compra por WhatsApp". Recibirás un resumen para confirmar y listo.',
+    a: 'Agrega los productos al carrito, completa tus datos de entrega y pago, y presiona "Enviar pedido por WhatsApp". Recibirás un resumen para confirmar y listo.',
   },
   {
     q: '¿Dónde me entregas mi pedido?',
-    a: 'Hacemos entregas en estaciones de metro de las líneas 1, 2, 3, 4, 4A, 5 y 6, en todas las estaciones. Coordinamos contigo el punto, el día y la hora por WhatsApp.',
+    a: `Hacemos entregas en estaciones de metro de las líneas 1, 2, 3, 4, 4A, 5 y 6, en todas las estaciones. El retiro en Metro tiene una tarifa de ${formatPrice(siteConfig.delivery.metroFee)}. Coordinamos contigo el punto, el día y la hora por WhatsApp.`,
   },
   {
     q: '¿Cuáles son los métodos de pago?',

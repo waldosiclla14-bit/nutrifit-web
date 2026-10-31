@@ -189,7 +189,7 @@ export default function HeroSection() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sport-green" />
             </span>
             <p className="text-[13px] font-semibold text-gray-600">
-              {siteConfig.delivery.coverage}
+              {siteConfig.delivery.coverage} Retiro en Metro {formatPrice(siteConfig.delivery.metroFee)}.
             </p>
           </motion.div>
 
