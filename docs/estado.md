@@ -1,5 +1,102 @@
 # Estado del proyecto NutriFit
 
+## Sesión: Fase 2 — P1 checkout y conversión (`fix/fase-2`)
+
+### Objetivo
+Ejecutar la Fase 2 de `docs/MEJORAS.md`: validación visible del checkout, estructura del
+carrito, medios de pago, CTA y venta cruzada. Sin cambiar umbrales, tarifas ni precios, y
+sin tocar el envío a domicilio (sigue pendiente de decisión del dueño).
+
+### Decisiones tomadas
+- **El medio de pago elegido viaja al backend**. Antes el sitio mandaba `EFECTIVO` fijo;
+  ahora `Order.paymentMethod` (`'efectivo' | 'transferencia'`) se mapea a
+  `TRANSFERENCIA` / `EFECTIVO` en `submitStoreOrder`. El mensaje de WhatsApp también
+  imprime el medio real (`paymentLabel`).
+- **Validación en el cliente, con foco y scroll**. `validateCheckout()` devuelve errores por
+  campo; al enviar se enfoca y centra el primer campo inválido. Cada error se anuncia con
+  `aria-invalid` + `aria-describedby`; el borde rojo se agrega sobre `.input`.
+- **Dos bloques visibles**: «1 · Tu pedido» y «2 · Tus datos». El resumen (subtotal,
+  entrega, descuento, total) quedó **fijo abajo** junto al CTA.
+- **Se quitó el bloque grande de 4 íconos** (`TrustBadges`) del carrito; queda solo la fila
+  pequeña de garantía / originales / WhatsApp. El componente sigue existiendo para otras
+  páginas.
+- **Cupón colapsado**: enlace «¿Tienes un cupón?» con `aria-expanded`; el campo solo
+  aparece al abrirlo. Cuando hay cupón aplicado se muestra el resumen y «Quitar».
+- **Pago como chips** (efectivo / transferencia) arriba del formulario, con `fieldset` +
+  `legend` y radios accesibles (foco visible con `focus-within`).
+- **Venta cruzada complementaria**: se excluyen categorías ya presentes en el carrito
+  (whey ⇒ creatina/vitaminas, no otra proteína) y se ordena por nota y precio.
+- **Aviso de pack sin cambiar el precio**: si el carrito tiene exactamente los productos y
+  cantidades de un `BUNDLES` de precio fijo, muestra «En pack queda en $27.500: ahorras
+  $2.500» y pide mencionarlo en WhatsApp. **[DECISIÓN DEL DUEÑO]** aplicarlo automático.
+- **Tarifa de Metro visible antes del carrito**: ficha de producto y FAQ muestran
+  `siteConfig.delivery.metroFee`; el CTA del FAQ se actualizó al texto nuevo.
+- **Fuera de alcance respetado**: no se tocó el envío a domicilio (F-06), ni
+  `backend/render.yaml`, ni `keep-alive.yml`; no se ejecutó `next upgrade --agent=security`.
+
+### Archivos creados/modificados
+- `src/components/layout/CartDrawer.tsx`: validación, foco/scroll, chips de pago, bloques,
+  cupón colapsado, resumen fijo, CTA, venta cruzada y aviso de pack.
+- `src/types/index.ts`: `PaymentChoice`; `paymentMethod` en `Order` y `CustomerProfile`.
+- `src/lib/whatsapp.ts`: `paymentLabel()`, pago real en el mensaje, `paymentMethod` en el
+  payload.
+- `src/lib/api.ts`: mapeo `efectivo/transferencia` → `EFECTIVO/TRANSFERENCIA`.
+- `src/lib/whatsapp.test.ts`: 4 tests nuevos de `buildWhatsAppMessage`/`paymentLabel`/URL.
+- `src/components/product/ProductDetail.tsx`: tarifa de Metro en la ficha.
+- `src/components/home/HeroSection.tsx`: tarifa de Metro en la línea de cobertura.
+- `src/components/home/FAQ.tsx`: tarifa en la respuesta de entrega y CTA actualizado.
+- `src/lib/seo/merchant-config.test.ts`: fecha límite comparada por día calendario.
+- `docs/capturas/fase-2/*.png`: 8 capturas 390×844.
+- `docs/MEJORAS.md`: 2.1, 2.2, 2.4 y 2.5 marcadas; 2.3 parcial.
+
+### Verificación ejecutada
+- `npx jest --ci`: **14 suites / 129 tests OK** (4 nuevos de WhatsApp).
+- `npm run lint`: exit 0 (0 errores, 3 warnings preexistentes en admin/POS).
+- `npm run build`: exit 0 **al segundo intento** (F-30 sigue abierto).
+- `npx tsc --noEmit`: exit 0.
+- `npx jest --ci`: **14 suites / 129 tests OK**. Incluye el arreglo del test de
+  `priceValidUntil`, que fallaba solo el último día del mes por comparar instantes en vez
+  de días calendario (no se tocó la lógica de negocio).
+- `npx next start -p 3100` + Playwright 390×844, sin errores de página:
+  - Enviar vacío ⇒ 4 errores en línea (`checkout-name-error`, `-phone-`, `-line-`,
+    `-station-`), foco en `#checkout-name`, 4 `aria-invalid="true"` y aviso global.
+  - Hero: «Retiro en Metro $1.000» visible en 2 líneas, sin desbordamiento horizontal.
+  - Datos válidos + transferencia ⇒ el mensaje `wa.me` sale con
+    `*Pago:* Transferencia bancaria`, `*Entrega:* Metro San Pablo — Línea 1`,
+    `*Nombre:* Ana Pérez` y `*TOTAL:* $17.000`.
+  - Carrito con whey ⇒ sugiere Creatina + Vitaminas (no otra proteína).
+  - Whey + Eco Naturales Creatina ⇒ aviso del pack: **$27.500**, ahorro **$2.500**,
+    total del carrito **$30.000** (no se aplica solo).
+  - Layout: footer fijo 185 px, botón visible (736–784 px), scroll 590 px, 0 px de
+    desbordamiento horizontal; cupón desplegado dentro del área scrolleable.
+  - FAQ abierta muestra «tarifa de $1.000» y el CTA nuevo.
+
+### Capturas
+`docs/capturas/fase-2/`: `01-tarifa-ficha`, `02-carrito`, `03-errores`,
+`04-datos-completos`, `05-pedido-enviado`, `06-venta-cruzada`, `07-pack`, `08-faq-tarifa`,
+`09-hero-tarifa` (todas 390×844).
+
+### Pendiente / requiere validación humana
+- **2.3 selector Metro / Domicilio**: no se implementó la parte de domicilio (F-06 sigue
+  pendiente). El checkout solo ofrece Metro, con Línea + Estación dependientes.
+- **2.3 tarifa**: se muestra la tarifa de Metro; si el dueño decide cobrarla, absorberla o
+  hacerla gratis desde cierto monto, se cambia en `siteConfig`/`policies`.
+- **2.5 precio de pack automático**: hoy solo se avisa el ahorro; aplicarlo es decisión
+  del dueño.
+- **2.6 umbral del 5 %**: sin cambios ($60.000), pendiente de decisión.
+- **2.7 pasarela de pago** y **2.8 registro previo del pedido**: no iniciadas (fuera del
+  alcance acordado para esta fase).
+- **Domicilio en el copy**: el FAQ aún menciona envío a domicilio y «la tarifa se muestra
+  en el carrito», pero el carrito solo cobra Metro. Se deja intacto por F-06.
+- **F-30**: `npm run build` sigue fallando al primer intento por el aviso de seguridad de
+  Next 16.4.0.
+
+### Siguiente paso
+Revisar el PR de `fix/fase-2` (sin fusionar). Con el OK del dueño, decidir F-06 (domicilio)
+y el precio de pack; después abrir la Fase 3.
+
+---
+
 ## Sesión: Fase 1 — P0 errores y confianza (`fix/fase-1`)
 
 ### Objetivo
