@@ -6,9 +6,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeCheck,
+  Banknote,
   Check,
   CheckCircle2,
   Gift,
+  Landmark,
   MessageCircle,
   Minus,
   Plus,
@@ -18,15 +20,32 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useSettings } from '@/lib/store-hooks';
-import { PRODUCTS } from '@/data/seed';
+import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { METRO_LINES } from '@/data/metro';
 import { formatPrice, uid, verifiedOldPrice, lineDiscount } from '@/lib/utils';
-import { buildWhatsAppMessage, openWhatsApp } from '@/lib/whatsapp';
+import { buildWhatsAppMessage, openWhatsApp, paymentLabel, normalizeChilePhone } from '@/lib/whatsapp';
 import { getSettings, getCustomerProfile, saveCustomerProfile, takePendingCoupon, saveOrder } from '@/lib/store';
 import { submitStoreOrder } from '@/lib/api';
 import { siteConfig } from '@/lib/site-config';
-import TrustBadges from '@/components/ui/TrustBadges';
-import type { Order, OrderItem } from '@/types';
+import type { Order, OrderItem, PaymentChoice } from '@/types';
+
+/** Campos del checkout que muestran error en línea (Fase 2.1). */
+type FieldName = 'name' | 'phone' | 'metroLine' | 'metroStation';
+
+const PAYMENT_OPTIONS: Array<{
+  value: PaymentChoice;
+  label: string;
+  hint: string;
+  icon: typeof Banknote;
+}> = [
+  { value: 'efectivo', label: 'Efectivo', hint: 'al recibir', icon: Banknote },
+  { value: 'transferencia', label: 'Transferencia', hint: 'datos por WhatsApp', icon: Landmark },
+];
+
+/** Borde de error sobre la clase `.input` compartida. */
+function fieldClass(invalid: boolean) {
+  return invalid ? 'input !border-red-500' : 'input';
+}
 
 export default function CartDrawer() {
   const {
@@ -59,12 +78,23 @@ export default function CartDrawer() {
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [payment, setPayment] = useState<PaymentChoice>('efectivo');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [placed, setPlaced] = useState(false);
   const [offerAdded, setOfferAdded] = useState<number | null>(null);
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [syncStatus, setSyncStatus] = useState<'ok' | 'offline'>('ok');
   const [waFailed, setWaFailed] = useState(false);
+  const fieldRefs = {
+    name: useRef<HTMLInputElement>(null),
+    phone: useRef<HTMLInputElement>(null),
+    metroLine: useRef<HTMLSelectElement>(null),
+    metroStation: useRef<HTMLSelectElement>(null),
+  };
+
+  const clearFieldError = (field: FieldName) =>
+    setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -86,6 +116,7 @@ export default function CartDrawer() {
       setPhone((v) => v || profile.phone);
       if (profile.metroLine) setMetroLine((v) => v || profile.metroLine!);
       if (profile.metroStation) setMetroStation((v) => v || profile.metroStation!);
+      if (profile.paymentMethod) setPayment(profile.paymentMethod);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -138,20 +169,47 @@ export default function CartDrawer() {
   }, [phone, couponCode, couponPhone, clearCoupon]);
 
   const cartIds = useMemo(() => new Set(items.map((i) => i.productId)), [items]);
-  const firstPaid = items.find((i) => !i.isGift);
-  const firstCategory = firstPaid
-    ? PRODUCTS.find((p) => p.id === firstPaid.productId)?.category
-    : undefined;
+  const cartCategories = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach((i) => {
+      const product = PRODUCTS.find((p) => p.id === i.productId);
+      if (product) set.add(product.category);
+    });
+    return set;
+  }, [items]);
+
+  // Venta cruzada: complementa el pedido, no repite lo que ya está.
+  // Primero categorías ausentes del carrito (proteína ⇒ creatina, etc.);
+  // solo si no quedan, se ofrecen más productos de una categoría presente.
   const suggested = useMemo(() => {
     const available = PRODUCTS.filter((p) => p.stock > 0 && !cartIds.has(p.id));
-    const inCategory = available.filter((p) =>
-      firstCategory ? p.category === firstCategory : true,
+    const newCategory = available.filter((p) => !cartCategories.has(p.category));
+    const sameCategory = available.filter((p) => cartCategories.has(p.category));
+    return (newCategory.length > 0 ? newCategory : sameCategory)
+      .sort((a, b) => b.rating - a.rating || a.price - b.price)
+      .slice(0, 2);
+  }, [cartIds, cartCategories]);
+
+  // Aviso del pack: si el carrito ya contiene todos sus productos, se muestra
+  // el precio de pack y el ahorro real. No se cambia el precio automáticamente:
+  // el pedido se cierra por WhatsApp y ahí se confirma (Fase 2.5).
+  const bundleOffer = useMemo(() => {
+    const paid = items.filter((i) => !i.isGift);
+    return BUNDLES.find(
+      (b) =>
+        b.pricing === 'fixed' &&
+        !!b.fixedPrice &&
+        b.items.every(
+          (bi) => paid.find((i) => i.productId === bi.productId)?.quantity === bi.quantity,
+        ),
     );
-    const otherCategory = available.filter((p) =>
-      firstCategory ? p.category !== firstCategory : false,
-    );
-    return [...inCategory, ...otherCategory].slice(0, 2);
-  }, [cartIds, firstCategory]);
+  }, [items]);
+  const bundleSaving = bundleOffer
+    ? bundleOffer.items.reduce((acc, bi) => {
+        const product = PRODUCTS.find((p) => p.id === bi.productId);
+        return acc + (product?.price ?? 0) * bi.quantity;
+      }, 0) - (bundleOffer.fixedPrice ?? 0)
+    : 0;
 
   const toOrderItems = (): OrderItem[] =>
     items.map((i) => ({
@@ -162,18 +220,30 @@ export default function CartDrawer() {
       image: i.image,
     }));
 
+  const validateCheckout = (): Partial<Record<FieldName, string>> => {
+    const next: Partial<Record<FieldName, string>> = {};
+    if (!name.trim()) next.name = 'Escribe tu nombre.';
+    if (!phone.trim()) next.phone = 'Escribe tu teléfono.';
+    else if (!normalizeChilePhone(phone)) next.phone = 'Usa un celular chileno: 9 1234 5678.';
+    else if (couponCode && couponPhone && phone.replace(/\D/g, '') !== couponPhone) {
+      next.phone = 'El cupón está ligado a otro teléfono.';
+    }
+    if (!metroLine) next.metroLine = 'Elige tu línea.';
+    if (!metroStation) next.metroStation = 'Elige tu estación.';
+    return next;
+  };
+
   const checkout = (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      setError('Completa tu nombre y teléfono.');
-      return;
-    }
-    if (couponCode && couponPhone && phone.replace(/\D/g, '') !== couponPhone) {
-      setError('El cupón está ligado a otro teléfono.');
-      return;
-    }
-    if (!metroLine || !metroStation) {
-      setError('Elige tu línea y estación de metro.');
+    const errors = validateCheckout();
+    setFieldErrors(errors);
+    const order_: FieldName[] = ['name', 'phone', 'metroLine', 'metroStation'];
+    const firstInvalid = order_.find((field) => errors[field]);
+    if (firstInvalid) {
+      // Lleva el foco al primer campo con error: en móvil el botón queda lejos
+      // del formulario y sin esto el usuario no sabe qué corregir (Fase 2.1).
+      fieldRefs[firstInvalid].current?.focus({ preventScroll: true });
+      fieldRefs[firstInvalid].current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
 
@@ -183,6 +253,7 @@ export default function CartDrawer() {
       phone: phone.trim(),
       metroLine,
       metroStation: metroStation.trim(),
+      paymentMethod: payment,
       couponCode: couponCode || undefined,
       items: toOrderItems(),
       subtotal,
@@ -200,6 +271,7 @@ export default function CartDrawer() {
       deliveryMethod: 'metro',
       metroLine: order.metroLine,
       metroStation: order.metroStation,
+      paymentMethod: payment,
     });
     // Copia el pedido al portapapeles de respaldo: si WhatsApp no precarga el
     // texto, el cliente lo pega y el pedido no se pierde.
@@ -209,7 +281,7 @@ export default function CartDrawer() {
     );
     setLastOrder(order);
     setPlaced(true);
-    setError('');
+    setFieldErrors({});
 
     submitStoreOrder(order)
       .then(() => setSyncStatus('ok'))
@@ -272,17 +344,22 @@ export default function CartDrawer() {
     setOfferAdded(p.id);
   };
 
+  // Recompra: misma lógica de complemento que la venta cruzada del carrito.
   const offerProducts = lastOrder
-    ? PRODUCTS.filter(
-        (p) =>
-          p.stock > 0 && !lastOrder.items.some((i) => i.productId === p.id),
-      )
-        .sort((a, b) => {
-          const aSame = a.category === firstCategory ? 0 : 1;
-          const bSame = b.category === firstCategory ? 0 : 1;
-          return aSame - bSame || a.price - b.price;
-        })
-        .slice(0, 2)
+    ? (() => {
+        const inOrder = new Set(lastOrder.items.map((i) => i.productId));
+        const orderCategories = new Set(
+          lastOrder.items
+            .map((i) => PRODUCTS.find((p) => p.id === i.productId)?.category)
+            .filter((c): c is string => !!c),
+        );
+        const available = PRODUCTS.filter((p) => p.stock > 0 && !inOrder.has(p.id));
+        const newCategory = available.filter((p) => !orderCategories.has(p.category));
+        const sameCategory = available.filter((p) => orderCategories.has(p.category));
+        return (newCategory.length > 0 ? newCategory : sameCategory)
+          .sort((a, b) => b.rating - a.rating || a.price - b.price)
+          .slice(0, 2);
+      })()
     : [];
 
   return (
@@ -484,6 +561,9 @@ export default function CartDrawer() {
             )}
 
             <div className="px-5 py-4">
+              <p className="mb-3 text-[11px] font-extrabold uppercase tracking-[0.2em] text-sport-orange">
+                1 · Tu pedido
+              </p>
               <ul className="space-y-4">
                 <AnimatePresence initial={false}>
                   {items.map((item) => (
@@ -562,6 +642,19 @@ export default function CartDrawer() {
                 </AnimatePresence>
               </ul>
 
+              {bundleOffer && bundleSaving > 0 && (
+                <div className="mt-4 rounded-xl border border-sport-green bg-sport-green/10 p-3">
+                  <p className="text-xs font-semibold text-sport-text">
+                    Tu carrito calza con el {bundleOffer.title}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-sport-textMuted">
+                    En pack queda en {formatPrice(bundleOffer.fixedPrice ?? 0)}: ahorras{' '}
+                    <span className="font-semibold text-sport-text">{formatPrice(bundleSaving)}</span>.
+                    Dilo en el WhatsApp si quieres llevarlo así.
+                  </p>
+                </div>
+              )}
+
               {suggested.length > 0 && (
                 <div className="mt-6 border-t border-sport-border pt-5">
                   <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-sport-textMuted">
@@ -616,110 +709,205 @@ export default function CartDrawer() {
             </div>
 
             <div className="border-t border-sport-border px-5 py-4">
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-sport-textMuted">Subtotal</span>
-                  <span className="font-semibold">{formatPrice(subtotal)}</span>
-                </div>
-                {couponCode ? (
-                  <div className="flex justify-between">
-                    <span className="text-sport-orange">Cupón ({couponPercent}%)</span>
-                    <span className="font-semibold text-sport-orange">
-                      -{formatPrice(couponDiscount)}
-                    </span>
+              <form id="checkout-form" onSubmit={checkout} noValidate className="space-y-4">
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-sport-orange">
+                  2 · Tus datos
+                </p>
+
+                <fieldset>
+                  <legend className="mb-2 text-xs font-semibold text-sport-text">
+                    ¿Cómo quieres pagar?
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PAYMENT_OPTIONS.map((option) => {
+                      const active = payment === option.value;
+                      return (
+                        <label
+                          key={option.value}
+                          className={`flex cursor-pointer flex-col items-center gap-0.5 rounded-xl border px-2 py-2.5 text-center transition-colors focus-within:ring-2 focus-within:ring-sport-orange/70 ${
+                            active
+                              ? 'border-sport-orange bg-sport-orange/10'
+                              : 'border-sport-border bg-white hover:border-sport-orange/60'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value={option.value}
+                            checked={active}
+                            onChange={() => setPayment(option.value)}
+                            className="sr-only"
+                          />
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-sport-text">
+                            <option.icon
+                              size={14}
+                              className={active ? 'text-sport-orange' : 'text-sport-textMuted'}
+                            />
+                            {option.label}
+                          </span>
+                          <span className="text-[10px] text-sport-textMuted">{option.hint}</span>
+                        </label>
+                      );
+                    })}
                   </div>
-                ) : rewardDiscount > 0 ? (
-                  <div className="flex justify-between">
-                    <span className="text-sport-orange">Descuento meta ({settings.rewardPercent}%)</span>
-                    <span className="font-semibold text-sport-orange">
-                      -{formatPrice(rewardDiscount)}
-                    </span>
-                  </div>
-                ) : null}
-                {couponCode && (
-                  <p className="text-[11px] font-semibold text-sport-textMuted">
-                    El cupón reemplaza cualquier otro descuento automático.
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-sport-textMuted">
+                    {payment === 'transferencia'
+                      ? 'Coordinamos los datos de la transferencia por WhatsApp antes de la entrega.'
+                      : 'Pagas en efectivo al recibir tu pedido.'}
                   </p>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-sport-textMuted">Entrega en metro</span>
-                  <span className="font-semibold">
-                    {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}
-                  </span>
-                </div>
-              </div>
-
-              <TrustBadges className="mt-4" />
-
-              <form id="checkout-form" onSubmit={checkout} className="mt-4 space-y-2.5">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Nombre completo"
-                  aria-label="Nombre completo"
-                  className="input"
-                />
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Teléfono (ej: 9 8765 4321)"
-                  aria-label="Teléfono"
-                  className="input"
-                />
-                <div className="grid grid-cols-2 gap-2.5">
-                  <select
-                    value={metroLine}
-                    onChange={(e) => setMetroLine(e.target.value)}
-                    aria-label="Línea de Metro"
-                    className="input"
+                </fieldset>
+                <div>
+                  <label
+                    htmlFor="checkout-name"
+                    className="mb-1 block text-xs font-semibold text-sport-text"
                   >
-                    <option value="">Línea...</option>
-                    {METRO_LINES.map((l) => (
-                      <option key={l.line} value={l.line}>
-                        Línea {l.line}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={metroStation}
-                    onChange={(e) => setMetroStation(e.target.value)}
-                    aria-label="Estación de metro"
-                    className="input"
-                  >
-                    <option value="">Estación...</option>
-                    {selectedLine?.stations.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    Nombre completo
+                  </label>
+                  <input
+                    id="checkout-name"
+                    ref={fieldRefs.name}
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      clearFieldError('name');
+                    }}
+                    autoComplete="name"
+                    placeholder="Ej: Ana Pérez"
+                    aria-invalid={!!fieldErrors.name}
+                    aria-describedby={fieldErrors.name ? 'checkout-name-error' : undefined}
+                    className={fieldClass(!!fieldErrors.name)}
+                  />
+                  {fieldErrors.name && (
+                    <p id="checkout-name-error" className="mt-1 text-[11px] font-semibold text-red-500">
+                      {fieldErrors.name}
+                    </p>
+                  )}
                 </div>
-                <div className="rounded-2xl border border-sport-border bg-sport-surface/50 p-3">
-                  <div className="flex gap-2">
-                    <input
-                      value={couponInput}
-                      onChange={(e) => {
-                        setCouponInput(e.target.value.toUpperCase());
-                        setCouponError('');
-                      }}
-                      placeholder="Código de cupón"
-                      aria-label="Código de cupón"
-                      className="input uppercase"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyCoupon}
-                      disabled={couponLoading}
-                      className="btn-outline shrink-0 !px-4 !py-3 text-xs"
-                    >
-                      {couponLoading ? 'Validando…' : 'Aplicar'}
-                    </button>
+
+                <div>
+                  <label
+                    htmlFor="checkout-phone"
+                    className="mb-1 block text-xs font-semibold text-sport-text"
+                  >
+                    Teléfono
+                  </label>
+                  <input
+                    id="checkout-phone"
+                    ref={fieldRefs.phone}
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      clearFieldError('phone');
+                    }}
+                    placeholder="9 1234 5678"
+                    aria-invalid={!!fieldErrors.phone}
+                    aria-describedby={
+                      fieldErrors.phone ? 'checkout-phone-error' : 'checkout-phone-help'
+                    }
+                    className={fieldClass(!!fieldErrors.phone)}
+                  />
+                  {fieldErrors.phone ? (
+                    <p id="checkout-phone-error" className="mt-1 text-[11px] font-semibold text-red-500">
+                      {fieldErrors.phone}
+                    </p>
+                  ) : (
+                    <p id="checkout-phone-help" className="mt-1 text-[11px] text-sport-textMuted">
+                      Celular chileno, con 9 adelante. Lo usamos para coordinar tu entrega.
+                    </p>
+                  )}
+                </div>
+                <fieldset>
+                  <legend className="mb-2 text-xs font-semibold text-sport-text">
+                    Punto de entrega en Metro
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label
+                        htmlFor="checkout-line"
+                        className="mb-1 block text-[11px] font-semibold text-sport-textMuted"
+                      >
+                        Línea
+                      </label>
+                      <select
+                        id="checkout-line"
+                        ref={fieldRefs.metroLine}
+                        value={metroLine}
+                        onChange={(e) => {
+                          setMetroLine(e.target.value);
+                          clearFieldError('metroLine');
+                        }}
+                        aria-invalid={!!fieldErrors.metroLine}
+                        aria-describedby={fieldErrors.metroLine ? 'checkout-line-error' : undefined}
+                        className={fieldClass(!!fieldErrors.metroLine)}
+                      >
+                        <option value="">Elige…</option>
+                        {METRO_LINES.map((l) => (
+                          <option key={l.line} value={l.line}>
+                            Línea {l.line}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.metroLine && (
+                        <p
+                          id="checkout-line-error"
+                          className="mt-1 text-[11px] font-semibold text-red-500"
+                        >
+                          {fieldErrors.metroLine}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="checkout-station"
+                        className="mb-1 block text-[11px] font-semibold text-sport-textMuted"
+                      >
+                        Estación
+                      </label>
+                      <select
+                        id="checkout-station"
+                        ref={fieldRefs.metroStation}
+                        value={metroStation}
+                        onChange={(e) => {
+                          setMetroStation(e.target.value);
+                          clearFieldError('metroStation');
+                        }}
+                        aria-invalid={!!fieldErrors.metroStation}
+                        aria-describedby={
+                          fieldErrors.metroStation ? 'checkout-station-error' : undefined
+                        }
+                        className={fieldClass(!!fieldErrors.metroStation)}
+                      >
+                        <option value="">Elige…</option>
+                        {selectedLine?.stations.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.metroStation && (
+                        <p
+                          id="checkout-station-error"
+                          className="mt-1 text-[11px] font-semibold text-red-500"
+                        >
+                          {fieldErrors.metroStation}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {couponError && <p className="mt-2 text-[11px] font-semibold text-red-500">{couponError}</p>}
-                  {couponCode && (
-                    <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-sport-green/15 px-3 py-2">
+                  <p className="mt-1.5 text-[11px] text-sport-textMuted">
+                    Coordinamos el punto exacto de entrega por WhatsApp.
+                  </p>
+                </fieldset>
+                <div>
+                  {couponCode ? (
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-sport-green bg-sport-green/10 px-3 py-2">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-sport-text">Cupón aplicado</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-sport-text">
+                          Cupón aplicado
+                        </p>
                         <p className="text-[11px] text-sport-textMuted">
                           {couponCode} · {couponPercent}% OFF
                         </p>
@@ -736,6 +924,56 @@ export default function CartDrawer() {
                         Quitar
                       </button>
                     </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCouponOpen((v) => !v)}
+                        aria-expanded={couponOpen}
+                        aria-controls="checkout-coupon"
+                        className="text-xs font-semibold text-sport-orange underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sport-orange/70"
+                      >
+                        {couponOpen ? 'Ocultar cupón' : '¿Tienes un cupón?'}
+                      </button>
+                      {couponOpen && (
+                        <div
+                          id="checkout-coupon"
+                          className="mt-2 rounded-xl border border-sport-border bg-sport-surface/60 p-3"
+                        >
+                          <div className="flex gap-2">
+                            <input
+                              value={couponInput}
+                              onChange={(e) => {
+                                setCouponInput(e.target.value.toUpperCase());
+                                setCouponError('');
+                              }}
+                              placeholder="Código de cupón"
+                              aria-label="Código de cupón"
+                              autoComplete="off"
+                              className="input uppercase"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyCoupon}
+                              disabled={couponLoading}
+                              className="btn-outline shrink-0 !px-4 !py-3 text-xs"
+                            >
+                              {couponLoading ? 'Validando…' : 'Aplicar'}
+                            </button>
+                          </div>
+                          {couponError && (
+                            <p className="mt-2 text-[11px] font-semibold text-red-500" role="alert">
+                              {couponError}
+                            </p>
+                          )}
+                          {!phone.trim() && (
+                            <p className="mt-2 text-[11px] text-sport-textMuted">
+                              Escribe tu teléfono arriba para aplicar el cupón.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-sport-textMuted">
@@ -754,20 +992,30 @@ export default function CartDrawer() {
             </div>
 
             <div className="shrink-0 border-t border-sport-border bg-sport-card px-5 py-4">
-              {error && <p className="mb-2 text-xs font-semibold text-red-500">{error}</p>}
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between text-xs text-sport-textMuted">
+                <span>Subtotal {formatPrice(subtotal)}</span>
+                <span>Entrega Metro {shipping === 0 ? 'GRATIS' : formatPrice(shipping)}</span>
+              </div>
+              {activeDiscount > 0 && (
+                <p className="mt-1 text-[11px] font-semibold text-sport-orange">
+                  Incluye descuento de {formatPrice(activeDiscount)}
+                  {couponCode ? ` · cupón ${couponCode}` : ''}
+                </p>
+              )}
+              <div className="mb-3 mt-1 flex items-center justify-between">
                 <span className="text-sm font-semibold text-sport-textMuted">Total</span>
                 <span className="font-display text-xl">{formatPrice(total)}</span>
               </div>
+              {Object.values(fieldErrors).some(Boolean) && (
+                <p className="mb-2 text-xs font-semibold text-red-500" role="alert">
+                  Revisa los campos marcados en «Tus datos».
+                </p>
+              )}
               <button type="submit" form="checkout-form" className="btn-accent w-full">
-                Finalizar compra por WhatsApp
+                <MessageCircle size={16} /> Enviar pedido por WhatsApp
               </button>
               <p className="mt-2 text-center text-[11px] leading-relaxed text-sport-textMuted">
-                Abrirás WhatsApp con tu pedido listo para confirmar. Coordinamos la entrega en tu
-                estación de metro.
-              </p>
-              <p className="mt-1 text-center text-[11px] font-semibold text-sport-textMuted">
-                Aceptamos efectivo y transferencia (pago contra entrega).
+                Se abre WhatsApp con tu pedido listo. Coordinamos la entrega y el pago por ahí.
               </p>
             </div>
           </>

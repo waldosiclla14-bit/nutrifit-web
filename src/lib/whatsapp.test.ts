@@ -6,6 +6,8 @@ import {
   buildDeliveryOrderMessage,
   buildTickTickLine,
   buildCancelOrderMessage,
+  buildWhatsAppMessage,
+  paymentLabel,
   trustFooter,
   waMeUrl,
 } from './whatsapp';
@@ -188,6 +190,69 @@ describe('buildDeliveryOrderMessage scheduled', () => {
     });
 
     expect(msg).toContain('¡Tu pedido agendado es hoy!');
+  });
+});
+
+describe('buildWhatsAppMessage', () => {
+  const order = {
+    name: 'Ana Pérez',
+    phone: '9 1234 5678',
+    metroLine: '3',
+    metroStation: 'Plaza Quilicura',
+    paymentMethod: 'transferencia' as const,
+    items: [
+      { productId: 4, name: 'Whey 1kg', price: 16000, quantity: 2, image: '/img/x.webp' },
+      { productId: 7, name: 'Creatina 300g', price: 15000, quantity: 1, image: '/img/y.webp' },
+    ],
+    subtotal: 47000,
+    shipping: 1000,
+    total: 48000,
+  };
+
+  it('arma el pedido con productos, entrega, pago y total', () => {
+    const msg = buildWhatsAppMessage(order);
+
+    expect(msg).toContain('*Nombre:* Ana Pérez');
+    expect(msg).toContain('*Teléfono:* 9 1234 5678');
+    expect(msg).toContain('*Entrega:* Metro Plaza Quilicura — Línea 3');
+    expect(msg).toContain('*Pago:* Transferencia bancaria');
+    expect(msg).toContain('1. Whey 1kg');
+    expect(msg).toContain('Cantidad: 2');
+    expect(msg).toContain('$32.000');
+    expect(msg).toContain('*Subtotal:* $47.000');
+    expect(msg).toContain('*Entrega:* $1.000');
+    expect(msg).toContain('*TOTAL:* $48.000');
+  });
+
+  it('asume efectivo cuando no se eligió medio de pago', () => {
+    const msg = buildWhatsAppMessage({ ...order, paymentMethod: undefined });
+
+    expect(msg).toContain('*Pago:* Efectivo contra entrega');
+    expect(paymentLabel(undefined)).toBe('Efectivo contra entrega');
+    expect(paymentLabel('efectivo')).toBe('Efectivo contra entrega');
+    expect(paymentLabel('transferencia')).toBe('Transferencia bancaria');
+  });
+
+  it('omite la línea de entrega si no hay estación de Metro', () => {
+    const msg = buildWhatsAppMessage({
+      ...order,
+      metroLine: undefined,
+      metroStation: undefined,
+    });
+
+    expect(msg).not.toContain('*Entrega:* Metro');
+    expect(msg).not.toContain('undefined');
+  });
+
+  it('el enlace wa.me escapa saltos de línea y acentos', () => {
+    const msg = buildWhatsAppMessage(order);
+    const url = waMeUrl('912345678', msg);
+
+    expect(url).not.toBeNull();
+    expect(url).not.toContain('\n');
+    expect(url).not.toContain(' ');
+    expect(url).toContain('%0A');
+    expect(url).toContain(encodeURIComponent('Ana Pérez'));
   });
 });
 

@@ -1,4 +1,4 @@
-import type { OrderItem } from '@/types';
+import type { OrderItem, PaymentChoice } from '@/types';
 import { formatPrice, formatTime12 } from '@/lib/utils';
 import { BRAND } from '@/data/seed';
 import { SITE_URL } from '@/lib/site';
@@ -34,6 +34,7 @@ type OrderPayload = {
   phone: string;
   metroLine?: string;
   metroStation?: string;
+  paymentMethod?: PaymentChoice;
   couponCode?: string;
   items: OrderItem[];
   subtotal: number;
@@ -41,6 +42,13 @@ type OrderPayload = {
   shipping: number;
   total: number;
 };
+
+/** Etiqueta del medio de pago tal como se muestra y se envía por WhatsApp. */
+export function paymentLabel(paymentMethod?: PaymentChoice): string {
+  return paymentMethod === 'transferencia'
+    ? 'Transferencia bancaria'
+    : 'Efectivo contra entrega';
+}
 
 export function buildWhatsAppMessage(order: OrderPayload) {
   const lines: string[] = [];
@@ -53,7 +61,7 @@ export function buildWhatsAppMessage(order: OrderPayload) {
   if (order.metroStation) {
     lines.push(`*Entrega:* Metro ${order.metroStation} — Línea ${order.metroLine}`);
   }
-  lines.push(`*Pago:* Efectivo o transferencia (contra entrega)`);
+  lines.push(`*Pago:* ${paymentLabel(order.paymentMethod)}`);
   lines.push('');
   lines.push('*PRODUCTOS:*');
   order.items.forEach((item, index) => {

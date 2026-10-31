@@ -1,5 +1,8 @@
 export type DeliveryMethod = 'metro' | 'domicilio';
 
+/** Medio de pago real del sitio: no hay pasarela online (siteConfig.payment). */
+export type PaymentChoice = 'efectivo' | 'transferencia';
+
 export type BlueSize = 'S' | 'M';
 
 export type ProductVariant = {
@@ -165,6 +168,7 @@ export type Order = {
   shipping: number;
   total: number;
   status: OrderStatus;
+  paymentMethod?: PaymentChoice;
   createdAt: number;
 };
 
@@ -187,6 +191,7 @@ export type CustomerProfile = {
   address?: string;
   comuna?: string;
   blueSize?: BlueSize;
+  paymentMethod?: PaymentChoice;
 };
 
 export type BlogBlock =
