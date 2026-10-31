@@ -75,25 +75,31 @@
 
 ## Fase 2 — P1: checkout y conversión
 
-**2.1 Validación visible**
+> **Estado: cerrada en la rama `fix/fase-2`** (a la espera de revisión).
+> 2.1, 2.2 y 2.4 implementadas y verificadas. 2.3 queda **parcial**: chips de pago y
+> tarifa visible antes del carrito, sin el selector de domicilio (F-06 sigue pendiente de
+> decisión). 2.5 implementada como aviso de ahorro, sin aplicar el precio de pack.
+> 2.6, 2.7 y 2.8 no iniciadas. Bitácora y pruebas en `docs/estado.md`.
+
+**2.1 Validación visible** — ✅ hecho
 - Al tocar "Enviar pedido" con campos vacíos o inválidos: errores en línea bajo cada campo y scroll + focus al primer error. Hoy el botón está visible pero el formulario queda fuera de pantalla.
 - Labels reales (no solo placeholders), `inputMode="tel"`, `autocomplete="name"` / `"tel"`, validación de teléfono chileno (`9 XXXX XXXX`).
 
-**2.2 Estructura del carrito**
+**2.2 Estructura del carrito** — ✅ hecho
 - Dividir en dos bloques claros: "1 · Tu pedido" y "2 · Tus datos". Resumen de total fijo abajo.
 - Reducir el recuadro grande de 4 íconos de confianza (ocupa media pantalla): dejar solo la fila pequeña inferior.
 - Cupón colapsado: link "¿Tienes un cupón?" que despliega el campo.
 
-**2.3 Pago y entrega**
+**2.3 Pago y entrega** — ⏳ parcial
 - Mostrar los medios de pago (efectivo / transferencia) como chips **arriba** del formulario, no en letra chica al final.
 - Selector de método de entrega **Metro / Domicilio** con campos condicionales: Metro ⇒ Línea + Estación (Estación dependiente de la Línea); Domicilio ⇒ dirección + comuna. Verificar si el domicilio hoy existe en el formulario; en las capturas solo aparecen Línea y Estación.
 - La tarifa debe verse **antes** del carrito: hoy "Entrega en metro $1.000" aparece solo al final. Mostrarla en hero, ficha y FAQ desde `siteConfig.deliveryFees`. **[DECISIÓN DEL DUEÑO]** cobrarla, absorberla o hacerla gratis desde cierto monto.
 
-**2.4 CTA y mensaje de WhatsApp**
+**2.4 CTA y mensaje de WhatsApp** — ✅ hecho
 - Texto del botón: **"Enviar pedido por WhatsApp"** (hoy "Finalizar compra" promete más de lo que hace).
 - El mensaje prellenado debe incluir: productos, sabores, cantidades, subtotal, tarifa, total, método de entrega (estación o dirección), método de pago y nombre. Usar `encodeURIComponent`; test que valida el formato de la URL `wa.me`.
 
-**2.5 Venta cruzada con lógica**
+**2.5 Venta cruzada con lógica** — ⏳ parcial
 - Hoy "Completa tu pedido" ofrece otra proteína (vegana $18.000, FNL Woman $48.000) a quien ya lleva whey.
 - Reglas: excluir categorías ya presentes en el carrito y ofrecer complementarios (whey ⇒ creatina; creatina ⇒ whey; óxido nítrico ⇒ L-citrulina; etc.), ordenados por precio ascendente y por margen si existe el dato.
 - Si el carrito tiene whey + creatina, detectar el pack y mostrar el ahorro ("Ahorras $2.500"). **[DECISIÓN DEL DUEÑO]** aplicar el precio de pack automáticamente.

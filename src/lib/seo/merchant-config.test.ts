@@ -88,9 +88,19 @@ describe('buildProductJsonLd — campos mínimos', () => {
     expect(offers.priceValidUntil).toBe(priceValidUntil());
   });
 
-  it('priceValidUntil es una fecha futura (ISO 8601)', () => {
-    expect(priceValidUntil()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(new Date(priceValidUntil()).getTime()).toBeGreaterThan(Date.now());
+  it('priceValidUntil no está vencida y es ISO 8601', () => {
+    const value = priceValidUntil();
+    expect(value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // Comparación por día calendario, no por instante: el último día del mes a las
+    // 00:00 UTC sigue siendo "hoy" y no una fecha pasada. Evita el falso negativo
+    // que aparecía al correr los tests el último día del mes.
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+    expect(value >= today).toBe(true);
   });
 
   it('hasMerchantReturnPolicy completo', () => {

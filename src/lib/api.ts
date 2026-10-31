@@ -287,7 +287,7 @@ export async function submitStoreOrder(order: Order): Promise<void> {
       couponCode: order.couponCode ?? undefined,
       shippingCost: order.shipping,
       total: order.total,
-      paymentMethod: 'EFECTIVO',
+      paymentMethod: order.paymentMethod === 'transferencia' ? 'TRANSFERENCIA' : 'EFECTIVO',
       items: order.items.map((i) => ({
         productName: i.name,
         variantName: i.variantName ?? '',
