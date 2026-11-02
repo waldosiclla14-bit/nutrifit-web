@@ -157,8 +157,8 @@ jobs:
           END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           # Ventana acotada alrededor del ultimo despliegue conocido (30-10 01:50Z),
           # que es donde quedan registradas las lineas de arranque.
-          START="2026-10-30T01:49:00Z"
-          ENDW="2026-10-30T01:56:00Z"
+          START="2026-10-30T01:52:00Z"
+          ENDW="2026-10-30T01:57:00Z"
           echo "ventana=$START..$ENDW"
           code=$(curl -s -o /tmp/logs.json -w "%{http_code}" --max-time 110 \
             -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
@@ -166,7 +166,7 @@ jobs:
           echo "http=$code"
           python3 - <<'PY'
           import json, re
-          ALLOW = re.compile(r'(metro stations|delivery settings|delivery window|order ?counter|prisma|listening|bootstrap|startup|health|==>|exited|restart)', re.I)
+          ALLOW = re.compile(r'(metro stations|delivery settings|delivery window|order ?counter|prisma|listening|bootstrap|startup|started|health|==>|exited|restart|pozo|semilla)', re.I)
           try:
               raw = json.load(open('/tmp/logs.json'))
           except Exception as e:
