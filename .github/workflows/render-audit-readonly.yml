@@ -155,10 +155,14 @@ jobs:
           echo "owner_id_len=${#OWNER}"
           if [ -z "$OWNER" ]; then echo "::warning::No se pudo obtener ownerId; se omite el paso de logs"; exit 0; fi
           END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          START=$(date -u -d '-72 hours' +%Y-%m-%dT%H:%M:%SZ)
-          code=$(curl -s -o /tmp/logs.json -w "%{http_code}" --max-time 40 \
+          # Ventana acotada alrededor del ultimo despliegue conocido (30-10 01:50Z),
+          # que es donde quedan registradas las lineas de arranque.
+          START="2026-10-30T01:49:00Z"
+          ENDW="2026-10-30T01:56:00Z"
+          echo "ventana=$START..$ENDW"
+          code=$(curl -s -o /tmp/logs.json -w "%{http_code}" --max-time 110 \
             -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
-            "https://api.render.com/v1/logs?ownerId=$OWNER&resource=$SVC&startTime=$START&endTime=$END&direction=backward&limit=200")
+            "https://api.render.com/v1/logs?ownerId=$OWNER&resource=$SVC&startTime=$START&endTime=$ENDW&direction=forward&limit=200")
           echo "http=$code"
           python3 - <<'PY'
           import json, re
@@ -174,8 +178,9 @@ jobs:
                   lines.append(it)
               elif isinstance(it, dict):
                   lines.append(str(it.get('message') or it.get('text') or it.get('line') or ''))
+          print('muestra_cruda=%s' % json.dumps(items[:2])[:300])
           hits = [l for l in lines if l and ALLOW.search(l)]
           print('lineas_totales=%d coincidencias=%d' % (len(lines), len(hits)))
-          for l in hits[-40:]:
+          for l in hits[:60]:
               print('LOG>', l[:200])
           PY
