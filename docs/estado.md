@@ -58,6 +58,47 @@ y el resultado correcto después (`reminded: 1`, `skipped: 1`).
   de flat config; el CI no corre lint de backend (solo `tsc`, `jest` y `build`), así que
   no bloquea.
 
+## Sesión: timeout del cliente para el arranque en frío (`fix/api-timeout-cold-start`)
+
+### Objetivo
+Crear el margen necesario antes de quitar el health check HTTP de Render. Sin este cambio,
+el primer pedido del día quedaría a un segundo del abort.
+
+### Decisión tomada
+- **El timeout pasa a depender del método, no del endpoint.** El motivo es el reintento:
+  `apiFetch` ya usa `maxAttempts = 2` en GET y 1 en POST.
+  - **GET 45 s:** el primer intento dispara el arranque en frío y puede abortar; el segundo
+    (tras 1,2 s) encuentra la instancia despierta y responde en milisegundos. No hacía falta
+    tocar nada.
+  - **POST 90 s:** no reintenta, así que tiene que tolerar solo los ~44 s medidos. Con 45 s
+    habría fallado por márgenes de reloj.
+- **No se subió el timeout de todo a 90 s** porque un POST colgado dejaría al cajero esperando
+  el doble de tiempo sin ganar nada. Solo cambia la ruta que lo necesita.
+- **No se añadió reintento a POST.** `/orders/public` ya manda `idempotencyKey`, pero
+  `/customers/public` no, y un reintento genérico podría duplicar registros.
+
+### Archivos creados/modificados
+- `src/lib/api.ts`: constante exportada `API_TIMEOUT_MS` (`read` 45 000, `mutation` 90 000) y
+  selección por método en `attempt()`.
+- `src/lib/api.test.ts` (nuevo): fija que POST siga esperando a los 45 s y aborte a los 90 s,
+  y que GET aborte a los 45 s y reintente.
+
+### Qué se probó y cómo
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Tests del módulo | `npx jest src/lib/api.test.ts` | 3/3 pasan |
+| Suite completa | `npx jest --silent` | 15 suites, 128 tests |
+| Tipos | `npx tsc --noEmit` | sin errores |
+| Lint | `npm run lint` | 0 errores, 3 warnings previos (`DocumentViewer`, `Pos`) |
+| Build | `npm run build` | falla una vez por el aviso de seguridad de Next 16.4.0 (F-30) y compila al reintentar |
+
+### Pendientes
+- **Depende de la auditoría:** la medición de 44 s está en
+  `docs/auditoria-consumo-render-2026-11-02.md` §7.3 (PR #11, sin fusionar).
+- **Siguiente paso:** desplegar esto y **después** cambiar el health check a TCP en el panel.
+- **No ejecutado:** `next upgrade --agent=security`. Vive en la rama `security/next-16.4.3`
+  (PR #4) por decisión previa.
+
 ## Sesión: Fase 1 — P0 errores y confianza (`fix/fase-1`)
 
 ### Objetivo
