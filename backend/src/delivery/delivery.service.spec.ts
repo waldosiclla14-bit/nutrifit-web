@@ -309,6 +309,22 @@ describe('DeliveryService', () => {
   });
 
   describe('dispatchReminders', () => {
+    // Reloj fijo. Estos tests comparaban contra la hora real y fallaban cada
+    // noche entre las 23:20 y las 23:59 de Chile: `chileNowPlus(40)` cruzaba la
+    // medianoche, `diff` se volvía negativo y la entrega pasaba a "fuera de
+    // ventana". Así el test medía la hora de ejecución, no la lógica.
+    // Fijado al mediodía de Chile (UTC-3 en horario de verano) para que
+    // cualquier offset usado aquí se quede dentro del mismo día.
+    const FIXED_NOW = new Date('2026-11-02T15:00:00.000Z');
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: FIXED_NOW, doNotFake: ['nextTick', 'setImmediate'] });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     function chileNowPlus(offsetMin: number): string {
       const parts = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'America/Santiago',
