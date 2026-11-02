@@ -99,6 +99,100 @@ el primer pedido del día quedaría a un segundo del abort.
 - **No ejecutado:** `next upgrade --agent=security`. Vive en la rama `security/next-16.4.3`
   (PR #4) por decisión previa.
 
+## Sesión: auditoría de consumo de Render — 2.ª revisión (`docs/auditoria-render-2026-11-02`)
+
+### Objetivo
+Explicar por qué el servicio `nutrifit-api` consume las horas gratuitas de Render, sin
+modificar producción. Entregable: `docs/auditoria-consumo-render-2026-11-02.md`.
+
+### Decisiones tomadas
+- **Causa raíz confirmada por aritmética y documentación, no por el panel:** el health check
+  HTTP de Render sondea la instancia cada pocos segundos, así que nunca acumula los 15 minutos
+  de inactividad y no se apaga nunca. 618 h consumidas = 25 días y 18 horas continuas.
+- **Se corrige el informe del 26-10.** El arranque de 96 s por el seed de estaciones **ya estaba
+  corregido** desde el commit `1546a4a` (27-10): hoy son 2 consultas cuando no cambia el seed.
+  No se abre PR de arranque porque no hay nada que arreglar.
+- **Hallazgo nuevo:** `nutrifit-api.onrender.com` responde 503 «suspendido»; el servicio real es
+  `nutrifit-api-635n`. Además `nutrifit-api-staging` nunca se desplegó (404 genérico).
+- **Supabase no está en la ruta de ejecución:** 0 dependencias y 0 variables; la base es Neon.
+- **No se tocó producción:** ni panel, ni variables, ni `render.yaml`, ni workflows, ni servicios.
+
+### Archivos creados/modificados
+- `docs/auditoria-consumo-render-2026-11-02.md` (nuevo): arquitectura, diagnóstico, procesos
+  innecesarios, dependencias de Render, opciones con precios oficiales y plan por fases.
+- `docs/estado.md`: esta entrada.
+
+### Qué se probó y cómo
+| Comprobación | Método | Resultado |
+|---|---|---|
+| API de producción | `GET /api/health` | 200, 986 ms, 59 B |
+| Swagger | `GET /api/docs` | 404 (cerrado) |
+| Servicio real vs homónimo | `GET` a `nutrifit-api-635n` y `nutrifit-api` | 200 vs **503 suspendido** |
+| Staging | `GET` a `nutrifit-api-staging` + control negativo | 404 en ambos → no existe |
+| DNS | `Resolve-DnsName` | Vercel 76.76.21.21; API por CNAME a Render |
+| Precios | render.com/pricing, vercel.com/pricing, supabase.com/pricing, neon.com/pricing | verificados el 2-11-2026 |
+
+### Pendientes y decisiones que requieren validación humana
+- **Fase 1 (panel):** pasar el health check de HTTP a TCP. Autorizada, pendiente de ventana con
+  el POS cerrado. Después, medir el arranque en frío con una sola petición.
+- **Fase 2:** corregir o desactivar `render-verify-live.yml` (sondea un host suspendido).
+- **Fase 4:** decidir entre $0 (ventana de calentamiento) y $7/mes (Render Starter).
+- **Fase 5:** confirmar de quién es el servicio suspendido antes de eliminarlo.
+- **Sin verificar:** `healthCheckPath` actual, horas de noviembre, plan de Neon, número de
+  servicios del workspace y tiempo real de arranque en frío.
+
+### Siguiente paso
+Aplicar la Fase 1 en ventana de bajo tráfico y medir el arranque con un `GET /api/health`
+cronometrado. El umbral de decisión es 45 s (abort del cliente).
+
+### Actualización 2-11-2026 (01:33–01:37 UTC) — datos del panel por API
+
+Se construyó `.github/workflows/render-audit-readonly.yml` (rama `chore/render-audit-readonly`),
+que solo hace `GET` contra la API de Render. Como `workflow_dispatch` exige el archivo en la rama
+por defecto, se le añadió un disparador `push` acotado a ese mismo archivo.
+
+**Confirmado:**
+
+- **Un solo servicio** en el workspace: `nutrifit-api`, plan `free`, región `virginia`,
+  1 instancia, `autoDeploy`, rama `main`, **`healthCheckPath: /api/health`**.
+- Último despliegue vivo: `2ebb6c2` (30-10 01:52 UTC), que es el merge de la Fase 1 de mejoras.
+- **Una instancia activa desde el 30-10 01:51:22Z**, sin reinicios: los 40 eventos recientes son
+  solo `build_*`/`deploy_*`, ninguno de parada.
+- **El host suspendido `nutrifit-api.onrender.com` no es de este workspace.** No consume horas
+  aquí y no se puede eliminar desde esta cuenta. La Fase 5 del plan queda cerrada.
+
+**Arranque medido (despliegue del 30-10):**
+
+| Momento | Hito | Delta |
+|---|---|---|
+| 01:51:22 | Render crea la instancia | — |
+| 01:51:52 | `[Bootstrap] Startup` | +30 s |
+| 01:52:02 | `Metro stations al dia (v2026-10-27.1, 143 estaciones) - sin sincronizar` | +10 s |
+| 01:52:06 | `Listening on :10000/api` | +4 s |
+| 01:52:15 | `deploy_ended` | +9 s |
+
+**44 s** desde la creación de la instancia hasta estar escuchando. El cliente aborta a **45 s**
+(`src/lib/api.ts:115`). **El margen es de 1 segundo.**
+
+Los logs confirman además que la corrección `1546a4a` funciona en producción: el seed **no**
+resincroniza las 143 estaciones en cada arranque.
+
+**Hallazgo que cambia el orden:** los 30 s iniciales son el `CMD` del `Dockerfile`
+(`baseline.js` + `ensure-enum.js` + `npx prisma migrate deploy`), que corre en **cada** arranque.
+Moverlo a *pre-deploy* no es gratis: Render documenta que el pre-deploy command solo existe para
+servicios **de pago** (verificado en `render.com/docs/deploys` el 2-11-2026).
+
+**Conclusión:** la Fase 1 (health check HTTP → TCP) **no se aplica sola**. Antes hay que crear
+margen: subir el abort a 90 s (PR de 1 línea) o pasar a Render Starter ($7/mes). El informe
+registra las tres salidas en §9.0.
+
+### Pendientes actualizados
+- **1a (nueva):** PR que sube el abort de `src/lib/api.ts` a 90 s. Sin esto, 1b es riesgosa.
+- **1b:** health check HTTP → TCP en el panel, después de 1a.
+- **Decisión de negocio:** $0 con abort a 90 s, o $7/mes sin arranque en frío ni límite.
+- Sigue sin verificarse: horas de noviembre (la API no expone billing), plan de Neon, y el
+  arranque en frío real con la instancia dormida.
+
 ## Sesión: Fase 1 — P0 errores y confianza (`fix/fase-1`)
 
 ### Objetivo
