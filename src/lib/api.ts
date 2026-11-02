@@ -89,6 +89,23 @@ export class ApiError extends Error {
   }
 }
 
+// ── Timeouts ──────────────────────────────────────────────────────────────────
+// El backend vive en Render free, que apaga la instancia a los 15 min de
+// inactividad. El arranque en frío medido es de ~44 s
+// (docs/auditoria-consumo-render-2026-11-02.md §7.3).
+//
+// GET: 45 s basta porque reintenta (maxAttempts = 2). El primer intento dispara
+//      el arranque y puede abortar; el segundo ya encuentra la instancia
+//      despierta y responde en milisegundos.
+// POST: no reintenta (un reintento podría duplicar efectos), así que tiene que
+//      tolerar por sí solo el arranque en frío completo. 90 s deja margen sobre
+//      los 44 s medidos.
+export const API_TIMEOUT_MS = {
+  read: 45_000,
+  mutation: 90_000,
+} as const;
+// ───────────────────────────────────────────────────────────────────────────────
+
 export async function apiFetch<T = any>(
   path: string,
   opts: { method?: string; body?: unknown; token?: string } = {},
@@ -111,8 +128,9 @@ export async function apiFetch<T = any>(
   // ──────────────────────────────────────────────────────────────────────────
 
   async function attempt(): Promise<Response> {
+    const timeoutMs = method === 'GET' ? API_TIMEOUT_MS.read : API_TIMEOUT_MS.mutation;
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
-    const timer = controller ? setTimeout(() => controller.abort(), 45000) : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
     try {
       return await fetch(`${API_PATH}${path}`, {
         method,
