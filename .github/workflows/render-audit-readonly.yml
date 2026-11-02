@@ -126,11 +126,39 @@ jobs:
                   (e.get('details') or {}).get('reason') or ''))
           PY
 
+      - name: Instancias del servicio
+        run: |
+          code=$(curl -s -o /tmp/instances.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/instances?limit=20")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json
+          try:
+              raw = json.load(open('/tmp/instances.json'))
+          except Exception as e:
+              print('no_parseable:', e); raise SystemExit(0)
+          items = raw if isinstance(raw, list) else raw.get('items', [])
+          print('total_instancias=%d' % len(items))
+          for it in items[:20]:
+              i = it.get('instance', it) or {}
+              print('- id=%s state=%s created=%s' % (i.get('id'), i.get('state'), i.get('createdAt')))
+          PY
+
       - name: Logs de arranque (filtrados, sin datos de pedidos)
         run: |
+          code=$(curl -s -o /tmp/me.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/owners?limit=20")
+          echo "owners_http=$code"
+          OWNER=$(python3 -c "import json;d=json.load(open('/tmp/me.json'));items=d if isinstance(d,list) else d.get('items',[]);print((items[0].get('owner') or items[0]).get('id','') if items else '')" 2>/dev/null)
+          echo "owner_id_len=${#OWNER}"
+          if [ -z "$OWNER" ]; then echo "::warning::No se pudo obtener ownerId; se omite el paso de logs"; exit 0; fi
+          END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          START=$(date -u -d '-72 hours' +%Y-%m-%dT%H:%M:%SZ)
           code=$(curl -s -o /tmp/logs.json -w "%{http_code}" --max-time 40 \
             -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
-            "https://api.render.com/v1/services/$SVC/logs?limit=200")
+            "https://api.render.com/v1/logs?ownerId=$OWNER&resource=$SVC&startTime=$START&endTime=$END&direction=backward&limit=200")
           echo "http=$code"
           python3 - <<'PY'
           import json, re
