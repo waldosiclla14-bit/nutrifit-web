@@ -1,0 +1,148 @@
+name: "Auditoria Render: solo lectura"
+
+# Diagnostico READ-ONLY. Solo hace GET contra la API de Render.
+# No modifica servicios, variables, despliegues ni nada de produccion.
+# Sirve para cerrar los datos que no son visibles desde el repositorio:
+#   - cuantos servicios hay en el workspace y en que estado
+#   - healthCheckPath real del servicio de produccion
+#   - plan, region, rama y autoDeploy
+#   - ultimos eventos y despliegues
+# Salida acotada: nunca imprime valores de variables de entorno ni datos de pedidos.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  SVC: ${{ secrets.RENDER_SERVICE_ID }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Comprobar credenciales presentes
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then echo "::error::Falta el secreto RENDER_API_KEY"; exit 1; fi
+          if [ -z "$SVC" ]; then echo "::error::Falta el secreto RENDER_SERVICE_ID"; exit 1; fi
+          echo "credenciales: presentes"
+
+      - name: Servicios del workspace
+        run: |
+          code=$(curl -s -o /tmp/services.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services?limit=100")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json
+          try:
+              raw = json.load(open('/tmp/services.json'))
+          except Exception as e:
+              print('no_parseable:', e)
+              raise SystemExit(0)
+          items = raw if isinstance(raw, list) else raw.get('items', [])
+          if isinstance(raw, dict) and not items:
+              print('respuesta:', json.dumps(raw)[:400])
+          print('total_servicios=%d' % len(items))
+          for it in items:
+              s = it.get('service', it) or {}
+              sd = s.get('serviceDetails') or {}
+              print('- id=%s name=%s type=%s suspended=%s plan=%s branch=%s healthCheckPath=%s' % (
+                  s.get('id'), s.get('name'), s.get('type'), s.get('suspended'),
+                  sd.get('plan'), s.get('branch'), sd.get('healthCheckPath')))
+          PY
+
+      - name: Detalle del servicio de produccion
+        run: |
+          code=$(curl -s -o /tmp/svc.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json
+          try:
+              s = json.load(open('/tmp/svc.json'))
+          except Exception as e:
+              print('no_parseable:', e); raise SystemExit(0)
+          sd = s.get('serviceDetails') or {}
+          keep = {k: s.get(k) for k in ('id','name','type','suspended','autoDeploy','branch','updatedAt')}
+          keep.update({
+            'plan': sd.get('plan'),
+            'region': sd.get('region'),
+            'numInstances': sd.get('numInstances'),
+            'healthCheckPath': sd.get('healthCheckPath'),
+            'url': sd.get('url'),
+          })
+          print(json.dumps(keep, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Ultimos despliegues
+        run: |
+          code=$(curl -s -o /tmp/deploys.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/deploys?limit=5")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json
+          try:
+              raw = json.load(open('/tmp/deploys.json'))
+          except Exception as e:
+              print('no_parseable:', e); raise SystemExit(0)
+          items = raw if isinstance(raw, list) else raw.get('items', [])
+          for it in items[:5]:
+              d = it.get('deploy', it) or {}
+              c = d.get('commit') or {}
+              print('- id=%s status=%s created=%s finished=%s commit=%s' % (
+                  d.get('id'), d.get('status'), d.get('createdAt'), d.get('finishedAt'),
+                  (c.get('id') or '')[:8]))
+          PY
+
+      - name: Eventos recientes del servicio
+        run: |
+          code=$(curl -s -o /tmp/events.json -w "%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/events?limit=40")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json
+          try:
+              raw = json.load(open('/tmp/events.json'))
+          except Exception as e:
+              print('no_parseable:', e); raise SystemExit(0)
+          items = raw if isinstance(raw, list) else raw.get('events', raw.get('items', []))
+          print('total_eventos=%d' % len(items))
+          for it in items[:40]:
+              e = it.get('event', it) or {}
+              print('- %s | %s | %s' % (
+                  e.get('timestamp'), e.get('type'),
+                  (e.get('details') or {}).get('reason') or ''))
+          PY
+
+      - name: Logs de arranque (filtrados, sin datos de pedidos)
+        run: |
+          code=$(curl -s -o /tmp/logs.json -w "%{http_code}" --max-time 40 \
+            -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+            "https://api.render.com/v1/services/$SVC/logs?limit=200")
+          echo "http=$code"
+          python3 - <<'PY'
+          import json, re
+          ALLOW = re.compile(r'(metro stations|delivery settings|delivery window|order ?counter|prisma|listening|bootstrap|startup|health|==>|exited|restart)', re.I)
+          try:
+              raw = json.load(open('/tmp/logs.json'))
+          except Exception as e:
+              print('no_parseable:', e); raise SystemExit(0)
+          items = raw if isinstance(raw, list) else raw.get('logs', raw.get('items', []))
+          lines = []
+          for it in items:
+              if isinstance(it, str):
+                  lines.append(it)
+              elif isinstance(it, dict):
+                  lines.append(str(it.get('message') or it.get('text') or it.get('line') or ''))
+          hits = [l for l in lines if l and ALLOW.search(l)]
+          print('lineas_totales=%d coincidencias=%d' % (len(lines), len(hits)))
+          for l in hits[-40:]:
+              print('LOG>', l[:200])
+          PY
