@@ -1,5 +1,63 @@
 # Estado del proyecto NutriFit
 
+## Sesión: tests de recordatorios deterministas (`fix/test-recordatorios-deterministas`)
+
+### Objetivo
+Arreglar un test que fallaba por depender de la hora real. No es un cambio de producto:
+es un defecto previo de `main` que dejaba el CI en rojo cada noche.
+
+### Qué pasaba
+`backend/src/delivery/delivery.service.spec.ts` construía las horas de entrega con
+`chileNowPlus(offset)`, que parte de `new Date()`. El caso «reminds deliveries starting
+within the window» usaba `chileNowPlus(40)`:
+
+- a las 22:34 de Chile el resultado cae dentro del mismo día → el test pasa;
+- a las 23:24 de Chile el resultado cruza la medianoche → `windowStart` queda en el día
+  siguiente, que no está en el rango del día consultado → `diff` se vuelve negativo →
+  la entrega pasa a «fuera de ventana» → `reminded: 0` en vez de `1`.
+
+Resultado: **el CI se ponía rojo todas las noches entre las 23:20 y las 23:59 de Chile**.
+No era un fallo intermitente: era determinista dentro de esa franja.
+
+Se detectó porque el PR #12 (que solo toca `src/lib/api.ts`, frontend) mostraba
+«Backend» en rojo. Se reprodujo en local sin tocar el backend.
+
+### Decisión
+Fijar el reloj del bloque `describe('dispatchReminders')` al mediodía de Chile
+(`2026-11-02T15:00:00.000Z`, UTC-3 en horario de verano) con
+`jest.useFakeTimers({ now: FIXED_NOW, doNotFake: ['nextTick', 'setImmediate'] })`
+y `jest.useRealTimers()` en `afterEach`.
+
+- **No se cambió el test para evitar la medianoche** (por ejemplo usando offsets pequeños):
+  eso solo movería el problema a otro horario.
+- **No se tocó `delivery.service.ts`**: la lógica de `dispatchReminders` es correcta; el
+  defecto estaba en cómo el test fabricaba sus datos.
+- `doNotFake` deja `nextTick` y `setImmediate` reales para no bloquear las promesas de
+  Prisma simulado.
+
+### Archivos
+- `backend/src/delivery/delivery.service.spec.ts`: reloj fijo en el bloque de
+  `dispatchReminders` (comentario explicando el motivo incluido).
+
+### Verificación
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Test concreto | `npx jest src/delivery/delivery.service.spec.ts` | 20/20 |
+| Suite backend | `npx jest --silent` | 16 suites, 151 tests |
+| Tipos backend | `npx tsc --noEmit -p tsconfig.json` | sin errores |
+| Build backend | `npm run build` (nest) | correcto |
+
+Reproducido el fallo antes del arreglo a las 23:24 de Chile (`reminded: 0`, `skipped: 2`)
+y el resultado correcto después (`reminded: 1`, `skipped: 1`).
+
+### Pendientes
+- **Orden de fusión:** este arreglo va **antes** que el PR #12, para que el check
+  «Backend» de ese PR deje de heredar el fallo. Después hay que rebasar #12.
+- El CI de `main` seguirá en rojo hasta que esto se fusione.
+- **No relacionados, ya conocidos:** `npx eslint` directo en `backend` falla por desajuste
+  de flat config; el CI no corre lint de backend (solo `tsc`, `jest` y `build`), así que
+  no bloquea.
+
 ## Sesión: Fase 1 — P0 errores y confianza (`fix/fase-1`)
 
 ### Objetivo
