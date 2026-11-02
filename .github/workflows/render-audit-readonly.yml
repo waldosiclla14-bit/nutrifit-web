@@ -11,6 +11,11 @@ name: "Auditoria Render: solo lectura"
 
 on:
   workflow_dispatch:
+  # Permite ejecutarlo desde esta rama sin tocar `main`.
+  # Solo se dispara si cambia este mismo archivo, asi que no corre en cada push.
+  push:
+    paths:
+      - ".github/workflows/render-audit-readonly.yml"
 
 permissions:
   contents: read
