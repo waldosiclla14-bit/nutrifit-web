@@ -1,5 +1,60 @@
 # Estado del proyecto NutriFit
 
+## Sesión: observabilidad de Render (`chore/render-observabilidad`)
+
+### Objetivo
+Dejar dos herramientas de diagnóstico en `main` que no estorben y que sirvan para el
+siguiente paso: medir el arranque en frío real, una vez retirado el health check HTTP.
+
+### Qué estaba mal
+
+**`render-verify-live.yml`** se ejecutaba en **cada push a `main`** y sondeaba
+`https://nutrifit-api.onrender.com/api/health`, que **no es el host de este proyecto**
+(devuelve 503). El bucle hacía 20 intentos × 12 s y terminaba **sin `exit 1`**: ni pasaba
+ni fallaba, solo gastaba 4 minutos de CI en cada merge.
+
+Además, con el health check retirado en Render, sondear en cada push **despertaría la
+instancia**, que es exactamente el gasto que se quiere evitar.
+
+**`render-audit-readonly.yml`** tenía la ventana de logs fija al 30-10 (`01:52Z–01:57Z`),
+así que en cuanto pasara ese despliegue dejaba de encontrar nada.
+
+### Decisión
+- La sonda apunta al host real (`nutrifit-api-635n.onrender.com`).
+- La sonda pasa a ser **solo manual**: un diagnóstico se lanza a propósito, no en cada merge.
+- La sonda ahora **mide**: cronometra el arranque y compara contra el umbral de 90 s de
+  `src/lib/api.ts`. Si no hay 200 en 150 s, **falla con `exit 1`**. Distingue además
+  «ya estaba despierta» (≤ 5 s) de «arranque en frío real».
+- La sonda conserva el volcado de cabeceras de la API de Render (rate-limit), que era su
+  propósito original.
+- La auditoría de solo lectura acepta `log_start` / `log_end` por `workflow_dispatch`;
+  por defecto mira las últimas 2 horas. Los valores se pasan por `env`, no interpolados
+  en el script.
+- Ambas siguen siendo **solo `GET`**: no crean, modifican ni borran nada.
+
+### Archivos
+- `.github/workflows/render-verify-live.yml`: host real, disparador manual, medición y
+  código de salida.
+- `.github/workflows/render-audit-readonly.yml`: se publica en `main` (venía de la rama
+  `chore/render-audit-readonly`) con la ventana de logs parametrizada.
+
+### Qué se probó y cómo
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| YAML válido (sonda) | `node -e` + `js-yaml` | parsea; `on: workflow_dispatch`; 2 pasos; job `verify` |
+| YAML válido (auditoría) | `node -e` + `js-yaml` | parsea; `on: workflow_dispatch,push`; 7 pasos; job `audit` |
+| Markdown / UTF-8 | lectura con Node | sin marcadores de conflicto |
+
+**No ejecutados todavía:** ningún run real desde `main`. El script solo corre en
+`ubuntu-latest` y aquí no hay `bash`, así que la lógica del bucle no se probó en local.
+Se validará en el primer `workflow_dispatch`.
+
+### Pendientes
+- **Esperando al dueño:** cambiar el health check a TCP en el panel de Render
+  (Settings → Health Checks → borrar `/api/health` → Save), con el POS cerrado.
+- Cuando eso ocurra: esperar 20+ min, lanzar la sonda y registrar el arranque en frío medido.
+- **Ese dato decide** si los $0 alcanzan o conviene Render Starter ($7/mes).
+
 ## Sesión: tests de recordatorios deterministas (`fix/test-recordatorios-deterministas`)
 
 ### Objetivo
