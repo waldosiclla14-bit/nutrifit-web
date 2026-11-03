@@ -18,11 +18,6 @@ on:
       log_end:
         description: "Fin de la ventana de logs (ISO UTC). Vacio = ahora"
         required: false
-  # Se dispara solo si cambia este mismo archivo, para poder lanzarlo desde una
-  # rama sin tocar `main`. No corre en cada push.
-  push:
-    paths:
-      - ".github/workflows/render-audit-readonly.yml"
 
 permissions:
   contents: read
