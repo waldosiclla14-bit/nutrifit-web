@@ -1,5 +1,72 @@
 # Estado del proyecto NutriFit
 
+## Sesión: limpieza de workflows (`chore/limpieza-workflows`)
+
+### Objetivo
+Dejar `.github/workflows/` con solo lo que se usa, y sacar de un clic de distancia las dos
+operaciones destructivas que se habían acumulado. No se borró nada: se archivó.
+
+### Qué estaba mal
+- **21 workflows**, de los cuales **16 eran diagnósticos de un solo uso** del incidente de
+  Render. Ninguno tenía disparador automático (`workflow_dispatch`), así que no gastaban CI,
+  pero enterraban los tres que sí importan.
+- **`deploy-render.yml` duplicaba cada despliegue.** Tenía `push` a `main` con `paths:
+  backend/**` y hacía `POST /v1/services/{id}/deploys`, mientras el propio servicio de Render
+  ya tiene `autoDeploy`. Evidencia: el workflow corrió a las `02:37:25` y el deploy de Render
+  nació a las `02:37:30` — cinco segundos después, por el mismo commit.
+- **`render-final-fix.yml`** ejecutaba `PUT /env-vars/JWT_SECRET`: rotaba el secreto de
+  producción y cerraba las sesiones del admin y del POS.
+- **`db-push.yml`** bajaba el `DATABASE_URL` real desde la API de Render y corría
+  `prisma db push --skip-generate` **contra la base de producción**, sin migraciones.
+- **`render-audit-readonly.yml`** conservaba un `push` acotado a su propio archivo, que fue un
+  truco para poder lanzarlo desde una rama. Ya está en `main`: sobraba.
+
+### Decisión
+- **Se conserva `autoDeploy` de Render** como único mecanismo de despliegue. Es una opción del
+  panel, no del repo, así que la limpieza del workflow no lo toca.
+  `deploy-render.yml` queda **solo manual** para crear o monitorear un deploy puntual.
+- Los 16 diagnósticos se mueven a `.github/workflows-archive/`. GitHub solo lee
+  `.github/workflows/`, así que quedan inertes pero versionados.
+- **`keep-alive.yml` no se toca**: sigue `disabled_manually` y se deja donde está, para que la
+  decisión de reactivarlo o no quede visible.
+- Los dos workflows de la sesión anterior (`render-verify-live.yml` y
+  `render-audit-readonly.yml`) se quedan como están, salvo el `push` del segundo.
+- El campo `description` de `deploy-render.yml` ya decía `Vacío` correctamente en UTF-8; el
+  texto corrupto era solo la consola de PowerShell. **No se modificó.**
+
+### Archivos
+- `.github/workflows/deploy-render.yml`: se quita el bloque `on.push`; queda `workflow_dispatch`
+  con un comentario que explica por qué.
+- `.github/workflows/render-audit-readonly.yml`: se quita el `push` acotado a su propio archivo.
+- `.github/workflows-archive/` (nuevo): 16 workflows movidos con `git mv` + `README.md` que
+  documenta el motivo y advierte de `render-final-fix.yml` y `db-push.yml`.
+
+### Qué se probó y cómo
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| YAML válido de los 5 workflows restantes | `node -e` + `js-yaml` | 5/5 parsean |
+| Disparadores reales | idem, leyendo la clave `on` | solo `ci.yml` tiene disparador automático |
+| UTF-8 de `deploy-render.yml` | `Buffer.from(line).toString('hex')` | `Vacío` correcto (`63c3ad`) |
+| Contenido del archivo | `git status --short` | 16 renombrados (`R`), 1 modificado, 1 nuevo |
+
+**No probado:** los scripts `run:` de los workflows no se ejecutan aquí (no hay `bash` en la
+máquina). El siguiente `workflow_dispatch` real será la primera ejecución.
+
+### Pendientes y decisiones que requieren validación humana
+- **Riesgo asumido, con vuelta atrás definida:** al quitar el `push` de `deploy-render.yml`
+  el despliegue depende de `autoDeploy`. Si el próximo merge que toque `backend/**` **no**
+  genera deploy en Render, hay que revertir ese cambio. Comprobación: el commit debe aparecer
+  en el panel de Render sin lanzar el workflow a mano.
+- `DEPLOY.md` (líneas 11 y 28) y `docs/auditoria-consumo-render-2026-10-26.md` siguen
+  describiendo `deploy-render.yml` como el mecanismo de deploy automático. Quedan
+  desactualizados hasta que se corrijan.
+- **Sigue bloqueado el ahorro de horas:** falta el cambio manual en el panel de Render
+  (Settings → Health Checks → borrar `/api/health` → Save).
+
+### Siguiente paso
+Fusionar este PR, y cuando el dueño confirme el cambio del health check, esperar 20+ minutos y
+lanzar `Diagnostico: salud y arranque en frio de la API` para registrar el arranque medido.
+
 ## Sesión: observabilidad de Render (`chore/render-observabilidad`)
 
 ### Objetivo

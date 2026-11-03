@@ -1,10 +1,8 @@
 name: Deploy API a Render
 
+# Solo manual: Render ya despliega automáticamente al detectar cambios en `backend/`
+# (autoDeploy del servicio). Tener también `push` aquí duplicaba cada despliegue.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'backend/**'
   workflow_dispatch:
     inputs:
       deploy_id:
