@@ -1,36 +1,90 @@
-name: "Diagnóstico: estado vivo + rate-limit"
+name: "Diagnostico: salud y arranque en frio de la API"
+
+# Solo manual.
+#
+# Antes este workflow corria en cada push a `main` y sondeaba
+# https://nutrifit-api.onrender.com/api/health, que NO es el host de este
+# proyecto (devuelve 503). El bucle hacia 20 intentos x 12 s, terminaba sin
+# `exit 1` y no informaba de nada: solo sumaba 4 minutos de CI.
+#
+# Con el health check HTTP retirado en Render, sondear en cada push despertaria
+# la instancia y volveria a consumir las horas que se quieren ahorrar. Por eso
+# ahora es manual: se lanza a proposito para medir un arranque en frio.
+#
+# Solo GET contra la API de Render y contra el propio /api/health.
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 env:
   RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  # Host real del servicio (ver docs/auditoria-consumo-render-2026-11-02.md).
+  API_URL: "https://nutrifit-api-635n.onrender.com"
+  # Umbral de src/lib/api.ts: por encima de esto el primer POST del dia puede fallar.
+  CLIENT_ABORT_S: "90"
+  DEADLINE_S: "150"
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 6
     steps:
-      - name: Chequear rate-limit + estado de servicio
+      - name: Estado del servicio y rate-limit (API, solo GET)
         run: |
           echo "=== HEADERS (api.render.com/v1/services/{id}) ==="
-          curl -s -D - -o /dev/null --max-time 15 \
+          curl -s -D - -o /tmp/svc.json --max-time 20 \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Accept: application/json" \
             "https://api.render.com/v1/services/${RENDER_SERVICE_ID}"
-          echo "=== END HEADERS ==="
-      - name: Polling del endpoint en vivo (cuota cero)
+          echo "=== FIN HEADERS ==="
+          python3 - <<'PY'
+          import json
+          try:
+              s = json.load(open('/tmp/svc.json'))
+          except Exception as e:
+              print('respuesta no parseable:', e)
+              raise SystemExit(0)
+          sd = s.get('serviceDetails') or {}
+          for k in ('name', 'suspended', 'autoDeploy'):
+              print('%-18s %s' % (k + ':', s.get(k)))
+          for k in ('plan', 'numInstances', 'region', 'healthCheckPath'):
+              print('%-18s %r' % (k + ':', sd.get(k)))
+          PY
+
+      - name: Sonda en vivo y tiempo de arranque en frio
         run: |
-          for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 https://nutrifit-api.onrender.com/api/health 2>/dev/null || echo "000")
-            echo "[$(date -u +%H:%M:%S)] attempt=$i http=$code"
-            if [ "$code" = "200" ]; then echo "LIVE_OK"; break; fi
-            sleep 12
+          URL="$API_URL/api/health"
+          echo "objetivo=$URL"
+          start=$(date +%s)
+          deadline=$((start + DEADLINE_S))
+          attempt=0
+          code=000
+          elapsed=0
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            attempt=$((attempt + 1))
+            code=$(curl -s -o /tmp/health.json -w "%{http_code}" --max-time 20 "$URL" || echo "000")
+            elapsed=$(( $(date +%s) - start ))
+            echo "[${elapsed}s] intento=$attempt http=$code"
+            if [ "$code" = "200" ]; then break; fi
+            sleep 3
           done
-      - name: Último deploy conocido vía API (si no rate-limit)
-        run: |
-          curl -s --max-time 15 -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
-            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys?limit=3" 2>&1 | head -c 1500
+
+          if [ "$code" != "200" ]; then
+            echo "::error::La API no respondio 200 en ${DEADLINE_S}s (ultimo http=$code)"
+            exit 1
+          fi
+
+          echo "== cuerpo de /api/health =="
+          head -c 400 /tmp/health.json
           echo
+          echo "arranque_medido=${elapsed}s"
+
+          if [ "$elapsed" -le 5 ]; then
+            echo "::notice::La instancia ya estaba despierta (${elapsed}s). Para medir el arranque en frio, dejala dormir 20+ min y repite."
+          elif [ "$elapsed" -le "$CLIENT_ABORT_S" ]; then
+            echo "::notice::Arranque en frio de ${elapsed}s: cabe en el abort de ${CLIENT_ABORT_S}s del cliente."
+          else
+            echo "::warning::Arranque en frio de ${elapsed}s: supera el abort de ${CLIENT_ABORT_S}s. El primer POST del dia podria fallar."
+          fi
