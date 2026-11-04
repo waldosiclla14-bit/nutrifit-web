@@ -78,7 +78,9 @@ Para regenerar el API key si se pierde: render.com → Settings → API Keys →
    | Host interno de Render | `https://nutrifit-api-635n.onrender.com` | el workflow de diagnóstico y las pruebas directas |
    | Dominio público de la API | `https://api.nutrifitsuplementos.cl` | **el frontend en producción** (CNAME al host de arriba, verificado por DNS) |
 
-> ⚠️ **Health check: vacío, no `/api/health`.** Mientras exista un health check **HTTP**, Render sondea la instancia cada pocos segundos y la instancia **nunca duerme**, lo que en el plan gratuito consume casi las 750 h mensuales del workspace. Sin health check, Render usa una sonda TCP. Y con `healthCheckPath` configurado, un deploy que tarde más de 15 min puede quedarse en `update_failed` esperando que la sonda pase. Contexto completo en `docs/auditoria-consumo-render-2026-11-02.md`.
+> ⚠️ **Health check: vacío, no `/api/health`.** Mientras exista un health check **HTTP**, Render sondea la instancia cada pocos segundos y la instancia **nunca duerme**. Sin health check, Render usa una sonda TCP. Y con `healthCheckPath` configurado, un deploy que tarde más de 15 min puede quedarse en `update_failed` esperando que la sonda pase.
+>
+> **Pero vaciarlo no basta.** Cualquier tráfico entrante con menos de 15 min de separación mantiene la instancia despierta: un cron externo, un monitor de disponibilidad o un latido del frontend hacen lo mismo. Un cron cada 15 min es tan efectivo como el health check. Si el consumo sigue alto con el health check vacío, **el sospechoso es quien llama a la API**, no Render. Contexto: `docs/estado.md` (sección «el health check no era la causa»).
 
 > ⚠️ Usa secretos únicos en Render y no los guardes en GitHub.
 

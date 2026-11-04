@@ -1,5 +1,101 @@
 # Estado del proyecto NutriFit
 
+## Sesión: el health check no era la causa (`docs/hipotesis-refutada`)
+
+### Qué se hizo
+Autorizado por el dueño, se desactivó el health check HTTP **por la API de Render** en vez
+de por el panel.
+
+- Endpoint sacado del OpenAPI oficial (`api-docs.render.com/openapi/render-public-api-1.json`),
+  no inventado: `PATCH /v1/services/{serviceId}` con `{"serviceDetails":{"healthCheckPath":""}}`.
+- Ejecutado desde un workflow de un solo uso (`ops/healthcheck-off`), **borrado sin fusionar**.
+- Antes: `/api/health`. Después: `''`. Verificado con un `GET` posterior. El servicio quedó
+  `not_suspended`, `plan=free`, `autoDeploy=yes`.
+
+### El resultado: la hipótesis no se sostiene
+
+| Momento (UTC) | Hecho |
+|---|---|
+| `01:10:23` | `healthCheckPath` pasa a `''` |
+| `01:31` | 19 min después, la instancia sigue viva |
+| `01:45:45` | Responde en **1,24 s** — un arranque en frío tarda ~40 s |
+| `01:46:12` | Se dispara un **redeploy** por si el cambio requería instancia nueva |
+| `01:47:34` | Deploy `dep-dbl8sp8m7kps739kktg0` → `live` |
+| `02:09:50` | **22 min sin tráfico mío**, responde en **1,06 s** |
+
+Según la doc oficial de Render, una instancia gratuita se apaga tras **15 minutos sin tráfico
+entrante**. A las 02:09:50 llevaba 22 min sin recibir nada mío, así que **debería haber estado
+dormida**. No lo estaba.
+
+**Conclusión: el health check HTTP no era la causa — o no era la única.** Algo envió tráfico
+entrante entre `01:47` y `02:09`.
+
+### El sospechoso, que estaba escrito en el código
+
+`backend/src/delivery/delivery-reminders.controller.ts` expone `POST /api/deliveries/reminders/dispatch`
+para un **cron externo de cron-job.org**, y `delivery.service.ts:688` dice literalmente:
+
+> *Recordatorios push pre-entrega (lo llama un cron externo cada 15 min).*
+
+**Cada 15 minutos** es exactamente el umbral de reposo. Un cron con esa cadencia mantiene la
+instancia despierta indefinidamente, con o sin health check.
+
+**No verificado.** Es la hipótesis que encaja con todas las mediciones, pero no está comprobada:
+
+- `/v1/logs?type=request` devuelve `{"hasMore":false,"logs":[]}` incluso para una petición propia
+  hecha un minuto antes. En este plan **no hay logs de petición**.
+- `/v1/metrics/http-requests` devuelve `[]` para una ventana de 2 horas. Tampoco hay métricas.
+- La clave de Render no está en local; todo se hizo con los secretos de GitHub, y **no se puede
+  leer un secreto**, solo usarlo. Así que no hay forma de mirar cron-job.org desde aquí: es la
+  cuenta del dueño.
+
+Se dejaron los dos workflows de diagnóstico (`ops/healthcheck-off`, `diag/metrics`) **solo en sus
+ramas**, ya borradas. No llegaron a `main`.
+
+### Lo que esto cambia
+
+- El informe `docs/auditoria-consumo-render-2026-11-02.md` da el health check como causa raíz.
+  **Queda refutado como causa suficiente**, y se le añadió una nota de vigencia al principio.
+- Si la causa es el cron, el ahorro **no** se consigue retirando el health check: se consigue
+  bajando la frecuencia del cron, y entonces el health check vacío pasa a ser un requisito
+  necesario (si no, el cron despertaría la instancia y el health check la mantendría despierta).
+
+### Archivos
+- `docs/estado.md`: esta entrada.
+- `docs/auditoria-consumo-render-2026-11-02.md`: nota de vigencia al principio con las cinco
+  afirmaciones superadas y el estado real de cada una. **No se tocó el cuerpo**: es un registro
+  histórico y reescribirlo sería falsificarlo.
+- **No se modificó código ni configuración del repo.** El único cambio de producción fue el
+  `healthCheckPath`, hecho por API y autorizado.
+
+### Qué se probó y cómo
+| Comprobación | Método | Resultado |
+|---|---|---|
+| Health check desactivado | `PATCH` + `GET` por API | `''`, `not_suspended` |
+| Endpoint correcto | OpenAPI oficial de Render | `PATCH /v1/services/{serviceId}` |
+| Redeploy aplicado | `deploy-render.yml` manual | `live` en 82 s |
+| ¿Duerme? | `Invoke-WebRequest` cronometrado | **1,06 s tras 22 min** → no duerme |
+| Logs de petición | `/v1/logs?type=request` | vacío (no disponibles en el plan) |
+| Métricas HTTP | `/v1/metrics/http-requests` | `[]` (no disponibles en el plan) |
+| YAML de los workflows usados | `node -e` + `js-yaml` | válidos |
+| UTF-8 / markdown | script con Node sobre los 2 archivos | 0 `U+FFFD`, bloques balanceados |
+
+### Pendientes y decisiones que requieren validación humana
+1. **Revisar cron-job.org**: ¿existe el job de recordatorios? ¿cada cuánto corre? ¿está activo?
+   Es el dato que falta y solo lo tiene el dueño.
+2. **Revisar cualquier monitor externo** (UptimeRobot, BetterStack, Pingdom, Freshping) apuntando
+   a `api.nutrifitsuplementos.cl`. La auditoría del 26-10 lo dejó como hipótesis P3, sin verificar.
+3. Si el cron existe: decidir su frecuencia. Cada pasada despierta la instancia y luego hacen falta
+   15 min de silencio para que vuelva a dormir. Cada 15 min = consumo continuo; cada 2 h en horario
+   de reparto = decenas de horas al mes.
+4. **`backend/render.yaml`**: el dueño preguntó en qué afecta más adelante y se le explicó (no hay
+   riesgo automático hoy; muerde como documentación falsa y si alguien lo copia a la raíz, donde
+   crearía dos servicios contra una cuota de 750 h). **Sin decisión todavía.**
+
+### Siguiente paso
+Que el dueño mire cron-job.org y confirme si el job existe y su cadencia. Con ese dato se decide
+la frecuencia nueva y se vuelve a medir.
+
 ## Sesión: documentación de despliegue (`docs/deploy-vigente`)
 
 ### Objetivo
