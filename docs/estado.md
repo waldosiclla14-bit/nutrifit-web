@@ -1,5 +1,67 @@
 # Estado del proyecto NutriFit
 
+## Sesión: documentación de despliegue (`docs/deploy-vigente`)
+
+### Objetivo
+Corregir la documentación que quedó mintiendo tras la limpieza de workflows, antes de que
+alguien la siga y rompa producción.
+
+### Qué estaba mal en `DEPLOY.md`
+No eran dos líneas: era casi todo el documento operativo.
+
+| Decía | Realidad verificada |
+|---|---|
+| El deploy del backend lo hace `deploy-render.yml` en cada push a `backend/**` | Lo hace el `autoDeploy` de Render (`"yes"` por API). El workflow pasó a solo manual (PR #15) |
+| `Health Check Path: /api/products` | Hoy es `/api/health`, y el objetivo es **vacío**. Un health check HTTP impide el reposo |
+| `PORT: 3001` en las variables de entorno | Render inyecta `10000`. `main.ts` hace `process.env.PORT \|\| 3001`; fijar `3001` deja el servicio sin responder |
+| El contenedor ejecuta `prisma db push` + seed en cada arranque | Ejecuta `baseline.js` → `ensure-enum.js` → `prisma migrate deploy`, con reintentos |
+| Host `nutrifit-api.onrender.com` | Dos nombres, y el frontend usa el segundo: host interno `nutrifit-api-635n.onrender.com`; dominio público `api.nutrifitsuplementos.cl` (CNAME al anterior, verificado por DNS **y** leyendo el bundle de producción) |
+| `CORS_ORIGINS` / `NEXT_PUBLIC_API_URL` → `nutrifit-web-nu.vercel.app` | Dominio canónico `nutrifitsuplementos.cl` (`src/lib/site.ts`); el host de Vercel es legado y redirige 301 |
+| "Conecta `backend/` como Blueprint" | `render.yaml` nunca se aplicó y es una trampa: `healthCheckPath: /api/products`, `PORT: 3001`, staging inexistente |
+
+Se añadió `DIRECT_URL` a la tabla de variables: `backend/prisma/schema.prisma` la usa en
+`directUrl` y no estaba documentada.
+
+### Sobre la auditoría del 26-10
+`docs/auditoria-consumo-render-2026-10-26.md` es un **registro histórico** de la investigación,
+no un manual. Reescribir sus afirmaciones sería falsificar el registro, así que se le añadió una
+**nota de vigencia** al principio: una tabla con las cuatro afirmaciones ya superadas y el estado
+real de cada una.
+
+### Archivos
+- `DEPLOY.md`: arquitectura, §0 (deploy), §2 (servicio de Render) y §3 (Vercel) corregidos.
+- `docs/auditoria-consumo-render-2026-10-26.md`: nota de vigencia, sin tocar el cuerpo.
+- `docs/estado.md`: esta entrada.
+
+### Qué se probó y cómo
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| `PORT` que usa la app | lectura de `backend/src/main.ts` | `process.env.PORT \|\| 3001`, `Listening on …/api` |
+| Comando real de arranque | lectura de `backend/Dockerfile` | `baseline.js` + `ensure-enum.js` + `migrate deploy`, 5 intentos |
+| `DIRECT_URL` es necesaria | `backend/prisma/schema.prisma` | `directUrl = env("DIRECT_URL")` |
+| Host de producción | `.github/workflows/render-verify-live.yml` | `nutrifit-api-635n.onrender.com` |
+| Host que usa el frontend | descarga de los 16 chunks JS de `nutrifitsuplementos.cl` | **`api.nutrifitsuplementos.cl`** (1 coincidencia; 0 para el host de Render) |
+| CNAME | `Resolve-DnsName api.nutrifitsuplementos.cl` | `nutrifit-api-635n.onrender.com` |
+| Dominio canónico | `src/lib/site.ts` | `https://nutrifitsuplementos.cl`, legado `nutrifit-web-nu.vercel.app` |
+| `autoDeploy` activo | auditoría de solo lectura por API | `"autoDeploy": "yes"`, `plan: free`, `branch: main` |
+| Health check actual | idem | `healthCheckPath: "/api/health"` — **sigue puesto** |
+| UTF-8 / markdown | lectura con Node | 0 `U+FFFD`, bloques balanceados |
+
+**No verificado:** el valor real de `CORS_ORIGINS` en Render (la auditoría de solo lectura no
+imprime valores de variables). `DEPLOY.md` documenta el valor correcto, no el que está puesto.
+
+### Pendientes y decisiones que requieren validación humana
+- **`backend/render.yaml` sigue siendo una trampa.** Ya está advertido en `DEPLOY.md`, pero el
+  archivo se puede aplicar igual. Decidir: corregirlo para que refleje la realidad, o retirarlo.
+  **No se tocó en esta sesión.**
+- **El health check HTTP sigue activo en el panel.** La instancia lleva **46,3 h** sin
+  reiniciarse (creada `2026-11-02T02:38:08Z`, consultada `2026-11-04T00:58Z`). Es el pendiente
+  que decide si el ahorro empieza.
+
+### Siguiente paso
+Cuando el dueño borre el health check, esperar 20+ min y lanzar
+`Diagnostico: salud y arranque en frio de la API` para registrar el arranque real.
+
 ## Sesión: limpieza de workflows (`chore/limpieza-workflows`)
 
 ### Objetivo
