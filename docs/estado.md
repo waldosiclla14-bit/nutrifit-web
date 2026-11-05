@@ -18,6 +18,8 @@ llamante y retirar la variable. El ahorro de horas sigue siendo el objetivo fina
 4. Se leyó `/v1/logs` con filtro `text`. La API devuelve primero las entradas **más antiguas**:
    el arranque de Nest llenaba la primera página de 100 y ocultaba el resto. Por eso la
    primera consulta vio 100 entradas y ninguna petición; no era un fallo del logger.
+5. Retirada la variable con otro workflow desechable (`ops/log-requests-off`): total **16** y
+   arranque sin la línea del logger.
 
 ### Evidencia
 | Hora (UTC) | Línea |
@@ -44,13 +46,25 @@ anterior?) y si hay más de uno. La IP que registra la app es `10.x` (proxy inte
 no la del cliente: `trust proxy = 1` no llega al salto real. El User-Agent sí identifica el
 servicio.
 
-### Acción pendiente (no ejecutada aquí)
+### Retiro de la variable
+Autorizado por el dueño. Workflow desechable `render-log-requests-off.yml` (rama
+`ops/log-requests-off`, **no fusionada**):
+
+| Comprobación | Resultado |
+|---|---|
+| Antes | `LOG_REQUESTS=true`, total **17** |
+| `DELETE .../env-vars/LOG_REQUESTS` | **204** |
+| Después | `GET` → **404**, total **16**, sin `LOG_REQUESTS` |
+| Deploy | `dep-dblvtc1srm7s73eke5o0`, `live` |
+| Arranque | **0** líneas de «Request logger habilitado» desde el deploy |
+
+La rama se borró sin fusionar. Run `41964749943`.
+
+### Acción pendiente
 1. En UptimeRobot, **pausar o borrar** el monitor de `nutrifit-api`, o subir el intervalo por
    encima de 15 min. En el plan gratuito el mínimo suele ser 5 min: si no se puede espaciar,
    hay que pausarlo o mover la vigilancia al frontend (Vercel), que no despierta Render.
-2. **Quitar `LOG_REQUESTS`** de Render y redeploy. La variable registra IPs y ya cumplió su
-   función. Requiere autorización: es otra escritura en producción.
-3. Comprobar en las horas siguientes que la instancia duerme y que el consumo de noviembre
+2. Comprobar en las horas siguientes que la instancia duerme y que el consumo de noviembre
    baja de las ~744 h/mes.
 
 ### Qué se probó y cómo
@@ -63,16 +77,19 @@ servicio.
 | Ruido interno | `GET /logs?text=Go-http-client` | 2 líneas, solo tras el deploy |
 | Workflow desechable | run `41962525059` | success |
 | Consultas de solo lectura | runs `41964069915`, `41964172005` | success |
-| Rama borrada | `git ls-remote --heads origin` | `ops/log-requests-on` ausente |
+| Retiro de la variable | `DELETE .../env-vars/LOG_REQUESTS` + `GET` | 204, 404, total 16 |
+| Logger apagado | `GET /logs?text=Request logger habilitado` desde el deploy | 0 líneas |
+| Workflow de retiro | run `41964749943` | success |
+| Ramas borradas | `git ls-remote --heads origin` | `ops/log-requests-on` y `ops/log-requests-off` ausentes |
 
-Los workflows de diagnóstico **no se fusionaron**: la rama se borró local y remotamente. Los
-runs quedan en GitHub como evidencia.
+Los workflows de diagnóstico **no se fusionaron**: las ramas se borraron local y remotamente.
+Los runs quedan en GitHub como evidencia.
 
 ### Archivos
 - `docs/estado.md`: esta entrada.
 - Sin cambios de código: el logger ya estaba en `main` (`1889321`).
-- Los dos workflows desechables (`render-log-requests-on.yml`, `render-log-dump.yml`) se
-  borraron con la rama.
+- Los tres workflows desechables (`render-log-requests-on.yml`, `render-log-dump.yml`,
+  `render-log-requests-off.yml`) se borraron con sus ramas.
 
 ### Nota de privacidad
 El repo es público y los logs de Actions también. Las consultas publicaron la IP enmascarada
@@ -113,14 +130,13 @@ Casos cubiertos: no escribe hasta `finish`; método/ruta/estado/IP/UA; no filtra
 string; recorta el UA y elimina saltos de línea; usa `-` cuando faltan IP y UA.
 
 ### Estado de activación
-Se activó el 05-11-2026 de forma temporal (`LOG_REQUESTS=true`) con un workflow desechable.
-Ver la sesión «el tráfico que impedía el reposo es UptimeRobot». **Sigue activa**: debe
-retirarse al cerrar la investigación.
+Se activó el 05-11-2026 de forma temporal (`LOG_REQUESTS=true`) con un workflow desechable y
+**se retiró el mismo día** a las `03:58Z`, tras identificar al llamante. Ver la sesión «el
+tráfico que impedía el reposo es UptimeRobot».
 
 ### Siguiente paso
 1. Pausar el monitor de UptimeRobot o espaciarlo por encima de 15 min.
-2. Quitar `LOG_REQUESTS` y redeploy.
-3. Verificar que la instancia duerme y que el consumo baja.
+2. Verificar que la instancia duerme y que el consumo baja.
 
 ## Sesión: el cron de 15 min no aparece en las métricas (`diag/cron-existe`)
 
