@@ -12,12 +12,14 @@ llamante y retirar la variable. El ahorro de horas sigue siendo el objetivo fina
 1. Workflow desechable `render-log-requests-on.yml` (rama `ops/log-requests-on`, **no
    fusionada**): `PUT /v1/services/{id}/env-vars/LOG_REQUESTS` con `{"value":"true"}`. Se usó
    el endpoint de **una sola variable**; no se reemplazó el resto.
-2. El `PUT` no disparó deploy por sí solo; se lanzó uno por API
+2. A los 15 s no aparecía un deploy nuevo en la lista; se lanzó uno por API
    (`dep-dblvj1gae00c73ft4vn0`, `trigger=api`). Quedó `live` a las `03:36:44Z`.
 3. Verificado el inventario: **17 variables**, con `LOG_REQUESTS=true`. Las otras 16 intactas.
-4. Se leyó `/v1/logs` con filtro `text`. La API devuelve primero las entradas **más antiguas**:
-   el arranque de Nest llenaba la primera página de 100 y ocultaba el resto. Por eso la
-   primera consulta vio 100 entradas y ninguna petición; no era un fallo del logger.
+4. Se leyó `/v1/logs` con filtro `text`. `/v1/logs` devuelve como máximo **100 entradas**; con
+   `direction=backward` son las 100 **más recientes**, ordenadas de más antigua a más nueva.
+   La línea del logger (`03:36:44.081`) quedó justo fuera, como la 101.ª, y `hasMore=True` lo
+   indicaba. Por eso la primera consulta vio 100 entradas y ninguna línea del logger; no era
+   un fallo del logger ni un filtro incorrecto.
 5. Retirada la variable con otro workflow desechable (`ops/log-requests-off`): total **16** y
    arranque sin la línea del logger.
 
