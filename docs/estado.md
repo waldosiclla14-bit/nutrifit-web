@@ -1,5 +1,110 @@
 # Estado del proyecto NutriFit
 
+## Sesión: el cron de 15 min no aparece en las métricas (`diag/cron-existe`)
+
+**Fecha:** 05-11-2026 (UTC; 04-11 en hora local).
+
+### Objetivo
+Comprobar si existe el cron externo que el código da por hecho (`delivery.service.ts:688`) y
+dejar de atribuirle el consumo sin prueba. De paso: retirar `backend/render.yaml` y corregir
+la tabla de variables de `DEPLOY.md` contra el servicio real.
+
+### Qué se midió (solo lectura, por API de Render)
+| Comprobación | Resultado |
+|---|---|
+| CPU de 24 h, resolución 1 min | 1441 puntos; mediana `0,000110`; máximo `0,004595`; **17 picos** |
+| ¿Cadencia de 15 min? | **No aparece.** Un cron cada 15 min habría dejado ~96 picos. Deltas entre picos: 84, 160, 224 y 345 min; fases dispersas |
+| Ancho de banda por origen | `http` ≈ **0,013 MB/h constantes**, también de madrugada; `nat` ≈ 0,048 MB/h. Los picos de `http` coinciden con órdenes reales (11:54, 01:56 y 02:14 UTC) |
+| `keep-alive.yml` | `disabled_manually`; última ejecución programada **27-10**. Descartado |
+| Workflows con `schedule` activo | ninguno |
+| Instancia | `createdAt 2026-11-04T01:46:26Z` y `RUNNING` 26 h después: no durmió desde el redeploy |
+| Métricas HTTP por ruta | `http-latency` → `400 {"message":"query is not allowed for plan: Hobby"}`; `http-requests` → `[]` |
+
+### Conclusión
+Hay **tráfico HTTP externo constante** (≈13 KB/h) y la instancia no duerme, pero **no tiene la
+cadencia de 15 min** que el comentario del código atribuye al cron. El emisor sigue sin
+identificarse: Render no expone logs de petición ni métricas HTTP en el plan free. El latido
+del frontend y `vercel.json` ya estaban descartados.
+
+**No verificado:** si el cron de cron-job.org existe con otra frecuencia, y si la sonda TCP de
+Render cuenta como actividad para el apagado. Sin logger de peticiones no se pueden separar.
+
+### Variables reales del servicio (16)
+`CORS_ORIGINS`, `CRON_SECRET`, `DATABASE_URL`, `DIRECT_URL`, `GEMINI_API_KEY`,
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`,
+`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `JWT_SECRET`, `NODE_ENV`, `SEED_ADMIN_PASSWORD`,
+`SEED_SELLER_PASSWORD`, `TODOIST_API_TOKEN`, `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`.
+
+Ausencias que importan:
+
+- **`ADMIN_PASSWORD` no existe** → `POST /api/auth/bootstrap` responde «Bootstrap no
+  configurado» (`auth.service.ts:92-95`). La recuperación de contraseña por esa vía está caída.
+  `SEED_ADMIN_PASSWORD` no sirve para eso: es solo del seed.
+- **`WEBHOOK_SECRET` no existe** → `POST /api/push/evento` responde 400 (`push.service.ts:145-148`).
+  Las notificaciones de pedido por webhook no funcionan. **No se tocó**: no sé si Vercel define
+  su propio valor y no era el objetivo de esta sesión.
+- `JWT_EXPIRES_IN` no existe → el código usa `7d` (`auth.module.ts:22`).
+- `PORT` no existe → correcto, Render inyecta el suyo.
+- `GOOGLE_*` no se lee en ningún archivo del repo (0 referencias). No se borraron.
+
+### `backend/render.yaml` retirado
+Nunca se aplicó y declaraba cosas que no son: `healthCheckPath: /api/products`, `PORT: 3001` y
+un servicio `nutrifit-api-staging` que no existe. Se borró con `git rm`.
+
+**Lo que el borrado NO arregla:** las contraseñas `admin-change-me-2026` y
+`seller-change-me-2026` que el archivo tuvo en texto plano **siguen en el historial de git**.
+Si el seed llegó a ejecutarse con esos valores, hay que rotarlas. **No verificado.**
+
+`AUDITORIA-SEGURIDAD.md` recibió una nota de vigencia con eso y con el estado de C1/H2.
+
+### Incidente de proceso (queda registrado)
+Al preparar el diagnóstico, un `git checkout` a la rama `diag/cron-existe` falló porque el
+archivo del workflow ya existía allí y estaba sin seguimiento en `main`. El error se silenció
+con `Out-Null` y el commit se aplicó a **`main`** (`bbfc532`, solo añadía el workflow).
+
+Se detectó de inmediato y se corrigió: `git reset --hard 526d32a` +
+`git push --force-with-lease`. `git ls-remote` confirma que el remoto está en `526d32a`.
+
+Efectos: la CI y el workflow de diagnóstico (solo `GET`) corrieron sobre el commit huérfano,
+ambos en verde. **No se disparó ningún deploy del backend.** Si alguna copia local hizo `pull`
+en esa ventana de tres minutos, `git reset --hard origin/main` la deja igual.
+
+### Archivos
+- `DEPLOY.md`: tabla de variables reescrita con los nombres reales; `ADMIN_PASSWORD` y
+  `WEBHOOK_SECRET` documentados como ausentes; advertencia de `render.yaml` en pasado.
+- `backend/render.yaml`: **eliminado**.
+- `AUDITORIA-SEGURIDAD.md`: nota de vigencia (C1, C2, H2 y checklist).
+- `docs/auditoria-consumo-render-2026-11-02.md`: la nota de vigencia ya no da el cron de 15 min
+  como sospechoso firme; refleja la medición del 05-11.
+- `docs/estado.md`: esta entrada.
+
+### Qué se probó y cómo
+| Comprobación | Método | Resultado |
+|---|---|---|
+| Nombres de variables | `GET /v1/services/{id}/env-vars` (solo nombres) | 16, sin valores |
+| CPU y ancho de banda | `GET /v1/metrics/cpu` y `/bandwidth-sources` | 1441 puntos; `http` ≈ 0,013 MB/h |
+| Plan de Render | `http-latency` | `400 ... plan: Hobby` |
+| `keep-alive` inactivo | `gh run list` + `gh workflow list` | `disabled_manually`, última 27-10 |
+| `main` restaurado | `git ls-remote origin refs/heads/main` | `526d32a` |
+| YAML de los workflows de diagnóstico | `js-yaml` | válido antes de cada push |
+| UTF-8 y bloques markdown | script sobre los archivos tocados | 0 `U+FFFD`, fences pares |
+
+Solo cambian `.md` y se borra un YAML que Render no usa. No hay código de la app que compilar.
+
+### Pendientes y decisiones que requieren validación humana
+1. **cron-job.org**: el dueño aún no confirmó si el job existe ni su frecuencia.
+2. **Logger de peticiones opt-in** (`LOG_REQUESTS=true`: método, ruta, IP, User-Agent). Es la
+   única vía de identificar al llamante. Requiere código + deploy: **no se hizo sin aprobación**.
+3. **El ahorro sigue sin conseguirse**: la instancia está encendida ~744 h de 750 al mes.
+4. **Hallazgo colateral**: `WEBHOOK_SECRET` ausente deja muertas las notificaciones de pedido
+   por webhook; `ADMIN_PASSWORD` ausente deja caída la recuperación de contraseña. Ninguno se tocó.
+5. Al fusionar este cambio, `backend/**` cambia (se borra un archivo) y **Render hará un
+   redeploy** por `autoDeploy`. Es esperado; no altera el consumo de régimen.
+
+### Siguiente paso
+Que el dueño mire cron-job.org y confirme el job. En paralelo, decidir si se implementa el
+logger de peticiones para identificar al llamante desconocido.
+
 ## Sesión: el health check no era la causa (`docs/hipotesis-refutada`)
 
 ### Qué se hizo

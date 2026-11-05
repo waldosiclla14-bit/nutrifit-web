@@ -4,19 +4,20 @@
 **Alcance:** auditoría de **solo lectura**. No se modificó código, configuración de producción, variables de entorno, despliegues, migraciones ni servicios de Render.
 **Relación con la anterior:** corrige y amplía `docs/auditoria-consumo-render-2026-10-26.md`. La sección 7 corrige una conclusión de ese informe.
 
-> **Nota de vigencia (04-11-2026).** Este documento es el registro de la investigación, no el
+> **Nota de vigencia (04-11-2026, ampliada el 05-11-2026 UTC).** Este documento es el registro de la investigación, no el
 > estado actual. Sus afirmaciones se conservan tal como se escribieron; estas líneas dicen qué
 > cambió después:
 >
 > | Afirmación en este documento | Estado al 04-11-2026 |
 > |---|---|
 > | §1.1 y §4.2: `healthCheckPath` = `/api/health` y **esa es la causa raíz** | El health check está **desactivado** (`''` desde las `01:10:23Z`, por API y autorizado por el dueño). La hipótesis quedó **refutada como causa suficiente**: tras un redeploy, la instancia siguió respondiendo en **1,06 s** a los **22 min** sin tráfico, cuando el umbral de reposo son 15 min |
-> | §4.2: «no hace falta ningún usuario, bot ni cron» | **Refutado**. El sospechoso es un **cron externo de cron-job.org** que llama a `POST /api/deliveries/reminders/dispatch` **cada 15 min** (`delivery.service.ts:688`). No verificado: en el plan free no hay logs ni métricas de petición por API |
+> | §4.2: «no hace falta ningún usuario, bot ni cron» | **Refutado a medias.** Hay **tráfico HTTP externo constante** (`bandwidth-sources`: ≈0,013 MB/h, también de madrugada), pero la CPU de 24 h **no muestra cadencia de 15 min** (17 picos; deltas de 84–345 min) y `keep-alive.yml` está deshabilitado desde el 27-10. El emisor sigue **sin identificar**: las métricas HTTP por ruta están bloqueadas en el plan Hobby |
 > | §4.3: el sondeo cada pocos segundos impide que Neon duerma | Con el health check fuera, Neon ya puede dormir entre pasadas del cron. **No verificado** en el panel de Neon |
-> | §9 y §12: el plan de acción arranca cambiando el health check | El health check **ya se cambió y no bastó**. Sigue siendo necesario —si el cron despierta la instancia, un health check HTTP la mantendría despierta—, pero el ahorro depende de bajar la frecuencia del cron |
+> | §9 y §12: el plan de acción arranca cambiando el health check | El health check **ya se cambió y no bastó**. Sigue siendo necesario —si el tráfico externo despierta la instancia, un health check HTTP la mantendría despierta—, pero el ahorro depende de cortar o espaciar a quien llama |
 > | §11.3: arranque en frío imposible de medir mientras el health check mantenga la instancia despierta | La instancia **sigue sin dormir**, así que sigue sin poder medirse. No cambió la conclusión, cambió el motivo |
 >
-> El diagnóstico actualizado está en `docs/estado.md`, sección «el health check no era la causa».
+> El diagnóstico actualizado está en `docs/estado.md`, secciones «el health check no era la causa»
+> y «el cron de 15 min no aparece en las métricas».
 
 ---
 

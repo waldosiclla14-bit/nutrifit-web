@@ -13,11 +13,12 @@
 > | §1 y línea 20: el health check apunta a `/api/products` | **superado**. Pasó a `/api/docs` (§26) y luego a `/api/health` (§27). Hoy el objetivo es **dejarlo vacío**: mientras sea HTTP la instancia no duerme |
 > | Línea 20: el contenedor ejecuta `prisma db push` + `prisma db seed` | **superado**. El `CMD` corre `baseline.js` → `ensure-enum.js` → `prisma migrate deploy`. Corregido en `1546a4a`; arranque medido: 44 s |
 > | §1 (tabla CI/CD) y §21: `deploy-render.yml` despliega en cada push a `backend/**` | **superado**. Ese `push` duplicaba el `autoDeploy` de Render y se retiró en el PR #15. Hoy el workflow es solo manual y el despliegue lo hace Render |
-> | §5 y §24.3: `render.yaml` refleja la configuración viva | **nunca fue cierto** y sigue sin aplicarse. Sigue siendo una trampa; ver `DEPLOY.md` §2 |
+> | §1: el consumo se explica por el latido del frontend cada 10 min | **superado**. Ese latido **ya no está en el bundle de producción** (0 coincidencias en los 16 chunks). El health check se vació el 04-11 y la instancia siguió despierta: hoy el sospechoso es **tráfico HTTP externo constante** (≈13 KB/h) sin cadencia de 15 min. Ver `docs/estado.md` |
+> | §5 y §24.3: `render.yaml` refleja la configuración viva | **nunca fue cierto**. El archivo se **retiró el 04-11-2026** (`git rm`); ver `DEPLOY.md` §2 |
 >
 > El informe con el diagnóstico cerrado es
-> `docs/auditoria-consumo-render-2026-11-02.md`. El pendiente que decide todo sigue abierto:
-> **borrar el health check en el panel de Render** y comprobar que la instancia duerme.
+> `docs/auditoria-consumo-render-2026-11-02.md`. El pendiente ya no es borrar el health check
+> (se vació y no bastó): es **identificar el tráfico externo que mantiene la instancia encendida**.
 
 ---
 

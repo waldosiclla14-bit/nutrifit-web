@@ -4,6 +4,19 @@
 **Alcance:** Frontend (Next.js 16) + Backend (NestJS/Prisma/PostgreSQL) en Render
 **Metodología:** OWASP Top 10 (2021), OWASP Testing Guide, NIST
 
+> **Nota de vigencia (04-11-2026).** Este informe es el registro del 08-09-2026, no el estado
+> actual. El cuerpo se conserva tal como se escribió; estas líneas dicen qué cambió:
+>
+> | Hallazgo | Estado al 04-11-2026 |
+> |---|---|
+> | C1 — `JWT_SECRET` predecible en `backend/.env:2` | `backend/.env` **nunca estuvo versionado** (`.gitignore` lo excluye; `git log --all -- backend/.env` no devuelve nada). El valor de producción vive solo en Render. **No verificado** si el valor del informe llegó a usarse en producción |
+> | C2 — contraseñas admin/seller en `backend/render.yaml` | El archivo **se retiró el 04-11-2026**. Las líneas con `admin-change-me-2026` / `seller-change-me-2026` **siguen en el historial de git**: borrar el archivo no las elimina. Si el seed llegó a ejecutarse con esos valores, hay que rotarlos. **No verificado** si se usaron |
+> | H2 — bootstrap con contraseña débil | Hoy `ADMIN_PASSWORD` **no existe** en Render (`ENABLE_BOOTSTRAP` tampoco), así que `POST /api/auth/bootstrap` responde «Bootstrap no configurado». El riesgo está cerrado por ausencia de la variable, no por diseño |
+>
+> En el plan de remediación, el punto 3 del bloque «Inmediato» («Eliminar contraseñas de
+> `render.yaml`») queda **cumplido** con el retiro del archivo. Los demás puntos no se
+> re-evaluaron en esta sesión.
+
 ---
 
 ## Resumen Ejecutivo
