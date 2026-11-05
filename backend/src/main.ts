@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { requestLogger } from './common/middleware/request-logger.middleware';
 
 // JSON bodies are read inside each handler via readJsonBody() from the raw
 // request stream. The built-in express.json() body parser HANGS on JSON POSTs
@@ -36,6 +37,13 @@ async function bootstrap() {
 
   try {
     const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+    // Logger de peticiones opt-in. Apagado por defecto: registra IPs (dato
+    // personal) y solo sirve para identificar tráfico anómalo.
+    if (process.env.LOG_REQUESTS === 'true') {
+      app.use(requestLogger());
+      logger.log('Request logger habilitado (LOG_REQUESTS=true): método, ruta, IP y User-Agent');
+    }
 
     app.use(urlencoded({ extended: true, limit: '5mb' }));
     app.use(helmet());

@@ -73,6 +73,7 @@ Para regenerar el API key si se pierde: render.com → Settings → API Keys →
    | `GEMINI_API_KEY` | si usas el asistente | Sin ella la IA responde 503 |
    | `TODOIST_API_TOKEN` | opcional | Sincronización con Todoist; sin ella queda deshabilitada y avisa en el log |
    | `JWT_EXPIRES_IN` | opcional | Si falta, el código usa `7d` (`auth.module.ts:22`) |
+   | `LOG_REQUESTS` | solo depuración | `true` activa el logger de peticiones (método, ruta, IP, User-Agent). Apagado por defecto; ver §2.1 |
 
    **No definas `PORT`.** Render inyecta la suya (en producción es `10000`) y `backend/src/main.ts` hace `process.env.PORT || 3001`. Si fijas `3001` a mano, chocas con el puerto que Render espera y el servicio no responde. El `EXPOSE 3001` del `Dockerfile` es solo documental y no manda.
 
@@ -95,6 +96,17 @@ Para regenerar el API key si se pierde: render.com → Settings → API Keys →
 > ⚠️ Usa secretos únicos en Render y no los guardes en GitHub.
 
 > ⚠️ **`backend/render.yaml` se retiró el 04-11-2026.** Nunca se aplicó y no reflejaba el servicio real: declaraba `healthCheckPath: /api/products`, `PORT: 3001` y un servicio `nutrifit-api-staging` que no existe en el workspace. La configuración real vive en el panel de Render. **No lo reintroduzcas como Blueprint**: crearía servicios contra la misma cuota de 750 h/mes.
+
+### 2.1 Ver quién llama a la API (opcional)
+
+Si el consumo no baja, el problema suele ser tráfico que impide el reposo. Para identificar al llamante:
+
+1. Añade `LOG_REQUESTS=true` en **Environment** y redeploy.
+2. Cada petición terminada deja una línea en los logs del servicio:
+   `MÉTODO ruta estado duración ip="..." ua="..."`. **No** registra query string ni cuerpo.
+3. Cuando termines, **quita la variable y redeploy**. Registra IPs (dato personal) y solo debe estar encendido mientras dure la investigación.
+
+El logger se registra antes que el resto de middlewares, así que también anota las peticiones que CORS o los guards rechazan: son justo las que interesan para descartar sondas.
 
 ## 3. Frontend en Vercel
 
