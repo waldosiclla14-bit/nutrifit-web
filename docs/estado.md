@@ -1,5 +1,100 @@
 # Estado del proyecto NutriFit
 
+## Sesión: el tráfico que impedía el reposo es UptimeRobot (`ops/log-requests-on`)
+
+**Fecha:** 05-11-2026 (UTC; 04-11 en hora local).
+
+### Objetivo
+Activar el logger de peticiones ya fusionado, dejarlo el tiempo justo para identificar al
+llamante y retirar la variable. El ahorro de horas sigue siendo el objetivo final.
+
+### Qué se hizo
+1. Workflow desechable `render-log-requests-on.yml` (rama `ops/log-requests-on`, **no
+   fusionada**): `PUT /v1/services/{id}/env-vars/LOG_REQUESTS` con `{"value":"true"}`. Se usó
+   el endpoint de **una sola variable**; no se reemplazó el resto.
+2. El `PUT` no disparó deploy por sí solo; se lanzó uno por API
+   (`dep-dblvj1gae00c73ft4vn0`, `trigger=api`). Quedó `live` a las `03:36:44Z`.
+3. Verificado el inventario: **17 variables**, con `LOG_REQUESTS=true`. Las otras 16 intactas.
+4. Se leyó `/v1/logs` con filtro `text`. La API devuelve primero las entradas **más antiguas**:
+   el arranque de Nest llenaba la primera página de 100 y ocultaba el resto. Por eso la
+   primera consulta vio 100 entradas y ninguna petición; no era un fallo del logger.
+5. Retirada la variable con otro workflow desechable (`ops/log-requests-off`): total **16** y
+   arranque sin la línea del logger.
+
+### Evidencia
+| Hora (UTC) | Línea |
+|---|---|
+| `03:36:44` | `[Bootstrap] Request logger habilitado (LOG_REQUESTS=true): método, ruta, IP y User-Agent` |
+| `03:41:29` | `HEAD /api/health 200 1448ms ip=10.25.10.x ua="... UptimeRobot/2.0; http://www.uptimerobot.com/"` |
+| `03:46:34` | `HEAD /api/health 200 1276ms ip=10.30.21.x ua="... UptimeRobot/2.0; http://www.uptimerobot.com/"` |
+
+`hasMore=False`: no hay más coincidencias de `/api/health` en la ventana de 3 h. Las dos
+sondas están separadas por **5 min 05 s**.
+
+También aparecieron dos peticiones `Go-http-client` justo después del deploy
+(`03:36:58 HEAD /` y `03:37:05 GET /`, ambas 404). Son comprobaciones internas de Render
+tras el arranque, no un latido periódico.
+
+### Conclusión
+El llamante es **UptimeRobot**, monitorizando `HEAD /api/health` cada ~5 minutos. El umbral de
+reposo de Render free son 15 min, así que la instancia nunca duerme. Esto explica el
+`bandwidth-sources.http` constante (~0,013 MB/h) que la CPU no resolvía: un `HEAD` cuesta
+casi nada de CPU pero cuenta como tráfico entrante.
+
+**No verificado:** quién configuró el monitor (¿el dueño, un colaborador, el desarrollador
+anterior?) y si hay más de uno. La IP que registra la app es `10.x` (proxy interno de Render),
+no la del cliente: `trust proxy = 1` no llega al salto real. El User-Agent sí identifica el
+servicio.
+
+### Retiro de la variable
+Autorizado por el dueño. Workflow desechable `render-log-requests-off.yml` (rama
+`ops/log-requests-off`, **no fusionada**):
+
+| Comprobación | Resultado |
+|---|---|
+| Antes | `LOG_REQUESTS=true`, total **17** |
+| `DELETE .../env-vars/LOG_REQUESTS` | **204** |
+| Después | `GET` → **404**, total **16**, sin `LOG_REQUESTS` |
+| Deploy | `dep-dblvtc1srm7s73eke5o0`, `live` |
+| Arranque | **0** líneas de «Request logger habilitado» desde el deploy |
+
+La rama se borró sin fusionar. Run `41964749943`.
+
+### Acción pendiente
+1. En UptimeRobot, **pausar o borrar** el monitor de `nutrifit-api`, o subir el intervalo por
+   encima de 15 min. En el plan gratuito el mínimo suele ser 5 min: si no se puede espaciar,
+   hay que pausarlo o mover la vigilancia al frontend (Vercel), que no despierta Render.
+2. Comprobar en las horas siguientes que la instancia duerme y que el consumo de noviembre
+   baja de las ~744 h/mes.
+
+### Qué se probó y cómo
+| Comprobación | Método | Resultado |
+|---|---|---|
+| Activación | `PUT .../env-vars/LOG_REQUESTS` + `GET` | `true`, total 17 |
+| Deploy | `GET .../deploys?limit=1` | `live`, `trigger=api` |
+| Arranque del logger | `GET /logs?text=Request logger habilitado` | 1 línea, `03:36:44Z` |
+| Llamante | `GET /logs?text=/api/health` | 2 líneas UptimeRobot, 5 min 05 s |
+| Ruido interno | `GET /logs?text=Go-http-client` | 2 líneas, solo tras el deploy |
+| Workflow desechable | run `41962525059` | success |
+| Consultas de solo lectura | runs `41964069915`, `41964172005` | success |
+| Retiro de la variable | `DELETE .../env-vars/LOG_REQUESTS` + `GET` | 204, 404, total 16 |
+| Logger apagado | `GET /logs?text=Request logger habilitado` desde el deploy | 0 líneas |
+| Workflow de retiro | run `41964749943` | success |
+| Ramas borradas | `git ls-remote --heads origin` | `ops/log-requests-on` y `ops/log-requests-off` ausentes |
+
+Los workflows de diagnóstico **no se fusionaron**: las ramas se borraron local y remotamente.
+Los runs quedan en GitHub como evidencia.
+
+### Archivos
+- `docs/estado.md`: esta entrada.
+- Sin cambios de código: el logger ya estaba en `main` (`1889321`).
+- Los tres workflows desechables (`render-log-requests-on.yml`, `render-log-dump.yml`,
+  `render-log-requests-off.yml`) se borraron con sus ramas.
+
+### Nota de privacidad
+El repo es público y los logs de Actions también. Las consultas publicaron la IP enmascarada
+a `/24` (IPv4) o `/48` (IPv6); la IP completa queda solo en el panel privado de Render.
+
 ## Sesión: logger de peticiones opt-in (`feat/request-logger`)
 
 ### Objetivo
@@ -35,15 +130,13 @@ Casos cubiertos: no escribe hasta `finish`; método/ruta/estado/IP/UA; no filtra
 string; recorta el UA y elimina saltos de línea; usa `-` cuando faltan IP y UA.
 
 ### Estado de activación
-**No se activó en Render.** Agregar `LOG_REQUESTS=true` es un cambio de variables de
-producción y no se hizo sin autorización explícita. Mientras no se añada, el logger no emite
-nada.
+Se activó el 05-11-2026 de forma temporal (`LOG_REQUESTS=true`) con un workflow desechable y
+**se retiró el mismo día** a las `03:58Z`, tras identificar al llamante. Ver la sesión «el
+tráfico que impedía el reposo es UptimeRobot».
 
 ### Siguiente paso
-1. Autorizar `LOG_REQUESTS=true` en Render (o añadirlo desde el panel).
-2. Dejar pasar 24 h y leer los logs: ruta, IP y User-Agent del tráfico constante.
-3. Con el emisor identificado, cortar o espaciar la fuente.
-4. **Quitar la variable** y redeploy.
+1. Pausar el monitor de UptimeRobot o espaciarlo por encima de 15 min.
+2. Verificar que la instancia duerme y que el consumo baja.
 
 ## Sesión: el cron de 15 min no aparece en las métricas (`diag/cron-existe`)
 
