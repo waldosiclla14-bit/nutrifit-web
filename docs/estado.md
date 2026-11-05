@@ -1,5 +1,50 @@
 # Estado del proyecto NutriFit
 
+## Sesión: logger de peticiones opt-in (`feat/request-logger`)
+
+### Objetivo
+Identificar al llamante que mantiene despierta la instancia de Render, sin registrar datos
+personales por defecto ni exponer query strings.
+
+### Qué se hizo
+- `backend/src/common/middleware/request-logger.middleware.ts`: middleware que, tras
+  `res.on('finish')`, escribe una línea por petición:
+  `MÉTODO ruta estado duración ip="..." ua="..."`.
+- Se registra **solo si `LOG_REQUESTS=true`** (`main.ts`), antes del resto de middlewares,
+  para que también anote lo que CORS o los guards rechazan.
+- **No registra query string ni cuerpo**: `req.path` en vez de `req.originalUrl`, y nada de
+  `req.body` (que además aquí se lee como stream).
+- Sanea el User-Agent: quita `\r`, `\n` y tabuladores (inyección de líneas de log) y lo
+  recorta a 180 caracteres. La ruta se recorta a 300 y la IP a 64.
+- `DEPLOY.md` §2.1 explica cómo activarlo y recuerda quitarlo al terminar.
+
+### Por qué es seguro por defecto
+- Apagado si la variable falta o no vale exactamente `true`.
+- No hay cambios de comportamiento con el logger apagado.
+- La IP es un dato personal: se registra solo durante la investigación y la variable debe
+  retirarse después. No se guarda en base de datos; solo va al log del servicio.
+
+### Qué se probó y cómo
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Pruebas del middleware | `npx jest src/common/middleware --runInBand` | 5/5 |
+| Suite completa del backend | `npm test -- --runInBand --silent` | 156/156 |
+| Compilación | `npm run build` | OK |
+
+Casos cubiertos: no escribe hasta `finish`; método/ruta/estado/IP/UA; no filtra el query
+string; recorta el UA y elimina saltos de línea; usa `-` cuando faltan IP y UA.
+
+### Estado de activación
+**No se activó en Render.** Agregar `LOG_REQUESTS=true` es un cambio de variables de
+producción y no se hizo sin autorización explícita. Mientras no se añada, el logger no emite
+nada.
+
+### Siguiente paso
+1. Autorizar `LOG_REQUESTS=true` en Render (o añadirlo desde el panel).
+2. Dejar pasar 24 h y leer los logs: ruta, IP y User-Agent del tráfico constante.
+3. Con el emisor identificado, cortar o espaciar la fuente.
+4. **Quitar la variable** y redeploy.
+
 ## Sesión: el cron de 15 min no aparece en las métricas (`diag/cron-existe`)
 
 **Fecha:** 05-11-2026 (UTC; 04-11 en hora local).
