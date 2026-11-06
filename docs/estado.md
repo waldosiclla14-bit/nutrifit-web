@@ -1,5 +1,54 @@
 # Estado del proyecto NutriFit
 
+## Sesión: verificación del reposo tras pausar UptimeRobot (`ops/metrics-bw`)
+
+**Fecha:** 05-11-2026 (UTC; 05-11 en hora local).
+
+### Objetivo
+Comprobar que, con el monitor pausado, la instancia de Render duerme tras 15 min sin
+tráfico y que no queda otro latido periódico.
+
+### Qué se hizo
+1. El dueño pausó el único monitor de UptimeRobot: `nutrifit-web-nu.vercel.app`, tipo HTTP,
+   intervalo **5 min**, apuntando a `https://nutrifit-api-635n.onrender.com/api/health`. El
+   nombre era engañoso: vigilaba la API, no el frontend. El panel quedó en **0 Up, 0 Down,
+   1 Paused** («Using 1 of 50 monitors»).
+2. Dos sondas manuales a `/api/health` con `curl` cronometrado, separadas 30 min.
+3. Consulta de solo lectura a `/v1/metrics/bandwidth-sources` con un workflow desechable
+   (`ops/metrics-bw`, **no fusionado**; solo GET).
+
+### Evidencia
+| Hora (UTC) | Prueba | Resultado |
+|---|---|---|
+| `02:10:39` | 1.ª sonda, ~29 min después de pausar | **200 en 1,81 s** → caliente |
+| `02:40:28` | 2.ª sonda, 30 min después de la 1.ª | **200 en 54,06 s** → frío |
+| `02:40:31` | 3.ª sonda, 3 s después | **200 en 0,96 s** → caliente |
+| `02:00–02:41` | `bandwidth-sources.http` | **0,0011 MB**, casi todo de las sondas |
+
+La 1.ª sonda caliente no se repitió. El tramo horario `01:00Z` registra **0,063 MB** de HTTP,
+muy por encima de lo que suman los `HEAD` del monitor en ese rato (~0,008 MB): hubo tráfico
+adicional antes de las 02:00, probablemente una visita real. No hay señal de un latido
+periódico.
+
+### Conclusión
+Con el monitor pausado, la instancia **duerme**. El arranque en frío medido es de **54 s**:
+cabe en los **90 s** de las mutaciones de `src/lib/api.ts`. Los GET tienen 45 s y 2 intentos,
+así que el primero puede abortar y el segundo ya encuentra la instancia despierta.
+
+El cron externo de 15 min que el código da por hecho (`delivery.service.ts:688`) **no está
+activo o no apunta a la API**: si lo estuviera, cada pasada contaría como tráfico y la 2.ª
+sonda habría encontrado la instancia despierta. No se verificó la cuenta de cron-job.org;
+solo se descarta su efecto actual.
+
+### Qué queda
+1. Mantener el monitor pausado (o borrarlo). Si se quiere seguir vigilando disponibilidad,
+   apuntar al **frontend en Vercel**, no a Render.
+2. Comprobar en 24 h que el consumo de noviembre baja.
+3. `src/app/api/keep-alive/route.ts`: nadie lo llama y `vercel.json` está vacío (`{}`), pero
+   es una puerta que despertaría Render si alguien activa un cron. Decidir si se elimina o
+   se protege.
+4. **No se tocó producción en esta sesión**: solo GET de métricas y sondas HTTP.
+
 ## Sesión: el tráfico que impedía el reposo es UptimeRobot (`ops/log-requests-on`)
 
 **Fecha:** 05-11-2026 (UTC; 04-11 en hora local).
