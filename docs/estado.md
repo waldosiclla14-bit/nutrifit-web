@@ -1,5 +1,33 @@
 # Estado del proyecto NutriFit
 
+## Sesión: retiro de la ruta `/api/keep-alive` (`chore/remove-keep-alive`)
+
+**Fecha:** 06-11-2026 (UTC; 05-11 en hora local).
+
+### Qué se hizo
+- Eliminado `src/app/api/keep-alive/route.ts`, un proxy de Vercel a
+  `${API_BASE}/api/health` con `cache: 'no-store'`. No tenía llamadores en el repo y
+  `vercel.json` está vacío (`{}`), pero cualquier cron externo que lo invocara habría
+  despertado la instancia de Render y anulado el ahorro.
+- **No se toca** `.github/workflows/keep-alive.yml`: sigue `disabled_manually` y se deja
+  donde está, como quedó decidido.
+
+### Verificación
+| Comprobación | Comando | Resultado |
+|---|---|---|
+| Lint | `npm run lint` | 0 errores, 3 avisos previos en `Pos.tsx` |
+| Pruebas | `npm test -- --silent` | 15 suites, **128/128** |
+| Build | `npm run build` | OK tras reintentar por el aviso de seguridad de Next.js |
+| Llamadores | búsqueda en `src`, `backend`, `.github` y config | solo referencias históricas en `docs/` y `workflows-archive/README.md` |
+
+El primer `npm run build` se detuvo con `SecurityFatalError` de Next.js recomendando actualizar.
+**No se ejecutó `next upgrade --agent=security`**: la actualización vive en
+`security/next-16.4.3`, PR #4. El reintento completó el build.
+
+### Qué queda
+- Comprobar en 24 h que el consumo de noviembre baja.
+- Mantener el monitor de UptimeRobot pausado.
+
 ## Sesión: verificación del reposo tras pausar UptimeRobot (`ops/metrics-bw`)
 
 **Fecha:** 05-11-2026 (UTC; 05-11 en hora local).
