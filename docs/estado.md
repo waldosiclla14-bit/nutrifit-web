@@ -1,5 +1,39 @@
 # Estado del proyecto NutriFit
 
+## Sesión: consumo de noviembre tras un día con el monitor pausado (`docs/consumo-render`)
+
+**Fecha:** 07-11-2026 (UTC; 06-11 en hora local).
+
+### Dato
+Panel de Render → Billing, con el monitor pausado desde el 06-11 ~01:43Z:
+
+- **120,35 h** de 750 h incluidas.
+- **51 MB** de 5 GB (HTTP 4 MB; iniciado por el servicio 47 MB).
+- 1 servicio, 1 dominio. **$0,00** facturado y proyectado.
+
+### Lectura
+120,35 h equivalen a **5,01 días encendida 24/7**. Si hubiera seguido despierta, a las
+`02:30Z` del 07-11 rondaría las **145 h**: la diferencia (~25 h) es justo el tiempo
+transcurrido desde la pausa. El contador dejó de crecer cuando se pausó el monitor.
+
+**Es una inferencia**, no una serie diaria: el panel no muestra el desglose por día. Se apoya
+en el total, el tiempo transcurrido y la pausa confirmada (UptimeRobot: «paused for 1d 0h 43m»,
+última comprobación 1d 46m antes).
+
+### Margen
+Quedan **629,65 h** y 23 días de mes. Aun en el peor caso (despierta 24/7 el resto del mes), el
+total sería **672,35 h**, por debajo de las 750 h.
+
+### Cierre del retiro de `/api/keep-alive`
+Comprobado en producción: `https://nutrifit-web-nu.vercel.app/api/keep-alive` → 301 a
+`https://nutrifitsuplementos.cl/api/keep-alive` → **404**.
+
+### Qué queda
+- El monitor sigue pausado; no hace falta tocarlo.
+- Repetir la lectura en una semana si se quiere confirmar la tendencia.
+- Si se quiere vigilar disponibilidad, monitorizar el frontend (`https://nutrifitsuplementos.cl`),
+  no la API.
+
 ## Sesión: retiro de la ruta `/api/keep-alive` (`chore/remove-keep-alive`)
 
 **Fecha:** 06-11-2026 (UTC; 05-11 en hora local).
