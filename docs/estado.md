@@ -54,8 +54,19 @@ a usar `${RUNNER_TEMP:-/tmp}` en lugar de rutas fijas. YAML validado con `js-yam
 - El monitor de UptimeRobot debe apuntar al **frontend** (`https://nutrifitsuplementos.cl`),
   nunca a `nutrifit-api-635n.onrender.com`.
 
-### Pendiente
-- Probar el `workflow_dispatch` real tras el merge (una sola sonda: ~15 min de instancia).
+### Prueba real
+Tras fusionar el PR #25 (`c38fde6`) se lanzó `workflow_dispatch` sobre `main`:
+
+| Campo | Valor |
+|---|---|
+| Run | `42336722139` |
+| HTTP | **200** en el primer intento |
+| Cuerpo | `{"status":"ok","db":"ok","time":"2026-11-07T04:04:21.376Z"}` |
+| Arranque en frío | **54 s** |
+| Duración del job | ~60 s |
+
+Coincide con la medición manual del 06-11 (54,06 s). El run anterior había sido horas antes,
+así que la instancia estaba dormida: es un arranque en frío real, no una respuesta caliente.
 
 ## Sesión: consumo de noviembre tras un día con el monitor pausado (`docs/consumo-render`)
 
