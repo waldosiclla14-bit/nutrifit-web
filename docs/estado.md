@@ -1,5 +1,62 @@
 # Estado del proyecto NutriFit
 
+## Sesión: comprobación diaria de la API (`ops/salud-diaria-api`)
+
+**Fecha:** 07-11-2026 (UTC; 06-11 en hora local).
+
+### Problema
+Con el monitor de UptimeRobot apuntando a la API cada 5 min, la instancia de Render free
+nunca duerme: cada sonda es tráfico entrante y reinicia el contador de 15 min. Resultado,
+~720 h/mes de las 750 del plan, sin margen. Pero dejar la API sin ninguna comprobación
+tampoco sirve: un deploy roto o una caída pasarían inadvertidos.
+
+### Qué se hizo
+Nuevo workflow `.github/workflows/daily-api-health.yml`:
+
+- **Una** sonda diaria a `GET /api/health`, a las `12:00 UTC` (09:00 en Chile con horario de
+  verano; 08:00 en invierno). También acepta `workflow_dispatch`.
+- Dos intentos con 100 s de margen cada uno: el arranque en frío medido es de ~54 s.
+- Falla si el HTTP no es 200, si `status != ok` o si `db != ok`.
+- **Sin secretos**: `/api/health` es público. Permisos `contents: read`.
+- Coste: la instancia se despierta una vez y duerme 15 min después → **~7,5 h/mes**, frente a
+  las ~720 h de tenerla 24/7.
+
+### Qué detecta y qué no
+| Detecta | No detecta |
+|---|---|
+| API caída en el momento de la sonda | Caída que ocurre y se resuelve entre dos sondas |
+| Deploy roto o arranque fallido | Lentitud intermitente |
+| Base de datos sin responder (`db != ok`) | Errores que solo ve el navegador |
+
+Vigilancia continua de la API, en cambio, es incompatible con Render free: no hay forma de
+sondear sin despertar la instancia. Si se necesita, requiere plan de pago o migrar la API.
+
+### Verificación
+El script del workflow se extrajo del YAML y se ejecutó con `bash -e` (el shell de Actions)
+contra un servidor local falso, **sin llamar a Render**:
+
+| Caso | Esperado | Resultado |
+|---|---|---|
+| `200` con `status=ok db=ok` | exit 0 | **PASS** |
+| `200` con `status=degraded` | exit 1 | **PASS** |
+| `200` con `db=down` | exit 1 | **PASS** |
+| `503` en ambos intentos | exit 1 | **PASS** |
+| Host sin conexión | exit 1 | **PASS** |
+
+El arnés inicial no usaba `bash -e` y no resolvía `/tmp` en Windows; por eso el workflow pasó
+a usar `${RUNNER_TEMP:-/tmp}` en lugar de rutas fijas. YAML validado con `js-yaml`.
+
+### Notas de operación
+- Los workflows con `schedule` solo se ejecutan en la **rama por defecto** y GitHub los
+  desactiva tras 60 días sin actividad en el repositorio.
+- Un fallo notifica por correo al usuario que figura como actor del cron (quien hizo el
+  último cambio en el workflow), si tiene las notificaciones activas.
+- El monitor de UptimeRobot debe apuntar al **frontend** (`https://nutrifitsuplementos.cl`),
+  nunca a `nutrifit-api-635n.onrender.com`.
+
+### Pendiente
+- Probar el `workflow_dispatch` real tras el merge (una sola sonda: ~15 min de instancia).
+
 ## Sesión: consumo de noviembre tras un día con el monitor pausado (`docs/consumo-render`)
 
 **Fecha:** 07-11-2026 (UTC; 06-11 en hora local).
