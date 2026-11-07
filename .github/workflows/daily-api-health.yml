@@ -1,0 +1,96 @@
+name: "Ops: salud diaria de la API"
+
+# Una sola sonda al día a /api/health.
+#
+# Por qué una y no una cada 5 minutos: el servicio vive en Render free, que
+# apaga la instancia a los 15 min sin tráfico entrante. Cada comprobación la
+# despierta y reinicia ese contador, así que un monitor cada 5 min la mantiene
+# encendida 24/7 (~720 h/mes de las 750 del plan). Una sonda diaria cuesta unos
+# 15 min al día —lo que tarda en volver a dormirse—, es decir ~7,5 h/mes.
+#
+# Qué detecta: que la instancia arranque y que /api/health responda 200 con
+# {"status":"ok","db":"ok"}. Si falla, GitHub avisa por correo. No detecta una
+# caída que ocurra y se resuelva entre dos sondas: para eso haría falta
+# vigilancia continua, incompatible con la instancia gratuita.
+#
+# Los workflows con `schedule` solo se ejecutan en la rama por defecto (main) y
+# GitHub los desactiva tras 60 días sin actividad en el repositorio.
+#
+# No usa secretos: /api/health es público.
+
+on:
+  schedule:
+    # 12:00 UTC = 09:00 en Chile con horario de verano (UTC-3).
+    # En invierno (UTC-4) se ejecuta a las 08:00 locales.
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  API_URL: "https://nutrifit-api-635n.onrender.com/api/health"
+
+jobs:
+  health:
+    name: Sonda diaria
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: GET /api/health
+        run: |
+          set -euo pipefail
+
+          HEALTH_FILE="${RUNNER_TEMP:-/tmp}/health.json"
+          CURL_ERR="${RUNNER_TEMP:-/tmp}/curl.err"
+          export HEALTH_FILE
+
+          echo "objetivo=$API_URL"
+          start=$(date +%s)
+          code=000
+
+          # Dos intentos: el arranque en frío medido es de ~54 s, así que un
+          # único intento con 100 s de margen debería bastar. El segundo cubre
+          # un arranque más lento de lo habitual.
+          for attempt in 1 2; do
+            code=$(curl -sS -o "$HEALTH_FILE" -w '%{http_code}' \
+              --max-time 100 "$API_URL" 2>"$CURL_ERR") || code=000
+            echo "intento=$attempt http=$code t=$(( $(date +%s) - start ))s"
+            if [ "$code" = "200" ]; then break; fi
+            if [ -s "$CURL_ERR" ]; then
+              echo "curl: $(head -c 200 "$CURL_ERR")"
+            fi
+            if [ "$attempt" = "1" ]; then sleep 10; fi
+          done
+
+          elapsed=$(( $(date +%s) - start ))
+
+          if [ "$code" != "200" ]; then
+            echo "::error::/api/health no respondió 200 tras 2 intentos (último http=$code, ${elapsed}s)"
+            exit 1
+          fi
+
+          echo "== cuerpo =="
+          head -c 300 "$HEALTH_FILE"
+          echo
+
+          python3 - <<'PY'
+          import json
+          import os
+          with open(os.environ['HEALTH_FILE']) as f:
+              d = json.load(f)
+          print('status=%s db=%s time=%s' % (d.get('status'), d.get('db'), d.get('time')))
+          if d.get('status') != 'ok':
+              print('::error::status distinto de ok')
+              raise SystemExit(1)
+          if d.get('db') != 'ok':
+              print('::error::la base de datos no responde (db != ok)')
+              raise SystemExit(1)
+          PY
+
+          echo "ok_en=${elapsed}s"
+          if [ "$elapsed" -le 5 ]; then
+            echo "::notice::La instancia ya estaba despierta."
+          else
+            echo "::notice::Arranque en frío de ${elapsed}s (el cliente tolera 90 s en mutaciones)."
+          fi
