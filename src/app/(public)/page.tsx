@@ -16,7 +16,7 @@ import MetroCoverage from '@/components/home/MetroCoverage';
 import FAQ from '@/components/home/FAQ';
 
 export const metadata: Metadata = {
-  title: 'Suplementos Deportivos en Santiago',
+  title: 'Proteínas, Creatina y Suplementos Deportivos en Chile',
   description:
     'Compra whey protein, creatina y vitaminas originales en Chile. Packs desde $27.500 con entrega coordinada por WhatsApp en estaciones de Metro de Santiago o a domicilio.',
   alternates: { canonical: '/' },
@@ -34,7 +34,7 @@ const localBusinessJsonLd = {
       inLanguage: 'es-CL',
     },
     {
-      '@type': 'Store',
+      '@type': 'OnlineStore',
       '@id': `${BRAND.url}/#store`,
       name: 'NUTRIFIT Suplementos',
       url: BRAND.url,

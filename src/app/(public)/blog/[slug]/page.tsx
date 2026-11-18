@@ -17,10 +17,28 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = BLOG_POSTS.find((p) => p.slug === slug);
   if (!post) return {};
+  const url = `${BRAND.url}/blog/${post.slug}`;
   return {
     title: post.title,
     description: post.excerpt,
     alternates: { canonical: `/blog/${post.slug}` },
+    openGraph: {
+      type: 'article',
+      title: `${post.title} | ${BRAND.name}`,
+      description: post.excerpt,
+      url,
+      siteName: BRAND.name,
+      locale: 'es_CL',
+      publishedTime: post.date,
+      authors: [BRAND.name],
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: post.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${post.title} | ${BRAND.name}`,
+      description: post.excerpt,
+      images: ['/opengraph-image'],
+    },
   };
 }
 
@@ -46,15 +64,29 @@ export default async function BlogPostPage({
     publisher: { '@type': 'Organization', '@id': `${BRAND.url}/#organization`, name: BRAND.name },
   };
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: BRAND.url },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BRAND.url}/blog` },
+      { '@type': 'ListItem', position: 3, name: post.title },
+    ],
+  };
+
   return (
     <article className="container-px py-12">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <Link
         href="/blog"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-bold text-sport-orange underline underline-offset-4"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-bold text-sport-orangeText underline underline-offset-4"
       >
         <ArrowLeft size={14} /> Volver al blog
       </Link>
