@@ -16,6 +16,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
+    agentUpgrade: 'security',
   },
   // Proxy mismo-origen hacia la API: la cookie auth queda first-party
   // (los navegadores bloquean cookies third-party en incógnito/Safari).
