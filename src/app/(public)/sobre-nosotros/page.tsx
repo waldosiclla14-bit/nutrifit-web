@@ -61,12 +61,9 @@ export default function SobreNosotrosPage() {
       {/* Hero */}
       <section className="container-px py-16 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">
-            Nuestra historia
-          </p>
           <h1 className="mt-4 font-display text-4xl uppercase tracking-wide sm:text-5xl lg:text-6xl">
             Suplementos originales,{' '}
-            <span className="text-sport-green">entregados en tu Metro</span>
+            <span className="text-sport-greenText">entregados en tu Metro</span>
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-gray-500">
             NutriFit nació para resolver un problema simple: en Chile, comprar suplementos
@@ -79,7 +76,7 @@ export default function SobreNosotrosPage() {
       <section className="border-y border-sport-border/30 bg-sport-surface py-16">
         <div className="container-px">
           <div className="mx-auto max-w-2xl text-center">
-            <Zap size={32} className="mx-auto text-sport-green" />
+            <Zap size={32} className="mx-auto text-sport-greenText" />
             <h2 className="mt-4 font-display text-3xl uppercase tracking-wide">
               Nuestra misión
             </h2>
@@ -96,7 +93,7 @@ export default function SobreNosotrosPage() {
       <section className="container-px py-16 sm:py-20">
         <div className="mx-auto max-w-4xl">
           <h2 className="text-center font-display text-3xl uppercase tracking-wide">
-            En qué <span className="text-sport-green">creemos</span>
+            En qué <span className="text-sport-greenText">creemos</span>
           </h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2">
             {VALUES.map((v) => (
@@ -104,7 +101,7 @@ export default function SobreNosotrosPage() {
                 key={v.title}
                 className="flex gap-4 rounded-3xl border border-sport-border/50 bg-sport-card p-6"
               >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sport-green text-white">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sport-green text-ink">
                   <v.icon size={22} />
                 </span>
                 <div>
@@ -122,13 +119,13 @@ export default function SobreNosotrosPage() {
         <div className="container-px">
           <div className="mx-auto max-w-2xl">
             <h2 className="text-center font-display text-3xl uppercase tracking-wide">
-              Nuestro <span className="text-sport-green">camino</span>
+              Nuestro <span className="text-sport-greenText">camino</span>
             </h2>
             <div className="mt-10 space-y-8">
               {TIMELINE.map((t, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-xs font-extrabold text-sport-green">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-xs font-extrabold text-sport-greenText">
                       {t.year}
                     </span>
                     {i < TIMELINE.length - 1 && (
@@ -153,10 +150,10 @@ export default function SobreNosotrosPage() {
             { value: siteConfig.delivery.promiseShort, label: 'Tiempo de entrega' },
           ].map((s) => (
             <div key={s.label} className="text-center">
-              <p className="font-display text-3xl uppercase tracking-wide text-sport-green sm:text-4xl">
+              <p className="font-display text-3xl uppercase tracking-wide text-sport-greenText sm:text-4xl">
                 {s.value}
               </p>
-              <p className="mt-1 text-xs text-gray-400">{s.label}</p>
+              <p className="mt-1 text-xs text-gray-500">{s.label}</p>
             </div>
           ))}
         </div>
@@ -165,7 +162,7 @@ export default function SobreNosotrosPage() {
       {/* CTA */}
       <section className="border-t border-sport-border/30 bg-sport-surface py-16 text-center">
         <div className="container-px">
-          <Users size={32} className="mx-auto text-sport-green" />
+          <Users size={32} className="mx-auto text-sport-greenText" />
           <h2 className="mt-4 font-display text-3xl uppercase tracking-wide">
             Únete a la comunidad
           </h2>
@@ -174,7 +171,7 @@ export default function SobreNosotrosPage() {
           </p>
           <Link
             href="/"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-sport-green px-6 py-3 text-sm font-extrabold text-white shadow-sportGlow transition-colors hover:bg-sport-greenLight"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-sport-green px-6 py-3 text-sm font-extrabold text-ink shadow-sportGlow transition-colors hover:bg-sport-greenLight"
           >
             <MapPin size={16} /> Ver catálogo
           </Link>

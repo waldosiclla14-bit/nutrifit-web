@@ -12,14 +12,14 @@ export default function Footer() {
         <div>
           <div className="flex items-center gap-2.5">
             <span className="font-display text-lg uppercase tracking-wide">
-              Nutri<span className="text-sport-green">Fit</span>
+              Nutri<span className="text-sport-greenText">Fit</span>
             </span>
           </div>
           <p className="mt-4 text-sm leading-relaxed text-gray-600">
             Suplementos originales para quienes entrenan en serio. Compra por WhatsApp y recibe en
             Metro o a domicilio.
           </p>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sport-green">
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-sport-greenText">
             {BRAND.tagline}
           </p>
         </div>
@@ -29,13 +29,13 @@ export default function Footer() {
           <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
             <li>
               WhatsApp:{' '}
-              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-green">
+              <a href={`https://wa.me/${BRAND.whatsappDigits}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-greenText">
                 {BRAND.whatsapp}
               </a>
             </li>
             <li>
               Instagram:{' '}
-              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-green">
+              <a href={BRAND.instagramUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-gray-900 transition-colors hover:text-sport-greenText">
                 {BRAND.instagram}
               </a>
             </li>
@@ -47,22 +47,22 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-bold uppercase tracking-widest text-gray-800">Enlaces</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
-            <li><Link href="/sobre-nosotros" className="transition-colors hover:text-sport-green">Sobre nosotros</Link></li>
-            <li><Link href="/productos" className="transition-colors hover:text-sport-green">Catálogo</Link></li>
-            <li><Link href="/#combos" className="transition-colors hover:text-sport-green">Combos</Link></li>
-            <li><Link href="/#beneficios" className="transition-colors hover:text-sport-green">Beneficios</Link></li>
-            <li><Link href="/#opiniones" className="transition-colors hover:text-sport-green">Opiniones</Link></li>
-            <li><Link href="/blog" className="transition-colors hover:text-sport-green">Blog y guías</Link></li>
-            <li><Link href="/favoritos" className="transition-colors hover:text-sport-green">Mis favoritos</Link></li>
+            <li><Link href="/sobre-nosotros" className="transition-colors hover:text-sport-greenText">Sobre nosotros</Link></li>
+            <li><Link href="/productos" className="transition-colors hover:text-sport-greenText">Catálogo</Link></li>
+            <li><Link href="/#combos" className="transition-colors hover:text-sport-greenText">Combos</Link></li>
+            <li><Link href="/#beneficios" className="transition-colors hover:text-sport-greenText">Beneficios</Link></li>
+            <li><Link href="/#opiniones" className="transition-colors hover:text-sport-greenText">Opiniones</Link></li>
+            <li><Link href="/blog" className="transition-colors hover:text-sport-greenText">Blog y guías</Link></li>
+            <li><Link href="/favoritos" className="transition-colors hover:text-sport-greenText">Mis favoritos</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-sm font-bold uppercase tracking-widest text-gray-800">Información</h4>
           <ul className="mt-4 space-y-2.5 text-sm text-gray-600">
-            <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-sport-green">Políticas de Entrega</Link></li>
-            <li><Link href="/legal#terminos" className="transition-colors hover:text-sport-green">Términos y Condiciones</Link></li>
-            <li><Link href="/legal#privacidad" className="transition-colors hover:text-sport-green">Política de Privacidad</Link></li>
+            <li><Link href="/legal#politicas-envio" className="transition-colors hover:text-sport-greenText">Políticas de Entrega</Link></li>
+            <li><Link href="/legal#terminos" className="transition-colors hover:text-sport-greenText">Términos y Condiciones</Link></li>
+            <li><Link href="/legal#privacidad" className="transition-colors hover:text-sport-greenText">Política de Privacidad</Link></li>
           </ul>
         </div>
       </div>

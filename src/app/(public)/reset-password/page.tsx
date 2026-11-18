@@ -40,11 +40,11 @@ export default function ResetPasswordPage() {
     <div className="container-px flex min-h-[70vh] items-center justify-center py-16">
       <form onSubmit={submit} className="w-full max-w-sm rounded-3xl border border-sport-border/50 bg-sport-card p-8 shadow-sportCard">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-sport-green">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-sport-greenText">
             <KeyRound size={20} />
           </span>
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">NUTRIFIT</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-greenText">NUTRIFIT</p>
             <h1 className="font-display text-xl uppercase tracking-wide text-sport-text">Restablecer contraseña</h1>
           </div>
         </div>
@@ -92,14 +92,14 @@ export default function ResetPasswordPage() {
           </p>
         )}
         {ok && (
-          <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-sport-green">
+          <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-sport-greenText">
             <CheckCircle size={14} /> Contraseña actualizada. Ahora puedes ir a <a href="/login" className="underline">/login</a>.
           </p>
         )}
         <button
           type="submit"
           disabled={saving}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-sport-green px-6 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow disabled:opacity-50"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-sport-green px-6 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow disabled:opacity-50"
         >
           {saving ? 'Guardando…' : 'Restablecer contraseña'}
         </button>

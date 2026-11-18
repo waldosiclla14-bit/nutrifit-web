@@ -83,9 +83,9 @@ export default function SearchBox({ className }: { className?: string }) {
                     <p className="text-[11px] text-sport-textMuted">{p.categoryLabel}</p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-bold text-sport-orange">{formatPrice(p.price)}</p>
+                    <p className="text-sm font-bold text-sport-orangeText">{formatPrice(p.price)}</p>
                     {getDiscount(p) && (
-                      <p className="text-[11px] font-extrabold text-sport-orange">-{getDiscount(p)}%</p>
+                      <p className="text-[11px] font-extrabold text-sport-orangeText">-{getDiscount(p)}%</p>
                     )}
                   </div>
                 </Link>
@@ -98,7 +98,7 @@ export default function SearchBox({ className }: { className?: string }) {
               setOpen(false);
               setQuery('');
             }}
-            className="flex items-center justify-center gap-1.5 border-t border-sport-border bg-sport-surface px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-sport-orange transition-colors hover:bg-sport-surface"
+            className="flex items-center justify-center gap-1.5 border-t border-sport-border bg-sport-surface px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-sport-orangeText transition-colors hover:bg-sport-surface"
           >
             Ver todos los resultados <ArrowRight size={13} />
           </Link>

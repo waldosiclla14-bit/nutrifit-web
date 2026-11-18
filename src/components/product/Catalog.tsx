@@ -102,9 +102,8 @@ export default function Catalog({
   return (
     <div className="container-px py-10">
       <Reveal className="mb-8">
-        <p className="section-label">CATÁLOGO</p>
         <h1 className="section-title">
-          Suplementos <span className="text-sport-orange">originales</span>
+          Suplementos <span className="text-sport-orangeText">originales</span>
         </h1>
       </Reveal>
 
@@ -115,7 +114,7 @@ export default function Catalog({
             onClick={() => setCat('')}
             className={cx(
               'chip shrink-0 !px-4 !py-1.5 text-xs font-bold uppercase tracking-wide',
-              !cat ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+              !cat ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
             )}
           >
             Todos
@@ -127,7 +126,7 @@ export default function Catalog({
               onClick={() => setCat(cat === c.key ? '' : c.key)}
               className={cx(
                 'chip shrink-0 !px-4 !py-1.5 text-xs font-bold uppercase tracking-wide',
-                cat === c.key ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+                cat === c.key ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
               )}
             >
               {c.label}
@@ -141,7 +140,7 @@ export default function Catalog({
             onClick={() => setShowFilters((v) => !v)}
             className={cx(
               'chip gap-1.5 !px-4 !py-2.5 text-xs font-bold uppercase tracking-wide',
-              showFilters ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+              showFilters ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
             )}
           >
             <SlidersHorizontal size={14} /> Filtros
@@ -187,7 +186,7 @@ export default function Catalog({
                     onClick={() => toggleBrand(b)}
                     className={cx(
                       'chip',
-                      brands.includes(b) ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+                      brands.includes(b) ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
                     )}
                   >
                     {b}
@@ -205,7 +204,7 @@ export default function Catalog({
                     onClick={() => toggleGoal(key)}
                     className={cx(
                       'chip',
-                      goals.includes(key) ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+                      goals.includes(key) ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
                     )}
                   >
                     {label}
@@ -224,7 +223,7 @@ export default function Catalog({
                   onClick={() => setPrice(p.key)}
                   className={cx(
                     'chip',
-                    price === p.key ? 'bg-sport-orange text-white' : 'bg-sport-card hover:border-accent',
+                    price === p.key ? 'bg-sport-orange text-ink' : 'bg-sport-card hover:border-accent',
                   )}
                 >
                   {p.label}
@@ -236,7 +235,7 @@ export default function Catalog({
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-5 text-xs font-bold uppercase tracking-wide text-sport-orange underline underline-offset-4"
+              className="mt-5 text-xs font-bold uppercase tracking-wide text-sport-orangeText underline underline-offset-4"
             >
               Limpiar filtros
             </button>

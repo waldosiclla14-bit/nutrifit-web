@@ -12,15 +12,14 @@ export const metadata: Metadata = {
 export default function LegalPage() {
   return (
     <div className="container-px py-12">
-      <p className="section-label">INFORMACIÓN</p>
       <h1 className="section-title mb-10">
-        Políticas y <span className="text-sport-orange">términos</span>
+        Políticas y <span className="text-sport-orangeText">términos</span>
       </h1>
 
-      <div className="mx-auto max-w-3xl space-y-10">
+      <div className="mx-auto max-w-2xl space-y-10">
         <section id="politicas-envio" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Políticas de Entrega</h2>
-          <ul className="mt-4 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
+          <ul className="mt-4 list-disc space-y-2.5 pl-5 text-base leading-relaxed text-gray-600">
             <li>
               Puedes elegir entre dos modalidades: retiro en estaciones de metro de las líneas 1, 2,
               3, 4, 4A, 5 y 6 (todas las estaciones), o envío a domicilio en Santiago (Región
@@ -48,8 +47,8 @@ export default function LegalPage() {
 
         <section id="terminos" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Términos y Condiciones</h2>
-          <p className="mt-4 text-sm text-gray-600">Al comprar en NutriFit aceptas los siguientes términos:</p>
-          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
+          <p className="mt-4 text-base text-gray-600">Al comprar en NutriFit aceptas los siguientes términos:</p>
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-base leading-relaxed text-gray-600">
             <li>Los precios publicados están expresados en pesos chilenos (CLP) e incluyen IVA.</li>
             <li>
               Las ofertas y descuentos pueden cambiar sin previo aviso y son válidas mientras dure el
@@ -71,8 +70,8 @@ export default function LegalPage() {
 
         <section id="privacidad" className="rounded-3xl border border-sport-border bg-sport-surface p-6 sm:p-8">
           <h2 className="font-display text-2xl uppercase tracking-wide">Política de Privacidad</h2>
-          <p className="mt-4 text-sm text-gray-600">En NutriFit respetamos tu privacidad:</p>
-          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-sm leading-relaxed text-gray-600">
+          <p className="mt-4 text-base text-gray-600">En NutriFit respetamos tu privacidad:</p>
+          <ul className="mt-3 list-disc space-y-2.5 pl-5 text-base leading-relaxed text-gray-600">
             <li>
               Los datos que compartes (nombre, teléfono, línea y estación de metro) se usan
               únicamente para procesar y coordinar tu pedido.

@@ -51,9 +51,8 @@ export default function FAQ() {
       />
       <div className="container-px">
         <Reveal className="mb-10 text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">PREGUNTAS FRECUENTES</p>
           <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
-            Resolvemos tus <span className="text-sport-green">dudas</span>
+            Resolvemos tus <span className="text-sport-greenText">dudas</span>
           </h2>
         </Reveal>
         <div className="mx-auto max-w-3xl space-y-3">

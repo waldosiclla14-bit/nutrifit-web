@@ -42,17 +42,17 @@ export default function BundleOffers({ productId }: { productId: number }) {
               />
             </div>
             <div className="flex-1">
-              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-sport-orange">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-sport-orangeText">
                 <Gift size={13} />
                 Compra este set y ahorra {pricing.percent}%
               </p>
               <p className="mt-1 font-display text-base uppercase tracking-wide">{bundle.title}</p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="mt-0.5 text-xs text-gray-600">
                 <span className="line-through">{formatPrice(pricing.sum)}</span>{' '}
                 <span className="font-semibold text-gray-900">{formatPrice(pricing.price)}</span>
               </p>
               {variantItem && (
-                <label className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                   <span className="shrink-0 font-semibold">
                     Sabor {variantItem.product.name.replace('FullEnergic 100% Whey Protein', 'whey')}
                   </span>

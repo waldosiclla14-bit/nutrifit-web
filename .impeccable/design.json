@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T12:45:00Z",
+  "title": "Design System: NutriFit Chile",
+  "extensions": {
+    "colorMeta": {
+      "brand-lime": {
+        "role": "primary",
+        "displayName": "Verde Marcador",
+        "canonical": "#72BF44",
+        "tonalRamp": ["#1D2E12", "#2A4319", "#385B22", "#46722B", "#5A9036", "#72BF44", "#9BD574", "#D2EFC1"]
+      },
+      "brand-lime-deep": {
+        "role": "primary",
+        "displayName": "Verde Etiqueta",
+        "canonical": "#3D6A20",
+        "tonalRamp": ["#16260C", "#1F3511", "#294617", "#33581D", "#3D6A20", "#5E9633", "#8FC166", "#CFE6B8"]
+      },
+      "brand-orange": {
+        "role": "secondary",
+        "displayName": "Naranja Acción",
+        "canonical": "#F97316",
+        "tonalRamp": ["#3D1C05", "#5C2A08", "#7C390B", "#9C470E", "#C25A12", "#F97316", "#FB9C5B", "#FDD4B3"]
+      },
+      "sport-text": {
+        "role": "neutral",
+        "displayName": "Tinta Deportiva",
+        "canonical": "#0F172A",
+        "tonalRamp": ["#0F172A", "#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0"]
+      },
+      "sport-surface": {
+        "role": "neutral",
+        "displayName": "Mesa",
+        "canonical": "#F8FAFC",
+        "tonalRamp": ["#0F172A", "#334155", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0", "#F1F5F9", "#F8FAFC"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Bebas Cancha", "purpose": "Titulares y cifras en mayúsculas. Nunca en párrafos, nunca con negrita simulada." },
+      "headline": { "displayName": "Título de Sección", "purpose": "28px móvil / 36px desktop, peso 800." },
+      "label": { "displayName": "Etiqueta", "purpose": "Metadatos y etiquetas de sección en mayúsculas con tracking amplio." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "0 8px 32px -8px rgba(0, 0, 0, 0.4)", "purpose": "Cards destacadas y superficies oscuras." },
+      { "name": "brand-glow", "value": "0 14px 44px -16px rgba(114, 191, 68, 0.4)", "purpose": "Hover de CTA verde; única sombra con color." },
+      { "name": "overlay", "value": "0 25px 50px -12px rgba(0, 0, 0, 0.25)", "purpose": "Drawer del carrito y modales." }
+    ],
+    "motion": [
+      { "name": "state-transition", "value": "all 300ms ease", "purpose": "Hover y focus de botones y cards." },
+      { "name": "reveal", "value": "opacity 700ms ease, transform 700ms ease", "purpose": "Entrada de secciones al hacer scroll (debe respetar prefers-reduced-motion)." },
+      { "name": "drawer", "value": "transform 300ms ease", "purpose": "Apertura del carrito desde la derecha." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón Primario",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción comercial: comprar, agregar al carrito, enviar pedido.",
+      "html": "<button class=\"ds-btn-primary\">Agregar al carrito</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #F97316; color: #0B0B0B; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.025em; padding: 14px 28px; border: none; border-radius: 9999px; cursor: pointer; transition: transform 300ms ease, box-shadow 300ms ease; } .ds-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 44px -16px rgba(114, 191, 68, 0.4); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3D6A20; }"
+    },
+    {
+      "name": "Botón Acento",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Acción de navegación o continuación: ver catálogo, seguir comprando.",
+      "html": "<button class=\"ds-btn-accent\">Ver catálogo</button>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #72BF44; color: #0B0B0B; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.025em; padding: 14px 28px; border: none; border-radius: 9999px; cursor: pointer; transition: transform 300ms ease, background-color 300ms ease; } .ds-btn-accent:hover { transform: translateY(-2px); background: #8ACF63; } .ds-btn-accent:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3D6A20; }"
+    },
+    {
+      "name": "Botón Outline",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria que no compite con el CTA de compra.",
+      "html": "<button class=\"ds-btn-outline\">Ver detalles</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #FFFFFF; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.025em; padding: 14px 28px; border: 1px solid #E2E8F0; border-radius: 9999px; cursor: pointer; transition: transform 300ms ease, border-color 300ms ease; } .ds-btn-outline:hover { transform: translateY(-2px); border-color: #72BF44; } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3D6A20; }"
+    },
+    {
+      "name": "Chip de Filtro",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Filtro de catálogo en reposo y seleccionado.",
+      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-chip\">Proteína</button><button class=\"ds-chip ds-chip-active\">Creatina</button></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; background: #FFFFFF; color: #64748B; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; padding: 6px 14px; border: 1px solid #E2E8F0; border-radius: 9999px; cursor: pointer; transition: color 200ms ease, border-color 200ms ease; } .ds-chip:hover { border-color: #72BF44; color: #0F172A; } .ds-chip-active { background: #F97316; border-color: #F97316; color: #0B0B0B; } .ds-chip:focus-visible { outline: 2px solid #3D6A20; outline-offset: 2px; }"
+    },
+    {
+      "name": "Input de Texto",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo base de formularios y buscador.",
+      "html": "<label class=\"ds-label\">Correo</label><input class=\"ds-input\" placeholder=\"tu@correo.cl\" />",
+      "css": ".ds-label { display: block; margin-bottom: 6px; color: #64748B; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; } .ds-input { width: 100%; box-sizing: border-box; background: #FFFFFF; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; padding: 12px 16px; border: 1px solid #E2E8F0; border-radius: 12px; outline: none; transition: border-color 200ms ease, box-shadow 200ms ease; } .ds-input::placeholder { color: #94A3B8; } .ds-input:focus { border-color: #72BF44; box-shadow: 0 0 0 2px rgba(114, 191, 68, 0.35); }"
+    },
+    {
+      "name": "Card de Producto",
+      "kind": "card",
+      "refersTo": "card-product",
+      "description": "Unidad de catálogo: imagen 4:5, marca, nombre, precio y entrega.",
+      "html": "<article class=\"ds-card\"><div class=\"ds-card-media\"></div><p class=\"ds-card-brand\">FNL</p><h3 class=\"ds-card-title\">Whey Protein 947g Chocolate Suizo</h3><p class=\"ds-card-price\">$34.990</p><span class=\"ds-card-badge\">Retiro en Metro</span></article>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 8px; background: #FFFFFF; border: 1px solid rgba(226, 232, 240, 0.5); border-radius: 24px; padding: 16px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; transition: transform 300ms ease, border-color 300ms ease, box-shadow 300ms ease; } .ds-card:hover { transform: translateY(-4px); border-color: rgba(114, 191, 68, 0.4); box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.18); } .ds-card-media { aspect-ratio: 4 / 5; border-radius: 16px; background: #F8FAFC; } .ds-card-brand { margin: 4px 0 0; color: #64748B; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; } .ds-card-title { margin: 0; color: #0F172A; font-size: 14px; font-weight: 700; line-height: 1.35; } .ds-card-price { margin: 0; color: #0B0B0B; font-size: 20px; font-weight: 800; } .ds-card-badge { align-self: flex-start; background: #72BF44; color: #0B0B0B; font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 9999px; }"
+    },
+    {
+      "name": "Etiqueta de Entrega",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Componente firma: declara el punto de entrega junto al precio o CTA.",
+      "html": "<div class=\"ds-delivery\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#3D6A20\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M4 15V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7\"/><path d=\"M4 15h16\"/><path d=\"M7 19h2M15 19h2\"/></svg><span>Retiro en Metro · Líneas 1, 2 y 5</span></div>",
+      "css": ".ds-delivery { display: inline-flex; align-items: center; gap: 8px; background: rgba(114, 191, 68, 0.12); color: #3D6A20; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 700; padding: 8px 14px; border: 1px solid rgba(114, 191, 68, 0.4); border-radius: 12px; }"
+    },
+    {
+      "name": "Encabezado de Sección",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Título de sección con marcador opcional; reemplaza el patrón etiqueta-sobre-título.",
+      "html": "<div class=\"ds-section-head\"><h2 class=\"ds-section-title\">Qué hay dentro de tu pack</h2></div>",
+      "css": ".ds-section-head { display: flex; flex-direction: column; gap: 8px; } .ds-section-title { margin: 0; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 28px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; } @media (min-width: 1024px) { .ds-section-title { font-size: 36px; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Etiquetado Deportivo",
+    "overview": "El sistema se comporta como la etiqueta de un suplemento: cada bloque declara qué es, cuánto rinde y de dónde viene, sin adornos que no informen. La densidad es deportiva, no editorial: bloque de producto grande, dato al lado del precio y la entrega visible antes de cualquier promesa. La energía viene de la tipografía condensada en mayúsculas y del verde limón usado como marcador, no de decoración.\n\nEl color es señalización, no atmósfera: verde para el sistema NutriFit, naranja para la acción y la urgencia comercial, tinta casi negra para el texto. Superficies blancas y gris frío hacen de mesa de laboratorio; nada de degradados de fondo ni glassmorphism.\n\nLa marca se expresa con dos gestos: Bebas Neue en mayúsculas para titulares y cifras, e Inter en pesos 800 para el resto de la jerarquía. La entrega en Metro se trata como dato duro del producto (chip/badge junto al precio), coherente con la metáfora de etiqueta.",
+    "keyCharacteristics": [
+      "Etiqueta antes que afiche: cada sección responde qué, cuánto y dónde.",
+      "Verde limón como marcador y fondo; nunca como texto sobre blanco.",
+      "Titulares condensados en mayúsculas; cuerpo en Inter.",
+      "Cards con radio grande y borde fino; sombra solo al hover.",
+      "Entrega y stock como datos visibles, no como letra chica."
+    ],
+    "rules": [
+      { "name": "The Marcador Rule", "body": "El verde limón se usa como fondo, borde o ícono. Cuando el verde es texto sobre blanco, cambia a Verde Etiqueta (#3D6A20). Nunca ambos en el mismo elemento.", "section": "colors" },
+      { "name": "The Un Color de Acción Rule", "body": "El naranja señala acción o ahorro. Si aparece en un bloque sin CTA ni descuento, sobra.", "section": "colors" },
+      { "name": "The Tinta sobre Color Rule", "body": "Todo texto sobre verde o naranja usa tinta (#0B0B0B/#0F172A), no blanco.", "section": "colors" },
+      { "name": "The Bebas Sin Negrita Rule", "body": "Bebas Neue solo existe en peso 400; font-synthesis-weight: none está activo en .font-display. No simular negrita.", "section": "typography" },
+      { "name": "The Dato en 3 Segundos Rule", "body": "Si un número importa (precio, gramos, estaciones, descuento), va en display o en title con peso 800, nunca en body.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Una card no lleva sombra hasta que el usuario la toca. Si una superficie necesita sombra para separarse, primero probar borde o cambio de fondo.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar #72BF44 como fondo, borde o ícono, y #3D6A20 cuando el verde sea texto.",
+      "Do poner texto de tinta sobre verde y naranja; blanco solo sobre tinta o sobre #3D6A20.",
+      "Do reservar Bebas Neue en mayúsculas para titulares y cifras; el resto en Inter.",
+      "Do mantener la entrega (Metro/domicilio) visible en el bloque de compra.",
+      "Do dejar las cards planas en reposo y elevar solo al hover.",
+      "Do usar píldoras para todo lo que sea acción, filtro o sello.",
+      "Do mantener objetivos táctiles de al menos 44×44px, y 16px de font-size en inputs móviles."
+    ],
+    "donts": [
+      "Don't usar #72BF44 como color de texto sobre blanco (2.27:1).",
+      "Don't poner text-white sobre #72BF44 (2.27:1) ni sobre #F97316 (2.80:1).",
+      "Don't introducir un tercer acento; el sistema tiene verde, naranja y neutros.",
+      "Don't usar Bebas Neue en párrafos ni simular su negrita.",
+      "Don't apilar una etiqueta en mayúsculas sobre cada título; el titular ya carga la jerarquía.",
+      "Don't anidar cards dentro de cards; separar con divisores o cambio de superficie.",
+      "Don't bajar texto de cuerpo a menos de 12px."
+    ]
+  }
+}

@@ -29,11 +29,8 @@ export default function Packs() {
   return (
     <section className="container-px bg-sport-surface py-14 lg:py-[100px]" id="sets">
       <Reveal className="mb-10 text-center">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">
-          SETS Y PACKS
-        </p>
         <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
-          Compra en <span className="text-sport-green">pack y ahorra</span>
+          Compra en <span className="text-sport-greenText">pack y ahorra</span>
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-gray-500">
           Combinaciones listas para tus objetivos, con el mejor precio por unidad.
@@ -55,7 +52,7 @@ export default function Packs() {
                     padding="p-4"
                   />
                   {pricing.percent > 0 && (
-                    <span className="absolute left-3 top-3 rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+                    <span className="absolute left-3 top-3 rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-ink">
                       -{pricing.percent}%
                     </span>
                   )}
@@ -71,7 +68,7 @@ export default function Packs() {
                   )}
 
                   {variantItem && (
-                    <label className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                    <label className="mt-3 flex items-center gap-2 text-xs text-gray-600">
                       <span className="shrink-0 font-semibold">Sabor</span>
                       <select
                         value={
@@ -95,7 +92,7 @@ export default function Packs() {
                     <div className="flex items-end justify-between gap-2">
                       <div className="flex flex-col">
                         {pricing.saving > 0 && (
-                          <span className="text-sm text-gray-400 line-through">
+                          <span className="text-sm text-gray-500 line-through">
                             {formatPrice(pricing.sum)}
                           </span>
                         )}
@@ -104,7 +101,7 @@ export default function Packs() {
                         </span>
                       </div>
                       {pricing.saving > 0 && (
-                        <span className="flex items-center gap-1 rounded-full bg-sport-green/15 px-2.5 py-1 text-[11px] font-bold text-sport-green">
+                        <span className="flex items-center gap-1 rounded-full bg-sport-green/15 px-2.5 py-1 text-[11px] font-bold text-sport-greenText">
                           <Gift size={12} /> Ahorras {formatPrice(pricing.saving)}
                         </span>
                       )}

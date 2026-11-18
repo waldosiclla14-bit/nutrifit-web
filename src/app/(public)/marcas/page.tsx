@@ -29,11 +29,8 @@ export default function BrandsPage() {
     <div className="bg-sport-bg text-gray-900">
       <section className="container-px py-14 sm:py-20">
         <Reveal className="mx-auto max-w-2xl text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">
-            MARCAS
-          </p>
           <h1 className="mt-4 font-display text-4xl uppercase tracking-wide sm:text-5xl">
-            Nuestras <span className="text-sport-green">marcas</span>
+            Nuestras <span className="text-sport-greenText">marcas</span>
           </h1>
           <p className="mt-5 text-base leading-relaxed text-gray-500">
             Trabajamos con marcas de suplementos reconocidas. Todos nuestros productos son
@@ -62,10 +59,10 @@ export default function BrandsPage() {
                     {brand.name}
                   </h2>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                    <BadgeCheck size={13} className="text-sport-green" />
+                    <BadgeCheck size={13} className="text-sport-greenText" />
                     {brand.count} producto{brand.count === 1 ? '' : 's'}
                   </p>
-                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-sport-green transition-all duration-300 group-hover:gap-2">
+                  <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-sport-greenText transition-all duration-300 group-hover:gap-2">
                     Ver productos <ArrowRight size={12} />
                   </span>
                 </div>

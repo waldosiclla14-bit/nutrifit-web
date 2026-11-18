@@ -25,6 +25,9 @@ const config: Config = {
           textMuted: '#64748B',
           green: '#72BF44',
           greenLight: '#8ACF63',
+          // Text-safe variants: #72BF44 y #F97316 no pasan AA como texto sobre blanco.
+          greenText: '#3D6A20',
+          orangeText: '#C2410C',
           orange: '#F97316',
         },
         border: 'var(--border)',

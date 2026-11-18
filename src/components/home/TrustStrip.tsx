@@ -11,14 +11,14 @@ const PROMISES = [
 function Item({ icon: Icon, title, text }: { icon: React.ComponentType<{ size?: number }>; title: string; text: string }) {
   return (
     <div className="flex w-[260px] shrink-0 items-center gap-3 px-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-green">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-greenText">
         <Icon size={18} />
       </span>
       <div className="min-w-0">
         <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-gray-900">
           {title}
         </p>
-        <p className="truncate text-xs text-gray-400">{text}</p>
+        <p className="truncate text-xs text-gray-500">{text}</p>
       </div>
     </div>
   );
@@ -46,14 +46,14 @@ export default function TrustStrip() {
       <div className="container-px hidden lg:grid grid-cols-4 gap-x-6 py-5">
         {PROMISES.map(({ icon: Icon, title, text }) => (
           <div key={title} className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-green">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sport-green/15 text-sport-greenText">
               <Icon size={18} />
             </span>
             <div className="min-w-0">
               <p className="text-xs font-extrabold uppercase leading-tight tracking-wide text-gray-900">
                 {title}
               </p>
-              <p className="truncate text-xs text-gray-400">{text}</p>
+              <p className="truncate text-xs text-gray-500">{text}</p>
             </div>
           </div>
         ))}

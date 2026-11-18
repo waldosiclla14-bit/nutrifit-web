@@ -19,19 +19,35 @@ export default function Reveal({
     setMounted(true);
     const el = ref.current;
     if (!el) return;
+
+    const show = () => el.classList.add('is-visible');
+
+    // Sin movimiento: el contenido se muestra de inmediato.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      show();
+      return;
+    }
+
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            el.classList.add('is-visible');
+            show();
             obs.unobserve(el);
           }
         });
       },
-      { threshold: 0.15 },
+      { threshold: 0, rootMargin: '0px 0px -8% 0px' },
     );
     obs.observe(el);
-    return () => obs.disconnect();
+
+    // Red de seguridad: si el observer nunca dispara, el contenido no queda oculto.
+    const fallback = window.setTimeout(show, 1600);
+
+    return () => {
+      obs.disconnect();
+      window.clearTimeout(fallback);
+    };
   }, []);
 
   return (

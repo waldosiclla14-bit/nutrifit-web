@@ -40,7 +40,7 @@ export default function BundleImages({
       {products.length > 1 && (
         <span
           aria-hidden="true"
-          className="absolute z-10 flex h-8 w-8 items-center justify-center rounded-full border border-sport-border bg-sport-card text-base font-extrabold text-sport-green shadow-sm"
+          className="absolute z-10 flex h-8 w-8 items-center justify-center rounded-full border border-sport-border bg-sport-card text-base font-extrabold text-sport-greenText shadow-sm"
         >
           +
         </span>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag } from 'lucide-react';
 import { BUNDLES, PRODUCTS } from '@/data/seed';
 import { useCart } from '@/context/CartContext';
@@ -29,48 +28,43 @@ export default function StickyBottomBar() {
   };
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-          className="fixed bottom-0 left-0 right-0 z-50 border-t border-sport-border/50 bg-sport-bg/95 px-4 py-3 backdrop-blur-xl lg:hidden"
+    <div
+      aria-hidden={!visible}
+      inert={!visible}
+      className={`fixed bottom-0 left-0 right-0 z-50 border-t border-sport-border/50 bg-sport-bg/95 px-4 py-3 backdrop-blur-xl transition-transform duration-300 motion-reduce:transition-none lg:hidden ${
+        visible ? 'translate-y-0' : 'pointer-events-none translate-y-full'
+      }`}
+    >
+      <div className="container-px flex items-center gap-3">
+        {/* Mini image */}
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-50">
+          <Image
+            src="/img/producto1.webp"
+            alt="Pack Proteína + Creatina"
+            fill
+            sizes="48px"
+            className="object-contain p-1"
+          />
+        </div>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-bold text-gray-900">{title}</p>
+          <p className="font-display text-xl tracking-wide text-sport-greenText">
+            {formatPrice(price)}
+          </p>
+        </div>
+
+        {/* CTA */}
+        <button
+          type="button"
+          onClick={addPack}
+          className="flex h-11 items-center gap-2 rounded-full bg-sport-green px-5 text-[13px] font-extrabold text-ink shadow-sportGlow transition-colors hover:bg-sport-greenLight focus-visible:ring-2 focus-visible:ring-sport-green"
         >
-          <div className="container-px flex items-center gap-3">
-            {/* Mini image */}
-            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-50">
-              <Image
-                src="/img/producto1.webp"
-                alt="Pack Proteína + Creatina"
-                fill
-                sizes="48px"
-                className="object-contain p-1"
-              />
-            </div>
-
-            {/* Info */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-bold text-gray-900">{title}</p>
-              <p className="font-display text-xl tracking-wide text-sport-green">
-                {formatPrice(price)}
-              </p>
-            </div>
-
-            {/* CTA */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="button"
-              onClick={addPack}
-              className="flex h-11 items-center gap-2 rounded-full bg-sport-green px-5 text-[13px] font-extrabold text-white shadow-sportGlow focus-visible:ring-2 focus-visible:ring-sport-green"
-            >
-              <ShoppingBag size={16} />
-              Agregar
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <ShoppingBag size={16} />
+          Agregar
+        </button>
+      </div>
+    </div>
   );
 }

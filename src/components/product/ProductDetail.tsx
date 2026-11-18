@@ -76,15 +76,24 @@ export default function ProductDetail({
   return (
     <div className="container-px py-10">
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-        <Link href="/" className="transition-colors hover:text-sport-orange">
+        <Link href="/" className="transition-colors hover:text-sport-orangeText">
           Inicio
         </Link>
         <ChevronRight size={12} />
-        <Link href="/productos" className="transition-colors hover:text-sport-orange">
+        <Link href="/productos" className="transition-colors hover:text-sport-orangeText">
           Catálogo
         </Link>
         <ChevronRight size={12} />
-        <span className="font-semibold text-gray-900">{product.name}</span>
+        <Link
+          href={`/productos/categoria/${product.category}`}
+          className="transition-colors hover:text-sport-orangeText"
+        >
+          {product.categoryLabel}
+        </Link>
+        <ChevronRight size={12} />
+        <span aria-current="page" className="font-semibold text-gray-900">
+          {product.name}
+        </span>
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
@@ -99,15 +108,15 @@ export default function ProductDetail({
               className="object-contain p-8"
             />
             {discount && (
-              <span className="absolute left-4 top-4 rounded-full bg-sport-green px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white">
+              <span className="absolute left-4 top-4 rounded-full bg-sport-green px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-ink">
                 -{discount}%
               </span>
             )}
           </div>
           <ul className="mt-4 grid gap-3 sm:grid-cols-3">
             {infoCards.map((card) => (
-              <li key={card.text} className="flex items-center gap-2.5 rounded-2xl border border-sport-border bg-sport-surface px-4 py-3 text-xs font-semibold">
-                <card.icon size={16} className="shrink-0 text-sport-orange" />
+              <li key={card.text} className="flex items-center gap-2.5 rounded-2xl bg-sport-surface px-4 py-3 text-xs font-semibold">
+                <card.icon size={16} className="shrink-0 text-sport-orangeText" />
                 {card.text}
               </li>
             ))}
@@ -116,7 +125,7 @@ export default function ProductDetail({
 
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-sport-green">
+            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-ink">
               {product.brand}
             </span>
             {product.bestseller && (
@@ -142,7 +151,7 @@ export default function ProductDetail({
               </span>
             )}
             {discount && product.oldPrice && (
-              <span className="mb-1 rounded-full bg-sport-green px-2 py-0.5 text-xs font-extrabold text-white">
+              <span className="mb-1 rounded-full bg-sport-green px-2 py-0.5 text-xs font-extrabold text-ink">
                 Ahorras {formatPrice(product.oldPrice - product.price)}
               </span>
             )}
@@ -175,7 +184,7 @@ export default function ProductDetail({
                     className={cx(
                       'rounded-full border px-4 py-2 text-sm font-bold transition-all',
                       v.name === flavor
-                        ? 'border-accent bg-sport-green text-white shadow-sm'
+                        ? 'border-accent bg-sport-green text-ink shadow-sm'
                         : 'border-sport-border bg-sport-card text-gray-900 hover:border-accent',
                     )}
                   >
@@ -248,7 +257,7 @@ export default function ProductDetail({
       <div className="mt-14 grid gap-8 lg:grid-cols-3">
         <div className="rounded-3xl border border-sport-border p-6 lg:col-span-2">
           <SectionTitle>Detalles del producto</SectionTitle>
-          <div className="space-y-6 text-sm leading-relaxed text-gray-700">
+          <div className="max-w-[65ch] space-y-6 text-sm leading-relaxed text-gray-700">
             <div>
               <h3 className="mb-1.5 font-bold text-gray-900">{isAccessory ? 'Cuidado y uso' : 'Modo de uso'}</h3>
               <p>{product.modoUso}</p>

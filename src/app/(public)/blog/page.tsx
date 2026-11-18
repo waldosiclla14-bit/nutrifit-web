@@ -14,9 +14,8 @@ export default function BlogPage() {
   return (
     <div className="container-px py-12">
       <Reveal className="mb-10">
-        <p className="section-label">BLOG</p>
         <h1 className="section-title">
-          Aprende con <span className="text-sport-orange">NutriFit</span>
+          Aprende con <span className="text-sport-orangeText">NutriFit</span>
         </h1>
         <p className="mt-2 max-w-xl text-sm text-sport-textMuted">
           Guías y consejos prácticos para elegir bien tus suplementos y potenciar tu rendimiento.

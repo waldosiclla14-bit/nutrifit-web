@@ -9,7 +9,7 @@ import { BRAND } from '@/data/seed';
  */
 export default function TopBar() {
   return (
-    <div className="bg-sport-green text-white">
+    <div className="bg-sport-green text-ink">
       <div className="container-px flex h-9 items-center justify-between gap-4 text-[12px] font-semibold">
         <p className="hidden items-center gap-1.5 sm:flex">
           <Train size={14} className="shrink-0" />

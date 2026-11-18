@@ -46,7 +46,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
         />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {discount && (
-            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-ink">
               -{discount}%
             </span>
           )}
@@ -55,16 +55,16 @@ export default function BestSellerCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex flex-1 flex-col gap-1.5 p-4 pt-3">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
           {product.brand}
         </p>
         <Link
           href={`/productos/${product.slug}`}
-          className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 transition-colors hover:text-sport-green"
+          className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 transition-colors hover:text-sport-greenText"
         >
           {product.name}
         </Link>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <div className="flex items-center gap-1.5 text-xs text-gray-500">
           {ratings ? (
             <>
               <Stars rating={ratings.rating} size={13} />
@@ -79,7 +79,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="flex flex-col">
             {discount && product.oldPrice && (
-              <span className="text-sm text-gray-400 line-through">{formatPrice(product.oldPrice)}</span>
+              <span className="text-sm text-gray-500 line-through">{formatPrice(product.oldPrice)}</span>
             )}
             <span className="text-[18px] font-bold leading-none text-gray-900">
               {formatPrice(product.price)}
@@ -89,7 +89,7 @@ export default function BestSellerCard({ product }: { product: Product }) {
             type="button"
             onClick={addToCart}
             aria-label={`Agregar ${product.name} al carrito`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-sport-green text-white transition-all duration-300 hover:bg-sport-greenLight group-hover:shadow-sportGlow"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-sport-green text-ink transition-all duration-300 hover:bg-sport-greenLight group-hover:shadow-sportGlow"
           >
             <ShoppingBag size={17} />
           </button>

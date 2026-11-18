@@ -52,7 +52,7 @@ export default function ProductCard({ product }: { product: Product }) {
           src={product.image}
           alt={product.name}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          sizes="(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
           onLoad={() => setLoaded(true)}
           className={cx(
             'object-contain p-5 transition-transform duration-500 group-hover:scale-105',
@@ -61,17 +61,17 @@ export default function ProductCard({ product }: { product: Product }) {
         />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
           {discount && (
-            <span className="rounded-full bg-sport-green px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+            <span className="rounded-full bg-sport-green px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-ink">
               -{discount}%
             </span>
           )}
           {product.bestseller && (
-            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
+            <span className="rounded-full bg-sport-orange px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-ink">
               Más vendido
             </span>
           )}
           {hasVariants && (
-            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-sport-orange shadow-sm">
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-sport-orangeText shadow-sm">
               {(product.variants || []).length} sabores
             </span>
           )}
@@ -96,7 +96,7 @@ export default function ProductCard({ product }: { product: Product }) {
         </p>
         <Link
           href={`/productos/${product.slug}`}
-          className="line-clamp-2 text-sm font-bold leading-snug transition-colors hover:text-sport-green"
+          className="line-clamp-2 text-sm font-bold leading-snug transition-colors hover:text-sport-greenText"
         >
           {product.name}
         </Link>
@@ -108,7 +108,7 @@ export default function ProductCard({ product }: { product: Product }) {
               <span>({ratings.count})</span>
             </>
           ) : (
-            <span className="text-gray-400">Sin reseñas todavía</span>
+            <span className="text-gray-500">Sin reseñas todavía</span>
           )}
         </div>
 
@@ -127,7 +127,7 @@ export default function ProductCard({ product }: { product: Product }) {
             type="button"
             onClick={addToCart}
             aria-label={`Agregar ${product.name} al carrito`}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-sport-orange text-white transition-all duration-300 hover:bg-sport-green hover:text-white group-hover:shadow-glow"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-sport-orange text-ink transition-all duration-300 hover:bg-sport-green hover:text-ink group-hover:shadow-glow"
           >
             <ShoppingBag size={17} />
           </button>
