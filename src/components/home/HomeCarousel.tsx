@@ -12,7 +12,6 @@ import BestSellerCard from '@/components/home/BestSellerCard';
  */
 export default function HomeCarousel({
   id,
-  eyebrow,
   title,
   highlight,
   subtitle,
@@ -20,7 +19,6 @@ export default function HomeCarousel({
   surface = true,
 }: {
   id: string;
-  eyebrow: string;
   title: string;
   highlight?: string;
   subtitle: string;
@@ -42,7 +40,7 @@ export default function HomeCarousel({
       type="button"
       onClick={() => scroll(dir)}
       aria-label={dir < 0 ? 'Anterior' : 'Siguiente'}
-      className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-green"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-sport-border bg-sport-card text-gray-500 transition-colors hover:border-sport-green hover:text-sport-greenText"
     >
       {dir < 0 ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
     </button>
@@ -53,9 +51,8 @@ export default function HomeCarousel({
       <div className="container-px">
         <Reveal className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">{eyebrow}</p>
-            <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
-              {title} {highlight && <span className="text-sport-green">{highlight}</span>}
+            <h2 className="font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
+              {title} {highlight && <span className="text-sport-greenText">{highlight}</span>}
             </h2>
             <p className="mt-2 max-w-xl text-sm text-gray-500">{subtitle}</p>
           </div>

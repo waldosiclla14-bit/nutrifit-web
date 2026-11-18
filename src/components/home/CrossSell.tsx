@@ -39,9 +39,8 @@ export default function CrossSell() {
     <section className="bg-sport-bg py-14 lg:py-[100px]">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">COMPRADOS JUNTOS</p>
           <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
-            Los que compraron esto <span className="text-sport-green">también llevaron</span>
+            Los que compraron esto <span className="text-sport-greenText">también llevaron</span>
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-gray-500">
             Combina los favoritos y ahorra {BUNDLE_DISCOUNT}% en tu pedido.
@@ -64,23 +63,23 @@ export default function CrossSell() {
                       />
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500">
                         {product.brand}
                       </p>
                       <p className="mt-1 text-sm font-bold leading-snug text-gray-900 line-clamp-2">
                         {product.name}
                       </p>
-                      <p className="mt-1 text-sm font-bold text-sport-green">
+                      <p className="mt-1 text-sm font-bold text-sport-greenText">
                         {formatPrice(product.price)}
                       </p>
                     </div>
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sport-green text-white">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sport-green text-ink">
                       <Check size={12} strokeWidth={3} />
                     </span>
                   </div>
                   {i < products.length - 1 && (
                     <span className="hidden items-center justify-center sm:flex">
-                      <Plus size={18} className="text-gray-400" />
+                      <Plus size={18} className="text-gray-500" />
                     </span>
                   )}
                 </div>
@@ -89,19 +88,19 @@ export default function CrossSell() {
 
             <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-sport-border/50 bg-sport-card p-6 sm:flex-row sm:justify-between">
               <div>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500">
                   <span className="line-through">{formatPrice(total)}</span>
-                  <span className="ml-2 text-xs font-bold text-sport-orange">-{BUNDLE_DISCOUNT}%</span>
+                  <span className="ml-2 text-xs font-bold text-sport-orangeText">-{BUNDLE_DISCOUNT}%</span>
                 </p>
-                <p className="font-display text-2xl leading-none tracking-wide text-sport-green">
+                <p className="font-display text-2xl leading-none tracking-wide text-sport-greenText">
                   {formatPrice(finalPrice)}
                 </p>
-                <p className="mt-1 text-xs text-gray-400">Ahorras {formatPrice(discount)}</p>
+                <p className="mt-1 text-xs text-gray-500">Ahorras {formatPrice(discount)}</p>
               </div>
               <button
                 type="button"
                 onClick={addAll}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-sport-green px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50 w-full sm:w-auto"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-sport-green px-7 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sportGlow focus:outline-none focus-visible:ring-2 focus-visible:ring-sport-green disabled:pointer-events-none disabled:opacity-50 w-full sm:w-auto"
               >
                 <ShoppingBag size={18} />
                 Agregar los 3 al carrito

@@ -121,26 +121,26 @@
 
 ## 3. Inventario de imágenes
 
-**Total: 42 archivos, 13,98 MB.** 7 PNG, 8 JPG, 27 WEBP.
+**Actualizado 2026-11-17.** Los 7 masters de ≥1,5 MB se convirtieron a WebP q88:
+**12,2 MB → 1,07 MB (-91%)**, misma resolución. Las rutas en `src/data/seed.ts` apuntan
+a los `.webp`, así que `og:image` y el JSON-LD también dejan de servir un PNG de 2 MB.
 
-| Archivo | Peso | Uso |
+| Archivo | Antes | Ahora |
 |---|---|---|
-| `fnl-omega-3-premium.png` | 1.952 KB | Producto 9 |
-| `FullEnergic 100% Vegan Protein Cookies & Cream 1kg.png` | 1.861 KB | Producto 6 |
-| `creatina full energic 300g.png` | 1.733 KB | Producto 7 |
-| `Whey Protein FNL 947g Chocolate Suizo.png` | 1.732 KB | Producto 37 |
-| `rain-testofull-ultra.png` | 1.691 KB | Producto 30 |
-| `proteina whey full energic + creatina eco naturales 300g.png` | 1.655 KB | Banner del pack |
-| `ostrovit-whey.jpg` | 1.596 KB | Producto 36 |
-| `producto34.jpg` … `producto37.jpg` | 151–206 KB | Productos 31–34 |
-| `producto1/4/6/8/9.webp` | 10–70 KB | Hero, categorías y packs |
-| `producto7.webp` | — | **Sin referencias: huérfana** |
+| `fnl-omega-3-premium` | 1.952 KB PNG | 147 KB WebP |
+| `fullenergic-vegan-protein-cookies-cream-1kg` | 1.861 KB PNG | 147 KB WebP |
+| `creatina-full-energic-300g` | 1.733 KB PNG | 150 KB WebP |
+| `whey-protein-fnl-947g-chocolate-suizo` | 1.732 KB PNG | 202 KB WebP |
+| `rain-testofull-ultra` | 1.691 KB PNG | 127 KB WebP |
+| `proteina-whey-full-energic-creatina-eco-naturales-300g` | 1.655 KB PNG | 172 KB WebP |
+| `ostrovit-whey` | 1.596 KB JPG | 125 KB WebP |
 
 Notas:
-- **7 archivos ≥ 1,5 MB.** Con `next/image` se sirven redimensionados (la ficha pidió `w=750` → 15 KB), pero **las `og:image` apuntan al PNG original**: `generateMetadata` arma `${SITE_URL}${product.image}` y el JSON-LD usa la misma ruta. Un `og:image` de 1,9 MB rompe las previsualizaciones en WhatsApp/redes.
-- **Nombres con espacios y mayúsculas** (`creatina full energic 300g.png`): se codifican como `%20` en cada URL y ensucian el cache/CDN.
-- **Fondos y encuadres heterogéneos:** los `.webp` son fotos de estudio con fondo blanco/gris; los PNG/JPG nuevos tienen otro fondo y otra relación de aspecto. La lista definitiva para el dueño se genera en Fase 3.7.
-- **`sizes` incorrecto en tarjetas:** `ProductCard.tsx:53` declara `(max-width: 640px) 100vw`, pero en móvil la grilla es de 2 columnas (~50vw) → se descarga una imagen al doble del tamaño necesario.
+- **Nombres en kebab-case**, sin espacios: no hace falta escapar `%20` en URLs ni en el cache.
+- **`sizes` corregido en `ProductCard`**: declaraba `100vw` en móvil, pero la grilla de catálogo
+  es de 2 columnas. Ahora `(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw`, la mitad
+  de píxeles descargados en móvil.
+- **`producto7.webp` sin referencias:** sigue huérfana, se puede borrar.
 
 ---
 

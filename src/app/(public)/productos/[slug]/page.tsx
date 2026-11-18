@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { PRODUCTS, PRODUCT_ALIASES, BRAND } from '@/data/seed';
 import ProductDetail from '@/components/product/ProductDetail';
 import { buildProductJsonLd } from '@/lib/seo/merchant-config';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, seoTitle } from '@/lib/site';
 
 export function generateStaticParams() {
   return [...PRODUCTS.map((p) => ({ slug: p.slug })), ...Object.keys(PRODUCT_ALIASES).map((slug) => ({ slug }))];
@@ -25,20 +25,22 @@ export async function generateMetadata({
   const { slug } = await params;
   const product = PRODUCTS.find((p) => p.slug === slug);
   if (!product) return {};
-  const title = `${product.name} · $${product.price.toLocaleString('es-CL')}`;
+  // seoTitle recorta a un largo visible en SERP y agrega " | NutriFit", así que
+  // el título va como `absolute` para que el template no lo sufije dos veces.
+  const title = seoTitle(`${product.name} · $${product.price.toLocaleString('es-CL')}`, 65);
   const description = productDescription(product);
   const image = `${SITE_URL}${product.image}`;
   return {
-    title,
+    title: { absolute: title },
     description,
     openGraph: {
-      title: `${title} | ${BRAND.name}`,
+      title,
       description,
       url: `${SITE_URL}/productos/${product.slug}`,
       images: [{ url: image, alt: product.name }],
     },
     twitter: {
-      title: `${title} | ${BRAND.name}`,
+      title,
       description,
       images: [{ url: image, alt: product.name }],
     },
@@ -52,10 +54,12 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  let product = PRODUCTS.find((p) => p.slug === slug);
+  const product = PRODUCTS.find((p) => p.slug === slug);
   if (!product) {
+    // Los slugs históricos (sabor dentro de la URL, nombres anteriores) se
+    // resuelven con 308 permanente para consolidar señales en la URL nueva.
     const target = PRODUCT_ALIASES[slug];
-    if (target) redirect(`/productos/${target}`);
+    if (target) permanentRedirect(`/productos/${target}`);
     notFound();
   }
 
@@ -65,11 +69,33 @@ export default async function ProductPage({
 
   const productJsonLd = buildProductJsonLd(product);
 
+  // Migas de pan idénticas a las visibles en ProductDetail (Inicio › Catálogo ›
+  // Categoría › Producto): el JSON-LD no debe describir una ruta distinta.
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: BRAND.url },
+      { '@type': 'ListItem', position: 2, name: 'Catálogo', item: `${SITE_URL}/productos` },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: product.categoryLabel,
+        item: `${SITE_URL}/productos/categoria/${product.category}`,
+      },
+      { '@type': 'ListItem', position: 4, name: product.name },
+    ],
+  };
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <ProductDetail product={product} related={related} />
     </>

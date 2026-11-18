@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
   BadgeCheck,
   Check,
@@ -72,6 +71,52 @@ export default function CartDrawer() {
       document.body.style.overflow = '';
     };
   }, [isOpen]);
+
+  // Diálogo modal: foco al abrir, retorno al cerrar y Escape.
+  const panelRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    openerRef.current = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    const focusables = panel?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    focusables?.[0]?.focus() ?? panel?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        if (placed) finishOrder();
+        else closeCart();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel) return;
+      const list = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      openerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, placed]);
 
   useEffect(() => {
     if (!metroLine) return;
@@ -295,13 +340,19 @@ export default function CartDrawer() {
         aria-hidden="true"
       />
       <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-sport-card shadow-2xl transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cart-drawer-title"
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        tabIndex={-1}
+        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-sport-card shadow-2xl outline-none transition-transform duration-300 ${
+          isOpen ? 'translate-x-0' : 'pointer-events-none invisible translate-x-full'
         }`}
-        aria-label="Carrito de compras"
       >
         <div className="flex items-center justify-between border-b border-sport-border px-5 py-4">
-          <h3 className="font-display text-xl uppercase tracking-wide">
+          <h3 id="cart-drawer-title" className="font-display text-xl uppercase tracking-wide">
             {placed ? 'Pedido enviado' : 'Tu Carrito'}
             {!placed && itemCount > 0 && (
               <span className="ml-1 text-sm font-normal text-sport-textMuted">({itemCount})</span>
@@ -319,14 +370,9 @@ export default function CartDrawer() {
 
         {placed ? (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-6 py-8 text-center">
-            <motion.div
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', damping: 15 }}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-sport-green text-white"
-            >
+            <div className="pop-in flex h-16 w-16 items-center justify-center rounded-full bg-sport-green text-ink">
               <CheckCircle2 size={32} />
-            </motion.div>
+            </div>
             <p className="font-display text-2xl uppercase tracking-wide">¡Pedido casi listo!</p>
             <p className="text-sm leading-relaxed text-sport-textMuted">
               Abrimos WhatsApp con tu pedido listo para enviar. Solo presiona enviar y te
@@ -354,7 +400,7 @@ export default function CartDrawer() {
 
             {offerProducts.length > 0 && (
               <div className="mt-2 w-full rounded-3xl border border-sport-green/60 bg-sport-green/10 p-5 text-left">
-                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-sport-orange">
+                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-sport-orangeText">
                   <Plus size={13} /> ¿Agregas un complemento?
                 </p>
                 <p className="mt-2 text-sm font-semibold text-sport-text">
@@ -423,16 +469,14 @@ export default function CartDrawer() {
               {giftEnabled && (
                 <div className="mt-3">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-sport-surface">
-                    <motion.div
-                      className="h-full rounded-full bg-sport-orange"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${giftProgress}%` }}
-                      transition={{ duration: 0.6 }}
+                    <div
+                      className="h-full rounded-full bg-sport-orange transition-[width] duration-500 ease-out motion-reduce:transition-none"
+                      style={{ width: `${giftProgress}%` }}
                     />
                   </div>
                   {hasGift && giftProduct ? (
                     <div className="mt-2 flex items-center gap-2 rounded-xl bg-sport-green/20 px-3 py-2">
-                      <Gift size={14} className="shrink-0 text-sport-orange" />
+                      <Gift size={14} className="shrink-0 text-sport-orangeText" />
                       <p className="text-xs font-semibold text-sport-text">
                         ¡Recibes un regalo! {giftProduct.name}
                       </p>
@@ -450,16 +494,14 @@ export default function CartDrawer() {
               {!couponCode && rewardEnabled && (
                 <div className="mt-3">
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-sport-surface">
-                    <motion.div
-                      className="h-full rounded-full bg-sport-green"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${rewardProgress}%` }}
-                      transition={{ duration: 0.6 }}
+                    <div
+                      className="h-full rounded-full bg-sport-green transition-[width] duration-500 ease-out motion-reduce:transition-none"
+                      style={{ width: `${rewardProgress}%` }}
                     />
                   </div>
                   <p className="mt-2 text-xs text-sport-textMuted">
                     {rewardDiscount > 0 ? (
-                      <span className="font-semibold text-sport-orange">
+                      <span className="font-semibold text-sport-orangeText">
                         ¡Tienes {settings.rewardPercent}% de descuento aplicado!
                       </span>
                     ) : (
@@ -476,90 +518,81 @@ export default function CartDrawer() {
               )}
 
               <p className="mt-3 text-[11px] font-semibold text-sport-textMuted">
-                <span className="text-sport-orange">Retiro en Metro de Santiago</span> · Líneas 1, 2,
+                <span className="text-sport-orangeText">Retiro en Metro de Santiago</span> · Líneas 1, 2,
                 3, 4, 4A, 5 y 6 · o{' '}
-                <span className="text-sport-orange">envío a domicilio</span> en Santiago
+                <span className="text-sport-orangeText">envío a domicilio</span> en Santiago
               </p>
             </div>
             )}
 
             <div className="px-5 py-4">
               <ul className="space-y-4">
-                <AnimatePresence initial={false}>
-                  {items.map((item) => (
-                    <motion.li
-                      key={item.key}
-                      layout
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: 40 }}
-                      className="flex gap-3.5"
-                    >
-                      <Link href={`/productos/${item.slug}`} onClick={closeCart} className="shrink-0">
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          width={72}
-                          height={72}
-                          className="h-[72px] w-[72px] rounded-xl border border-sport-border object-cover"
-                        />
-                      </Link>
-                      <div className="flex flex-1 flex-col">
-                        <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</p>
-                        {item.isGift && (
-                          <span className="mt-1 w-fit rounded-full bg-sport-green/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sport-orange">
-                            Regalo
-                          </span>
-                        )}
-                        <div className="mt-1 flex items-center justify-between">
-                          {item.isGift ? (
-                            <span className="text-xs font-semibold text-sport-orange">Gratis</span>
-                          ) : (
-                            <div className="flex items-center rounded-full border border-sport-border">
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.key, item.quantity - 1)}
-                                aria-label="Disminuir cantidad"
-                                className="flex h-7 w-7 items-center justify-center rounded-l-full transition-colors hover:bg-sport-surface"
-                              >
-                                <Minus size={13} />
-                              </button>
-                              <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
-                              <button
-                                type="button"
-                                onClick={() => updateQuantity(item.key, item.quantity + 1)}
-                                aria-label="Aumentar cantidad"
-                                className="flex h-7 w-7 items-center justify-center rounded-r-full transition-colors hover:bg-sport-surface"
-                              >
-                                <Plus size={13} />
-                              </button>
-                            </div>
-                          )}
-                          {!item.isGift && (
+                {items.map((item) => (
+                  <li key={item.key} className="fade-up flex gap-3.5">
+                    <Link href={`/productos/${item.slug}`} onClick={closeCart} className="shrink-0">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        width={72}
+                        height={72}
+                        className="h-[72px] w-[72px] rounded-xl border border-sport-border object-cover"
+                      />
+                    </Link>
+                    <div className="flex flex-1 flex-col">
+                      <p className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</p>
+                      {item.isGift && (
+                        <span className="mt-1 w-fit rounded-full bg-sport-green/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sport-orangeText">
+                          Regalo
+                        </span>
+                      )}
+                      <div className="mt-1 flex items-center justify-between">
+                        {item.isGift ? (
+                          <span className="text-xs font-semibold text-sport-orangeText">Gratis</span>
+                        ) : (
+                          <div className="flex items-center rounded-full border border-sport-border">
                             <button
                               type="button"
-                              onClick={() => removeItem(item.key)}
-                              aria-label="Eliminar producto"
-                              className="flex h-8 w-8 items-center justify-center rounded-full text-sport-textMuted transition-colors hover:bg-red-900/30 hover:text-red-500"
+                              onClick={() => updateQuantity(item.key, item.quantity - 1)}
+                              aria-label="Disminuir cantidad"
+                              className="flex h-7 w-7 items-center justify-center rounded-l-full transition-colors hover:bg-sport-surface"
                             >
-                              <Trash2 size={15} />
+                              <Minus size={13} />
                             </button>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2">
-                          {item.discount > 0 && !item.isGift && (
-                            <span className="text-xs text-sport-textMuted line-through">
-                              {formatPrice((item.price + item.discount) * item.quantity)}
-                            </span>
-                          )}
-                          <span className={`text-sm font-bold ${item.isGift ? 'text-sport-orange' : 'text-sport-orange'}`}>
-                            {item.isGift ? 'Gratis' : formatPrice(item.price * item.quantity)}
-                          </span>
-                        </div>
+                            <span className="w-7 text-center text-xs font-bold">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.key, item.quantity + 1)}
+                              aria-label="Aumentar cantidad"
+                              className="flex h-7 w-7 items-center justify-center rounded-r-full transition-colors hover:bg-sport-surface"
+                            >
+                              <Plus size={13} />
+                            </button>
+                          </div>
+                        )}
+                        {!item.isGift && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.key)}
+                            aria-label="Eliminar producto"
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-sport-textMuted transition-colors hover:bg-red-900/30 hover:text-red-500"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
+                      <div className="mt-1 flex items-center gap-2">
+                        {item.discount > 0 && !item.isGift && (
+                          <span className="text-xs text-sport-textMuted line-through">
+                            {formatPrice((item.price + item.discount) * item.quantity)}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold text-sport-orange">
+                          {item.isGift ? 'Gratis' : formatPrice(item.price * item.quantity)}
+                        </span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
               </ul>
 
               {suggested.length > 0 && (
@@ -583,7 +616,7 @@ export default function CartDrawer() {
                           <Link
                             href={`/productos/${p.slug}`}
                             onClick={closeCart}
-                            className="block truncate text-sm font-semibold hover:text-sport-orange"
+                            className="block truncate text-sm font-semibold hover:text-sport-orangeText"
                           >
                             {p.name}
                           </Link>
@@ -604,7 +637,7 @@ export default function CartDrawer() {
                               quantity: 1,
                             })
                           }
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sport-orange text-paper transition-colors hover:bg-sport-green hover:text-white"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sport-orange text-paper transition-colors hover:bg-sport-green hover:text-ink"
                         >
                           <Plus size={15} />
                         </button>
@@ -623,15 +656,15 @@ export default function CartDrawer() {
                 </div>
                 {couponCode ? (
                   <div className="flex justify-between">
-                    <span className="text-sport-orange">Cupón ({couponPercent}%)</span>
-                    <span className="font-semibold text-sport-orange">
+                    <span className="text-sport-orangeText">Cupón ({couponPercent}%)</span>
+                    <span className="font-semibold text-sport-orangeText">
                       -{formatPrice(couponDiscount)}
                     </span>
                   </div>
                 ) : rewardDiscount > 0 ? (
                   <div className="flex justify-between">
-                    <span className="text-sport-orange">Descuento meta ({settings.rewardPercent}%)</span>
-                    <span className="font-semibold text-sport-orange">
+                    <span className="text-sport-orangeText">Descuento meta ({settings.rewardPercent}%)</span>
+                    <span className="font-semibold text-sport-orangeText">
                       -{formatPrice(rewardDiscount)}
                     </span>
                   </div>
@@ -731,7 +764,7 @@ export default function CartDrawer() {
                           setCouponInput('');
                           setCouponError('');
                         }}
-                        className="text-[11px] font-bold text-sport-orange"
+                        className="text-[11px] font-bold text-sport-orangeText"
                       >
                         Quitar
                       </button>
@@ -740,13 +773,13 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[11px] font-semibold text-sport-textMuted">
                   <span className="flex items-center gap-1">
-                    <ShieldCheck size={13} className="text-sport-orange" /> {siteConfig.warranty.short}
+                    <ShieldCheck size={13} className="text-sport-orangeText" /> {siteConfig.warranty.short}
                   </span>
                   <span className="flex items-center gap-1">
-                    <BadgeCheck size={13} className="text-sport-orange" /> Productos originales
+                    <BadgeCheck size={13} className="text-sport-orangeText" /> Productos originales
                   </span>
                   <span className="flex items-center gap-1">
-                    <MessageCircle size={13} className="text-sport-orange" /> Confirmación por WhatsApp
+                    <MessageCircle size={13} className="text-sport-orangeText" /> Confirmación por WhatsApp
                   </span>
                 </div>
               </form>

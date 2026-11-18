@@ -12,9 +12,8 @@ export default function FavoritesPage() {
 
   return (
     <div className="container-px py-10">
-      <p className="section-label">MIS FAVORITOS</p>
       <h1 className="section-title mb-8">
-        Tus productos <span className="text-sport-orange">guardados</span>
+        Tus productos <span className="text-sport-orangeText">guardados</span>
       </h1>
 
       {favorites.length > 0 ? (

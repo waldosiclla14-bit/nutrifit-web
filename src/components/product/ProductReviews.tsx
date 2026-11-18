@@ -108,7 +108,7 @@ export default function ProductReviews({
       <div className="mt-6 rounded-3xl border border-sport-border bg-sport-surface p-6">
         <h3 className="font-display text-lg uppercase tracking-wide">Cuéntanos tu experiencia</h3>
         {done && (
-          <p className="mt-2 rounded-xl border border-sport-green/30 bg-sport-green/10 px-4 py-2.5 text-sm font-semibold text-sport-orange">
+          <p className="mt-2 rounded-xl border border-sport-green/30 bg-sport-green/10 px-4 py-2.5 text-sm font-semibold text-sport-orangeText">
             ¡Gracias por tu reseña! Ya quedó publicada.
           </p>
         )}
@@ -149,7 +149,7 @@ export default function ProductReviews({
             className="input resize-none"
           />
           {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
-          <p className="text-[11px] leading-relaxed text-gray-500">
+          <p className="text-xs leading-relaxed text-gray-600">
             Las reseñas se publican como opiniones de clientes. El sello «compra verificada» solo
             lo asigna la tienda cuando puede comprobar el pedido.
           </p>

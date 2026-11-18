@@ -53,7 +53,7 @@ export default function BuyTogether({
   return (
     <section className="mt-14">
       <h2 className="mb-4 font-display text-xl uppercase tracking-wide">
-        Compra juntos y <span className="text-sport-orange">ahorra</span>
+        Compra juntos y <span className="text-sport-orangeText">ahorra</span>
       </h2>
       <div className="rounded-3xl border border-sport-border bg-sport-surface p-6">
         <div className="grid gap-4 sm:grid-cols-3">
@@ -63,12 +63,12 @@ export default function BuyTogether({
               <div key={p.id} className="relative min-w-0">
               {i > 0 && (
                 <span className="absolute -left-4 top-1/2 z-10 hidden -translate-y-1/2 sm:flex">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sport-orange text-sport-green">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-sport-orange text-ink">
                     <Plus size={14} />
                   </span>
                 </span>
               )}
-              <div className="flex items-center gap-3 rounded-2xl border border-sport-border bg-sport-card p-3 sm:flex-col sm:gap-2 sm:text-center">
+              <div className="flex items-center gap-3 rounded-2xl bg-sport-card p-3 sm:flex-col sm:gap-2 sm:text-center">
                 <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-sport-surface sm:h-24 sm:w-24">
                   <Image
                     src={meta.image}
@@ -89,7 +89,7 @@ export default function BuyTogether({
                         {formatPrice(p.oldPrice)}
                       </span>
                     )}
-                    <span className="text-sm font-bold text-sport-orange">
+                    <span className="text-sm font-bold text-sport-orangeText">
                       {formatPrice(p.price)}
                     </span>
                   </div>
@@ -102,7 +102,7 @@ export default function BuyTogether({
 
         <div className="mt-5 flex flex-col items-center justify-between gap-4 border-t border-sport-border pt-5 sm:flex-row">
           <div className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-sport-orange">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sport-green/15 text-sport-orangeText">
               <Check size={18} />
             </span>
             <div>
@@ -115,7 +115,7 @@ export default function BuyTogether({
                 )}
               </p>
               {savings > 0 && (
-                <p className="text-xs font-bold text-sport-orange">
+                <p className="text-xs font-bold text-sport-orangeText">
                   Ahorras {formatPrice(savings)} en este pack
                 </p>
               )}

@@ -96,6 +96,7 @@
 
   body {
     @apply bg-sport-bg font-sans text-sport-text;
+    text-wrap: pretty;
   }
 
   @media screen and (max-width: 767px) {
@@ -155,13 +156,13 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-orange px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-sport-orange px-7 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
     --tw-ring-color: var(--focus-ring);
   }
 
   .btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold tracking-wide text-ink transition-all duration-300 hover:-translate-y-0.5 hover:shadow-glow disabled:pointer-events-none disabled:opacity-50;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
     background-color: var(--brand-green);
     --tw-ring-color: var(--focus-ring);
@@ -180,6 +181,10 @@
   .input {
     @apply w-full rounded-xl border border-sport-border bg-white px-4 py-3 text-sm text-sport-text outline-none transition focus:outline-none focus:ring-2 focus:ring-offset-1;
   }
+  .input::placeholder {
+    color: #64748B;
+    opacity: 1;
+  }
   .input:focus { border-color: var(--brand-green); --tw-ring-color: var(--brand-green); }
 
   .label {
@@ -187,7 +192,7 @@
   }
 
   .section-label {
-    @apply text-xs font-extrabold uppercase tracking-[0.25em] text-sport-orange;
+    @apply text-xs font-extrabold uppercase tracking-[0.25em] text-sport-orangeText;
   }
 
   .section-title {
@@ -428,5 +433,89 @@
   background-size: 44px 44px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+/* ── Entradas con CSS: reemplazan framer-motion en el sitio público ── */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.fade-scale-in {
+  animation: fade-scale-in 0.3s ease both;
+}
+
+.pop-in {
+  animation: pop-in 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Movimiento reducido: se conserva el feedback de estado, no el desplazamiento */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-marquee,
+  .animate-ping,
+  .animate-floaty,
+  .animate-pulse-glow,
+  .animate-pulse-dot,
+  .skeleton {
+    animation: none !important;
+  }
+
+  .reveal,
+  .reveal.js,
+  .reveal.js.is-visible {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .fade-up,
+  .fade-scale-in,
+  .pop-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .btn-primary:hover,
+  .btn-accent:hover,
+  .btn-outline:hover {
+    transform: none !important;
+  }
 }
 

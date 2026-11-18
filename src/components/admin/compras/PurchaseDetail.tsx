@@ -210,7 +210,7 @@ export function PurchaseDetail({
           {p.status === 'CONFIRMED' && (
             <button
               onClick={onStartReceipt}
-              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-white"
+              className="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-ink"
             >
               <Truck className="h-3.5 w-3.5" /> Recepcionar
             </button>

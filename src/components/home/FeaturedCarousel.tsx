@@ -26,7 +26,6 @@ export default function FeaturedCarousel() {
       {top.length > 0 && (
         <HomeCarousel
           id="destacados"
-          eyebrow="MÁS VENDIDOS"
           title="Top"
           highlight="ventas"
           subtitle="Los productos favoritos de nuestros clientes en Santiago."
@@ -36,7 +35,6 @@ export default function FeaturedCarousel() {
       {offers.length > 0 && (
         <HomeCarousel
           id="ofertas"
-          eyebrow="OFERTAS"
           title="En"
           highlight="oferta"
           subtitle="Precios rebajados por tiempo limitado. Aprovecha antes de que se agoten."
@@ -47,7 +45,6 @@ export default function FeaturedCarousel() {
       {arrivals.length > 0 && (
         <HomeCarousel
           id="novedades"
-          eyebrow="RECIÉN LLEGADOS"
           title="Nuevos en"
           highlight="NutriFit"
           subtitle="Lo último que sumamos a nuestro catálogo."

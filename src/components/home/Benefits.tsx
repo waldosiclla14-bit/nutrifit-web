@@ -35,16 +35,15 @@ export default function Benefits() {
     <section className="bg-sport-bg py-14 text-gray-900 lg:py-[100px]" id="beneficios">
       <div className="container-px">
         <Reveal className="mb-10 text-center">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-sport-green">BENEFICIOS</p>
           <h2 className="mt-2 font-display text-[28px] uppercase leading-tight tracking-wide text-gray-900 lg:text-[36px]">
-            Compra con <span className="text-sport-green">confianza</span>
+            Compra con <span className="text-sport-greenText">confianza</span>
           </h2>
         </Reveal>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ITEMS.map((item, i) => (
             <Reveal key={item.title} delay={i * 60}>
               <article className="flex h-full gap-4 rounded-3xl border border-sport-border/50 bg-sport-card p-6 transition-colors hover:border-sport-green/40">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sport-green text-white">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sport-green text-ink">
                   <item.icon size={22} />
                 </span>
                 <div>

@@ -7,11 +7,11 @@ export default function MetroCoverage() {
       <div className="container-px">
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-sport-bg text-sport-green mx-auto">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-sport-bg text-sport-greenText mx-auto">
               <Train size={28} />
             </span>
             <h2 className="mt-6 font-display text-[28px] uppercase tracking-wide text-gray-900 lg:text-[36px]">
-              7 líneas · <span className="text-sport-green">+140 estaciones</span>
+              7 líneas · <span className="text-sport-greenText">+140 estaciones</span>
             </h2>
             <p className="mt-4 text-base leading-relaxed text-gray-500">
               Entregamos en todas las estaciones del Metro de Santiago. Coordinamos la estación y

@@ -28,7 +28,7 @@ export default function Header() {
         <div className="container-px flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5" aria-label="NutriFit – Inicio">
             <span className="font-display text-xl uppercase tracking-wide">
-              Nutri<span className="text-sport-green">Fit</span>
+              Nutri<span className="text-sport-greenText">Fit</span>
             </span>
           </Link>
 
@@ -46,7 +46,7 @@ export default function Header() {
                 type="button"
                 aria-expanded={openMenu === 'cat'}
                 onClick={() => setOpenMenu(openMenu === 'cat' ? null : 'cat')}
-                className="flex items-center gap-1 text-sm font-semibold text-gray-900 transition-colors hover:text-sport-green"
+                className="flex items-center gap-1 text-sm font-semibold text-gray-900 transition-colors hover:text-sport-greenText"
               >
                 Categorías
                 <ChevronDown size={15} className={openMenu === 'cat' ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -57,9 +57,9 @@ export default function Header() {
                     {CATEGORIES.map((c) => (
                       <Link
                         key={c.key}
-                        href={`/productos?cat=${c.key}`}
+                        href={`/productos/categoria/${c.key}`}
                         onClick={() => setOpenMenu(null)}
-                        className="rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-sport-surface hover:text-sport-green"
+                        className="rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-sport-surface hover:text-sport-greenText"
                       >
                         {c.label}
                       </Link>
@@ -78,7 +78,7 @@ export default function Header() {
                 type="button"
                 aria-expanded={openMenu === 'goal'}
                 onClick={() => setOpenMenu(openMenu === 'goal' ? null : 'goal')}
-                className="flex items-center gap-1 text-sm font-semibold text-gray-900 transition-colors hover:text-sport-green"
+                className="flex items-center gap-1 text-sm font-semibold text-gray-900 transition-colors hover:text-sport-greenText"
               >
                 Por objetivo
                 <ChevronDown size={15} className={openMenu === 'goal' ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -91,7 +91,7 @@ export default function Header() {
                         key={key}
                         href={`/productos?goal=${key}`}
                         onClick={() => setOpenMenu(null)}
-                        className="rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-sport-surface hover:text-sport-green"
+                        className="rounded-xl px-3 py-2 text-sm font-semibold text-gray-900 transition-colors hover:bg-sport-surface hover:text-sport-greenText"
                       >
                         {label}
                       </Link>
@@ -105,14 +105,14 @@ export default function Header() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="text-sm font-semibold text-gray-900 transition-colors hover:text-sport-green"
+                className="text-sm font-semibold text-gray-900 transition-colors hover:text-sport-greenText"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href="/#opiniones"
-              className="text-sm font-semibold text-gray-900 transition-colors hover:text-sport-green"
+              className="text-sm font-semibold text-gray-900 transition-colors hover:text-sport-greenText"
             >
               Opiniones
             </Link>
@@ -135,7 +135,7 @@ export default function Header() {
             >
               <Heart size={19} />
               {favCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[18px] items-center justify-center rounded-full bg-sport-orange px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[18px] items-center justify-center rounded-full bg-sport-orange px-1 text-[10px] font-bold text-ink">
                   {favCount}
                 </span>
               )}
@@ -148,7 +148,7 @@ export default function Header() {
             >
               <ShoppingBag size={19} />
               {itemCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[18px] items-center justify-center rounded-full bg-sport-green px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[18px] items-center justify-center rounded-full bg-sport-green px-1 text-[10px] font-bold text-ink">
                   {itemCount}
                 </span>
               )}
@@ -181,14 +181,14 @@ export default function Header() {
                 </Link>
               ))}
 
-              <p className="mt-2 px-3 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+              <p className="mt-2 px-3 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
                 Categorías
               </p>
               <div className="flex flex-wrap gap-1.5 px-3 pb-1">
                 {CATEGORIES.map((c) => (
                   <Link
                     key={c.key}
-                    href={`/productos?cat=${c.key}`}
+                    href={`/productos/categoria/${c.key}`}
                     onClick={() => setMenuOpen(false)}
                     className="chip"
                   >
@@ -197,7 +197,7 @@ export default function Header() {
                 ))}
               </div>
 
-              <p className="mt-2 px-3 text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
+              <p className="mt-2 px-3 text-[11px] font-extrabold uppercase tracking-widest text-gray-500">
                 Por objetivo
               </p>
               <div className="flex flex-wrap gap-1.5 px-3 pb-1">
