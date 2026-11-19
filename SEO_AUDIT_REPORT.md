@@ -73,7 +73,7 @@ Estos estados de Search Console son esperados y no se tocaron:
 
 ## C. Resultados de las pruebas
 
-Todas ejecutadas contra `next start` (build de producción) en `http://localhost:3101`, puerto ya liberado.
+Todas ejecutadas contra `next start` (build de producción) en `http://localhost:3101`, puerto ya liberado. La sección F repite las comprobaciones críticas contra producción.
 
 ### Build y tipos
 
@@ -84,7 +84,7 @@ Todas ejecutadas contra `next start` (build de producción) en `http://localhost
 | `npx tsc --noEmit` | ✅ exit 0 |
 | `npm run lint` | ✅ 0 errores, 3 warnings preexistentes (`DocumentViewer.tsx` usa `<img>`; `Pos.tsx` con `exhaustive-deps`). Ninguno introducido por esta auditoría |
 | `npx jest` | ✅ 16 suites, **146/146 pruebas**. Incluye la suite nueva `src/lib/seo/indexacion.test.ts` (18 pruebas) |
-| Advertencia del build | ⚠️ `SecurityFatalError` al final: Next 16.4.0 marcado con vulnerabilidad conocida. Las 72 páginas se generan igual. Está corregido en el PR #27 (`next 16.4.6`), pendiente de merge |
+| Advertencia del build | ✅ Ya no aparece: se desplegó con Next 16.4.6 (PR #27) y el build termina limpio |
 
 ### Robots
 
@@ -212,13 +212,65 @@ Ningún título lleva el sufijo dos veces ni supera los 66 caracteres.
 
 Requieren acceso a Search Console, a producción o a información que no existe en el repo:
 
-1. **Desplegar.** Producción sigue con el build anterior. Los 301/308/noindex nuevos no existen hasta el deploy.
-2. **Dominio en Vercel.** Conviene además configurar `www.nutrifitsuplementos.cl` como *redirect* a `nutrifitsuplementos.cl` en el panel de Vercel. Es redundante con el 301 del proxy, pero elimina un salto de TLS y deja la intención explícita.
+1. ~~**Desplegar.**~~ Hecho: `main` en `af1cd95`, deploy de producción en Vercel en estado `success` y verificado en vivo (ver sección F).
+2. **Dominio en Vercel.** Conviene además configurar `www.nutrifitsuplementos.cl` como *redirect* a `nutrifitsuplementos.cl` en el panel de Vercel. Es redundante con el 301 del proxy (ya verificado en producción), pero elimina un salto de TLS y deja la intención explícita.
 3. **Search Console.** Reenviar el sitemap, usar "Inspección de URL" en las 8 categorías y en los productos de mayor margen, y pedir indexación. Revisar el informe de páginas después de 3–7 días.
 4. **Contenido de producto.** 33 fichas tienen descripción, ingredientes, modo de uso y nutrientes. No inventé ninguno. Si falta información de fabricante en algún SKU, hay que pedirla: no se puede suplir con texto genérico.
 5. **Reseñas.** El `AggregateRating` sale de `rating`/`reviews` del seed. Debe corresponder a reseñas reales y visibles en la página; si son datos de demostración, hay que quitarlas del JSON-LD antes de que Google Merchant las revise.
 6. **Validación de rich results.** No ejecuté el validador de Google (requiere URL pública). Después del deploy: Rich Results Test sobre un producto, una categoría y un artículo.
-7. **`SecurityFatalError`.** Mergear el PR #27 (`next 16.4.6`).
+7. ~~**`SecurityFatalError`.** Mergear el PR #27 (`next 16.4.6`).~~ Hecho: PR #27 mergeado (`ad97982`), cada build desde entonces corre con Next 16.4.6 y ya no emite el error.
+
+---
+
+## F. Verificación post-deploy (producción)
+
+Ejecutada contra `https://nutrifitsuplementos.cl` después del deploy de `af1cd95` (estado `success` en Vercel). No es una simulación: son respuestas reales del sitio.
+
+### Redirecciones (siguiendo la cadena completa)
+
+| Punto de partida | Cadena | Resultado |
+|---|---|---|
+| `https://www.nutrifitsuplementos.cl/productos?cat=proteinas` | `301` → apex, `200` | ✅ 1 salto, query intacta |
+| `http://nutrifitsuplementos.cl/productos` | `308` (HTTPS de Vercel) → `200` | ✅ 1 salto |
+| `https://nutrifit-web-nu.vercel.app/productos` | `301` → apex, `200` | ✅ 1 salto |
+| `/productos/ostrovit-100-whey-protein-700g-chocolate` | `308` → `…-chocolate-dream`, `200` | ✅ 1 salto |
+
+Sin bucles, sin cadenas, ningún estado intermedio distinto de `3xx`/`200`.
+
+### Metadatos servidos
+
+| URL | Status | Canonical | `meta robots` |
+|---|---|---|---|
+| `/` | 200 | `https://nutrifitsuplementos.cl` | `index, follow` |
+| `/productos/categoria/proteinas` | 200 | sí misma | `index, follow` |
+| `/productos/fullenergic-100-whey-protein-1kg` | 200 | sí misma | `index, follow` |
+| `/productos?cat=proteinas` | 200 | `/productos/categoria/proteinas` | `index, follow` |
+| `/productos?q=whey` | 200 | `/productos` | `noindex, follow` |
+| `/login` | 200 | — | `noindex, nofollow` |
+| `/reset-password` | 200 | — | `noindex, nofollow` |
+| `/favoritos` | 200 | — | `noindex, nofollow` |
+| `/blog/que-proteina-elegir` | 200 | sí misma | `index, follow` |
+
+`<html lang="es-CL">` en todas las páginas revisadas.
+
+### Sitemap y robots servidos
+
+- `sitemap.xml`: 200, **50 `<loc>`**, **33 `<image:loc>`**, **3 `<lastmod>`** (solo artículos), **8** URLs de categoría, **0** con query string, **0** de rutas privadas.
+- **Las 50 URLs del sitemap responden 200** y **las 33 imágenes responden 200** (comprobado una por una).
+- `robots.txt`: 200, `Allow: /`, `Disallow` exactamente `/admin`, `/pos`, `/api`, `/erp`, `Sitemap:` al apex.
+
+### 404 y datos estructurados
+
+| Caso | Resultado |
+|---|---|
+| `/productos/no-existe-xyz-123` | ✅ 404 |
+| `/productos/categoria/no-existe-xyz` | ✅ 404 |
+| Producto | ✅ `Product` + `BreadcrumbList` |
+| Blog | ✅ `og:type=article`, `article:published_time=2026-07-12`, `BreadcrumbList` |
+
+### Nota sobre el host de Vercel
+
+Al pedir el apex con `Host: nutrifit-web-nu.vercel.app` (spoof de cabecera, sin DNS) Vercel responde **421 Misdirected Request**: lo corta el borde antes de llegar a la app. No es un problema de la aplicación; el dominio legado real, consultado por DNS, redirige con 301 al apex (tabla de arriba).
 
 ---
 
@@ -236,4 +288,4 @@ Requieren acceso a Search Console, a producción o a información que no existe 
 
 ### Resumen en una línea
 
-El sitio ya era rastreable y tenía contenido real en HTML; los bloqueos eran de señalización: un host duplicado con 200, redirecciones temporales en vez de permanentes, `robots.txt` tapando `noindex`, un sitemap con fechas inventadas y categorías sin URL propia. Todo eso está corregido y verificado en un build de producción local; falta desplegar y pedir revisión en Search Console.
+El sitio ya era rastreable y tenía contenido real en HTML; los bloqueos eran de señalización: un host duplicado con 200, redirecciones temporales en vez de permanentes, `robots.txt` tapando `noindex`, un sitemap con fechas inventadas y categorías sin URL propia. Todo eso está corregido, desplegado en `af1cd95` y verificado en producción: 301 desde `www`, 308 en slugs antiguos, 50 URLs de sitemap que responden 200, `noindex` donde corresponde y 404 reales. Lo que queda es trabajo de Search Console.
