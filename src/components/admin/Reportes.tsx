@@ -14,6 +14,7 @@ export function Reportes({ token }: { token: string }) {
   const [range, setRange] = useState<'hoy' | '7d' | '30d' | 'mes'>('30d');
   const [report, setReport] = useState<AdminReport | null>(null);
   const [prevReport, setPrevReport] = useState<AdminReport | null>(null);
+  const [logistics, setLogistics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -31,12 +32,14 @@ export function Reportes({ token }: { token: string }) {
       const prevTo = new Date(from.getTime() - 1);
       const prevFrom = new Date(prevTo.getTime() - duration);
       const pq = `from=${prevFrom.toISOString().split('T')[0]}&to=${prevTo.toISOString().split('T')[0]}`;
-      const [r, p] = await Promise.all([
+      const [r, p, lg] = await Promise.all([
         apiFetch<AdminReport>(`/orders/reports?${q}`, { token }),
         apiFetch<AdminReport>(`/orders/reports?${pq}`, { token }).catch(() => null),
+        apiFetch<any>(`/logistics/summary?${q}`, { token }).catch(() => null),
       ]);
       setReport(r);
       setPrevReport(p);
+      setLogistics(lg);
     } catch (err: any) {
       toast.error(err?.message || 'Error al cargar reportes.');
     } finally {
@@ -135,6 +138,41 @@ export function Reportes({ token }: { token: string }) {
               </div>
             ))}
           </div>
+
+          {logistics && (
+            <div className="rounded-3xl border border-line bg-paper p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-display text-lg uppercase">Rentabilidad logística</p>
+                <span className="text-[11px] text-muted">
+                  Costo repartidor descontado una sola vez · no es un gasto duplicado
+                </span>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl bg-surface p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-muted">Ganancia comercial</p>
+                  <p className="mt-1 text-lg font-black text-ink">{formatPrice(logistics.gananciaComercial || 0)}</p>
+                  <p className="text-[10px] text-muted">Antes de logística</p>
+                </div>
+                <div className="rounded-2xl bg-surface p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-muted">Después de logística</p>
+                  <p className={`mt-1 text-lg font-black ${(logistics.gananciaDespuesLogistica || 0) < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {formatPrice(logistics.gananciaDespuesLogistica || 0)}
+                  </p>
+                  <p className="text-[10px] text-muted">{logistics.entregas?.periodo || 0} entregas</p>
+                </div>
+                <div className="rounded-2xl bg-surface p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-muted">Costo logístico generado</p>
+                  <p className="mt-1 text-lg font-black text-ink">{formatPrice(logistics.costoLogisticoGenerado || 0)}</p>
+                  <p className="text-[10px] text-muted">Cobrado al cliente {formatPrice(logistics.totalCobradoEntregas || 0)}</p>
+                </div>
+                <div className="rounded-2xl bg-surface p-3">
+                  <p className="text-[10px] font-black uppercase tracking-wide text-muted">Pagado / pendiente</p>
+                  <p className="mt-1 text-lg font-black text-ink">{formatPrice(logistics.totalPagadoRepartidor || 0)}</p>
+                  <p className="text-[10px] text-muted">Pendiente {formatPrice(logistics.pendientePago || 0)}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl border border-line bg-paper p-6">

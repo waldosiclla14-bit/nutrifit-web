@@ -63,6 +63,8 @@ export function clearCache(pathPrefix?: string): void {
 function invalidateAfterMutation(path: string): void {
   if (path.startsWith('/orders')) {
     clearCache('/orders');
+    clearCache('/logistics');
+    clearCache('/finances');
   } else if (path.startsWith('/products')) {
     clearCache('/products');
   } else if (path.startsWith('/customers')) {
@@ -73,6 +75,11 @@ function invalidateAfterMutation(path: string): void {
     clearCache('/reminders');
   } else if (path.startsWith('/deliveries')) {
     clearCache('/deliveries');
+    clearCache('/logistics');
+  } else if (path.startsWith('/logistics')) {
+    clearCache('/logistics');
+  } else if (path.startsWith('/finances')) {
+    clearCache('/finances');
   }
 }
 // ───────────────────────────────────────────────────────────────────────────────

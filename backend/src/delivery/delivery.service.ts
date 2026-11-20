@@ -1,11 +1,20 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
 import { PushService } from '../push/push.service';
-import { rangeBound, chileDayRange, startOfChileDay, todayChileISO } from '../common/date-range';
+import { LogisticsService } from '../logistics/logistics.service';
+import { chileDayRange, chileWeekRange, todayChileISO } from '../common/date-range';
+import { ESTADOS_PENDIENTES } from './delivery-rules';
+import {
+  DELIVERY_ORDER_BY,
+  DeliveryScope,
+  buildDeliveryWhere,
+  resolveDeliverySchedule,
+  resolvePagination,
+} from './delivery-filters';
 
 @Injectable()
 export class DeliveryService {
@@ -19,52 +28,92 @@ export class DeliveryService {
     private notificationService: NotificationService,
     private todoist: TodoistService,
     private push: PushService,
+    @Optional() private logistics?: LogisticsService,
   ) {}
 
   async findAll(query: any = {}) {
-    const where: any = {};
-
-    if (query.status) {
-      where.status = query.status;
-    }
-    if (query.deliveryType) {
-      where.deliveryType = query.deliveryType;
-    }
-    if (query.stationId) {
-      where.stationId = query.stationId;
-    }
-    if (query.assignedTo) {
-      where.assignedTo = query.assignedTo;
-    }
-    if (query.dateFrom || query.dateTo) {
-      where.deliveryDate = {};
-      if (query.dateFrom) where.deliveryDate.gte = rangeBound(query.dateFrom, false);
-      if (query.dateTo) where.deliveryDate.lte = rangeBound(query.dateTo, true);
-    }
-    if (query.line || query.commune) {
-      where.station = {};
-      if (query.line) where.station.line = query.line;
-      if (query.commune) where.station.commune = query.commune;
-    }
+    const where = buildDeliveryWhere(query as DeliveryScope);
 
     const include = {
-      order: { select: { id: true, orderNumber: true, total: true, customerName: true, customerPhone: true } },
+      order: { select: { id: true, orderNumber: true, total: true, customerName: true, customerPhone: true, paymentMethod: true, paymentStatus: true } },
       customer: { select: { id: true, name: true, phone: true } },
       station: { select: { id: true, name: true, line: true, lineName: true, commune: true, latitude: true, longitude: true, defaultMeetingPoint: true } },
     };
 
-    const page = Math.max(1, parseInt(query.page, 10) || 0);
-    const limit = Math.min(100, Math.max(1, parseInt(query.limit, 10) || 50));
+    const { page, limit } = resolvePagination(query);
+    const paginado = page > 0;
 
-    if (page > 0) {
-      const [data, total] = await Promise.all([
-        this.prisma.delivery.findMany({ where, include, orderBy: [{ deliveryDate: 'asc' }, { windowStart: 'asc' }], skip: (page - 1) * limit, take: limit }),
-        this.prisma.delivery.count({ where }),
-      ]);
-      return { data, total, page, limit };
-    }
+    const [data, total] = await Promise.all([
+      this.prisma.delivery.findMany({
+        where,
+        include,
+        orderBy: DELIVERY_ORDER_BY,
+        ...(paginado ? { skip: (page - 1) * limit, take: limit } : {}),
+      }),
+      this.prisma.delivery.count({ where }),
+    ]);
 
-    return this.prisma.delivery.findMany({ where, include, orderBy: [{ deliveryDate: 'asc' }, { windowStart: 'asc' }] });
+    return paginado ? { data, total, page, limit } : data;
+  }
+
+  /**
+   * Contadores de logística. Cada número sale de la MISMA definición de día y de
+   * la MISMA lista de estados que la tabla (`buildDeliveryWhere`).
+   *
+   * - Hoy:        entregas de hoy, sin canceladas ni reprogramadas.
+   * - Pendientes: de hoy, sin estado final.
+   * - Entregados: de hoy, DELIVERED.
+   * - Vencidos:   días anteriores sin estado final (nunca se suman a Pendientes).
+   * - Semana:     lunes a domingo de la semana Chile.
+   */
+  async getCounters() {
+    const hoy = todayChileISO();
+    const semana = chileWeekRange(hoy);
+
+    // Los tres `where` salen del MISMO constructor que usa la tabla.
+    const hoyWhere = buildDeliveryWhere({ day: hoy });
+    const semanaWhere = buildDeliveryWhere({ from: semana.from, to: semana.to });
+    const vencidosWhere = buildDeliveryWhere({ vencidos: true });
+
+    const [hoyPorEstado, semanaPorEstado, vencidos] = await Promise.all([
+      this.prisma.delivery.groupBy({
+        by: ['status'],
+        where: hoyWhere,
+        _count: { id: true },
+      }),
+      this.prisma.delivery.groupBy({
+        by: ['status'],
+        where: semanaWhere,
+        _count: { id: true },
+      }),
+      this.prisma.delivery.count({ where: vencidosWhere }),
+    ]);
+
+    const porEstado: Record<string, number> = {};
+    hoyPorEstado.forEach((s) => { porEstado[s.status] = s._count.id; });
+
+    const sumaSemana = semanaPorEstado.reduce((acc, s) => acc + s._count.id, 0);
+    const entregadosSemana = semanaPorEstado
+      .filter((s) => s.status === DeliveryStatus.DELIVERED)
+      .reduce((acc, s) => acc + s._count.id, 0);
+
+    const pendientesHoy = ESTADOS_PENDIENTES.reduce((acc, s) => acc + (porEstado[s] || 0), 0);
+    const entregadosHoy = porEstado[DeliveryStatus.DELIVERED] || 0;
+    const totalHoy = Object.values(porEstado).reduce((a, b) => a + b, 0);
+
+    return {
+      hoy: {
+        dia: hoy,
+        total: totalHoy,
+        pendientes: pendientesHoy,
+        entregados: entregadosHoy,
+        // Cerradas sin entrega: no llegó, incidente, cliente no disponible.
+        noEntregados: totalHoy - pendientesHoy - entregadosHoy,
+      },
+      semana: { desde: semana.from, hasta: semana.to, total: sumaSemana, entregados: entregadosSemana },
+      vencidos,
+      porEstado,
+    };
   }
 
   async findOne(id: string) {
@@ -131,6 +180,9 @@ export class DeliveryService {
 
     const deliveryCode = crypto.randomInt(1000, 9999).toString();
 
+    // Único lugar donde la fecha de entrega se convierte a UTC.
+    const schedule = resolveDeliverySchedule(data.deliveryDate);
+
     const delivery = await this.prisma.delivery
       .create({
         data: {
@@ -139,7 +191,8 @@ export class DeliveryService {
           deliveryType: data.deliveryType,
           stationId: data.stationId || null,
           address: data.address || null,
-          deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : null,
+          deliveryDay: schedule.deliveryDay,
+          deliveryDate: schedule.deliveryDate,
           windowStart: data.windowStart || null,
           windowEnd: data.windowEnd || null,
           meetingPoint: data.meetingPoint || null,
@@ -228,7 +281,30 @@ export class DeliveryService {
     return { ...delivery, calendarEventId, whatsappUrl };
   }
 
-  async updateStatus(id: string, status: DeliveryStatus, userId?: string) {
+  /**
+   * Transiciones permitidas al repartidor.
+   *
+   * El flujo administrativo tiene 9 saltos; el repartidor entra en un pedido ya
+   * preparado y debe poder hacer En ruta → Entregado en dos toques. No puede
+   * cancelar, ni volver a estados de preparación, ni cerrar entregas ajenas
+   * (esa validación vive en CourierService).
+   */
+  private static readonly COURIER_TRANSITIONS: Record<string, DeliveryStatus[]> = Object.fromEntries(
+    [
+      ...['CREATED', 'PAYMENT_CONFIRMED', 'PREPARING', 'READY', 'SCHEDULED', 'CONFIRMATION_PENDING', 'CONFIRMED'].map(
+        (state) => [state, ['IN_ROUTE']],
+      ),
+      ['IN_ROUTE', ['ARRIVED', 'DELIVERED', 'NOT_DELIVERED', 'CUSTOMER_UNAVAILABLE', 'INCIDENT']],
+      ['ARRIVED', ['DELIVERED', 'NOT_DELIVERED', 'CUSTOMER_UNAVAILABLE', 'INCIDENT']],
+    ],
+  ) as Record<string, DeliveryStatus[]>;
+
+  async updateStatus(
+    id: string,
+    status: DeliveryStatus,
+    userId?: string,
+    opts: { courier?: boolean; reason?: string } = {},
+  ) {
     const delivery = await this.prisma.delivery.findUnique({ where: { id } });
     if (!delivery) throw new NotFoundException('Entrega no encontrada');
 
@@ -250,7 +326,11 @@ export class DeliveryService {
       INCIDENT: ['RESCHEDULED', 'CANCELLED'],
     };
 
-    if (!validTransitions[delivery.status]?.includes(status)) {
+    const allowed = opts.courier
+      ? DeliveryService.COURIER_TRANSITIONS[delivery.status] || []
+      : validTransitions[delivery.status] || [];
+
+    if (!allowed.includes(status)) {
       throw new BadRequestException(
         `No se puede cambiar de ${delivery.status} a ${status}`,
       );
@@ -263,6 +343,10 @@ export class DeliveryService {
     if (status === 'IN_ROUTE') updateData.startedAt = now;
     if (status === 'ARRIVED') updateData.arrivedAt = now;
     if (status === 'DELIVERED') updateData.deliveredAt = now;
+
+    // Motivo obligatorio cuando se cierra sin entregar (lo valida CourierService).
+    if (status === DeliveryStatus.DELIVERED) updateData.failureReason = null;
+    else if (opts.reason) updateData.failureReason = String(opts.reason).trim().slice(0, 500);
 
     const updated = await this.prisma.delivery.update({
       where: { id },
@@ -335,10 +419,18 @@ export class DeliveryService {
       );
     }
 
+    // Snapshot financiero (solo DELIVERED genera obligación de pago). Es
+    // opcional para no romper pruebas/instancias sin el módulo logístico.
+    if (this.logistics) {
+      this.logistics.onDeliveryStatusChanged(updated.id).catch((e) =>
+        this.logger.warn(`Rentabilidad logística: ${e?.message || e}`),
+      );
+    }
+
     return updated;
   }
 
-  async assign(id: string, userId: string) {
+  async assign(id: string, userId: string, actorId?: string) {
     const delivery = await this.prisma.delivery.findUnique({ where: { id } });
     if (!delivery) throw new NotFoundException('Entrega no encontrada');
 
@@ -348,7 +440,7 @@ export class DeliveryService {
       include: { station: true },
     });
 
-    await this.audit(id, 'ASSIGNED', { assignedTo: delivery.assignedTo }, { assignedTo: userId });
+    await this.audit(id, 'ASSIGNED', { assignedTo: delivery.assignedTo }, { assignedTo: userId }, actorId);
     return updated;
   }
 
@@ -358,7 +450,10 @@ export class DeliveryService {
       include: { items: true },
     });
     if (!order) return;
-    if (order.status !== OrderStatus.READY && order.status !== OrderStatus.PREPARING) return;
+    // PAID: la venta ya existe y el stock ya se descontó al pagar; solo falta
+    // marcar la orden como entregada. AGENDADO se deja intacto (su venta nace
+    // el día de la entrega, no al marcarla).
+    if (!([OrderStatus.READY, OrderStatus.PREPARING, OrderStatus.PAID] as OrderStatus[]).includes(order.status)) return;
     const alreadyPaid = order.paymentStatus === 'CONFIRMED';
 
     const writes: Prisma.PrismaPromise<any>[] = [];
@@ -447,25 +542,46 @@ export class DeliveryService {
       }
     }
 
+    // Mismo helper que create(): el día se guarda como calendario Chile y el
+    // instante solo como inicio del día (para notificaciones y Todoist).
+    const schedule = resolveDeliverySchedule(data.deliveryDate);
+
     const updated = await this.prisma.delivery.update({
       where: { id },
       data: {
-        deliveryDate: new Date(data.deliveryDate),
+        deliveryDay: schedule.deliveryDay,
+        deliveryDate: schedule.deliveryDate,
         windowStart: data.windowStart,
         windowEnd: data.windowEnd,
         stationId: data.stationId || delivery.stationId,
         meetingPoint: data.meetingPoint || delivery.meetingPoint,
-        status: DeliveryStatus.RESCHEDULED,
+        // La entrega sigue activa en su nueva fecha. `RESCHEDULED` la sacaría de
+        // la ruta y los contadores; el reagendamiento queda en la auditoría.
+        status: DeliveryStatus.SCHEDULED,
       },
       include: { station: true },
     });
 
+    // La orden es la que muestra la fecha en el resto del panel: mantenerlas
+    // alineadas para que no existan dos fechas distintas del mismo pedido.
+    try {
+      await this.prisma.order.update({
+        where: { id: delivery.orderId },
+        data: {
+          deliveryDay: schedule.deliveryDay ?? undefined,
+          deliveryTime: data.windowStart || undefined,
+        },
+      });
+    } catch {
+      // La orden puede no existir en escenarios legacy: no bloquea el cambio.
+    }
+
     await this.audit(id, 'RESCHEDULED', {
-      deliveryDate: delivery.deliveryDate,
+      deliveryDay: delivery.deliveryDay,
       windowStart: delivery.windowStart,
       windowEnd: delivery.windowEnd,
     }, {
-      deliveryDate: data.deliveryDate,
+      deliveryDay: schedule.deliveryDay,
       windowStart: data.windowStart,
       windowEnd: data.windowEnd,
     });
@@ -513,38 +629,32 @@ export class DeliveryService {
     return this.updateStatus(id, DeliveryStatus.DELIVERED);
   }
 
-  async getStats(query: { dateFrom?: string; dateTo?: string } = {}) {
-    // Anchor "today" on the America/Santiago calendar, not server UTC.
-    const { gte: today, lt: tomorrow } = chileDayRange(todayChileISO());
-    const mondayISO = (() => {
-      const parts = todayChileISO().split('-').map(Number);
-      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12));
-      const dow = (d.getUTCDay() + 6) % 7; // Monday = 0
-      d.setUTCDate(d.getUTCDate() - dow);
-      const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-      return iso;
-    })();
-    const { gte: weekStart } = chileDayRange(mondayISO);
-    const monthStart = startOfChileDay(todayChileISO().slice(0, 7) + '-01');
+  /**
+   * Estadísticas por rango. Usa `deliveryDay` (calendario Chile), igual que
+   * `findAll` y `getCounters`: ya no hay aritmética de zonas horarias.
+   * Se mantiene por compatibilidad; la pantalla de logística usa `getCounters`.
+   */
+  async getStats() {
+    const hoy = todayChileISO();
+    const semana = chileWeekRange(hoy);
+    const mes = `${hoy.slice(0, 7)}-01`;
+    const visiblesHoy = buildDeliveryWhere({ day: hoy });
+    const visiblesSemana = buildDeliveryWhere({ from: semana.from, to: semana.to });
+    const visiblesMes = buildDeliveryWhere({ from: mes });
 
     const [todayDeliveries, weekDeliveries, monthDeliveries, statusCounts, stationCounts] =
       await Promise.all([
-        this.prisma.delivery.count({
-          where: { deliveryDate: { gte: today, lt: tomorrow } },
-        }),
-        this.prisma.delivery.count({
-          where: { deliveryDate: { gte: weekStart, lt: tomorrow } },
-        }),
-        this.prisma.delivery.count({
-          where: { deliveryDate: { gte: monthStart } },
-        }),
+        this.prisma.delivery.count({ where: visiblesHoy }),
+        this.prisma.delivery.count({ where: visiblesSemana }),
+        this.prisma.delivery.count({ where: visiblesMes }),
         this.prisma.delivery.groupBy({
           by: ['status'],
+          where: visiblesMes,
           _count: { id: true },
         }),
         this.prisma.delivery.groupBy({
           by: ['stationId'],
-          where: { deliveryDate: { gte: monthStart } },
+          where: visiblesMes,
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
         }),
@@ -593,14 +703,12 @@ export class DeliveryService {
     const interval = (settings.slot_interval_minutes as number) || 30;
     const maxPerSlot = (settings.maximum_orders_per_slot as number) || 10;
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(targetDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const day = resolveDeliverySchedule(date).deliveryDay;
+    if (!day) throw new BadRequestException('Fecha de entrega requerida');
 
     const existingDeliveries = await this.prisma.delivery.findMany({
       where: {
-        deliveryDate: { gte: targetDate, lt: nextDay },
+        deliveryDay: day,
         status: { notIn: [DeliveryStatus.CANCELLED, DeliveryStatus.RESCHEDULED] },
         ...(stationId ? { stationId } : {}),
       },
@@ -648,14 +756,12 @@ export class DeliveryService {
     const settings = await this.getSettings();
     const maxPerSlot = (settings.maximum_orders_per_slot as number) || 10;
 
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(targetDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    const day = resolveDeliverySchedule(date).deliveryDay;
+    if (!day) throw new BadRequestException('Fecha de entrega requerida');
 
     const count = await this.prisma.delivery.count({
       where: {
-        deliveryDate: { gte: targetDate, lt: nextDay },
+        deliveryDay: day,
         windowStart,
         status: { notIn: [DeliveryStatus.CANCELLED, DeliveryStatus.RESCHEDULED] },
         ...(stationId ? { stationId } : {}),
@@ -691,7 +797,9 @@ export class DeliveryService {
   // cada delivery recibe máximo 1 recordatorio diario.
   async dispatchReminders(minutes = 60) {
     const mins = Math.min(240, Math.max(5, Math.round(Number(minutes) || 60)));
-    const { gte, lt } = chileDayRange(todayChileISO());
+    const hoy = todayChileISO();
+    // `gte` solo se usa para acotar la auditoría del recordatorio al día Chile.
+    const { gte } = chileDayRange(hoy);
     const openStates = [
       DeliveryStatus.CREATED,
       DeliveryStatus.PAYMENT_CONFIRMED,
@@ -702,7 +810,7 @@ export class DeliveryService {
       DeliveryStatus.CONFIRMED,
     ];
     const dels = await this.prisma.delivery.findMany({
-      where: { deliveryDate: { gte, lt }, status: { in: openStates } },
+      where: { deliveryDay: hoy, status: { in: openStates } },
       include: {
         order: { select: { orderNumber: true, customerName: true } },
         station: { select: { name: true } },

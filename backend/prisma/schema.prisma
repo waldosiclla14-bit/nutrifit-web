@@ -31,6 +31,21 @@ model User {
   openedRegisters CashRegister[]  @relation("RegistersOpened")
   ordersCreated Order[]        @relation("CreatedBy")
   auditLogs     AuditLog[]
+  assignedDeliveries Delivery[] @relation("DeliveryAssignee")
+  courierProfitability DeliveryProfitability[] @relation("ProfitabilityCourier")
+  courierSettlements   CourierSettlement[]      @relation("SettlementCourier")
+
+  /// Fase 4: cobros y evidencia del repartidor. Nada de esto es caja POS.
+  courierCollections  DeliveryCollection[]  @relation("CourierCollections")
+  courierProofs       DeliveryProof[]       @relation("CourierProofs")
+  courierCashShifts   CourierCashShift[]    @relation("CourierCashShifts")
+  confirmedCashShifts CourierCashShift[]    @relation("CashShiftConfirmer")
+  courierActionReceipts CourierActionReceipt[] @relation("CourierActionReceipts")
+
+  /// PIN corto del repartidor (bcrypt). `pinLookup` es HMAC determinista que
+  /// permite encontrar la cuenta con el PIN sin recorrer todos los usuarios.
+  pinHash       String?
+  pinLookup     String?  @unique
 
   @@map("users")
 }
@@ -516,6 +531,7 @@ model Order {
   createdBy            User?               @relation("CreatedBy", fields: [createdById], references: [id])
   inventoryMovements   InventoryMovement[]
   delivery             Delivery?
+  profitability        DeliveryProfitability?
 
   @@index([status])
   @@index([paymentStatus])
@@ -866,6 +882,9 @@ model Delivery {
   stationId       String?
   address         String?
 
+  /// Día de entrega en calendario Chile (YYYY-MM-DD). Es la ÚNICA verdad para
+  /// filtrar y contar logística: no depende de zona horaria ni de la hora.
+  deliveryDay    String?
   deliveryDate    DateTime?
   windowStart     String?
   windowEnd       String?
@@ -881,6 +900,10 @@ model Delivery {
 
   assignedTo      String?
 
+  /// Motivo del fallo (No entregado / No llegó / Problema). Obligatorio cuando
+  /// el repartidor cierra la entrega sin éxito.
+  failureReason   String?
+
   deliveryCode    String          @default(uuid())
 
   confirmedAt     DateTime?
@@ -894,7 +917,11 @@ model Delivery {
   order    Order         @relation(fields: [orderId], references: [id])
   customer Customer      @relation(fields: [customerId], references: [id])
   station  MetroStation? @relation(fields: [stationId], references: [id])
+  assignedUser User?     @relation("DeliveryAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
   auditLogs DeliveryAuditLog[]
+  profitability DeliveryProfitability?
+  collection DeliveryCollection?
+  proof      DeliveryProof?
 
   @@index([orderId])
   @@index([customerId])
@@ -904,6 +931,8 @@ model Delivery {
   @@index([assignedTo])
   @@index([status, deliveryDate])
   @@index([deliveryDate, windowStart])
+  @@index([deliveryDay, windowStart])
+  @@index([deliveryDay, status])
   @@map("deliveries")
 }
 
@@ -922,6 +951,107 @@ model DeliveryAuditLog {
   @@index([deliveryId])
   @@index([createdAt])
   @@map("delivery_audit_log")
+}
+
+// ───────────────────────────────────────────────
+// POD Y EFECTIVO DEL REPARTIDOR (Fase 4)
+// Independiente del POS: no escribe cash_registers ni cash_movements.
+// ───────────────────────────────────────────────
+
+enum CashShiftStatus {
+  ABIERTA
+  RENDIDA
+  CONFIRMADA
+  ANULADA
+}
+
+/// Cobro realizado por el repartidor. Unique en deliveryId = un solo cobro
+/// por entrega, aunque el cliente reintente o se pierda la conexión.
+model DeliveryCollection {
+  id          String        @id @default(uuid())
+  deliveryId  String        @unique
+  courierId   String
+  amount      Int
+  /// Reutiliza el enum de pedidos: no hay lista de medios paralela.
+  method      PaymentMethod
+  reference   String?
+  collectedAt DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  courier  User     @relation("CourierCollections", fields: [courierId], references: [id])
+
+  @@index([courierId, collectedAt])
+  @@map("delivery_collections")
+}
+
+/// Prueba de entrega: código confirmado y/o foto. La foto se guarda como data
+/// URL JPEG comprimida en la BD (mismo patrón que los comprobantes OCR): no
+/// se agrega proveedor de almacenamiento.
+model DeliveryProof {
+  id            String   @id @default(uuid())
+  deliveryId    String   @unique
+  courierId     String
+  code          String?
+  recipientName String?
+  photoDataUrl  String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  courier  User     @relation("CourierProofs", fields: [courierId], references: [id])
+
+  @@index([courierId, createdAt])
+  @@map("delivery_proofs")
+}
+
+/// Rendición diaria del repartidor. Es su "caja", separada del POS.
+model CourierCashShift {
+  id                    String          @id @default(uuid())
+  courierId             String
+  day                   String
+  status                CashShiftStatus @default(ABIERTA)
+
+  expectedEfectivo      Int @default(0)
+  expectedTransferencia Int @default(0)
+  expectedOtro          Int @default(0)
+
+  declaredEfectivo      Int?
+  declaredTransferencia Int?
+  declaredOtro          Int?
+  difference            Int?
+
+  notes         String?
+  closedAt      DateTime?
+  confirmedAt   DateTime?
+  confirmedById String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  courier     User  @relation("CourierCashShifts", fields: [courierId], references: [id])
+  confirmedBy User? @relation("CashShiftConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+
+  @@unique([courierId, day])
+  @@index([day, status])
+  @@map("courier_cash_shifts")
+}
+
+/// Fase 5: recibo de idempotencia por acción del repartidor. La cola offline
+/// reenvía la misma clave hasta recibir confirmación; el recibo evita ejecutar
+/// dos veces un cambio de estado, un cobro o un cierre de rendición.
+model CourierActionReceipt {
+  id         String   @id
+  courierId  String
+  action     String
+  deliveryId String?
+  day        String?
+  response   Json
+  createdAt  DateTime @default(now())
+
+  courier User @relation("CourierActionReceipts", fields: [courierId], references: [id])
+
+  @@index([courierId, createdAt])
+  @@map("courier_action_receipts")
 }
 
 // ───────────────────────────────────────────────
@@ -1021,6 +1151,156 @@ model NotificacionEnviada {
 
   @@unique([tipo, referencia])
   @@map("notificaciones_enviadas")
+}
+
+// ───────────────────────────────────────────────
+// RENTABILIDAD LOGÍSTICA Y LIQUIDACIÓN DEL REPARTIDOR
+// ───────────────────────────────────────────────
+
+/// Estados de una obligación de pago (una fila por entrega).
+enum ProfitabilityStatus {
+  PENDIENTE
+  LIQUIDADO
+  ANULADO
+}
+
+/// Estados de una liquidación (agrupación de entregas).
+enum SettlementStatus {
+  PENDIENTE
+  LIQUIDADO
+  ANULADO
+}
+
+/// Origen de la obligación: entrega completada o cargo excepcional aprobado.
+enum CourierChargeType {
+  ENTREGA_REALIZADA
+  EXCEPCIONAL
+}
+
+/// Tarifas logísticas versionadas. Actualizar crea una versión nueva y
+/// desactiva la anterior; los pedidos históricos conservan su snapshot.
+model LogisticsConfig {
+  id             String   @id @default(uuid())
+  courierCost    Int      @default(2500)
+  customerFee    Int      @default(1000)
+  nutrifitSubsidy Int     @default(1500)
+  effectiveFrom  DateTime @default(now())
+  isActive       Boolean  @default(true)
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  profitability DeliveryProfitability[]
+
+  @@index([isActive, effectiveFrom])
+  @@map("logistics_config")
+}
+
+/// Snapshot financiero inmutable por entrega. El unique en deliveryId/orderId
+/// impide contabilizar dos veces la misma entrega.
+model DeliveryProfitability {
+  id          String @id @default(uuid())
+  deliveryId  String @unique
+  orderId     String @unique
+  courierId   String?
+  orderNumber String
+  customerName String @default("")
+
+  deliveryDay String?
+  deliveredAt DateTime?
+
+  /// Ingreso neto por productos (subtotal - descuento) y su costo histórico.
+  productRevenue Int @default(0)
+  productCost    Int @default(0)
+  grossProfit    Int @default(0)
+
+  customerDeliveryFee Int @default(0)
+  courierCost         Int @default(0)
+  nutrifitSubsidy     Int @default(0)
+
+  /// Cobro entrega - costo repartidor (puede ser negativo si el cliente paga más).
+  logisticsResult Int @default(0)
+  /// Ganancia bruta + cobro entrega - costo repartidor (sin doble descuento).
+  netProfit       Int @default(0)
+
+  otherExpenses    Int @default(0)
+  operatingResult  Int @default(0)
+
+  chargeType       CourierChargeType @default(ENTREGA_REALIZADA)
+  chargeReason     String?
+  configId         String?
+  configSnapshot   Json?
+  settlementStatus ProfitabilityStatus @default(PENDIENTE)
+  settlementId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  delivery   Delivery            @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  order      Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courier    User?               @relation("ProfitabilityCourier", fields: [courierId], references: [id], onDelete: SetNull)
+  config     LogisticsConfig?    @relation(fields: [configId], references: [id], onDelete: SetNull)
+  settlement CourierSettlement?  @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+  items      CourierSettlementItem[]
+
+  @@index([courierId, settlementStatus])
+  @@index([deliveryDay])
+  @@index([settlementId])
+  @@index([settlementStatus, deliveryDay])
+  @@map("delivery_profitability")
+}
+
+/// Liquidación de pagos al repartidor.
+model CourierSettlement {
+  id               String           @id @default(uuid())
+  settlementNumber String           @unique
+  courierId        String?
+  courierName      String
+  status           SettlementStatus @default(PENDIENTE)
+
+  periodFrom String?
+  periodTo   String?
+  deliveriesCount Int @default(0)
+  totalAmount     Int @default(0)
+
+  paymentMethod String?
+  paymentDate   DateTime?
+  paidAt        DateTime?
+  notes         String?
+  cancelledReason String?
+
+  createdById   String?
+  confirmedById String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  courier User? @relation("SettlementCourier", fields: [courierId], references: [id], onDelete: SetNull)
+  entries DeliveryProfitability[]
+  items   CourierSettlementItem[]
+
+  @@index([status])
+  @@index([courierId, createdAt])
+  @@index([createdAt])
+  @@map("courier_settlements")
+}
+
+/// Detalle explícito de cada entrega incluida en una liquidación. El unique
+/// en profitabilityId es la última barrera contra liquidar dos veces.
+model CourierSettlementItem {
+  id             String @id @default(uuid())
+  settlementId   String
+  profitabilityId String @unique
+  orderId        String
+  deliveryId     String
+  deliveryDay    String?
+  amount         Int
+  createdAt      DateTime @default(now())
+
+  settlement    CourierSettlement    @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  profitability DeliveryProfitability @relation(fields: [profitabilityId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId])
+  @@index([orderId])
+  @@map("courier_settlement_items")
 }
 
 // ───────────────────────────────────────────────

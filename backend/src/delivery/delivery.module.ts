@@ -8,9 +8,10 @@ import { DeliverySeedService } from './delivery-seed.service';
 import { NotificationService } from './notification.service';
 import { TodoistModule } from '../todoist/todoist.module';
 import { PushModule } from '../push/push.module';
+import { LogisticsModule } from '../logistics/logistics.module';
 
 @Module({
-  imports: [TodoistModule, PushModule],
+  imports: [TodoistModule, PushModule, LogisticsModule],
   controllers: [MetroController, DeliveryController, DeliveryRemindersController],
   providers: [MetroService, DeliveryService, DeliverySeedService, NotificationService],
   exports: [MetroService, DeliveryService, NotificationService],

@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { OrderStatus } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { OrderStatus, ProfitabilityStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { rangeBound } from '../common/date-range';
+import { LogisticsService } from '../logistics/logistics.service';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Arriendo', color: '#8b5cf6' },
@@ -14,7 +15,10 @@ const DEFAULT_CATEGORIES = [
 
 @Injectable()
 export class FinancesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private logistics?: LogisticsService,
+  ) {}
 
   // ── Categorías ──────────────────────────────────────────────
   async listCategories(includeInactive = false) {
@@ -120,7 +124,16 @@ export class FinancesService {
       createdAt: { gte: from, lte: to },
     };
 
-    const [sales, purchases, expenses, byCategory] = await Promise.all([
+    const fromISO = from.toISOString().split('T')[0];
+    const toISO = to.toISOString().split('T')[0];
+    // Garantiza snapshots logísticos para el mismo período del P&L.
+    try {
+      await this.logistics?.syncRange(fromISO, toISO);
+    } catch {
+      /* el P&L no debe romperse si logística aún no está migrada */
+    }
+
+    const [sales, purchases, expenses, byCategory, logistics, logisticsPaid, logisticsPending] = await Promise.all([
       this.prisma.order.aggregate({
         where: paidWhere,
         _sum: { total: true, profit: true, totalCost: true },
@@ -145,6 +158,28 @@ export class FinancesService {
         _sum: { amount: true },
         _count: true,
       }),
+      this.prisma.deliveryProfitability.aggregate({
+        where: {
+          deliveryDay: { gte: fromISO, lte: toISO },
+          settlementStatus: { not: ProfitabilityStatus.ANULADO },
+        },
+        _sum: { courierCost: true, customerDeliveryFee: true, nutrifitSubsidy: true },
+        _count: { id: true },
+      }).catch(() => ({ _sum: { courierCost: 0, customerDeliveryFee: 0, nutrifitSubsidy: 0 }, _count: { id: 0 } })),
+      this.prisma.deliveryProfitability.aggregate({
+        where: {
+          deliveryDay: { gte: fromISO, lte: toISO },
+          settlementStatus: ProfitabilityStatus.LIQUIDADO,
+        },
+        _sum: { courierCost: true },
+      }).catch(() => ({ _sum: { courierCost: 0 } })),
+      this.prisma.deliveryProfitability.aggregate({
+        where: {
+          deliveryDay: { gte: fromISO, lte: toISO },
+          settlementStatus: ProfitabilityStatus.PENDIENTE,
+        },
+        _sum: { courierCost: true },
+      }).catch(() => ({ _sum: { courierCost: 0 } })),
     ]);
 
     const ingresos = sales._sum.total || 0;
@@ -152,7 +187,19 @@ export class FinancesService {
     const margenBruto = sales._sum.profit || 0;
     const comprasStock = purchases._sum.total || 0;
     const gastosOp = expenses._sum.amount || 0;
-    const utilidadNeta = margenBruto - gastosOp;
+
+    const cobroEntregas = Number(logistics._sum.customerDeliveryFee) || 0;
+    const costoLogisticoGenerado = Number(logistics._sum.courierCost) || 0;
+    const subsidioLogistico = Number(logistics._sum.nutrifitSubsidy) || 0;
+    const logisticoPagado = Number(logisticsPaid._sum.courierCost) || 0;
+    const logisticoPendiente = Number(logisticsPending._sum.courierCost) || 0;
+
+    // OJO: margenBruto ya incluye el cobro de entrega. No se vuelve a sumar.
+    // La ganancia comercial excluye el cobro logístico; la ganancia después de
+    // logística descuenta el costo del repartidor UNA sola vez.
+    const gananciaComercial = margenBruto - cobroEntregas;
+    const gananciaDespuesLogistica = margenBruto - costoLogisticoGenerado;
+    const utilidadNeta = gananciaDespuesLogistica - gastosOp;
 
     const catIds = byCategory.map((b: any) => b.categoryId).filter(Boolean);
     const cats = catIds.length
@@ -161,8 +208,8 @@ export class FinancesService {
     const catMap = new Map(cats.map((c: any) => [c.id, c]));
 
     return {
-      from: from.toISOString().split('T')[0],
-      to: to.toISOString().split('T')[0],
+      from: fromISO,
+      to: toISO,
       ingresos,
       cogs,
       margenBruto,
@@ -171,6 +218,19 @@ export class FinancesService {
       comprasCount: purchases._count,
       gastosOp,
       gastosCount: expenses._count,
+      // Logística (solo informativo: el costo ya está descontado una vez).
+      cobroEntregas,
+      costoLogisticoGenerado,
+      subsidioLogistico,
+      logisticoPagado,
+      logisticoPendiente,
+      entregasLiquidadas: logistics._count.id,
+      gananciaComercial,
+      gananciaComercialPct:
+        ingresos > 0 ? Math.round(((gananciaComercial / ingresos) * 100) * 10) / 10 : 0,
+      gananciaDespuesLogistica,
+      gananciaDespuesLogisticaPct:
+        ingresos > 0 ? Math.round(((gananciaDespuesLogistica / ingresos) * 100) * 10) / 10 : 0,
       utilidadNeta,
       utilidadPct: ingresos > 0 ? Math.round(((utilidadNeta / ingresos) * 100) * 10) / 10 : 0,
       ordenes: sales._count,

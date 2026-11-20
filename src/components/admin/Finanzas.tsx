@@ -24,6 +24,16 @@ type Summary = {
   utilidadNeta: number;
   utilidadPct: number;
   ordenes: number;
+  cobroEntregas?: number;
+  costoLogisticoGenerado?: number;
+  subsidioLogistico?: number;
+  logisticoPagado?: number;
+  logisticoPendiente?: number;
+  entregasLiquidadas?: number;
+  gananciaComercial?: number;
+  gananciaComercialPct?: number;
+  gananciaDespuesLogistica?: number;
+  gananciaDespuesLogisticaPct?: number;
   porCategoria: { categoryId: string | null; name: string; color: string; total: number; count: number }[];
 };
 
@@ -150,8 +160,28 @@ export function Finanzas({ token }: { token: string }) {
     ? [
         { label: 'Ingresos', value: formatPrice(summary.ingresos), sub: `${summary.ordenes} órdenes` },
         { label: 'COGS', value: formatPrice(summary.cogs), sub: `Margen bruto ${summary.margenBrutoPct}%` },
+        {
+          label: 'Ganancia comercial',
+          value: formatPrice(summary.gananciaComercial ?? summary.margenBruto),
+          sub: 'Antes de logística',
+        },
+        {
+          label: 'Ganancia después de logística',
+          value: formatPrice(summary.gananciaDespuesLogistica ?? summary.margenBruto),
+          sub: 'Costo repartidor descontado 1 vez',
+        },
         { label: 'Compras stock', value: formatPrice(summary.comprasStock), sub: `${summary.comprasCount} compras` },
         { label: 'Gastos operacionales', value: formatPrice(summary.gastosOp), sub: `${summary.gastosCount} gastos` },
+        {
+          label: 'Costo logístico generado',
+          value: formatPrice(summary.costoLogisticoGenerado ?? 0),
+          sub: `Cobrado al cliente ${formatPrice(summary.cobroEntregas ?? 0)}`,
+        },
+        {
+          label: 'Logística pagada / pendiente',
+          value: `${formatPrice(summary.logisticoPagado ?? 0)} / ${formatPrice(summary.logisticoPendiente ?? 0)}`,
+          sub: `Subsidio ${formatPrice(summary.subsidioLogistico ?? 0)}`,
+        },
       ]
     : [];
 

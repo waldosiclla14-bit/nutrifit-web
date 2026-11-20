@@ -23,6 +23,8 @@ import { TodoistModule } from './todoist/todoist.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { FinancesModule } from './finances/finances.module';
 import { PushModule } from './push/push.module';
+import { CourierModule } from './courier/courier.module';
+import { LogisticsModule } from './logistics/logistics.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -47,6 +49,8 @@ import { PushModule } from './push/push.module';
     PurchasesModule,
     FinancesModule,
     PushModule,
+    CourierModule,
+    LogisticsModule,
     AiModule,
   ],
   providers: [

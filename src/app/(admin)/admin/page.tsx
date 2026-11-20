@@ -22,6 +22,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Building,
+  Coins,
 } from 'lucide-react';
 import { apiFetch, fetchSession, getSessionUser, logoutServer } from '@/lib/api';
 import { ConfirmProvider, toast } from '@/lib/feedback';
@@ -48,12 +49,16 @@ const Reportes = lazy(() => import('@/components/admin/Reportes').then((m) => ({
 const Inventario = lazy(() => import('@/components/admin/Inventario').then((m) => ({ default: m.Inventario })));
 const Compras = lazy(() => import('@/components/admin/Compras').then((m) => ({ default: m.Compras })));
 const Entregas = lazy(() => import('@/components/admin/Entregas').then((m) => ({ default: m.Entregas })));
+const Rendiciones = lazy(() => import('@/components/admin/Rendiciones').then((m) => ({ default: m.default })));
 const Calendario = lazy(() => import('@/components/admin/Calendario').then((m) => ({ default: m.Calendario })));
 const Desk = lazy(() => import('@/components/admin/Desk').then((m) => ({ default: m.Desk })));
 const Marketing = lazy(() => import('@/components/admin/Marketing').then((m) => ({ default: m.Marketing })));
 const IaCopilot = lazy(() => import('@/components/admin/IaCopilot').then((m) => ({ default: m.IaCopilot })));
 const Proveedores = lazy(() => import('@/components/admin/Proveedores').then((m) => ({ default: m.Proveedores })));
 const Configuracion = lazy(() => import('@/components/admin/Configuracion').then((m) => ({ default: m.Configuracion })));
+const RentabilidadLogistica = lazy(() =>
+  import('@/components/admin/RentabilidadLogistica').then((m) => ({ default: m.RentabilidadLogistica })),
+);
 
 function TabSkeleton() {
   return (
@@ -73,6 +78,7 @@ export type TabKey =
   | 'resumen'
   | 'ordenes'
   | 'entregas'
+  | 'rendiciones'
   | 'calendario'
   | 'productos'
   | 'inventario'
@@ -85,6 +91,7 @@ export type TabKey =
   | 'marketing'
   | 'reportes'
   | 'ia'
+  | 'logistica'
   | 'configuracion';
 
 export default function AdminPage() {
@@ -265,9 +272,11 @@ function Dashboard({
       title: 'FINANZAS & CONTROL',
       items: [
         { key: 'caja' as TabKey, label: 'Caja / Turnos', icon: Wallet },
+        { key: 'rendiciones' as TabKey, label: 'Rendiciones reparto', icon: Wallet },
         ...(process.env.NEXT_PUBLIC_FINANZAS_ENABLED === 'true'
           ? [{ key: 'finanzas' as TabKey, label: 'Finanzas / P&L', icon: Wallet }]
           : []),
+        { key: 'logistica' as TabKey, label: 'Rentabilidad logística', icon: Coins, highlight: true },
         { key: 'reportes' as TabKey, label: 'Analítica & Reportes', icon: BarChart3 },
         { key: 'ia' as TabKey, label: 'Copiloto IA', icon: Bot, highlight: true },
         { key: 'configuracion' as TabKey, label: 'Configuración', icon: Settings },
@@ -428,6 +437,7 @@ function Dashboard({
                 {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} onGoAgendados={() => { setOrdenesInit('AGENDADO'); setTab('ordenes'); window.scrollTo({ top: 0 }); }} onNavigate={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
                 {tab === 'ordenes' && <Ordenes token={token} initialStatus={ordenesInit} onInitConsumed={() => setOrdenesInit('')} />}
                 {tab === 'entregas' && <Entregas token={token} />}
+                {tab === 'rendiciones' && <Rendiciones />}
                 {tab === 'calendario' && <Calendario token={token} />}
                 {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}
                 {tab === 'inventario' && <Inventario token={token} />}
@@ -438,6 +448,7 @@ function Dashboard({
                 {tab === 'marketing' && <Marketing token={token} />}
                 {tab === 'caja' && <Caja cash={cash} token={token} onChanged={refreshTab} />}
                 {tab === 'finanzas' && <Finanzas token={token} />}
+                {tab === 'logistica' && <RentabilidadLogistica token={token} />}
                 {tab === 'reportes' && <Reportes token={token} />}
                 {tab === 'ia' && <IaCopilot token={token} />}
                 {tab === 'configuracion' && <Configuracion token={token} onRefresh={load} onPassword={() => setShowPassword(true)} onLogout={onLogout} />}

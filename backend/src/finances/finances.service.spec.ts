@@ -10,6 +10,7 @@ describe('FinancesService', () => {
     expense: { findMany: jest.Mock; create: jest.Mock; findUnique: jest.Mock; delete: jest.Mock; aggregate: jest.Mock; groupBy: jest.Mock };
     order: { aggregate: jest.Mock };
     purchase: { aggregate: jest.Mock };
+    deliveryProfitability: { aggregate: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -18,6 +19,12 @@ describe('FinancesService', () => {
       expense: { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), delete: jest.fn(), aggregate: jest.fn(), groupBy: jest.fn() },
       order: { aggregate: jest.fn() },
       purchase: { aggregate: jest.fn() },
+      deliveryProfitability: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { courierCost: 0, customerDeliveryFee: 0, nutrifitSubsidy: 0 },
+          _count: { id: 0 },
+        }),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({

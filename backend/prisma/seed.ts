@@ -45,6 +45,21 @@ async function main() {
     },
   });
 
+  // Usuario repartidor (Jorge Cisneros)
+  const courierPassword = await bcrypt.hash(
+    process.env.COURIER_PASSWORD || process.env.SEED_COURIER_PASSWORD || sellerPasswordValue,
+    12,
+  );
+  await prisma.user.upsert({
+    where: { email: 'jorge@nutrifit.cl' },
+    update: { name: 'Jorge Cisneros', role: 'DELIVERY' },
+    create: {
+      email: 'jorge@nutrifit.cl',
+      name: 'Jorge Cisneros',
+      role: 'DELIVERY',
+      password: courierPassword,
+    },
+  });
   // Categorías
   const categories = [
     { name: 'Whey Protein', slug: 'whey-protein', description: 'Proteína de suero de leche' },

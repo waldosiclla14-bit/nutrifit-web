@@ -21,6 +21,7 @@ export type AdminTabKey =
   | 'resumen'
   | 'ordenes'
   | 'entregas'
+  | 'rendiciones'
   | 'calendario'
   | 'productos'
   | 'inventario'
@@ -33,16 +34,19 @@ export type AdminTabKey =
   | 'marketing'
   | 'reportes'
   | 'ia'
+  | 'logistica'
   | 'configuracion';
 
 const SHEET_KEYS: AdminTabKey[] = [
   'entregas',
+  'rendiciones',
   'calendario',
   'productos',
   'proveedores',
   'clientes',
   'caja',
   'finanzas',
+  'logistica',
   'desk',
   'marketing',
   'reportes',
