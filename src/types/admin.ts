@@ -70,6 +70,11 @@ export type AdminProduct = {
   description?: string | null;
   registroIsp?: string | null;
   imageUrl?: string | null;
+  size?: string | null;
+  servings?: number | null;
+  ingredients?: string | null;
+  descriptionShort?: string | null;
+  seoTitle?: string | null;
   images?: any[];
   tags?: string[];
   category?: { id: string; name: string } | null;

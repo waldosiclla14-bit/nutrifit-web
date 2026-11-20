@@ -30,6 +30,24 @@ export class ProductsController {
     return this.productsService.findInternal(query);
   }
 
+  @Get('taxonomies')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  getTaxonomies() {
+    return this.productsService.getTaxonomies();
+  }
+
+  @Get('duplicates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN, Role.SELLER)
+  findDuplicates(@Query() query: any) {
+    return this.productsService.findDuplicates({
+      name: query?.name ? String(query.name) : undefined,
+      barcode: query?.barcode ? String(query.barcode) : undefined,
+      excludeId: query?.excludeId ? String(query.excludeId) : undefined,
+    });
+  }
+
   @Get('barcode/:code')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.SELLER)

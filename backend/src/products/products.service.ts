@@ -98,6 +98,13 @@ export class ProductsService implements OnModuleInit {
         costPrice: true,
         description: true,
         comparePrice: true,
+        registroIsp: true,
+        imageUrl: true,
+        size: true,
+        servings: true,
+        ingredients: true,
+        descriptionShort: true,
+        seoTitle: true,
         lowStockThreshold: true,
         category: { select: { id: true, name: true } },
         brand: { select: { id: true, name: true } },
@@ -120,6 +127,114 @@ export class ProductsService implements OnModuleInit {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** Categorías y marcas activas para poblar el formulario (solo lectura). */
+  async getTaxonomies() {
+    const [categories, brands] = await Promise.all([
+      this.prisma.category.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.brand.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, slug: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    return { categories, brands };
+  }
+
+  /**
+   * Detecta duplicados antes de crear/editar un producto.
+   * - Exacto: barcode de producto o de variante (misma búsqueda que el POS).
+   * - Similar: similitud de nombre por tokens (Jaccard) sobre productos activos.
+   * Solo lectura: no crea ni modifica nada.
+   */
+  async findDuplicates(query: { name?: string; barcode?: string; excludeId?: string } = {}) {
+    const excludeId = String(query.excludeId || '').trim();
+    const barcode = String(query.barcode || '').trim();
+    const exact: any[] = [];
+
+    if (barcode) {
+      const found = await this.findByBarcode(barcode);
+      if (found?.type === 'product' && found.data.id !== excludeId) {
+        exact.push({
+          match: 'product',
+          id: found.data.id,
+          name: found.data.name,
+          sku: found.data.sku,
+          barcode: found.data.barcode,
+        });
+      } else if (found?.type === 'variant') {
+        const parent = found.data.product;
+        if (parent?.id !== excludeId) {
+          exact.push({
+            match: 'variant',
+            id: parent.id,
+            variantId: found.data.id,
+            variantName: found.data.variantName,
+            name: parent.name,
+            sku: found.data.sku,
+            barcode: found.data.barcode,
+          });
+        }
+      }
+    }
+
+    const normalized = this.normalizeProductName(query.name);
+    let similar: { id: string; name: string; sku: string; score: number }[] = [];
+    if (normalized) {
+      const candidates = await this.prisma.product.findMany({
+        where: {
+          isActive: true,
+          ...(excludeId ? { id: { not: excludeId } } : {}),
+        },
+        select: { id: true, name: true, sku: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 2000,
+      });
+      similar = candidates
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          score: this.nameSimilarity(normalized, this.normalizeProductName(p.name)),
+        }))
+        .filter((p) => p.score >= 0.5)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map((p) => ({ ...p, score: Math.round(p.score * 100) / 100 }));
+    }
+
+    return { exact, similar };
+  }
+
+  /** Minúsculas, sin tildes, sin unidades de tamaño y sin signos. */
+  private normalizeProductName(raw: unknown): string {
+    return String(raw || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b\d+(?:[.,]\d+)?\s*(kg|kgs|g|gr|grs|lb|lbs|oz|ml|l|lt|lts|serv|servicios|porciones|un|unidades|caps|cap|tabs|tab)\b/g, ' ')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  /** Similitud 0..1 por tokens. Suficiente para avisar, no para bloquear. */
+  private nameSimilarity(a: string, b: string): number {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const tokensA = new Set(a.split(' ').filter((t) => t.length > 1));
+    const tokensB = new Set(b.split(' ').filter((t) => t.length > 1));
+    if (tokensA.size === 0 || tokensB.size === 0) return 0;
+    let shared = 0;
+    for (const t of tokensA) if (tokensB.has(t)) shared++;
+    const union = tokensA.size + tokensB.size - shared;
+    const jaccard = union > 0 ? shared / union : 0;
+    const contains = a.includes(b) || b.includes(a);
+    return Math.min(1, Math.max(jaccard, contains ? 0.75 : 0));
   }
 
   async findOne(idOrSlug: string) {
@@ -240,6 +355,22 @@ export class ProductsService implements OnModuleInit {
       productData.comparePrice = !Number.isNaN(cp) && cp > 0 ? Math.round(cp) : null;
     }
     if (data.imageUrl !== undefined) productData.imageUrl = data.imageUrl ? String(data.imageUrl) : null;
+    if (data.size !== undefined) {
+      productData.size = data.size ? String(data.size).trim() : null;
+    }
+    if (data.servings !== undefined) {
+      const servings = Number(data.servings);
+      productData.servings = Number.isFinite(servings) && servings > 0 ? Math.round(servings) : null;
+    }
+    if (data.ingredients !== undefined) {
+      productData.ingredients = data.ingredients ? String(data.ingredients).trim() : null;
+    }
+    if (data.descriptionShort !== undefined) {
+      productData.descriptionShort = data.descriptionShort ? String(data.descriptionShort).trim() : null;
+    }
+    if (data.seoTitle !== undefined) {
+      productData.seoTitle = data.seoTitle ? String(data.seoTitle).trim() : null;
+    }
     if (data.isActive !== undefined) productData.isActive = !!data.isActive;
     if (data.isFeatured !== undefined) productData.isFeatured = !!data.isFeatured;
     if (data.sku !== undefined) {
@@ -497,6 +628,14 @@ export class ProductsService implements OnModuleInit {
           comparePrice: finalComparePrice,
           description: data.description ? String(data.description) : null,
           registroIsp: data.registroIsp ? String(data.registroIsp).trim() : null,
+          size: data.size ? String(data.size).trim() : null,
+          servings:
+            data.servings != null && Number.isFinite(Number(data.servings)) && Number(data.servings) > 0
+              ? Math.round(Number(data.servings))
+              : null,
+          ingredients: data.ingredients ? String(data.ingredients).trim() : null,
+          descriptionShort: data.descriptionShort ? String(data.descriptionShort).trim() : null,
+          seoTitle: data.seoTitle ? String(data.seoTitle).trim() : null,
           categoryId,
           brandId,
           supplierId: data.supplierId ? String(data.supplierId) : null,

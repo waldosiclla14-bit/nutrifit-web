@@ -1,4 +1,4 @@
-import { isValidSku, normalizeSku, skuError } from './sku';
+import { generateSku, isValidSku, normalizeSku, skuError } from './sku';
 
 describe('normalizeSku', () => {
   it('mayúsculas, sin tildes, espacios → guiones', () => {
@@ -36,5 +36,38 @@ describe('skuError', () => {
     expect(skuError('A'.repeat(51))).toContain('50 caracteres');
     expect(skuError('nf-prot')).toContain('mayúsculas');
     expect(skuError('NF-PROT-FE-WHEY-1KG')).toBeNull();
+  });
+});
+
+describe('generateSku', () => {
+  it('genera un SKU válido desde categoría y nombre', () => {
+    const sku = generateSku('Whey Protein', 'Gold Standard 100% Whey');
+    expect(sku).toBe('NF-WHE-GOLD-STANDARD-100-WHEY');
+    expect(isValidSku(sku)).toBe(true);
+    expect(skuError(sku)).toBeNull();
+  });
+
+  it('incluye el tamaño cuando se entrega', () => {
+    const sku = generateSku('Creatina', 'Creatina Monohidratada', '1 kg');
+    expect(sku.endsWith('-1-KG')).toBe(true);
+    expect(isValidSku(sku)).toBe(true);
+  });
+
+  it('nunca supera los 50 caracteres', () => {
+    const sku = generateSku('Categoría muy larga', 'Producto con un nombre extremadamente largo que no termina nunca', '2 kg');
+    expect(sku.length).toBeLessThanOrEqual(50);
+    expect(isValidSku(sku)).toBe(true);
+  });
+
+  it('usa tokens seguros si nombre o categoría están vacíos', () => {
+    const sku = generateSku('', '');
+    expect(sku).toBe('NF-GEN-PRODUCTO');
+    expect(isValidSku(sku)).toBe(true);
+  });
+
+  it('elimina tildes y símbolos', () => {
+    const sku = generateSku('Proteína', 'Sabor Vainilla/Chocolate');
+    expect(sku).not.toMatch(/[ÁÉÍÓÚÑáéíóúñ/]/);
+    expect(normalizeSku(sku)).toBe(sku);
   });
 });

@@ -200,6 +200,74 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('getTaxonomies', () => {
+    it('returns active categories and brands sorted by name', async () => {
+      prisma.category.findMany = jest.fn().mockResolvedValue([{ id: 'c1', name: 'Proteína', slug: 'proteina' }]);
+      prisma.brand.findMany = jest.fn().mockResolvedValue([{ id: 'b1', name: 'FullEnergic', slug: 'fullenergic' }]);
+
+      const result = await service.getTaxonomies();
+
+      expect(result.categories).toHaveLength(1);
+      expect(result.brands[0].name).toBe('FullEnergic');
+      expect(prisma.category.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { isActive: true }, orderBy: { name: 'asc' } }),
+      );
+    });
+  });
+
+  describe('findDuplicates', () => {
+    it('detects an exact barcode duplicate on a product', async () => {
+      prisma.product.findUnique.mockResolvedValue({ id: 'p1', name: 'Whey 1kg', sku: 'W-1K', barcode: '7801234567890' });
+      prisma.product.findMany.mockResolvedValue([]);
+
+      const result = await service.findDuplicates({ barcode: '7801234567890' });
+
+      expect(result.exact).toHaveLength(1);
+      expect(result.exact[0]).toMatchObject({ match: 'product', id: 'p1', name: 'Whey 1kg' });
+    });
+
+    it('ignores the excluded product when editing', async () => {
+      prisma.product.findUnique.mockResolvedValue({ id: 'p1', name: 'Whey 1kg', sku: 'W-1K', barcode: '7801234567890' });
+      prisma.product.findMany.mockResolvedValue([]);
+
+      const result = await service.findDuplicates({ barcode: '7801234567890', excludeId: 'p1' });
+
+      expect(result.exact).toHaveLength(0);
+    });
+
+    it('detects similar names ignoring accents and size units', async () => {
+      prisma.product.findMany.mockResolvedValue([
+        { id: 'p1', name: 'Whey Protein Vainilla 1kg', sku: 'W-VAI-1K' },
+        { id: 'p2', name: 'Creatina Monohidratada', sku: 'CREA-1' },
+        { id: 'p3', name: 'Pre Entreno', sku: 'PRE-1' },
+      ]);
+
+      const result = await service.findDuplicates({ name: 'whey protein vainilla 2 kg' });
+
+      expect(result.similar).toHaveLength(1);
+      expect(result.similar[0].id).toBe('p1');
+      expect(result.similar[0].score).toBeGreaterThanOrEqual(0.5);
+    });
+
+    it('returns no similar names for an unrelated product', async () => {
+      prisma.product.findMany.mockResolvedValue([{ id: 'p2', name: 'Creatina Monohidratada', sku: 'CREA-1' }]);
+
+      const result = await service.findDuplicates({ name: 'Barra de proteína' });
+
+      expect(result.similar).toHaveLength(0);
+    });
+
+    it('does not query names when only barcode is provided', async () => {
+      prisma.product.findUnique.mockResolvedValue(null);
+      prisma.productVariant.findUnique.mockResolvedValue(null);
+
+      const result = await service.findDuplicates({ barcode: '0000000000000' });
+
+      expect(result).toEqual({ exact: [], similar: [] });
+      expect(prisma.product.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('delete', () => {
     it('soft-deletes product and variants', async () => {
       prisma.product.findUnique.mockResolvedValue({ id: 'p1', name: 'Test' });

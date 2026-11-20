@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Pencil, Search, Trash2, X, Barcode, Camera } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Copy, Pencil, Search, Trash2, X, Camera } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
-import { isValidSku, normalizeSku, skuError } from '@/lib/sku';
+import { generateSku, normalizeSku, skuError } from '@/lib/sku';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 import { BarcodeScanner } from './BarcodeScanner';
 
@@ -27,6 +27,11 @@ type EditProductForm = {
   comparePrice: string;
   description: string;
   registroIsp: string;
+  size: string;
+  servings: string;
+  ingredients: string;
+  descriptionShort: string;
+  seoTitle: string;
   reason: string;
   supplierId: string;
   lowStockThreshold: string;
@@ -58,7 +63,7 @@ export function Productos({
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
+  const [form, setForm] = useState({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '', supplierId: '', lowStockThreshold: '' });
   const [formVariants, setFormVariants] = useState([
     { variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
@@ -67,6 +72,10 @@ export function Productos({
   const [importing, setImporting] = useState(false);
   const [barcodeScannerTarget, setBarcodeScannerTarget] = useState<{ type: 'product' | 'variant'; variantIdx?: number; mode: 'create' | 'edit' } | null>(null);
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
+  const [taxonomies, setTaxonomies] = useState<{ categories: { id: string; name: string }[]; brands: { id: string; name: string }[] }>({ categories: [], brands: [] });
+  const [skuAuto, setSkuAuto] = useState(true);
+  const [flavorInput, setFlavorInput] = useState('');
+  const [dupCheck, setDupCheck] = useState<{ exact: any[]; similar: any[] } | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -80,13 +89,30 @@ export function Productos({
 
   const categories = useMemo(() => {
     const cats = new Set<string>();
+    taxonomies.categories.forEach((c) => cats.add(c.name));
     products.forEach((p) => { if (p.category?.name) cats.add(p.category.name); });
-    return Array.from(cats).sort();
-  }, [products]);
+    return Array.from(cats).sort((a, b) => a.localeCompare(b));
+  }, [products, taxonomies]);
+
+  const brandOptions = useMemo(() => {
+    const brands = new Set<string>();
+    taxonomies.brands.forEach((b) => brands.add(b.name));
+    products.forEach((p) => {
+      const name = p.brandName || (typeof p.brand === 'object' && p.brand ? p.brand.name : '');
+      if (name) brands.add(name);
+    });
+    return Array.from(brands).sort((a, b) => a.localeCompare(b));
+  }, [products, taxonomies]);
 
   useEffect(() => {
     apiFetch<AdminSupplier[]>('/suppliers', { token })
       .then((data) => setSuppliers(Array.isArray(data) ? data.filter((s) => s.isActive !== false) : []))
+      .catch(() => {});
+    apiFetch<any>('/products/taxonomies', { token })
+      .then((data) => setTaxonomies({
+        categories: Array.isArray(data?.categories) ? data.categories : [],
+        brands: Array.isArray(data?.brands) ? data.brands : [],
+      }))
       .catch(() => {});
   }, [token]);
 
@@ -174,15 +200,136 @@ export function Productos({
   const setVariant = (i: number, field: string, value: string) =>
     setFormVariants((vs) => vs.map((v, idx) => (idx === i ? { ...v, [field]: value } : v)));
 
+  const updateFormField = (field: 'name' | 'category' | 'brand' | 'barcode', value: string) => {
+    setForm((f) => {
+      const next = { ...f, [field]: value };
+      if (skuAuto && (field === 'name' || field === 'category') && next.name.trim()) {
+        next.sku = generateSku(next.category, next.name);
+      }
+      return next;
+    });
+  };
+
+  const setSku = (value: string) => {
+    setSkuAuto(false);
+    setForm((f) => ({ ...f, sku: value }));
+  };
+
+  const runDupCheck = async (name: string, barcode: string, excludeId?: string) => {
+    if (!name.trim() && !barcode.trim()) return null;
+    try {
+      const params = new URLSearchParams();
+      if (name.trim()) params.set('name', name.trim());
+      if (barcode.trim()) params.set('barcode', barcode.trim());
+      if (excludeId) params.set('excludeId', excludeId);
+      const res = await apiFetch<{ exact: any[]; similar: any[] }>(`/products/duplicates?${params.toString()}`, { token });
+      const safe = { exact: Array.isArray(res?.exact) ? res.exact : [], similar: Array.isArray(res?.similar) ? res.similar : [] };
+      setDupCheck(safe);
+      return safe;
+    } catch {
+      return null;
+    }
+  };
+
+  /** Rellena precio/costo de las variantes que aún no tienen valor. */
+  const inheritPricing = (field: 'price' | 'costPrice', value: string) => {
+    if (!value.trim()) return;
+    setFormVariants((vs) => vs.map((v) => (v[field].trim() ? v : { ...v, [field]: value })));
+  };
+
+  const applyPricingToAll = () => {
+    setFormVariants((vs) => vs.map((v) => ({
+      ...v,
+      price: form.basePrice.trim() ? form.basePrice : v.price,
+      costPrice: form.costPrice.trim() ? form.costPrice : v.costPrice,
+    })));
+  };
+
+  /** Crea una fila por sabor, heredando precio/costo del producto. */
+  const addFlavors = () => {
+    const flavors = flavorInput.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+    if (flavors.length === 0) return;
+    setFormVariants((vs) => {
+      const keep = vs.filter((v) => v.variantName.trim() || v.sku.trim() || v.barcode.trim() || v.price.trim() || v.costPrice.trim() || v.stock.trim());
+      const rows = flavors.map((flavor) => ({
+        variantName: flavor,
+        sku: '',
+        barcode: '',
+        price: form.basePrice,
+        costPrice: form.costPrice,
+        stock: '',
+        lowStockAlert: '5',
+      }));
+      return [...keep, ...rows];
+    });
+    setFlavorInput('');
+  };
+
+  const resetCreateForm = () => {
+    setForm({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '', supplierId: '', lowStockThreshold: '' });
+    setFormVariants([{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
+    setSkuAuto(true);
+    setFlavorInput('');
+    setDupCheck(null);
+  };
+
+  const openDuplicate = (p: AdminProduct) => {
+    const name = `${p.name} (copia)`;
+    setForm({
+      name,
+      sku: generateSku(p.category?.name || '', name),
+      barcode: '',
+      basePrice: String(p.price ?? ''),
+      costPrice: String(p.costPrice ?? ''),
+      comparePrice: String(p.comparePrice ?? ''),
+      category: p.category?.name || '',
+      brand: p.brandName || (typeof p.brand === 'object' && p.brand ? p.brand.name : ''),
+      description: p.description || '',
+      registroIsp: p.registroIsp || '',
+      size: p.size || '',
+      servings: p.servings != null ? String(p.servings) : '',
+      ingredients: p.ingredients || '',
+      descriptionShort: p.descriptionShort || '',
+      seoTitle: p.seoTitle || '',
+      supplierId: p.supplierId || '',
+      lowStockThreshold: p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
+    });
+    const variants = p.variants || [];
+    setFormVariants(variants.length > 0
+      ? variants.map((v) => ({
+          variantName: v.name,
+          sku: '',
+          barcode: '',
+          price: String(v.price ?? ''),
+          costPrice: String(v.costPrice ?? ''),
+          stock: '',
+          lowStockAlert: String(v.lowStockAlert ?? 5),
+        }))
+      : [{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
+    setSkuAuto(false);
+    setFlavorInput('');
+    setDupCheck(null);
+    setShowForm(true);
+    requestAnimationFrame(() => {
+      document.getElementById('nf-product-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const create = async () => {
     if (!form.name.trim()) {
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
-    const skuErr = skuError(form.sku);
-    if (skuErr) {
-      toast.error(skuErr);
+    if (!form.category.trim()) {
+      toast.error('Selecciona o escribe una categoría.');
       return;
+    }
+    if (form.sku.trim()) {
+      const skuErr = skuError(form.sku);
+      if (skuErr) {
+        toast.error(skuErr);
+        return;
+      }
     }
     for (const v of formVariants) {
       if (!v.sku.trim()) continue;
@@ -197,7 +344,16 @@ export function Productos({
       toast.error('Cada variante necesita nombre, SKU o código de barras.');
       return;
     }
-    const ok = await confirm({ title: 'Crear producto', message: `Crear producto "${form.name}"?`, confirmLabel: 'Crear' });
+
+    const dup = await runDupCheck(form.name, form.barcode);
+    if (dup?.exact?.length) {
+      toast.error(`El código de barras ya existe en "${dup.exact[0].name}".`);
+      return;
+    }
+    const similarMsg = dup?.similar?.length
+      ? `\n\nPosible duplicado por nombre: ${dup.similar.map((s: any) => s.name).join(', ')}.`
+      : '';
+    const ok = await confirm({ title: 'Crear producto', message: `¿Crear producto "${form.name}"?${similarMsg}`, confirmLabel: 'Crear' });
     if (!ok) return;
     setSubmitting(true);
     try {
@@ -206,15 +362,20 @@ export function Productos({
         token,
         body: {
           name: form.name,
-          sku: normalizeSku(form.sku),
+          sku: form.sku.trim() ? normalizeSku(form.sku) : undefined,
           barcode: form.barcode || undefined,
-          basePrice: Number(form.basePrice) || undefined,
-          costPrice: Number(form.costPrice) || undefined,
-          comparePrice: Number(form.comparePrice) || undefined,
+          basePrice: form.basePrice.trim() ? Number(form.basePrice) : undefined,
+          costPrice: form.costPrice.trim() ? Number(form.costPrice) : undefined,
+          comparePrice: form.comparePrice.trim() ? Number(form.comparePrice) : undefined,
           category: form.category,
           brand: form.brand,
           description: form.description,
           registroIsp: form.registroIsp,
+          size: form.size || undefined,
+          servings: form.servings ? Number(form.servings) : undefined,
+          ingredients: form.ingredients || undefined,
+          descriptionShort: form.descriptionShort || undefined,
+          seoTitle: form.seoTitle || undefined,
           supplierId: form.supplierId || undefined,
           lowStockThreshold: form.lowStockThreshold ? Number(form.lowStockThreshold) : undefined,
           variants: formVariants
@@ -223,16 +384,15 @@ export function Productos({
               variantName: v.variantName,
               sku: v.sku.trim() ? normalizeSku(v.sku) : undefined,
               barcode: v.barcode || undefined,
-              price: Number(v.price) || undefined,
-              costPrice: Number(v.costPrice) || undefined,
+              price: v.price.trim() ? Number(v.price) : undefined,
+              costPrice: v.costPrice.trim() ? Number(v.costPrice) : undefined,
               stock: Math.max(0, Number(v.stock) || 0),
               lowStockAlert: Number(v.lowStockAlert) || 5,
             })),
         },
       });
       setShowForm(false);
-      setForm({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', supplierId: '', lowStockThreshold: '' });
-      setFormVariants([{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
+      resetCreateForm();
       await onChanged();
     } catch (err: any) {
       toast.error(err?.message || 'Error al crear el producto.');
@@ -243,17 +403,23 @@ export function Productos({
 
   const openEdit = (p: AdminProduct) => {
     setEditing(p);
+    setDupCheck(null);
     setEditForm({
       name: p.name,
       sku: p.sku || '',
       barcode: p.barcode || '',
       category: p.category?.name || '',
-      brand: typeof p.brand === 'object' && p.brand ? p.brand.id : String(p.brand || ''),
+      brand: p.brandName || (typeof p.brand === 'object' && p.brand ? p.brand.name : ''),
       basePrice: String(p.price ?? ''),
       costPrice: String(p.costPrice ?? 0),
       comparePrice: String(p.comparePrice ?? ''),
       description: p.description || '',
       registroIsp: p.registroIsp || '',
+      size: p.size || '',
+      servings: p.servings != null ? String(p.servings) : '',
+      ingredients: p.ingredients || '',
+      descriptionShort: p.descriptionShort || '',
+      seoTitle: p.seoTitle || '',
       reason: '',
       supplierId: p.supplierId || '',
       lowStockThreshold: p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
@@ -286,10 +452,12 @@ export function Productos({
       toast.error('El nombre del producto es obligatorio.');
       return;
     }
-    const skuErr = skuError(editForm.sku);
-    if (skuErr) {
-      toast.error(skuErr);
-      return;
+    if (editForm.sku.trim()) {
+      const skuErr = skuError(editForm.sku);
+      if (skuErr) {
+        toast.error(skuErr);
+        return;
+      }
     }
     for (const v of editForm.variants) {
       if (!v.sku.trim()) continue;
@@ -308,6 +476,20 @@ export function Productos({
       return;
     }
 
+    const dup = await runDupCheck(editForm.name, editForm.barcode, editing.id);
+    if (dup?.exact?.length) {
+      toast.error(`El código de barras ya existe en "${dup.exact[0].name}".`);
+      return;
+    }
+    if (dup?.similar?.length) {
+      const ok = await confirm({
+        title: 'Posible duplicado',
+        message: `Ya existe un producto parecido: ${dup.similar.map((s: any) => s.name).join(', ')}. ¿Guardar igual?`,
+        confirmLabel: 'Guardar igual',
+      });
+      if (!ok) return;
+    }
+
     setSubmitting(true);
     try {
       await apiFetch(`/products/${editing.id}`, {
@@ -315,15 +497,20 @@ export function Productos({
         token,
         body: {
           name: editForm.name,
-          sku: normalizeSku(editForm.sku),
+          sku: editForm.sku.trim() ? normalizeSku(editForm.sku) : undefined,
           barcode: editForm.barcode || null,
           category: editForm.category,
           brand: editForm.brand,
-          basePrice: Number(editForm.basePrice) || undefined,
-          costPrice: Number(editForm.costPrice) || undefined,
-          comparePrice: Number(editForm.comparePrice) || undefined,
+          basePrice: editForm.basePrice.trim() ? Number(editForm.basePrice) : undefined,
+          costPrice: editForm.costPrice.trim() ? Number(editForm.costPrice) : undefined,
+          comparePrice: editForm.comparePrice.trim() ? Number(editForm.comparePrice) : undefined,
           description: editForm.description,
           registroIsp: editForm.registroIsp,
+          size: editForm.size,
+          servings: editForm.servings ? Number(editForm.servings) : null,
+          ingredients: editForm.ingredients,
+          descriptionShort: editForm.descriptionShort,
+          seoTitle: editForm.seoTitle,
           supplierId: editForm.supplierId || null,
           lowStockThreshold: editForm.lowStockThreshold ? Number(editForm.lowStockThreshold) : null,
           variants: editForm.variants.map((v) => ({
@@ -565,7 +752,13 @@ export function Productos({
   );
 
   return (
-    <div>
+    <div className="pb-24 lg:pb-0">
+      <datalist id="nf-categories">
+        {categories.map((c) => <option key={c} value={c} />)}
+      </datalist>
+      <datalist id="nf-brands">
+        {brandOptions.map((b) => <option key={b} value={b} />)}
+      </datalist>
       {barcodeScannerTarget && <BarcodeScanner onDetect={handleBarcodeScan} onClose={() => setBarcodeScannerTarget(null)} />}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">
@@ -651,44 +844,122 @@ export function Productos({
       )}
 
       {showForm && (
-        <div className="mb-6 rounded-3xl border border-line bg-paper p-6">
+        <div id="nf-product-form" className="mb-6 scroll-mt-24 rounded-3xl border border-line bg-paper p-6">
           <p className="font-display text-lg uppercase">Nuevo producto</p>
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre *" className="input md:col-span-2" />
-            <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} placeholder="SKU (opcional)" className="input" />
+            <input
+              value={form.name}
+              onChange={(e) => updateFormField('name', e.target.value)}
+              onBlur={() => runDupCheck(form.name, form.barcode)}
+              placeholder="Nombre *"
+              className="input md:col-span-2"
+              autoComplete="off"
+            />
+            <div>
+              <input
+                value={form.sku}
+                onChange={(e) => setSku(e.target.value)}
+                placeholder="SKU (automático si queda vacío)"
+                className="input"
+                autoComplete="off"
+              />
+              <p className="mt-1 text-[10px] text-muted">Se sugiere desde categoría + nombre; el backend garantiza unicidad.</p>
+            </div>
             <div className="flex items-center gap-1.5">
-              <input value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="Código de barras (EAN-13, UPC-A)" className="input flex-1" />
+              <input
+                value={form.barcode}
+                onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+                onBlur={() => runDupCheck(form.name, form.barcode)}
+                placeholder="Código de barras (EAN-13, UPC-A)"
+                className="input flex-1"
+                inputMode="numeric"
+                autoComplete="off"
+              />
               <ScanBtn type="product" mode="create" />
             </div>
-            <input value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="Categoría * (ej: Whey Protein)" className="input" />
-            <input value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} placeholder="Marca (ej: FullEnergic)" className="input" />
-            <input value={form.basePrice} onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))} placeholder="Precio base" type="number" className="input" />
-            <input value={form.costPrice} onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))} placeholder="Costo (para margen)" type="number" className="input" />
-            <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" className="input" />
+            {dupCheck && (dupCheck.exact.length > 0 || dupCheck.similar.length > 0) && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 md:col-span-2">
+                {dupCheck.exact.length > 0 && (
+                  <p className="font-bold">Barcode ya registrado: {dupCheck.exact[0].name} ({dupCheck.exact[0].sku})</p>
+                )}
+                {dupCheck.similar.length > 0 && (
+                  <p className={dupCheck.exact.length > 0 ? 'mt-1' : ''}>
+                    Nombres parecidos: {dupCheck.similar.map((s: any) => `${s.name} (${Math.round(s.score * 100)}%)`).join(' · ')}
+                  </p>
+                )}
+              </div>
+            )}
+            <input value={form.category} onChange={(e) => updateFormField('category', e.target.value)} placeholder="Categoría * (ej: Whey Protein)" className="input" list="nf-categories" autoComplete="off" />
+            <input value={form.brand} onChange={(e) => updateFormField('brand', e.target.value)} placeholder="Marca (ej: FullEnergic)" className="input" list="nf-brands" autoComplete="off" />
+            <input
+              value={form.basePrice}
+              onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))}
+              onBlur={(e) => inheritPricing('price', e.target.value)}
+              placeholder="Precio base"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              className="input"
+            />
+            <input
+              value={form.costPrice}
+              onChange={(e) => setForm((f) => ({ ...f, costPrice: e.target.value }))}
+              onBlur={(e) => inheritPricing('costPrice', e.target.value)}
+              placeholder="Costo (para margen)"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              step="1"
+              className="input"
+            />
+            <input value={form.comparePrice} onChange={(e) => setForm((f) => ({ ...f, comparePrice: e.target.value }))} placeholder="Precio tachado (opcional)" type="number" inputMode="numeric" min="0" step="1" className="input" />
             <select value={form.supplierId} onChange={(e) => setForm((f) => ({ ...f, supplierId: e.target.value }))} className="input">
               <option value="">Sin proveedor</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <input value={form.lowStockThreshold} onChange={(e) => setForm((f) => ({ ...f, lowStockThreshold: e.target.value }))} placeholder="Umbral stock bajo (global: 5)" type="number" min="1" className="input" />
+            <input value={form.lowStockThreshold} onChange={(e) => setForm((f) => ({ ...f, lowStockThreshold: e.target.value }))} placeholder="Umbral stock bajo (global: 5)" type="number" inputMode="numeric" min="1" step="1" className="input" />
             <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Descripción (opcional)" className="input md:col-span-2" rows={2} />
             <input value={form.registroIsp} onChange={(e) => setForm((f) => ({ ...f, registroIsp: e.target.value }))} placeholder="Registro ISP N° (opcional)" className="input" />
+            <input value={form.size} onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))} placeholder="Tamaño / presentación (ej: 1 kg, 30 servicios)" className="input" />
+            <input value={form.servings} onChange={(e) => setForm((f) => ({ ...f, servings: e.target.value }))} placeholder="N° de porciones (opcional)" type="number" inputMode="numeric" min="1" step="1" className="input" />
+            <input value={form.seoTitle} onChange={(e) => setForm((f) => ({ ...f, seoTitle: e.target.value }))} placeholder="Título SEO (opcional)" className="input md:col-span-2" />
+            <textarea value={form.descriptionShort} onChange={(e) => setForm((f) => ({ ...f, descriptionShort: e.target.value }))} placeholder="Descripción corta (opcional)" className="input md:col-span-2" rows={2} />
+            <textarea value={form.ingredients} onChange={(e) => setForm((f) => ({ ...f, ingredients: e.target.value }))} placeholder="Ingredientes (opcional)" className="input md:col-span-2" rows={2} />
           </div>
 
-          <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
+          <div className="mt-6 flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
+            <button type="button" onClick={applyPricingToAll} className="text-xs font-bold text-accent">
+              Aplicar precio/costo a todas
+            </button>
+          </div>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              value={flavorInput}
+              onChange={(e) => setFlavorInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFlavors(); } }}
+              placeholder="Sabores en lote: Vainilla, Chocolate, Frutilla"
+              className="input flex-1"
+            />
+            <button type="button" onClick={addFlavors} className="ds-btn-secondary px-3 py-2 text-xs">
+              + Agregar sabores
+            </button>
+          </div>
           <div className="mt-2 space-y-2">
             {formVariants.map((v, i) => (
               <div key={i} className="grid grid-cols-2 gap-2 md:grid-cols-8">
                 <input value={v.variantName} onChange={(e) => setVariant(i, 'variantName', e.target.value)} placeholder="Variante (ej: Vainilla 1kg)" className="input md:col-span-2" />
                 <input value={v.sku} onChange={(e) => setVariant(i, 'sku', e.target.value)} placeholder="SKU" className="input" />
                 <div className="flex items-center gap-1">
-                  <input value={v.barcode} onChange={(e) => setVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input flex-1" />
+                  <input value={v.barcode} onChange={(e) => setVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input flex-1" inputMode="numeric" />
                   <ScanBtn type="variant" variantIdx={i} mode="create" />
                 </div>
-                <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
-                <input value={v.costPrice} onChange={(e) => setVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
-                <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
+                <input value={v.price} onChange={(e) => setVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" inputMode="numeric" min="0" step="1" className="input" />
+                <input value={v.costPrice} onChange={(e) => setVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" inputMode="numeric" min="0" step="1" className="input" />
+                <input value={v.stock} onChange={(e) => setVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" inputMode="numeric" min="0" step="1" className="input" />
                 <div className="flex items-center gap-2">
-                  <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input" />
+                  <input value={v.lowStockAlert} onChange={(e) => setVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" inputMode="numeric" min="0" step="1" className="input" />
                   <button onClick={() => setFormVariants((vs) => vs.filter((_, idx) => idx !== i))} disabled={formVariants.length === 1} className="inline-flex items-center justify-center rounded-full p-1 text-red-500 transition hover:bg-red-50 disabled:opacity-30" title="Quitar variante">
                     <X size={14} />
                   </button>
@@ -700,7 +971,7 @@ export function Productos({
             + Agregar variante
           </button>
 
-          <div className="mt-6 flex justify-end gap-2">
+          <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-30 -mx-6 mt-6 flex justify-end gap-2 border-t border-line bg-paper/95 px-6 py-3 backdrop-blur lg:bottom-0">
             <button onClick={() => setShowForm(false)} className="ds-btn-secondary px-4 py-2 text-xs">
               Cancelar
             </button>
@@ -737,6 +1008,13 @@ export function Productos({
                     className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-2 text-[11px] font-bold text-ink hover:border-accent min-h-[44px]"
                   >
                     <Pencil size={10} /> Editar
+                  </button>
+                  <button
+                    onClick={() => openDuplicate(p)}
+                    className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-2 text-[11px] font-bold text-ink hover:border-accent min-h-[44px]"
+                    title="Duplicar como producto nuevo (sin stock ni barcode)"
+                  >
+                    <Copy size={10} /> Duplicar
                   </button>
                   <button
                     onClick={() => remove(p)}
@@ -909,25 +1187,57 @@ export function Productos({
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-line bg-paper p-6" onClick={(e) => e.stopPropagation()}>
             <p className="font-display text-xl uppercase">Editar producto</p>
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <input value={editForm.name} onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))} placeholder="Nombre *" className="input md:col-span-2" />
-              <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU" className="input" />
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
+                onBlur={() => runDupCheck(editForm.name, editForm.barcode, editing?.id)}
+                placeholder="Nombre *"
+                className="input md:col-span-2"
+                autoComplete="off"
+              />
+              <input value={editForm.sku} onChange={(e) => setEditForm((f) => (f ? { ...f, sku: e.target.value } : f))} placeholder="SKU (vacío = conservar)" className="input" autoComplete="off" />
               <div className="flex items-center gap-1.5">
-                <input value={editForm.barcode} onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))} placeholder="Código de barras" className="input flex-1" />
+                <input
+                  value={editForm.barcode}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, barcode: e.target.value } : f))}
+                  onBlur={() => runDupCheck(editForm.name, editForm.barcode, editing?.id)}
+                  placeholder="Código de barras"
+                  className="input flex-1"
+                  inputMode="numeric"
+                  autoComplete="off"
+                />
                 <ScanBtn type="product" mode="edit" />
               </div>
-              <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" />
-              <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" />
-              <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" className="input" />
-              <input value={editForm.costPrice} onChange={(e) => setEditForm((f) => (f ? { ...f, costPrice: e.target.value } : f))} placeholder="Costo" type="number" className="input" />
-              <input value={editForm.comparePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, comparePrice: e.target.value } : f))} placeholder="Precio tachado" type="number" className="input" />
+              {dupCheck && (dupCheck.exact.length > 0 || dupCheck.similar.length > 0) && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 md:col-span-2">
+                  {dupCheck.exact.length > 0 && (
+                    <p className="font-bold">Barcode ya registrado: {dupCheck.exact[0].name} ({dupCheck.exact[0].sku})</p>
+                  )}
+                  {dupCheck.similar.length > 0 && (
+                    <p className={dupCheck.exact.length > 0 ? 'mt-1' : ''}>
+                      Nombres parecidos: {dupCheck.similar.map((s: any) => `${s.name} (${Math.round(s.score * 100)}%)`).join(' · ')}
+                    </p>
+                  )}
+                </div>
+              )}
+              <input value={editForm.category} onChange={(e) => setEditForm((f) => (f ? { ...f, category: e.target.value } : f))} placeholder="Categoría" className="input" list="nf-categories" autoComplete="off" />
+              <input value={editForm.brand} onChange={(e) => setEditForm((f) => (f ? { ...f, brand: e.target.value } : f))} placeholder="Marca" className="input" list="nf-brands" autoComplete="off" />
+              <input value={editForm.basePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, basePrice: e.target.value } : f))} placeholder="Precio base" type="number" inputMode="numeric" min="0" step="1" className="input" />
+              <input value={editForm.costPrice} onChange={(e) => setEditForm((f) => (f ? { ...f, costPrice: e.target.value } : f))} placeholder="Costo" type="number" inputMode="numeric" min="0" step="1" className="input" />
+              <input value={editForm.comparePrice} onChange={(e) => setEditForm((f) => (f ? { ...f, comparePrice: e.target.value } : f))} placeholder="Precio tachado" type="number" inputMode="numeric" min="0" step="1" className="input" />
               <input value={editForm.reason} onChange={(e) => setEditForm((f) => (f ? { ...f, reason: e.target.value } : f))} placeholder="Motivo de ajuste de stock (si cambias stock)" className="input md:col-span-2" />
               <textarea value={editForm.description} onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))} placeholder="Descripción" className="input md:col-span-2" rows={2} />
               <input value={editForm.registroIsp} onChange={(e) => setEditForm((f) => (f ? { ...f, registroIsp: e.target.value } : f))} placeholder="Registro ISP N°" className="input" />
+              <input value={editForm.size} onChange={(e) => setEditForm((f) => (f ? { ...f, size: e.target.value } : f))} placeholder="Tamaño / presentación" className="input" />
+              <input value={editForm.servings} onChange={(e) => setEditForm((f) => (f ? { ...f, servings: e.target.value } : f))} placeholder="N° de porciones" type="number" inputMode="numeric" min="1" step="1" className="input" />
+              <input value={editForm.seoTitle} onChange={(e) => setEditForm((f) => (f ? { ...f, seoTitle: e.target.value } : f))} placeholder="Título SEO" className="input md:col-span-2" />
+              <textarea value={editForm.descriptionShort} onChange={(e) => setEditForm((f) => (f ? { ...f, descriptionShort: e.target.value } : f))} placeholder="Descripción corta" className="input md:col-span-2" rows={2} />
+              <textarea value={editForm.ingredients} onChange={(e) => setEditForm((f) => (f ? { ...f, ingredients: e.target.value } : f))} placeholder="Ingredientes" className="input md:col-span-2" rows={2} />
               <select value={editForm.supplierId} onChange={(e) => setEditForm((f) => (f ? { ...f, supplierId: e.target.value } : f))} className="input">
                 <option value="">Sin proveedor</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <input value={editForm.lowStockThreshold} onChange={(e) => setEditForm((f) => (f ? { ...f, lowStockThreshold: e.target.value } : f))} placeholder="Umbral stock bajo (global: 5)" type="number" min="1" className="input" />
+              <input value={editForm.lowStockThreshold} onChange={(e) => setEditForm((f) => (f ? { ...f, lowStockThreshold: e.target.value } : f))} placeholder="Umbral stock bajo (global: 5)" type="number" inputMode="numeric" min="1" step="1" className="input" />
             </div>
 
             <p className="mt-6 text-[11px] font-bold uppercase tracking-widest text-muted">Variantes</p>
@@ -940,11 +1250,11 @@ export function Productos({
                     <input value={v.barcode} onChange={(e) => setEditVariant(i, 'barcode', e.target.value)} placeholder="Barcode" className="input flex-1" />
                     <ScanBtn type="variant" variantIdx={i} mode="edit" />
                   </div>
-                  <input value={v.price} onChange={(e) => setEditVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" className="input" />
-                  <input value={v.costPrice} onChange={(e) => setEditVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" className="input" />
+                  <input value={v.price} onChange={(e) => setEditVariant(i, 'price', e.target.value)} placeholder="Precio" type="number" inputMode="numeric" min="0" step="1" className="input" />
+                  <input value={v.costPrice} onChange={(e) => setEditVariant(i, 'costPrice', e.target.value)} placeholder="Costo" type="number" inputMode="numeric" min="0" step="1" className="input" />
                   <div className="flex items-center gap-2">
-                    <input value={v.stock} onChange={(e) => setEditVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" className="input" />
-                    <input value={v.lowStockAlert} onChange={(e) => setEditVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" className="input w-20" />
+                    <input value={v.stock} onChange={(e) => setEditVariant(i, 'stock', e.target.value)} placeholder="Stock" type="number" inputMode="numeric" min="0" step="1" className="input" />
+                    <input value={v.lowStockAlert} onChange={(e) => setEditVariant(i, 'lowStockAlert', e.target.value)} placeholder="Alerta" type="number" inputMode="numeric" min="0" step="1" className="input w-20" />
                     <button
                       onClick={() => setEditForm((f) => (f ? { ...f, variants: f.variants.filter((_, idx) => idx !== i) } : f))}
                       disabled={editForm.variants.length === 1}
@@ -966,7 +1276,7 @@ export function Productos({
               + Agregar variante
             </button>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex justify-end gap-2 border-t border-line bg-paper/95 px-6 py-3 backdrop-blur">
               <button onClick={() => setEditing(null)} className="ds-btn-secondary px-4 py-2 text-xs">
                 Cancelar
               </button>

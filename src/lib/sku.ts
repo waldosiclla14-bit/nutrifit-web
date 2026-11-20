@@ -22,6 +22,22 @@ export function isValidSku(sku: string | null | undefined): sku is string {
   return !!sku && SKU_RE.test(sku);
 }
 
+/**
+ * Genera una propuesta de SKU legible: NF-<CAT3>-<NOMBRE>-<TAMAÑO>.
+ * Solo es una sugerencia de UI; el backend sigue garantizando unicidad
+ * (uniqueSku) y validando el formato final.
+ */
+export function generateSku(category: string, name: string, size?: string): string {
+  const parts = [
+    'NF',
+    normalizeSku(category || 'GEN').slice(0, 3) || 'GEN',
+    normalizeSku(name || 'PRODUCTO').slice(0, 28) || 'PRODUCTO',
+  ];
+  const sizePart = normalizeSku(size || '').slice(0, 8);
+  if (sizePart) parts.push(sizePart);
+  return parts.join('-').replace(/-+/g, '-').slice(0, 50).replace(/-+$/g, '');
+}
+
 /** Mensaje de error si el SKU no es válido, o null si está bien. */
 export function skuError(sku: string | null | undefined): string | null {
   if (!sku || !sku.trim()) return 'El SKU es obligatorio.';

@@ -387,6 +387,14 @@ model Product {
   comparePrice      Int?
   registroIsp       String?
   imageUrl          String?
+  // Ficha extendida (nullable): se completa al aprobar un borrador del asistente.
+  size              String?
+  servings          Int?
+  ingredients       String?
+  descriptionShort  String?
+  seoTitle          String?
+  aiSources         Json?    // fuentes usadas por el borrador (trazabilidad)
+  aiConfidence      Json?    // confianza por campo al aprobar
   isActive          Boolean  @default(true)
   isFeatured        Boolean  @default(false)
   categoryId        String
@@ -667,6 +675,23 @@ model AuditLog {
   user   User?  @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ───────────────────────────────────────────────
+// CUOTA DIARIA DEL ASISTENTE DE FICHA
+// ───────────────────────────────────────────────
+
+model AiUsageDaily {
+  id        String   @id @default(uuid())
+  userId    String
+  day       DateTime @db.Date
+  calls     Int      @default(0)
+  tokens    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, day])
+  @@index([day])
+  @@map("ai_usage_daily")
 }
 
 // ───────────────────────────────────────────────
