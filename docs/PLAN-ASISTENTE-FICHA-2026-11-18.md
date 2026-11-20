@@ -616,4 +616,10 @@ Hallazgos confirmados por revisión de código (agente `nutrifit-revisor`) y cor
 
 Pendiente fuera del código: revisar `autoDeploy` en Render, prueba E2E en iOS/Android y verificar 403 con un usuario SELLER real.
 
-Verificación local tras los fixes: backend `npx jest` 292/292, `npx jest src/ai` 33/33, frontend `npx jest` 183/183, `tsc --noEmit` y ambos `npm run build` OK, `npm run lint` sin errores.
+Verificación local tras los fixes: backend `npx jest` 298/298, `npx jest src/ai` 33/33, frontend `npx jest` 184/184, `tsc --noEmit` y ambos `npm run build` OK, `npm run lint` sin errores.
+
+### Deploy de las correcciones (2026-11-20)
+- Commit `bbb1e15`, workflow `44736075596`, deploy `dep-dc03pth7lnhs739ju87g` → `live` (commit confirmado en el objeto de Render).
+- `GET /api/ai/product-draft/status` con sesión ADMIN → `200 {"used":4,"limit":60,"resetAt":"2026-11-21","configured":true}`.
+- `POST /api/ai/product-draft` real → `201`, `gemini-3.6-flash`,ISP leído del texto, cuota `5/60`, sin warnings.
+- `/api/health` → `200 {"status":"ok","db":"ok"}`.
