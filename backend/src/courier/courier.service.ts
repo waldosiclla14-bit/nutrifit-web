@@ -841,7 +841,8 @@ export class CourierService {
           action,
           deliveryId: deliveryId || null,
           day: day || null,
-          response: response as Prisma.InputJsonValue,
+          // Prisma JSON no acepta Date; el pase por JSON las deja como ISO.
+          response: JSON.parse(JSON.stringify(response ?? {})) as Prisma.InputJsonValue,
         },
       });
     } catch (error: any) {

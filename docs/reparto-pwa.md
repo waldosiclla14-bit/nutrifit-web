@@ -1,4 +1,4 @@
-# PWA de Reparto (Fases 3 y 4)
+# PWA de Reparto (Fases 3, 4 y 5)
 
 App exclusiva del rol `DELIVERY`. Instalable, pantalla completa y con tres
 pestañas. No reemplaza al panel admin: `DELIVERY` sigue recibiendo 403 en
@@ -79,8 +79,27 @@ vez; estados `ANULADA`/`CONFIRMADA` no se pueden confirmar de nuevo.
 - La solicitud de reprogramación solo crea un `DeliveryAuditLog`
   (`RESCHEDULE_REQUESTED`) y avisa al admin.
 - Cierre por inactividad: `courier_idle_minutes` (Configuración, por defecto 15).
-- Sin conexión se muestra un aviso y los botones de estado fallan con mensaje.
-  La cola offline idempotente llega en la Fase 5.
+## Sin señal (Fase 5)
+
+- Las mutaciones (estado, entrega con POD, reprogramación y cierre de rendición)
+  se guardan en **IndexedDB** (`nutrifit-courier`) cuando no hay red, o cuando
+  el servidor responde 0/408/5xx. No se pierden al cerrar la pestaña.
+- Cada acción lleva una clave `idempotencyKey` propia. El backend guarda la
+  primera respuesta en `courier_action_receipts` y la repite en reintentos, así
+  que un doble envío no cambia dos veces el estado ni cobra dos veces.
+- La cola se vacía **en orden de creación** y de una en una (IN_ROUTE antes que
+  DELIVER). Si una acción reintentable falla, se detiene para no desordenar las
+  dependencias.
+- Errores 400/404 (conflicto de estado, regla de negocio o entrega ajena) se
+  marcan como **Conflicto** y no se reintentan solos. El repartidor puede
+  **Reintentar** o **Descartar** desde el panel «Pendientes de enviar»; un 401
+  detiene la sincronización y pide login.
+- La última ruta y rendición leídas con señal se guardan como instantánea. Sin
+  cobertura se muestran con el aviso «Mostrando datos guardados». Nunca se
+  inventan datos ni se permiten acciones locales sobre entregas que no estaban
+  en la última ruta conocida.
+- El contador del encabezado muestra acciones en cola/conflicto. El service
+  worker precarga `/reparto`, `/login` y el manifest para abrir la app sin red.
 
 ## PWA
 

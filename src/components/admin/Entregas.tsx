@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   CalendarDays,
   CheckCircle,
+  CircleAlert,
   Clock,
+  Gauge,
   MapPin,
   RefreshCw,
   Truck,
+  UserPlus,
   XCircle,
   Search,
-  ChevronDown,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { formatTime12 } from '@/lib/utils';
@@ -55,6 +57,21 @@ type Counters = {
   semana: { desde: string; hasta: string; total: number; entregados: number };
   vencidos: number;
   porEstado: Record<string, number>;
+  kpis?: { cumplimiento: number | null; aTiempo: number | null; vencidos: number; sinAsignar: number };
+  despacho?: {
+    sinAsignar: number;
+    porRepartidor: { id: string; nombre: string; pendientes: number }[];
+  };
+};
+
+type Repartidor = { id: string; name: string };
+
+type Props = {
+  token: string;
+  /** El resumen puede abrir directamente una vista concreta. */
+  initialVista?: Vista;
+  initialStatus?: string;
+  onNavigateRendiciones?: () => void;
 };
 
 type Vista = 'dia' | 'semana' | 'vencidos' | 'todos';
@@ -86,23 +103,29 @@ function formatDay(iso: string | null): string {
   return d && m && y ? `${d}-${m}-${y}` : iso;
 }
 
-export function Entregas({ token }: { token: string }) {
+export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNavigateRendiciones }: Props) {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [counters, setCounters] = useState<Counters | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(initialStatus);
   const [filterLine, setFilterLine] = useState('');
-  const [vista, setVista] = useState<Vista>('dia');
+  const [vista, setVista] = useState<Vista>(initialVista);
   const [filterDay, setFilterDay] = useState(hoyChile);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [repartidores, setRepartidores] = useState<Repartidor[]>([]);
+  const [sinAsignar, setSinAsignar] = useState<Delivery[]>([]);
+  const [selectedCourier, setSelectedCourier] = useState<Record<string, string>>({});
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [diferencias, setDiferencias] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filterStatus) params.set('status', filterStatus);
+      if (filterStatus === '__pendientes') params.set('pendientes', '1');
+      else if (filterStatus) params.set('status', filterStatus);
       if (filterLine) params.set('line', filterLine);
       if (vista === 'dia') params.set('day', filterDay);
       if (vista === 'semana') {
@@ -114,13 +137,27 @@ export function Entregas({ token }: { token: string }) {
       if (vista === 'todos') params.set('incluirCerrados', '1');
       params.set('limit', '200');
 
-      const [delRes, countersRes] = await Promise.all([
+      const despachoParams = new URLSearchParams({
+        day: filterDay,
+        pendientes: '1',
+        sinAsignar: '1',
+        limit: '50',
+      });
+      const [delRes, countersRes, usersRes, despachoRes, rendicionesRes] = await Promise.all([
         apiFetch<any>(`/deliveries?${params}`, { token }),
         apiFetch<Counters>('/deliveries/counters', { token }).catch(() => null),
+        apiFetch<any[]>('/users', { token }).catch(() => []),
+        apiFetch<any>(`/deliveries?${despachoParams}`, { token }).catch(() => []),
+        apiFetch<any[]>(`/courier/rendiciones?day=${filterDay}&status=RENDIDA`, { token }).catch(() => []),
       ]);
 
       setDeliveries(delRes?.data || delRes || []);
       if (countersRes) setCounters(countersRes);
+      setRepartidores((usersRes || []).filter((u: any) => u.role === 'DELIVERY' && u.isActive !== false));
+      setSinAsignar(despachoRes?.data || despachoRes || []);
+      setDiferencias(
+        (rendicionesRes || []).filter((r: any) => Number(r.diferencia ?? 0) !== 0).length,
+      );
     } catch (err: any) {
       if (handleAuthError(err, () => { localStorage.removeItem('admin_token'); window.location.href = '/login'; })) return;
       toast.error('Error al cargar entregas');
@@ -142,6 +179,30 @@ export function Entregas({ token }: { token: string }) {
       toast.error(err?.message || 'Error al actualizar');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const goTo = (next: Vista, status = '') => {
+    setVista(next);
+    setFilterStatus(status);
+    if (next === 'dia') setFilterDay(counters?.hoy.dia || filterDay);
+  };
+
+  const assignDelivery = async (id: string, userId: string) => {
+    if (!userId) return;
+    setAssigning(id);
+    try {
+      await apiFetch(`/deliveries/${id}/assign`, {
+        method: 'PATCH',
+        token,
+        body: { userId },
+      });
+      toast.success('Entrega asignada. Se envió un aviso a la app del repartidor.');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo asignar la entrega.');
+    } finally {
+      setAssigning(null);
     }
   };
 
@@ -167,18 +228,70 @@ export function Entregas({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Contadores: misma fuente que la tabla (GET /deliveries/counters) */}
+      {/* Contadores clicables: misma fuente que la tabla (GET /deliveries/counters) */}
       {counters && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatCard
             icon={<CalendarDays size={16} />}
             label={`Hoy (${formatDay(counters.hoy.dia)})`}
             value={counters.hoy.total}
             color="text-accent"
+            active={vista === 'dia' && !filterStatus}
+            onClick={() => goTo('dia')}
           />
-          <StatCard icon={<Clock size={16} />} label="Pendientes hoy" value={counters.hoy.pendientes} color="text-amber-600" />
-          <StatCard icon={<CheckCircle size={16} />} label="Entregados hoy" value={counters.hoy.entregados} color="text-green-600" />
-          <StatCard icon={<Truck size={16} />} label="Vencidos" value={counters.vencidos} color="text-red-600" />
+          <StatCard
+            icon={<Clock size={16} />}
+            label="Pendientes hoy"
+            value={counters.hoy.pendientes}
+            color="text-amber-600"
+            active={filterStatus === '__pendientes'}
+            onClick={() => goTo('dia', '__pendientes')}
+          />
+          <StatCard
+            icon={<CheckCircle size={16} />}
+            label="Entregados hoy"
+            value={counters.hoy.entregados}
+            color="text-green-600"
+            active={filterStatus === 'DELIVERED'}
+            onClick={() => goTo('dia', 'DELIVERED')}
+          />
+          <StatCard
+            icon={<Truck size={16} />}
+            label="Vencidos"
+            value={counters.vencidos}
+            color="text-red-600"
+            active={vista === 'vencidos'}
+            onClick={() => goTo('vencidos')}
+          />
+          <StatCard
+            icon={<UserPlus size={16} />}
+            label="Sin repartidor"
+            value={counters.despacho?.sinAsignar ?? 0}
+            color="text-blue-600"
+            onClick={() => goTo('dia', '__pendientes')}
+          />
+        </div>
+      )}
+
+      {/* KPIs de operación. Los porcentajes vienen del servidor, no se inventan. */}
+      {counters?.kpis && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <KpiCard icon={<Gauge size={16} />} label="Cumplimiento" value={pct(counters.kpis.cumplimiento)} hint="cerradas con entrega" />
+          <KpiCard icon={<Clock size={16} />} label="A tiempo" value={pct(counters.kpis.aTiempo)} hint="dentro de la ventana" />
+          <KpiCard icon={<CalendarDays size={16} />} label="Vencidos" value={String(counters.kpis.vencidos)} hint="días anteriores" />
+          <button
+            type="button"
+            onClick={onNavigateRendiciones}
+            disabled={!onNavigateRendiciones}
+            className="rounded-2xl border border-line bg-paper p-4 text-left transition hover:border-accent disabled:opacity-70"
+          >
+            <div className="flex items-center gap-2 text-amber-600">
+              <CircleAlert size={16} />
+              <span className="text-xs font-bold uppercase tracking-wider">Diferencias</span>
+            </div>
+            <p className="mt-2 text-2xl font-bold tabular-nums">{diferencias}</p>
+            <p className="text-[10px] text-muted">rendiciones por revisar →</p>
+          </button>
         </div>
       )}
 
@@ -389,12 +502,47 @@ export function Entregas({ token }: { token: string }) {
   );
 }
 
-function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
+function pct(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : `${value}%`;
+}
+
+function KpiCard({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint: string }) {
   return (
     <div className="rounded-2xl border border-line bg-paper p-4">
+      <div className="flex items-center gap-2 text-[var(--text-secondary)]">{icon}<span className="text-xs font-bold uppercase tracking-wider">{label}</span></div>
+      <p className="mt-2 text-2xl font-bold tabular-nums">{value}</p>
+      <p className="text-[10px] text-muted">{hint}</p>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+  onClick,
+  active,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  onClick?: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${label}: ${value}. Ver detalle`}
+      className={`rounded-2xl border bg-paper p-4 text-left transition hover:border-accent ${
+        active ? 'border-accent ring-1 ring-accent/40' : 'border-line'
+      }`}
+    >
       <div className={`flex items-center gap-2 ${color}`}>{icon}<span className="text-xs font-bold uppercase tracking-wider">{label}</span></div>
       <p className="mt-2 text-2xl font-bold tabular-nums">{value}</p>
-    </div>
+    </button>
   );
 }
 

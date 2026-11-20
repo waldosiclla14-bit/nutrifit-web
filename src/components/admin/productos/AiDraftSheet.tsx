@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api';
 import { toast } from '@/lib/feedback';
 import { draftToForm } from '@/lib/admin/productDraft';
 import type { ProductDraft } from '@/types/productDraft';
+import { BarcodeScanner } from '../BarcodeScanner';
 
 export type AiDraftResult = ProductDraft & {
   draftId: string;
@@ -29,6 +30,7 @@ type Props = {
   token: string;
   onClose: () => void;
   onApply: (draft: AiDraftResult) => void;
+  onQueue: (draft: AiDraftResult) => void;
 };
 
 const MAX_IMAGES = 4;
@@ -58,7 +60,7 @@ async function fileToCompressedJpeg(file: File): Promise<string> {
   return dataUrl.split(',')[1];
 }
 
-export function AiDraftSheet({ open, token, onClose, onApply }: Props) {
+export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) {
   const [mode, setMode] = useState<Mode>('photo');
   const [step, setStep] = useState<'input' | 'processing' | 'review'>('input');
   const [stage, setStage] = useState('');
@@ -67,6 +69,7 @@ export function AiDraftSheet({ open, token, onClose, onApply }: Props) {
   const [url, setUrl] = useState('');
   const [text, setText] = useState('');
   const [webSearch, setWebSearch] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [result, setResult] = useState<AiDraftResult | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -81,6 +84,7 @@ export function AiDraftSheet({ open, token, onClose, onApply }: Props) {
     setUrl('');
     setText('');
     setWebSearch(false);
+    setScanOpen(false);
     setResult(null);
   }, [open]);
 
@@ -246,8 +250,17 @@ export function AiDraftSheet({ open, token, onClose, onApply }: Props) {
               )}
 
               {mode === 'barcode' && (
-                <input value={barcode} onChange={(e) => setBarcode(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Ej: 5901234123457" inputMode="numeric" className="input" maxLength={14} />
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input value={barcode} onChange={(e) => setBarcode(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Ej: 5901234123457" inputMode="numeric" className="input flex-1" maxLength={14} />
+                    <button type="button" onClick={() => setScanOpen(true)} className="ds-btn-secondary px-3 py-2 text-xs"
+                      title="Escanear con la cámara">
+                      <span className="inline-flex items-center gap-1"><ScanLine size={14} /> Escanear</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted">Puedes escribirlo o escanearlo desde la cámara.</p>
+                </div>
               )}
 
               {mode === 'url' && (
@@ -355,16 +368,35 @@ export function AiDraftSheet({ open, token, onClose, onApply }: Props) {
             </button>
           )}
           {step === 'review' && result && (
-            <button
-              type="button"
-              onClick={() => onApply(result)}
-              className="ds-btn-accent px-4 py-2 text-xs"
-            >
-              Usar estos datos
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => onQueue(result)}
+                className="ds-btn-secondary px-3 py-2 text-xs"
+              >
+                Agregar a cola
+              </button>
+              <button
+                type="button"
+                onClick={() => onApply(result)}
+                className="ds-btn-accent px-3 py-2 text-xs"
+              >
+                Usar estos datos
+              </button>
+            </div>
           )}
         </footer>
       </div>
+
+      {scanOpen && (
+        <BarcodeScanner
+          onClose={() => setScanOpen(false)}
+          onDetect={(code) => {
+            setBarcode(code.replace(/\D/g, '').slice(0, 14));
+            setScanOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

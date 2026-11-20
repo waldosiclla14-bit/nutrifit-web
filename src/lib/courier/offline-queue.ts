@@ -65,7 +65,7 @@ export async function enqueueAction(
   const full: QueuedAction = {
     ...action,
     id,
-    body: { ...action.body, ...extraBody, idempotencyKey: id },
+    body: { ...extraBody, idempotencyKey: id },
     createdAt: Date.now(),
     attempts: 0,
     status: 'pending',

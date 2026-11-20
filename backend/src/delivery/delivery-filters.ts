@@ -29,6 +29,10 @@ export type DeliveryScope = {
   q?: string;
   /** Solo atrasadas (día anterior sin estado final). */
   vencidos?: boolean | string;
+  /** Solo estados no finales (misma lista que "pendientes"). */
+  pendientes?: boolean | string;
+  /** Solo entregas sin repartidor asignado (despacho). */
+  sinAsignar?: boolean | string;
   /** Incluye canceladas y reprogramadas. */
   incluirCerrados?: boolean | string;
   page?: string | number;
@@ -108,7 +112,9 @@ export function buildDeliveryWhere(scope: DeliveryScope = {}): Prisma.DeliveryWh
     }
   }
 
-  if (scope.status) {
+  if (truthy(scope.pendientes)) {
+    and.push({ status: { in: ESTADOS_PENDIENTES } });
+  } else if (scope.status) {
     and.push({ status: scope.status as DeliveryStatus });
   } else if (!truthy(scope.incluirCerrados)) {
     // Por defecto no se muestran canceladas ni reprogramadas.
@@ -117,6 +123,7 @@ export function buildDeliveryWhere(scope: DeliveryScope = {}): Prisma.DeliveryWh
 
   if (scope.stationId) and.push({ stationId: scope.stationId });
   if (scope.assignedTo) and.push({ assignedTo: scope.assignedTo });
+  if (truthy(scope.sinAsignar)) and.push({ assignedTo: null });
 
   if (scope.line || scope.commune) {
     and.push({

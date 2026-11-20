@@ -12,6 +12,14 @@ import { BarcodeScanner } from './BarcodeScanner';
 import { AiDraftSheet } from './productos/AiDraftSheet';
 import type { AiDraftResult } from './productos/AiDraftSheet';
 import { draftToForm } from '@/lib/admin/productDraft';
+import {
+  loadQueue,
+  makeQueueItem,
+  MAX_QUEUE,
+  patchQueueItem,
+  saveQueue,
+  type QueuedDraft,
+} from '@/lib/admin/aiDraftQueue';
 
 let xlsxModule: typeof import('xlsx') | null = null;
 async function getXlsx() {
@@ -63,6 +71,9 @@ export function Productos({
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiQueue, setAiQueue] = useState<QueuedDraft[]>([]);
+  const [queueReady, setQueueReady] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
@@ -119,6 +130,15 @@ export function Productos({
       }))
       .catch(() => {});
   }, [token]);
+
+  // Cola de borradores IA: solo en este dispositivo, expira en 24 h.
+  useEffect(() => {
+    setAiQueue(loadQueue());
+    setQueueReady(true);
+  }, []);
+  useEffect(() => {
+    if (queueReady) saveQueue(aiQueue);
+  }, [aiQueue, queueReady]);
 
   const filteredProducts = useMemo(() => {
     let list = products;
@@ -298,6 +318,137 @@ export function Productos({
     requestAnimationFrame(() => {
       document.getElementById('nf-product-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+  };
+
+  /** Guarda el borrador en la cola local. No crea el producto. */
+  const queueDraft = (draft: AiDraftResult) => {
+    if (aiQueue.length >= MAX_QUEUE) {
+      toast.error(`La cola está llena (${MAX_QUEUE}). Aprueba o limpia antes de agregar más.`);
+      return;
+    }
+    const exact = draft.duplicates?.exact?.[0];
+    const similar = (draft.duplicates?.similar || []).slice(0, 2).map((s: any) => s.name);
+    const duplicateWarning = exact
+      ? `Barcode ya registrado en "${exact.name}".`
+      : similar.length
+        ? `Nombres parecidos: ${similar.join(', ')}.`
+        : undefined;
+
+    setAiQueue((prev) => [...prev, makeQueueItem(draft, { duplicateWarning })]);
+    setAiOpen(false);
+    toast.success('Borrador agregado a la cola. Asigna precio antes de aprobar.');
+  };
+
+  /** Abre un item de la cola en el formulario y lo saca de la cola. */
+  const editQueuedDraft = (item: QueuedDraft) => {
+    const sku = item.sku.trim() || generateSku(item.category, item.name, item.size);
+    setForm((prev) => ({
+      ...prev,
+      name: item.name,
+      sku,
+      barcode: item.barcode,
+      category: item.category,
+      brand: item.brand,
+      description: item.description,
+      registroIsp: item.registroIsp,
+      size: item.size,
+      servings: item.servings,
+      ingredients: item.ingredients,
+      descriptionShort: item.descriptionShort,
+      seoTitle: item.seoTitle,
+      basePrice: item.basePrice,
+      costPrice: item.costPrice,
+    }));
+    setFormVariants(
+      item.flavors.length > 0
+        ? item.flavors.map((flavor) => ({
+            variantName: flavor,
+            sku: '',
+            barcode: '',
+            price: item.basePrice,
+            costPrice: item.costPrice,
+            stock: '0',
+            lowStockAlert: '5',
+          }))
+        : [{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }],
+    );
+    setSkuAuto(false);
+    setDupCheck(null);
+    setAiQueue((prev) => prev.filter((i) => i.id !== item.id));
+    setShowForm(true);
+    requestAnimationFrame(() => {
+      document.getElementById('nf-product-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  /** Crea los productos pendientes en secuencia, con resultado por fila. */
+  const approveAiQueue = async () => {
+    const pending = aiQueue.filter((item) => item.status === 'pending');
+    if (!pending.length) {
+      toast.info('No hay borradores pendientes en la cola.');
+      return;
+    }
+    const withoutPrice = pending.filter((item) => !(Number(item.basePrice) > 0));
+    if (withoutPrice.length) {
+      toast.error(`Falta precio en ${withoutPrice.length} borrador(es). Nada se creó.`);
+      return;
+    }
+    const ok = await confirm({
+      title: 'Aprobar borradores',
+      message: `¿Crear ${pending.length} producto(s)? Stock inicial 0 y los precios son los que revisaste en la cola.`,
+      confirmLabel: 'Aprobar todos',
+    });
+    if (!ok) return;
+
+    setApproving(true);
+    let created = 0;
+    let failed = 0;
+    for (const item of pending) {
+      setAiQueue((prev) => patchQueueItem(item.id, { status: 'saving', error: undefined })(prev));
+      try {
+        if (item.duplicateWarning) throw new Error(item.duplicateWarning);
+        const price = Number(item.basePrice);
+        const cost = Number(item.costPrice) || 0;
+        const sku = item.sku.trim() ? normalizeSku(item.sku) : generateSku(item.category, item.name, item.size);
+        await apiFetch('/products', {
+          method: 'POST',
+          token,
+          body: {
+            name: item.name,
+            sku,
+            barcode: item.barcode || undefined,
+            basePrice: price,
+            costPrice: cost,
+            category: item.category,
+            brand: item.brand,
+            description: item.description || undefined,
+            registroIsp: item.registroIsp || undefined,
+            size: item.size || undefined,
+            servings: item.servings ? Number(item.servings) : undefined,
+            ingredients: item.ingredients || undefined,
+            descriptionShort: item.descriptionShort || undefined,
+            seoTitle: item.seoTitle || undefined,
+            variants: item.flavors.map((flavor) => ({
+              variantName: flavor,
+              price,
+              costPrice: cost,
+              stock: 0,
+              lowStockAlert: 5,
+            })),
+          },
+        });
+        setAiQueue((prev) => patchQueueItem(item.id, { status: 'done' })(prev));
+        created += 1;
+      } catch (err: any) {
+        setAiQueue((prev) => patchQueueItem(item.id, { status: 'error', error: err?.message || 'No se pudo crear' })(prev));
+        failed += 1;
+      }
+    }
+    setApproving(false);
+    if (created > 0) await onChanged();
+    if (failed === 0) toast.success(`${created} producto(s) creado(s).`);
+    else if (created === 0) toast.error('Ningún producto se pudo crear. Revisa el detalle por fila.');
+    else toast.info(`${created} creado(s), ${failed} con error.`);
   };
 
   const openDuplicate = (p: AdminProduct) => {
@@ -873,6 +1024,103 @@ export function Productos({
         </div>
       )}
 
+      {aiQueue.length > 0 && (
+        <section className="mb-6 rounded-3xl border border-line bg-paper p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-display text-base uppercase">Cola de borradores IA</p>
+              <p className="text-[11px] text-muted">Máx. {MAX_QUEUE} · expira en 24 h · stock inicial 0</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={approveAiQueue}
+                disabled={approving || !aiQueue.some((item) => item.status === 'pending')}
+                className="ds-btn-accent px-3 py-2 text-xs disabled:opacity-40"
+              >
+                {approving ? 'Aprobando…' : `Aprobar todos (${aiQueue.filter((item) => item.status === 'pending').length})`}
+              </button>
+              <button
+                onClick={() => setAiQueue((prev) => prev.filter((item) => item.status !== 'done'))}
+                className="ds-btn-secondary px-3 py-2 text-xs"
+              >
+                Limpiar completados
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {aiQueue.map((item) => {
+              const badge =
+                item.status === 'done'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : item.status === 'error'
+                    ? 'bg-red-100 text-red-800'
+                    : item.status === 'saving'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-amber-100 text-amber-800';
+              const label = item.status === 'done' ? 'creado' : item.status === 'saving' ? 'creando' : item.status;
+              const locked = item.status === 'saving' || item.status === 'done';
+              return (
+                <div key={item.id} className="rounded-2xl border border-line px-3 py-2">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{item.name || 'Sin nombre'}</p>
+                      <p className="text-[11px] text-muted">
+                        {[item.category, item.brand, item.size].filter(Boolean).join(' · ') || 'Sin categoría'}
+                        {' · '}
+                        {item.flavors.length ? `${item.flavors.length} sabor(es)` : 'sin sabores'}
+                      </p>
+                      {item.duplicateWarning && (
+                        <p className="mt-1 text-[11px] text-red-700">⚠️ {item.duplicateWarning}</p>
+                      )}
+                      {item.error && <p className="mt-1 text-[11px] text-red-700">Error: {item.error}</p>}
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${badge}`}>{label}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                      Precio (CLP)
+                      <input
+                        value={item.basePrice}
+                        onChange={(e) =>
+                          setAiQueue((prev) => patchQueueItem(item.id, { basePrice: e.target.value.replace(/[^\d.]/g, '') })(prev))
+                        }
+                        disabled={locked}
+                        placeholder="Ej: 24990"
+                        inputMode="numeric"
+                        className="input mt-1 w-32 disabled:opacity-50"
+                      />
+                    </label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                      Costo (CLP)
+                      <input
+                        value={item.costPrice}
+                        onChange={(e) =>
+                          setAiQueue((prev) => patchQueueItem(item.id, { costPrice: e.target.value.replace(/[^\d.]/g, '') })(prev))
+                        }
+                        disabled={locked}
+                        placeholder="Opcional"
+                        inputMode="numeric"
+                        className="input mt-1 w-32 disabled:opacity-50"
+                      />
+                    </label>
+                    <button onClick={() => editQueuedDraft(item)} className="ds-btn-secondary px-3 py-2 text-xs">
+                      Editar en formulario
+                    </button>
+                    <button
+                      onClick={() => setAiQueue((prev) => prev.filter((i) => i.id !== item.id))}
+                      className="px-2 py-2 text-xs text-muted hover:text-red-600"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {showForm && (
         <div id="nf-product-form" className="mb-6 scroll-mt-24 rounded-3xl border border-line bg-paper p-6">
           <p className="font-display text-lg uppercase">Nuevo producto</p>
@@ -1318,7 +1566,13 @@ export function Productos({
         </div>
       )}
 
-      <AiDraftSheet open={aiOpen} token={token} onClose={() => setAiOpen(false)} onApply={applyAiDraft} />
+      <AiDraftSheet
+        open={aiOpen}
+        token={token}
+        onClose={() => setAiOpen(false)}
+        onApply={applyAiDraft}
+        onQueue={queueDraft}
+      />
     </div>
   );
 }

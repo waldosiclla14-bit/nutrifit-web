@@ -1,6 +1,9 @@
-const CACHE = 'nutrifit-v6';
+const CACHE = 'nutrifit-v7';
 const PRECACHE = [
   '/',
+  '/login',
+  '/reparto',
+  '/reparto.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/manifest.webmanifest',

@@ -121,6 +121,20 @@ describe('buildDeliveryWhere', () => {
     expect(ESTADOS_PENDIENTES).not.toContain(DeliveryStatus.CANCELLED);
   });
 
+  it('pendientes usa la lista de estados no finales, no la visible por defecto', () => {
+    const where = buildDeliveryWhere({ day: '2026-11-20', pendientes: '1' }) as any;
+    expect(where.AND).toContainEqual({ status: { in: ESTADOS_PENDIENTES } });
+    expect(where.AND).not.toContainEqual({ status: { in: ESTADOS_VISIBLES } });
+    expect(where.AND).toContainEqual({ deliveryDay: '2026-11-20' });
+    expect(ESTADOS_PENDIENTES).not.toContain(DeliveryStatus.DELIVERED);
+  });
+
+  it('sinAsignar exige assignedTo nulo y se combina con pendientes', () => {
+    const where = buildDeliveryWhere({ day: '2026-11-20', pendientes: true, sinAsignar: true }) as any;
+    expect(where.AND).toContainEqual({ assignedTo: null });
+    expect(where.AND).toContainEqual({ status: { in: ESTADOS_PENDIENTES } });
+  });
+
   it('incluirCerrados no recorta estados ni fechas', () => {
     const where = buildDeliveryWhere({ incluirCerrados: true });
     expect(where.AND).toBeUndefined();

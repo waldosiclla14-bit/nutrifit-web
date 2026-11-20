@@ -26,7 +26,7 @@ jest.mock('./notification.service', () => ({
 describe('DeliveryService', () => {
   let service: DeliveryService;
   let prismaMock: any;
-  let pushMock: { broadcast: jest.Mock };
+  let pushMock: { broadcast: jest.Mock; sendToUser: jest.Mock };
 
   const mockDelivery = {
     id: 'del-1',
@@ -75,9 +75,19 @@ describe('DeliveryService', () => {
         create: jest.fn(),
         findFirst: jest.fn(),
       },
+      user: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
+    // Valores por defecto para las consultas nuevas del panel: cada describe
+    // puede sobrescribirlos con mockResolvedValueOnce.
+    prismaMock.delivery.findMany.mockResolvedValue([]);
+    prismaMock.delivery.groupBy.mockResolvedValue([]);
 
-    pushMock = { broadcast: jest.fn().mockResolvedValue({ sent: 1, total: 1 }) };
+    pushMock = {
+      broadcast: jest.fn().mockResolvedValue({ sent: 1, total: 1 }),
+      sendToUser: jest.fn().mockResolvedValue({ sent: 1, total: 1 }),
+    };
 
     const { NotificationService } = require('./notification.service');
     const { TodoistService } = require('../todoist/todoist.service');
@@ -341,8 +351,9 @@ describe('DeliveryService', () => {
         .mockResolvedValueOnce([
           { status: DeliveryStatus.SCHEDULED, _count: { id: 7 } },
           { status: DeliveryStatus.DELIVERED, _count: { id: 5 } },
-        ]); // semana
-      prismaMock.delivery.count.mockResolvedValue(4); // vencidos
+        ]) // semana
+        .mockResolvedValueOnce([]); // carga por repartidor
+      prismaMock.delivery.count.mockResolvedValue(4); // vencidos y sin asignar
 
       const counters = await service.getCounters();
 
@@ -353,6 +364,10 @@ describe('DeliveryService', () => {
       expect(counters.semana.total).toBe(12);
       expect(counters.semana.entregados).toBe(5);
       expect(counters.vencidos).toBe(4);
+      expect(counters.kpis.vencidos).toBe(4);
+      expect(counters.kpis.sinAsignar).toBe(4);
+      expect(counters.despacho.sinAsignar).toBe(4);
+      expect(counters.despacho.porRepartidor).toEqual([]);
 
       const hoyWhere = prismaMock.delivery.groupBy.mock.calls[0][0].where;
       expect(hoyWhere).toEqual(buildDeliveryWhere({ day: counters.hoy.dia }));
@@ -369,6 +384,68 @@ describe('DeliveryService', () => {
 
       expect(counters.hoy.pendientes).toBe(1);
       expect(counters.vencidos).toBe(9);
+    });
+
+    it('calcula KPIs de cumplimiento y puntualidad en hora Chile', async () => {
+      prismaMock.delivery.groupBy
+        .mockResolvedValueOnce([{ status: DeliveryStatus.DELIVERED, _count: { id: 5 } }])
+        .mockResolvedValueOnce([{ status: DeliveryStatus.DELIVERED, _count: { id: 10 } }])
+        .mockResolvedValueOnce([{ assignedTo: 'u1', _count: { id: 3 } }]);
+      prismaMock.delivery.count.mockResolvedValue(2);
+      prismaMock.delivery.findMany.mockResolvedValue([
+        { deliveredAt: new Date('2026-11-20T17:10:00-03:00'), windowEnd: '17:30' },
+        { deliveredAt: new Date('2026-11-20T18:10:00-03:00'), windowEnd: '17:30' },
+      ]);
+      prismaMock.user.findMany.mockResolvedValue([{ id: 'u1', name: 'Ana' }]);
+
+      const counters = await service.getCounters();
+
+      expect(counters.kpis.cumplimiento).toBe(100);
+      expect(counters.kpis.aTiempo).toBe(50);
+      expect(counters.despacho.porRepartidor).toEqual([
+        { id: 'u1', nombre: 'Ana', pendientes: 3 },
+      ]);
+    });
+  });
+
+  describe('assign', () => {
+    it('avisa por push a la PWA del repartidor sin abortar la asignación', async () => {
+      prismaMock.delivery.findUnique.mockResolvedValue({ ...mockDelivery, id: 'del-1', assignedTo: null });
+      prismaMock.delivery.update.mockResolvedValue({
+        ...mockDelivery,
+        id: 'del-1',
+        assignedTo: 'u1',
+        station: { name: 'Central' },
+        order: { orderNumber: '#100' },
+      });
+      prismaMock.deliveryAuditLog.create.mockResolvedValue({});
+
+      await expect(service.assign('del-1', 'u1', 'admin-1')).resolves.toBeDefined();
+
+      expect(pushMock.sendToUser).toHaveBeenCalledWith(
+        'u1',
+        expect.objectContaining({ url: '/reparto', body: expect.stringContaining('#100') }),
+      );
+    });
+
+    it('no envía push si el repartidor no cambia', async () => {
+      prismaMock.delivery.findUnique.mockResolvedValue({ ...mockDelivery, id: 'del-1', assignedTo: 'u1' });
+      prismaMock.delivery.update.mockResolvedValue({ ...mockDelivery, id: 'del-1', assignedTo: 'u1' });
+      prismaMock.deliveryAuditLog.create.mockResolvedValue({});
+
+      await service.assign('del-1', 'u1', 'admin-1');
+
+      expect(pushMock.sendToUser).not.toHaveBeenCalled();
+    });
+
+    it('un fallo de push no tumba una asignación ya guardada', async () => {
+      prismaMock.delivery.findUnique.mockResolvedValue({ ...mockDelivery, id: 'del-1', assignedTo: null });
+      prismaMock.delivery.update.mockResolvedValue({ ...mockDelivery, id: 'del-1', assignedTo: 'u1' });
+      prismaMock.deliveryAuditLog.create.mockResolvedValue({});
+      pushMock.sendToUser.mockRejectedValueOnce(new Error('VAPID sin configurar'));
+
+      await expect(service.assign('del-1', 'u1', 'admin-1')).resolves.toBeDefined();
+      expect(prismaMock.delivery.update).toHaveBeenCalled();
     });
   });
 

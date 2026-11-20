@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, NotFoundException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
-import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma } from '@prisma/client';
+import { DeliveryStatus, DeliveryType, OrderStatus, MovementType, Prisma, Role } from '@prisma/client';
 import { NotificationService } from './notification.service';
 import { TodoistService } from '../todoist/todoist.service';
 import { PushService } from '../push/push.service';
@@ -70,24 +70,53 @@ export class DeliveryService {
     const hoy = todayChileISO();
     const semana = chileWeekRange(hoy);
 
-    // Los tres `where` salen del MISMO constructor que usa la tabla.
+    // Todos los `where` salen del MISMO constructor que usa la tabla.
     const hoyWhere = buildDeliveryWhere({ day: hoy });
     const semanaWhere = buildDeliveryWhere({ from: semana.from, to: semana.to });
     const vencidosWhere = buildDeliveryWhere({ vencidos: true });
+    const despachoWhere = buildDeliveryWhere({ day: hoy, pendientes: true, sinAsignar: true });
+    const cargaWhere = buildDeliveryWhere({ day: hoy, pendientes: true });
 
-    const [hoyPorEstado, semanaPorEstado, vencidos] = await Promise.all([
-      this.prisma.delivery.groupBy({
-        by: ['status'],
-        where: hoyWhere,
-        _count: { id: true },
-      }),
-      this.prisma.delivery.groupBy({
-        by: ['status'],
-        where: semanaWhere,
-        _count: { id: true },
-      }),
-      this.prisma.delivery.count({ where: vencidosWhere }),
-    ]);
+    const [hoyPorEstado, semanaPorEstado, vencidos, sinAsignar, cargaPorRepartidor, entregadasSemana] =
+      await Promise.all([
+        this.prisma.delivery.groupBy({
+          by: ['status'],
+          where: hoyWhere,
+          _count: { id: true },
+        }),
+        this.prisma.delivery.groupBy({
+          by: ['status'],
+          where: semanaWhere,
+          _count: { id: true },
+        }),
+        this.prisma.delivery.count({ where: vencidosWhere }),
+        this.prisma.delivery.count({ where: despachoWhere }),
+        this.prisma.delivery.groupBy({
+          by: ['assignedTo'],
+          where: cargaWhere,
+          _count: { id: true },
+        }),
+        // Puntualidad: se comparan horas locales Chile contra la ventana del
+        // mismo día (windowEnd es "HH:MM", no un instante UTC).
+        this.prisma.delivery.findMany({
+          where: { ...semanaWhere, status: DeliveryStatus.DELIVERED },
+          select: { deliveredAt: true, windowEnd: true },
+        }),
+      ]);
+
+    const repartidores = await this.prisma.user.findMany({
+      where: { role: Role.DELIVERY, isActive: true },
+      select: { id: true, name: true },
+    });
+    const nombres = new Map(repartidores.map((u) => [u.id, u.name]));
+    const porRepartidor = (cargaPorRepartidor || [])
+      .filter((row) => !!row.assignedTo)
+      .map((row) => ({
+        id: row.assignedTo as string,
+        nombre: nombres.get(row.assignedTo as string) || 'Repartidor',
+        pendientes: row._count.id,
+      }))
+      .sort((a, b) => b.pendientes - a.pendientes);
 
     const porEstado: Record<string, number> = {};
     hoyPorEstado.forEach((s) => { porEstado[s.status] = s._count.id; });
@@ -96,6 +125,19 @@ export class DeliveryService {
     const entregadosSemana = semanaPorEstado
       .filter((s) => s.status === DeliveryStatus.DELIVERED)
       .reduce((acc, s) => acc + s._count.id, 0);
+    const pendientesSemana = ESTADOS_PENDIENTES.reduce(
+      (acc, s) => acc + (semanaPorEstado.find((x) => x.status === s)?._count.id || 0),
+      0,
+    );
+    const cerradasSemana = sumaSemana - pendientesSemana;
+
+    const conVentana = (entregadasSemana || []).filter((d) => d.deliveredAt && d.windowEnd);
+    const aTiempo = conVentana.length
+      ? Math.round(
+          (conVentana.filter((d) => this.horaChile(d.deliveredAt as Date) <= (d.windowEnd as string)).length /
+            conVentana.length) * 100,
+        )
+      : null;
 
     const pendientesHoy = ESTADOS_PENDIENTES.reduce((acc, s) => acc + (porEstado[s] || 0), 0);
     const entregadosHoy = porEstado[DeliveryStatus.DELIVERED] || 0;
@@ -113,7 +155,25 @@ export class DeliveryService {
       semana: { desde: semana.from, hasta: semana.to, total: sumaSemana, entregados: entregadosSemana },
       vencidos,
       porEstado,
+      // KPIs del panel: misma definición de "cerrada" y de "pendiente".
+      kpis: {
+        cumplimiento: cerradasSemana > 0 ? Math.round((entregadosSemana / cerradasSemana) * 100) : null,
+        aTiempo,
+        vencidos,
+        sinAsignar,
+      },
+      despacho: { sinAsignar, porRepartidor },
     };
+  }
+
+  /** Hora de Santiago en formato "HH:MM" para comparar con una ventana de entrega. */
+  private horaChile(value: Date): string {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(value);
   }
 
   async findOne(id: string) {
@@ -437,10 +497,31 @@ export class DeliveryService {
     const updated = await this.prisma.delivery.update({
       where: { id },
       data: { assignedTo: userId },
-      include: { station: true },
+      include: { station: true, order: { select: { orderNumber: true } } },
     });
 
     await this.audit(id, 'ASSIGNED', { assignedTo: delivery.assignedTo }, { assignedTo: userId }, actorId);
+
+    // Aviso a la PWA del repartidor. Es best-effort: VAPID sin configurar o un
+    // dispositivo muerto nunca debe impedir la asignación ya escrita en BD.
+    if (userId && userId !== delivery.assignedTo) {
+      const destino = (updated as any).station?.name || (updated as any).address || '';
+      const detalle = [
+        (updated as any).order?.orderNumber,
+        destino ? `Metro ${destino}` : '',
+        (updated as any).windowStart,
+      ].filter(Boolean).join(' · ');
+      this.push.sendToUser(userId, {
+        title: '🚇 Nueva entrega asignada',
+        body: detalle || 'Revisa tu ruta en la app de reparto.',
+        url: '/reparto',
+      }).then((result) => {
+        this.logger.log(`Push de asignación: ${result?.sent || 0}/${result?.total || 0} dispositivos`);
+      }).catch((e: any) => {
+        this.logger.warn(`Push de asignación omitido: ${e?.message || e}`);
+      });
+    }
+
     return updated;
   }
 

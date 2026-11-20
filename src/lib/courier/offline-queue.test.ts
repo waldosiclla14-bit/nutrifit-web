@@ -75,8 +75,8 @@ describe('cola offline del repartidor', () => {
     listMock.mockResolvedValue([action(), action({ id: 'a2', status: 'conflict' })]);
 
     const queued = await enqueueAction(
-      { kind: 'DELIVER', path: '/courier/route/d1/deliver', method: 'POST', body: { amount: 25000 }, label: 'Entregar' },
-      { deliveryId: 'd1' },
+      { kind: 'DELIVER', path: '/courier/route/d1/deliver', method: 'POST', label: 'Entregar', deliveryId: 'd1' },
+      { amount: 25000 },
     );
 
     expect(queued?.body.idempotencyKey).toBe(queued?.id);
