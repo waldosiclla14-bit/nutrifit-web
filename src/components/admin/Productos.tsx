@@ -9,6 +9,9 @@ import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import { generateSku, normalizeSku, skuError } from '@/lib/sku';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
 import { BarcodeScanner } from './BarcodeScanner';
+import { AiDraftSheet } from './productos/AiDraftSheet';
+import type { AiDraftResult } from './productos/AiDraftSheet';
+import { draftToForm } from '@/lib/admin/productDraft';
 
 let xlsxModule: typeof import('xlsx') | null = null;
 async function getXlsx() {
@@ -59,6 +62,7 @@ export function Productos({
   const [edits, setEdits] = useState<Record<string, { stock?: string; price?: string; cost?: string }>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
@@ -271,6 +275,29 @@ export function Productos({
     setSkuAuto(true);
     setFlavorInput('');
     setDupCheck(null);
+  };
+
+  /** Rellena el formulario de creación con un borrador de IA. No guarda nada. */
+  const applyAiDraft = (draft: AiDraftResult) => {
+    const { form: filled, variants } = draftToForm(draft);
+    const sku = filled.sku.trim() || generateSku(filled.category, filled.name);
+
+    setForm((prev) => ({ ...prev, ...filled, sku }));
+    setFormVariants(
+      variants.length > 0
+        ? variants
+        : [{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }],
+    );
+    setSkuAuto(false);
+    setDupCheck({
+      exact: Array.isArray(draft.duplicates?.exact) ? draft.duplicates.exact : [],
+      similar: Array.isArray(draft.duplicates?.similar) ? draft.duplicates.similar : [],
+    });
+    setShowForm(true);
+    setAiOpen(false);
+    requestAnimationFrame(() => {
+      document.getElementById('nf-product-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const openDuplicate = (p: AdminProduct) => {
@@ -834,6 +861,9 @@ export function Productos({
           <button onClick={() => setShowForm((s) => !s)} className="ds-btn-accent px-4 py-2 text-xs">
             {showForm ? 'Cancelar' : '+ Nuevo'}
           </button>
+          <button onClick={() => setAiOpen(true)} className="ds-btn-secondary px-4 py-2 text-xs">
+            ✨ Crear con IA
+          </button>
         </div>
       </div>
 
@@ -1287,6 +1317,8 @@ export function Productos({
           </div>
         </div>
       )}
+
+      <AiDraftSheet open={aiOpen} token={token} onClose={() => setAiOpen(false)} onApply={applyAiDraft} />
     </div>
   );
 }

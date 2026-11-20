@@ -531,9 +531,13 @@ Se adelantó toda la base no dependiente de Gemini. La migración de §4 (Opció
 - `npx prisma validate` → schema válido; `npx prisma generate` → cliente regenerado.
 - `tsc --noEmit`: sin errores en los archivos tocados. Persisten errores previos en `delivery/*` (backend) y `Entregas.tsx` (frontend), ajenos a este cambio.
 
-### Pendiente para cuando se active la IA
-- Conexión UI del botón **“Crear con IA”** (paso 7).
-- Modo lote (la cola queda atada a borradores IA).
+### Frontend (`src/components/admin/`)
+- **Botón “✨ Crear con IA”** junto a “+ Nuevo” en `Productos.tsx`.
+- `productos/AiDraftSheet.tsx`: hoja full-screen con cámara (`capture="environment"` de a 1 foto), galería hasta 4, barcode manual, URL y texto; compresión canvas a máx. 1280 px JPEG y revisión con confianza por campo, fuentes, warnings y duplicados.
+- El botón **“Usar estos datos”** rellena el formulario existente con `draftToForm()` (SKU sugerido o generado). **Nada se guarda** hasta pulsar “Guardar”.
+
+### Pendiente
+- Modo lote (cola en `localStorage`) y escáner de barcode dentro de la hoja.
 
 ---
 
