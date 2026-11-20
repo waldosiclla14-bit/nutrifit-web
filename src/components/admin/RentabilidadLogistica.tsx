@@ -208,7 +208,41 @@ export function RentabilidadLogistica({ token }: { token: string }) {
         apiFetch<Entry[] | { data: Entry[] }>(`/logistics/entries?${entryParams.toString()}`, { token }),
         apiFetch<Settlement[]>(`/logistics/settlements?${params.toString()}&limit=100`, { token }).catch(() => []),
         apiFetch<Courier[]>('/logistics/couriers', { token }).catch(() => []),
-        apiFetch<any[]>(`/logistics/active-deliveries?${params.toString()}`, { token }).catch(() => []),
+        apiFetch<any[]>(`/logistics/active-deliveries?${params.toString()}`, { token }).catch(async () => {
+          // Respaldo mientras Render despliega el endpoint nuevo: se arma la
+          // vista desde los endpoints existentes de entregas y pedidos.
+          try {
+            const [ds, os] = await Promise.all([
+              apiFetch<any>('/deliveries?limit=300', { token }),
+              apiFetch<any>('/orders?limit=300', { token }),
+            ]);
+            const dlist = Array.isArray(ds) ? ds : ds?.data || [];
+            const olist = Array.isArray(os) ? os : os?.data || [];
+            const byId = new Map(olist.map((o: any) => [o.id, o]));
+            const terminal = ['DELIVERED', 'CANCELLED', 'NOT_DELIVERED', 'CUSTOMER_UNAVAILABLE', 'INCIDENT'];
+            return dlist
+              .filter((d: any) => !terminal.includes(d.status))
+              .map((d: any) => {
+                const o: any = byId.get(d.orderId) || d.order || {};
+                return {
+                  id: d.id,
+                  deliveryId: d.id,
+                  orderNumber: o.orderNumber || '',
+                  customerName: o.customerName || '',
+                  deliveryDay: d.deliveryDay,
+                  status: d.status,
+                  window: d.windowStart && d.windowEnd ? `${d.windowStart}-${d.windowEnd}` : null,
+                  courier: d.assignedUser || null,
+                  customerDeliveryFee: Number(o.shippingCost) || 0,
+                  grossProfit:
+                    (Number(o.subtotal) || 0) - (Number(o.discount) || 0) - (Number(o.totalCost) || 0),
+                  obligacionPago: false,
+                };
+              });
+          } catch {
+            return [];
+          }
+        })
       ]);
       setSummary(s);
       const list = Array.isArray(e) ? e : e?.data || [];
