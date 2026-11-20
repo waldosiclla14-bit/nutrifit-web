@@ -22,6 +22,8 @@ const DEFAULT_SETTINGS = [
   { key: 'delivery_end_time', value: '22:00' },
   { key: 'slot_interval_minutes', value: 30 },
   { key: 'reminder_before_minutes', value: 60 },
+  { key: 'courier_idle_minutes', value: 15 },
+  { key: 'courier_tomorrow_enabled', value: true },
 ];
 
 /**
@@ -48,6 +50,30 @@ export class DeliverySeedService implements OnModuleInit {
     await this.seedStationsIfNeeded();
     await this.seedSettings();
     await this.syncScheduleWindow();
+    await this.ensureCourierSettings();
+  }
+
+  /**
+   * Claves de la PWA del repartidor. Se crean si faltan y NUNCA se
+   * sobrescriben: a diferencia de la ventana horaria, estos valores son
+   * decisión del negocio y deben poder cambiarse desde Configuración.
+   */
+  private async ensureCourierSettings() {
+    const defaults: Record<string, any> = {
+      courier_idle_minutes: 15,
+      courier_tomorrow_enabled: true,
+    };
+    for (const [key, value] of Object.entries(defaults)) {
+      try {
+        await this.prisma.deliverySettings.upsert({
+          where: { key },
+          update: {},
+          create: { key, value },
+        });
+      } catch {
+        // sin permisos o tabla ausente: el servicio aplica su valor por defecto
+      }
+    }
   }
 
   // --------------------------- estaciones ---------------------------

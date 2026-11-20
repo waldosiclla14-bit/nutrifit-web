@@ -13,18 +13,11 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import { formatPrice, formatTime12 } from '@/lib/utils';
+import { formatTime12 } from '@/lib/utils';
 import { toast } from '@/lib/feedback';
 import { handleAuthError } from '@/lib/admin/helpers';
 import { DELIVERY_STATUS_LABEL, DELIVERY_STATUS_PILL, deliveryNextActions } from '@/lib/admin/deliveryStatus';
-import type { AdminOrder } from '@/types/admin';
 import NotificationButton from './NotificationButton';
-
-const CHANNEL_LABEL: Record<string, string> = {
-  METRO: '🚇 Metro',
-  ENVIO_DOMICILIO: '🏠 Domicilio',
-  RETIRO_TIENDA: '🏪 Local',
-};
 
 type Station = { id: string; name: string; line: string; lineName: string; commune: string };
 
@@ -35,6 +28,8 @@ type Delivery = {
   deliveryType: string;
   stationId: string | null;
   address: string | null;
+  /** Día de entrega, calendario Chile (YYYY-MM-DD). Única verdad de logística. */
+  deliveryDay: string | null;
   deliveryDate: string | null;
   windowStart: string | null;
   windowEnd: string | null;
@@ -51,38 +46,57 @@ type Delivery = {
   station: Station | null;
 };
 
-type Stats = {
-  today: number;
-  week: number;
-  month: number;
-  byStatus: Record<string, number>;
-  topStations: { station: Station | null; count: number }[];
-  byLine: { line: string; lineName: string; count: number }[];
+/**
+ * Contadores del backend (`GET /deliveries/counters`). Salen del mismo
+ * `buildDeliveryWhere` que la tabla, así que no pueden desincronizarse.
+ */
+type Counters = {
+  hoy: { dia: string; total: number; pendientes: number; entregados: number; noEntregados: number };
+  semana: { desde: string; hasta: string; total: number; entregados: number };
+  vencidos: number;
+  porEstado: Record<string, number>;
 };
 
-function weekBounds(): { from: string; to: string } {
-  const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return { from: iso(monday), to: iso(sunday) };
+type Vista = 'dia' | 'semana' | 'vencidos' | 'todos';
+
+/** Día de hoy en el calendario de Chile, sin depender del reloj del equipo. */
+function hoyChile(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date());
+}
+
+function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const base = new Date(Date.UTC(y, m - 1, d, 12));
+  base.setUTCDate(base.getUTCDate() + days);
+  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, '0')}-${String(base.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Semana calendario Chile (lunes a domingo) que contiene `iso`. */
+function chileWeek(iso: string): { from: string; to: string } {
+  const [y, m, d] = iso.split('-').map(Number);
+  const base = new Date(Date.UTC(y, m - 1, d, 12));
+  const dow = (base.getUTCDay() + 6) % 7;
+  const monday = addDaysISO(iso, -dow);
+  return { from: monday, to: addDaysISO(monday, 6) };
+}
+
+function formatDay(iso: string | null): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return d && m && y ? `${d}-${m}-${y}` : iso;
 }
 
 export function Entregas({ token }: { token: string }) {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [counters, setCounters] = useState<Counters | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterLine, setFilterLine] = useState('');
-  const [week] = useState(weekBounds);
-  const [filterDateFrom, setFilterDateFrom] = useState(week.from);
-  const [filterDateTo, setFilterDateTo] = useState(week.to);
+  const [vista, setVista] = useState<Vista>('dia');
+  const [filterDay, setFilterDay] = useState(hoyChile);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [closedToday, setClosedToday] = useState<AdminOrder[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -90,38 +104,30 @@ export function Entregas({ token }: { token: string }) {
       const params = new URLSearchParams();
       if (filterStatus) params.set('status', filterStatus);
       if (filterLine) params.set('line', filterLine);
-      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-      if (filterDateTo) params.set('dateTo', filterDateTo);
+      if (vista === 'dia') params.set('day', filterDay);
+      if (vista === 'semana') {
+        const s = chileWeek(filterDay);
+        params.set('dateFrom', s.from);
+        params.set('dateTo', s.to);
+      }
+      if (vista === 'vencidos') params.set('vencidos', '1');
+      if (vista === 'todos') params.set('incluirCerrados', '1');
       params.set('limit', '200');
 
-      const [delRes, statsRes] = await Promise.all([
+      const [delRes, countersRes] = await Promise.all([
         apiFetch<any>(`/deliveries?${params}`, { token }),
-        apiFetch<Stats>('/deliveries/stats', { token }).catch(() => null),
+        apiFetch<Counters>('/deliveries/counters', { token }).catch(() => null),
       ]);
 
       setDeliveries(delRes?.data || delRes || []);
-      if (statsRes) setStats(statsRes);
-
-      // Cierre de hoy: ventas pagadas y entregadas el mismo día (todos los canales)
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      const closedQ = new URLSearchParams({
-        status: 'DELIVERED',
-        paymentStatus: 'CONFIRMED',
-        updatedFrom: today,
-        updatedTo: today,
-        page: '1',
-        limit: '100',
-      });
-      const closedRes = await apiFetch<any>(`/orders?${closedQ}`, { token }).catch(() => null);
-      setClosedToday(closedRes?.data || []);
+      if (countersRes) setCounters(countersRes);
     } catch (err: any) {
       if (handleAuthError(err, () => { localStorage.removeItem('admin_token'); window.location.href = '/login'; })) return;
       toast.error('Error al cargar entregas');
     } finally {
       setLoading(false);
     }
-  }, [token, filterStatus, filterLine, filterDateFrom, filterDateTo]);
+  }, [token, filterStatus, filterLine, vista, filterDay]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -150,76 +156,70 @@ export function Entregas({ token }: { token: string }) {
     );
   });
 
-  const closedTotal = closedToday.reduce((s, o) => s + (o.total || 0), 0);
-  const closedByChannel = closedToday.reduce<Record<string, { count: number; total: number }>>((acc, o) => {
-    const k = o.deliveryType || 'RETIRO_TIENDA';
-    if (!acc[k]) acc[k] = { count: 0, total: 0 };
-    acc[k].count += 1;
-    acc[k].total += o.total || 0;
-    return acc;
-  }, {});
+  const lineOptions = Array.from(
+    new Map(
+      deliveries
+        .map((d) => d.station)
+        .filter((s): s is Station => !!s)
+        .map((s) => [s.line, s.lineName || s.line] as const),
+    ),
+  );
 
   return (
     <div className="space-y-4">
-      {/* Stats cards */}
-      {stats && (
+      {/* Contadores: misma fuente que la tabla (GET /deliveries/counters) */}
+      {counters && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard icon={<CalendarDays size={16} />} label="Hoy" value={stats.today} color="text-accent" />
-          <StatCard icon={<Truck size={16} />} label="Semana" value={stats.week} color="text-blue-600" />
-          <StatCard icon={<CheckCircle size={16} />} label="Entregados" value={stats.byStatus['DELIVERED'] || 0} color="text-green-600" />
-          <StatCard icon={<Clock size={16} />} label="Pendientes" value={Object.entries(stats.byStatus || {}).reduce((s, [k, v]) => (k === 'DELIVERED' || k === 'CANCELLED' ? s : s + (v || 0)), 0)} color="text-amber-600" />
+          <StatCard
+            icon={<CalendarDays size={16} />}
+            label={`Hoy (${formatDay(counters.hoy.dia)})`}
+            value={counters.hoy.total}
+            color="text-accent"
+          />
+          <StatCard icon={<Clock size={16} />} label="Pendientes hoy" value={counters.hoy.pendientes} color="text-amber-600" />
+          <StatCard icon={<CheckCircle size={16} />} label="Entregados hoy" value={counters.hoy.entregados} color="text-green-600" />
+          <StatCard icon={<Truck size={16} />} label="Vencidos" value={counters.vencidos} color="text-red-600" />
         </div>
       )}
 
-      {/* Cierre de hoy: pagadas + entregadas */}
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">
-            Cierre de hoy · pagadas y entregadas
-          </p>
-          <p className="font-display text-2xl tabular-nums text-emerald-700">
-            {formatPrice(closedTotal)}
-          </p>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-          <span className="chip">{closedToday.length} ventas</span>
-          {Object.entries(closedByChannel).map(([k, v]) => (
-            <span key={k} className="chip">
-              {CHANNEL_LABEL[k] || k} · {v.count} · {formatPrice(v.total)}
-            </span>
-          ))}
-          {closedToday.length === 0 && (
-            <span className="text-xs text-muted">Aún no hay ventas cerradas hoy.</span>
-          )}
-        </div>
-        {closedToday.length > 0 && (
-          <div className="mt-3 space-y-1.5">
-            {closedToday.slice(0, 8).map((o) => (
-              <div key={o.id} className="flex items-center justify-between gap-2 rounded-xl border border-line/60 bg-paper px-3 py-1.5 text-xs">
-                <div className="min-w-0">
-                  <span className="font-bold">{o.orderNumber}</span>
-                  <span className="text-muted"> · {o.customer?.name || o.customerName || '—'}</span>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-muted">{CHANNEL_LABEL[o.deliveryType || ''] || ''}</span>
-                  <span className="text-muted tabular-nums">
-                    {o.updatedAt
-                      ? new Date(o.updatedAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-                      : ''}
-                  </span>
-                  <span className="font-bold tabular-nums">{formatPrice(o.total)}</span>
-                </div>
-              </div>
-            ))}
-            {closedToday.length > 8 && (
-              <p className="text-[11px] text-muted">+{closedToday.length - 8} más hoy.</p>
-            )}
-          </div>
-        )}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-paper p-3 text-[11px] text-muted">
+        <span className="font-bold uppercase tracking-widest text-ink">Semana Chile</span>
+        <span>
+          {counters ? `${formatDay(counters.semana.desde)} → ${formatDay(counters.semana.hasta)}` : '—'}
+        </span>
+        <span className="chip">{counters?.semana.total ?? 0} programadas</span>
+        <span className="chip">{counters?.semana.entregados ?? 0} entregadas</span>
+        <span className="ml-auto">
+          El cierre de dinero se revisa en Caja; aquí solo se cuenta la operación de entrega.
+        </span>
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 rounded-xl border border-line bg-paper p-1">
+          {([
+            ['dia', 'Día'],
+            ['semana', 'Semana'],
+            ['vencidos', 'Vencidos'],
+            ['todos', 'Todos'],
+          ] as [Vista, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setVista(key)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold min-h-[32px] ${
+                vista === key ? 'bg-sport-green text-ink' : 'text-muted hover:bg-soft'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <input
+          type="date"
+          value={filterDay}
+          onChange={(e) => setFilterDay(e.target.value || hoyChile())}
+          className="input text-sm"
+        />
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
@@ -230,11 +230,6 @@ export function Entregas({ token }: { token: string }) {
             className="input pl-9 text-sm"
           />
         </div>
-        <div className="flex items-center gap-1">
-          <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="input text-sm" />
-          <span className="text-muted text-xs">—</span>
-          <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="input text-sm" />
-        </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input text-sm">
           <option value="">Todos los estados</option>
           {Object.entries(DELIVERY_STATUS_LABEL).map(([k, v]) => (
@@ -243,8 +238,8 @@ export function Entregas({ token }: { token: string }) {
         </select>
         <select value={filterLine} onChange={(e) => setFilterLine(e.target.value)} className="input text-sm">
           <option value="">Todas las líneas</option>
-          {stats?.byLine.map((l) => (
-            <option key={l.line} value={l.line}>{l.lineName} ({l.count})</option>
+          {lineOptions.map(([line, name]) => (
+            <option key={line} value={line}>{name}</option>
           ))}
         </select>
         <button onClick={() => {
@@ -255,7 +250,7 @@ export function Entregas({ token }: { token: string }) {
             d.station?.name || '',
             d.station?.line || '',
             d.station?.commune || '',
-            d.deliveryDate ? new Date(d.deliveryDate).toLocaleDateString('es-CL') : '',
+            d.deliveryDay || '',
             `${d.windowStart ? formatTime12(d.windowStart) : ''}–${d.windowEnd ? formatTime12(d.windowEnd) : ''}`,
             d.deliveryCode,
             DELIVERY_STATUS_LABEL[d.status] || d.status,
@@ -265,7 +260,7 @@ export function Entregas({ token }: { token: string }) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `entregas-${filterDateFrom}.csv`;
+          a.download = `entregas-${filterDay}.csv`;
           a.click();
           URL.revokeObjectURL(url);
         }} className="ds-btn-secondary px-3 py-2 text-xs min-h-[40px]">CSV</button>
@@ -288,6 +283,7 @@ export function Entregas({ token }: { token: string }) {
               <tr className="border-b border-line bg-soft/50 text-left text-xs font-bold uppercase tracking-wider text-muted">
                 <th className="px-3 py-2">Hora</th>
                 <th className="px-3 py-2">Pedido</th>
+                <th className="px-3 py-2 hidden sm:table-cell">Fecha</th>
                 <th className="px-3 py-2">Cliente</th>
                 <th className="px-3 py-2 hidden sm:table-cell">Estación</th>
                 <th className="px-3 py-2 hidden md:table-cell">Línea</th>
@@ -302,6 +298,9 @@ export function Entregas({ token }: { token: string }) {
                     {d.windowStart ? formatTime12(d.windowStart) : '—'}{d.windowEnd ? `–${formatTime12(d.windowEnd)}` : ''}
                   </td>
                   <td className="px-3 py-2 font-bold">{d.order?.orderNumber || '—'}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell text-xs tabular-nums">
+                    {formatDay(d.deliveryDay || d.deliveryDate)}
+                  </td>
                   <td className="px-3 py-2">{d.customer?.name || d.order?.customerName || '—'}</td>
                   <td className="px-3 py-2 hidden sm:table-cell">
                     <span className="flex items-center gap-1">
@@ -455,7 +454,7 @@ function DeliveryDetail({
           {delivery.deliveryType === 'ENVIO_DOMICILIO' && delivery.address && (
             <Row label="Dirección" value={delivery.address} />
           )}
-          <Row label="Fecha" value={delivery.deliveryDate ? new Date(delivery.deliveryDate).toLocaleDateString('es-CL') : '—'} />
+          <Row label="Fecha" value={formatDay(delivery.deliveryDay || delivery.deliveryDate)} />
           <Row label="Horario" value={delivery.windowStart ? `${formatTime12(delivery.windowStart)}–${delivery.windowEnd ? formatTime12(delivery.windowEnd) : ''}` : '—'} />
           <Row label="Punto" value={delivery.meetingPoint || '—'} />
           <Row label="Estado" value={<span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${DELIVERY_STATUS_PILL[delivery.status] || ''}`}>{DELIVERY_STATUS_LABEL[delivery.status] || delivery.status}</span>} />

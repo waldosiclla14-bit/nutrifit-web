@@ -46,23 +46,51 @@ function parseParts(iso: string): { y: number; mo: number; d: number } {
   return { y, mo, d };
 }
 
-/** Start (00:00 Santiago) of a bare date, as UTC Date. */
+/**
+ * Primer instante del día `iso` en America/Santiago, como Date UTC.
+ *
+ * En los días de cambio de horario la hora 00:00 local no existe (arranque de
+ * horario de verano) o el día no empieza a la misma distancia del mediodía. Por
+ * eso se calcula con el offset del mediodía y después se avanza hasta que el
+ * instante ya pertenezca al día pedido. Sin ese ajuste, el 2026-09-06 devolvía
+ * las 23:00 del día anterior.
+ */
 export function startOfChileDay(iso: string): Date {
   const { y, mo, d } = parseParts(iso);
+  const day = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const noonUTC = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
   const off = santiagoOffsetMinutes(noonUTC);
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0) - off * 60000);
+  let candidate = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0) - off * 60000);
+  for (let i = 0; i < 4 && todayChileISO(candidate) !== day; i++) {
+    candidate = new Date(candidate.getTime() + 60 * 60 * 1000);
+  }
+  return candidate;
 }
 
 /** Full Chile-day range [00:00, 24:00) as { gte, lt } UTC Dates. */
 export function chileDayRange(iso: string): { gte: Date; lt: Date } {
-  const start = startOfChileDay(iso);
+  const { y, mo, d } = parseParts(iso);
+  const next = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
+  next.setUTCDate(next.getUTCDate() + 1);
+  const nextISO = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
+  return { gte: startOfChileDay(iso), lt: startOfChileDay(nextISO) };
+}
+
+/** Suma (o resta) días a una fecha YYYY-MM-DD sin pasar por zonas horarias. */
+export function addDaysISO(iso: string, days: number): string {
   const { y, mo, d } = parseParts(iso);
   const base = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
-  base.setUTCDate(base.getUTCDate() + 1);
-  const off = santiagoOffsetMinutes(base);
-  const end = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), 0, 0, 0) - off * 60000);
-  return { gte: start, lt: end };
+  base.setUTCDate(base.getUTCDate() + days);
+  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, '0')}-${String(base.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Semana calendario de Chile (lunes a domingo) que contiene `iso`. */
+export function chileWeekRange(iso: string): { from: string; to: string } {
+  const { y, mo, d } = parseParts(iso);
+  const base = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
+  const dow = (base.getUTCDay() + 6) % 7; // lunes = 0
+  const monday = addDaysISO(iso, -dow);
+  return { from: monday, to: addDaysISO(monday, 6) };
 }
 
 /**

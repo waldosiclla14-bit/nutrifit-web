@@ -18,8 +18,15 @@ export class DeliveryController {
   }
 
   @Get('stats')
-  getStats(@Query() query: any) {
-    return this.deliveryService.getStats(query);
+  getStats() {
+    return this.deliveryService.getStats();
+  }
+
+  // Contadores de la pantalla de logística. Declarado antes de `:id` para que
+  // no lo capture la ruta paramétrica.
+  @Get('counters')
+  getCounters() {
+    return this.deliveryService.getCounters();
   }
 
   @Get('slots')
@@ -52,7 +59,7 @@ export class DeliveryController {
   @Patch(':id/assign')
   async assign(@Param('id') id: string, @Request() req: any) {
     const body = await readJsonBody(req);
-    return this.deliveryService.assign(id, body.userId);
+    return this.deliveryService.assign(id, body.userId, req.user?.id);
   }
 
   @Patch(':id/reschedule')

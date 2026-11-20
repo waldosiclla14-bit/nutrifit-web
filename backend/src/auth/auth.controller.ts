@@ -19,10 +19,15 @@ class ChangePasswordDto {
   @IsString()
   @IsNotEmpty()
   currentPassword: string;
-
   @IsString()
   @IsNotEmpty()
   newPassword: string;
+}
+
+class PinDto {
+  @IsString()
+  @IsNotEmpty()
+  pin: string;
 }
 
 const MAX_ATTEMPTS = 5;
@@ -75,6 +80,17 @@ export class AuthController {
     const result = await this.authService.login(res, dto.email, dto.password);
     attempts.delete(key);
     return result;
+  }
+
+  /**
+   * Login del repartidor con PIN corto (4-6 dígitos). Público y con throttling:
+   * el PIN tiene poco espacio, así que el límite por IP es parte de la defensa.
+   */
+  @Post('pin')
+  @Throttle({ default: { limit: 6, ttl: 300000 } })
+  async pin(@Res({ passthrough: true }) res: Response, @Req() req: any) {
+    const dto: PinDto = await readJsonBody(req);
+    return this.authService.loginWithPin(res, dto?.pin);
   }
 
   @UseGuards(JwtAuthGuard)

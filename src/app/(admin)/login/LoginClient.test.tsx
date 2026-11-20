@@ -83,3 +83,43 @@ describe('LoginClient (sesión HttpOnly)', () => {
     expect(replace).not.toHaveBeenCalled();
   });
 });
+
+describe('LoginClient (PIN del repartidor)', () => {
+  afterEach(() => {
+    window.history.replaceState({}, '', '/');
+  });
+
+  it('entra con PIN y redirige a /reparto', async () => {
+    window.history.replaceState({}, '', '/login?next=/reparto');
+    (apiFetch as jest.Mock).mockResolvedValue({
+      user: { id: 'u-rep', name: 'Repartidor', email: 'rep@nutrifit.cl', role: 'DELIVERY' },
+    });
+    (fetchSession as jest.Mock).mockResolvedValue({ email: 'rep@nutrifit.cl', role: 'DELIVERY' });
+
+    render(<LoginClient />);
+    fireEvent.change(screen.getByLabelText('PIN del repartidor'), { target: { value: '1234' } });
+    fireEvent.click(screen.getByRole('button', { name: /entrar con pin/i }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/reparto'));
+    expect(apiFetch).toHaveBeenCalledWith('/auth/pin', {
+      method: 'POST',
+      body: { pin: '1234' },
+    });
+    expect(setSessionUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'DELIVERY' }),
+    );
+    expect(setSessionCookie).toHaveBeenCalled();
+  });
+
+  it('no envía un PIN fuera de 4–6 dígitos', async () => {
+    render(<LoginClient />);
+    fireEvent.click(screen.getByRole('button', { name: 'Repartidor' }));
+    fireEvent.change(screen.getByLabelText('PIN del repartidor'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: /entrar con pin/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/entre 4 y 6 dígitos/i)).toBeInTheDocument(),
+    );
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+});

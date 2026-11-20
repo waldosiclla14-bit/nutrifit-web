@@ -3,7 +3,8 @@ import { Prisma, PrismaPromise, OrderStatus, PaymentStatus, PaymentMethod, Deliv
 import { PrismaService } from '../prisma/prisma.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { RemindersService } from '../reminders/reminders.service';
-import { rangeBound, todayChileISO } from '../common/date-range';
+import { addDaysISO, rangeBound, startOfChileDay, todayChileISO } from '../common/date-range';
+import { resolveDeliverySchedule } from '../delivery/delivery-filters';
 
 @Injectable()
 export class OrdersService implements OnModuleInit {
@@ -556,6 +557,8 @@ export class OrdersService implements OnModuleInit {
         return;
       }
 
+      // Mismo helper que DeliveryService.create: día Chile + inicio del día.
+      const schedule = resolveDeliverySchedule(order.deliveryDay);
       await this.prisma.delivery.create({
         data: {
           orderId: order.id,
@@ -563,7 +566,8 @@ export class OrdersService implements OnModuleInit {
           deliveryType: isDomicilio ? 'ENVIO_DOMICILIO' : 'METRO',
           stationId: station?.id ?? null,
           address,
-          deliveryDate: order.deliveryDay ? new Date(order.deliveryDay) : null,
+          deliveryDay: schedule.deliveryDay,
+          deliveryDate: schedule.deliveryDate,
           windowStart: order.deliveryTime || null,
           windowEnd: windowEnd || null,
           meetingPoint: station?.defaultMeetingPoint || 'Acceso principal',
@@ -1232,19 +1236,27 @@ markPaid = true;
   }
 
   async getStats() {
+    // El "día de ventas" es el calendario de America/Santiago. Antes se usaba
+    // setHours(0,0,0,0) con el reloj del servidor (UTC en Render), así que el
+    // día cambiaba a las 21:00 de Chile y el borde 21:00–00:00 descuadraba.
+    const hoy = todayChileISO();
     const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    const today = startOfChileDay(hoy);
+    const monthStart = startOfChileDay(`${hoy.slice(0, 7)}-01`);
+    const yesterday = startOfChileDay(addDaysISO(hoy, -1));
     // Same-hour window yesterday (fair intraday comparison, avoids fake -100% at dawn)
     const dayElapsedMs = now.getTime() - today.getTime();
     const yesterdayToDate = new Date(yesterday.getTime() + dayElapsedMs);
     // Previous month, same elapsed days (fair month-to-date comparison)
-    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const elapsedMs = today.getTime() - monthStart.getTime();
+    const [py, pm] = hoy.split('-').map(Number);
+    const prevMonthFirst = new Date(Date.UTC(py, pm - 2, 1, 12));
+    const prevMonthStart = startOfChileDay(
+      `${prevMonthFirst.getUTCFullYear()}-${String(prevMonthFirst.getUTCMonth() + 1).padStart(2, '0')}-01`,
+    );
+    const elapsedMs = now.getTime() - monthStart.getTime();
     const prevMonthToDate = new Date(prevMonthStart.getTime() + elapsedMs);
+    // Ventana de 7 días del gráfico, también en calendario Chile.
+    const salesByDayFrom = startOfChileDay(addDaysISO(hoy, -6));
 
     const paidStatuses = [OrderStatus.PAID, OrderStatus.DELIVERED];
 
@@ -1290,15 +1302,15 @@ markPaid = true;
       }),
       this.prisma.$queryRaw`
         SELECT
-          DATE("createdAt") as date,
+          to_char("createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as date,
           SUM("total")::int as total,
           SUM("profit")::int as profit,
           COUNT(*)::int as count
         FROM "orders"
         WHERE "status" IN ('PAID', 'DELIVERED')
-          AND "createdAt" >= CURRENT_DATE - INTERVAL '7 days'
-        GROUP BY DATE("createdAt")
-        ORDER BY date ASC
+          AND "createdAt" >= ${salesByDayFrom}
+        GROUP BY 1
+        ORDER BY 1 ASC
       `,
     ]);
 
@@ -1352,7 +1364,7 @@ markPaid = true;
         revenue: p._sum.total || 0,
       })),
       salesByDay: (salesByDay as any[]).map((d: any) => ({
-        date: d.date.toISOString().split('T')[0],
+        date: typeof d.date === 'string' ? d.date : new Date(d.date).toISOString().split('T')[0],
         total: Number(d.total) || 0,
         profit: Number(d.profit) || 0,
         orders: Number(d.count) || 0,

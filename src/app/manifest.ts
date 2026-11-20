@@ -28,6 +28,12 @@ export default function manifest(): MetadataRoute.Manifest {
         url: '/admin',
         icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
       },
+      {
+        name: 'Reparto',
+        short_name: 'Reparto',
+        url: '/reparto',
+        icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+      },
     ],
     icons: [
       {

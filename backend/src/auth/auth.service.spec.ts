@@ -130,3 +130,109 @@ describe('AuthService — bootstrap', () => {
     expect(bcrypt.hash).toHaveBeenCalled();
   });
 });
+
+describe('AuthService — PIN del repartidor', () => {
+  let service: AuthService;
+  let prisma: any;
+  const res = { cookie: jest.fn(), clearCookie: jest.fn() } as any;
+
+  beforeEach(() => {
+    process.env.JWT_SECRET = 'secreto-de-pruebas';
+    delete process.env.PIN_LOOKUP_SECRET;
+    (bcrypt.compare as jest.Mock).mockReset();
+    (bcrypt.hash as jest.Mock).mockReset().mockResolvedValue('pin-hasheado');
+
+    prisma = {
+      user: {
+        findUnique: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+
+    service = new AuthService(prisma, { sign: jest.fn().mockReturnValue('jwt') } as any);
+    res.cookie.mockReset();
+  });
+
+  const courier = {
+    id: 'u-rep',
+    email: 'repartidor@nutrifit.cl',
+    name: 'Repartidor',
+    role: 'DELIVERY',
+    isActive: true,
+    pinHash: 'pin-hasheado',
+    pinLookup: 'lookup',
+  };
+
+  describe('setPin', () => {
+    it('guarda hash y buscador determinista, y audita', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce(courier).mockResolvedValueOnce(null);
+
+      await service.setPin('u-rep', '1234');
+
+      const data = prisma.user.update.mock.calls[0][0].data;
+      expect(data.pinHash).toBe('pin-hasheado');
+      expect(data.pinLookup).toMatch(/^[a-f0-9]{64}$/);
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ action: 'COURIER_PIN_SET', entity: 'User' }),
+      });
+    });
+
+    it('rechaza PIN de 3 o 7 dígitos', async () => {
+      await expect(service.setPin('u-rep', '123')).rejects.toThrow('4 y 6');
+      await expect(service.setPin('u-rep', '1234567')).rejects.toThrow('4 y 6');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('solo aplica a usuarios con rol DELIVERY', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...courier, role: 'SELLER' });
+
+      await expect(service.setPin('u-rep', '1234')).rejects.toThrow('exclusivo del rol Repartidor');
+    });
+
+    it('rechaza un PIN ya usado por otro repartidor', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce(courier)
+        .mockResolvedValueOnce({ ...courier, id: 'u-otro' });
+
+      await expect(service.setPin('u-rep', '1234')).rejects.toThrow('ya está en uso');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('loginWithPin', () => {
+    it('emite sesión HttpOnly y audita el acceso', async () => {
+      prisma.user.findUnique.mockResolvedValue(courier);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const out = await service.loginWithPin(res, '1234');
+
+      expect(out.user.role).toBe('DELIVERY');
+      expect(res.cookie).toHaveBeenCalledWith('access_token', 'jwt', expect.objectContaining({ httpOnly: true }));
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ action: 'COURIER_PIN_LOGIN' }),
+      });
+    });
+
+    it('rechaza con el mismo mensaje PIN inexistente e incorrecto', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      const inexistente = await service.loginWithPin(res, '9999').catch((e) => e.message);
+
+      prisma.user.findUnique.mockResolvedValue(courier);
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      const incorrecto = await service.loginWithPin(res, '1234').catch((e) => e.message);
+
+      expect(inexistente).toBe('PIN inválido');
+      expect(incorrecto).toBe('PIN inválido');
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
+
+    it('no deja entrar a cuentas inactivas ni a otros roles', async () => {
+      prisma.user.findUnique.mockResolvedValue({ ...courier, isActive: false });
+      await expect(service.loginWithPin(res, '1234')).rejects.toThrow('PIN inválido');
+
+      prisma.user.findUnique.mockResolvedValue({ ...courier, role: 'ADMIN' });
+      await expect(service.loginWithPin(res, '1234')).rejects.toThrow('PIN inválido');
+    });
+  });
+});

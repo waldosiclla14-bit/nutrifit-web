@@ -43,4 +43,20 @@ describe('chile date-range helpers', () => {
     expect(todayChileISO(new Date('2026-09-22T02:30:00.000Z'))).toBe('2026-09-21');
     expect(todayChileISO(new Date('2026-09-22T03:30:00.000Z'))).toBe('2026-09-22');
   });
+
+  it('DST start (2026-09-06) no retrocede al día anterior', () => {
+    const { gte, lt } = chileDayRange('2026-09-06');
+    // 00:00 local ya no existe: el día arranca a las 01:00 local (04:00Z).
+    expect(gte.toISOString()).toBe('2026-09-06T04:00:00.000Z');
+    expect(todayChileISO(gte)).toBe('2026-09-06');
+    // Día de 23 horas.
+    expect((lt.getTime() - gte.getTime()) / 3600000).toBe(23);
+  });
+
+  it('DST end (2026-04-05) cubre el día completo', () => {
+    const { gte, lt } = chileDayRange('2026-04-05');
+    expect(todayChileISO(gte)).toBe('2026-04-05');
+    expect((lt.getTime() - gte.getTime()) / 3600000).toBe(24);
+    expect(todayChileISO(new Date(lt.getTime() - 1))).toBe('2026-04-05');
+  });
 });

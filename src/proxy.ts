@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { LEGACY_HOSTS, SITE_HOST } from '@/lib/site';
 
 const SESSION_COOKIE = 'nf_session';
-const PROTECTED = ['/admin', '/pos'];
+const PROTECTED = ['/admin', '/pos', '/reparto'];
 
 /**
  * Construye la URL canónica para un host que no es el oficial.

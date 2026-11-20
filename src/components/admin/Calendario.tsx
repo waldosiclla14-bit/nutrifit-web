@@ -10,6 +10,7 @@ import { DELIVERY_STATUS_DOT, DELIVERY_STATUS_LABEL, deliveryNextActions } from 
 type Delivery = {
   id: string;
   status: string;
+  deliveryDay: string | null;
   deliveryDate: string | null;
   windowStart: string | null;
   windowEnd: string | null;
@@ -51,9 +52,13 @@ export function Calendario({ token }: { token: string }) {
         to.setHours(23, 59, 59, 999);
       }
 
+      // El backend filtra por día de calendario (deliveryDay). Estas fechas son
+      // locales del navegador; pasarlas por toISOString() las corría de día.
+      const iso = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const params = new URLSearchParams({
-        dateFrom: from.toISOString().split('T')[0],
-        dateTo: to.toISOString().split('T')[0],
+        dateFrom: iso(from),
+        dateTo: iso(to),
         limit: '200',
       });
 
@@ -105,8 +110,8 @@ export function Calendario({ token }: { token: string }) {
   // Group deliveries by date for week/month view
   const byDate: Record<string, Delivery[]> = {};
   deliveries.forEach((d) => {
-    if (!d.deliveryDate) return;
-    const key = new Date(d.deliveryDate).toISOString().split('T')[0];
+    if (!d.deliveryDay && !d.deliveryDate) return;
+    const key = d.deliveryDay || new Date(d.deliveryDate as string).toISOString().split('T')[0];
     if (!byDate[key]) byDate[key] = [];
     byDate[key].push(d);
   });

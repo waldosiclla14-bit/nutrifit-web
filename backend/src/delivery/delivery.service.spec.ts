@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeliveryStatus, DeliveryType } from '@prisma/client';
+import { buildDeliveryWhere } from './delivery-filters';
 
 jest.mock('../todoist/todoist.service', () => ({
   TodoistService: jest.fn().mockImplementation(() => ({
@@ -128,6 +129,28 @@ describe('DeliveryService', () => {
 
       expect(result.id).toBe('del-1');
       expect(prismaMock.delivery.create).not.toHaveBeenCalled();
+    });
+
+    it('guarda el día de entrega como calendario Chile, no como UTC-medianoche', async () => {
+      prismaMock.delivery.findUnique.mockResolvedValue(null);
+      prismaMock.metroStation.findUnique.mockResolvedValue({ id: 'station-1', active: true, deliveryEnabled: true });
+      prismaMock.deliverySettings.findMany.mockResolvedValue([{ key: 'maximum_orders_per_slot', value: 10 }]);
+      prismaMock.delivery.count.mockResolvedValue(0);
+      prismaMock.delivery.create.mockResolvedValue(mockDelivery);
+
+      await service.create({
+        orderId: 'ord-1',
+        customerId: 'cust-1',
+        deliveryType: DeliveryType.METRO,
+        stationId: 'station-1',
+        deliveryDate: '2026-11-18',
+        windowStart: '17:00',
+        windowEnd: '17:30',
+      });
+
+      const payload = prismaMock.delivery.create.mock.calls[0][0].data;
+      expect(payload.deliveryDay).toBe('2026-11-18');
+      expect(payload.deliveryDate.toISOString()).toBe('2026-11-18T03:00:00.000Z');
     });
 
     it('should reject inactive station', async () => {
@@ -305,6 +328,47 @@ describe('DeliveryService', () => {
       expect(stats.month).toBe(30);
       expect(stats.byStatus[DeliveryStatus.CONFIRMED]).toBe(3);
       expect(stats.topStations).toHaveLength(1);
+    });
+  });
+
+  describe('getCounters', () => {
+    it('deriva los contadores del mismo where que la tabla', async () => {
+      prismaMock.delivery.groupBy
+        .mockResolvedValueOnce([
+          { status: DeliveryStatus.SCHEDULED, _count: { id: 3 } },
+          { status: DeliveryStatus.DELIVERED, _count: { id: 2 } },
+        ]) // hoy
+        .mockResolvedValueOnce([
+          { status: DeliveryStatus.SCHEDULED, _count: { id: 7 } },
+          { status: DeliveryStatus.DELIVERED, _count: { id: 5 } },
+        ]); // semana
+      prismaMock.delivery.count.mockResolvedValue(4); // vencidos
+
+      const counters = await service.getCounters();
+
+      expect(counters.hoy.total).toBe(5);
+      expect(counters.hoy.pendientes).toBe(3);
+      expect(counters.hoy.entregados).toBe(2);
+      expect(counters.hoy.noEntregados).toBe(0);
+      expect(counters.semana.total).toBe(12);
+      expect(counters.semana.entregados).toBe(5);
+      expect(counters.vencidos).toBe(4);
+
+      const hoyWhere = prismaMock.delivery.groupBy.mock.calls[0][0].where;
+      expect(hoyWhere).toEqual(buildDeliveryWhere({ day: counters.hoy.dia }));
+      expect(counters.hoy.dia).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('no suma los vencidos a los pendientes de hoy', async () => {
+      prismaMock.delivery.groupBy
+        .mockResolvedValueOnce([{ status: DeliveryStatus.SCHEDULED, _count: { id: 1 } }])
+        .mockResolvedValueOnce([{ status: DeliveryStatus.SCHEDULED, _count: { id: 1 } }]);
+      prismaMock.delivery.count.mockResolvedValue(9);
+
+      const counters = await service.getCounters();
+
+      expect(counters.hoy.pendientes).toBe(1);
+      expect(counters.vencidos).toBe(9);
     });
   });
 
