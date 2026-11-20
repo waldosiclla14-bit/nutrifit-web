@@ -125,7 +125,10 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
     try {
       const params = new URLSearchParams();
       if (filterStatus === '__pendientes') params.set('pendientes', '1');
-      else if (filterStatus) params.set('status', filterStatus);
+      else if (filterStatus === '__sin_asignar') {
+        params.set('pendientes', '1');
+        params.set('sinAsignar', '1');
+      } else if (filterStatus) params.set('status', filterStatus);
       if (filterLine) params.set('line', filterLine);
       if (vista === 'dia') params.set('day', filterDay);
       if (vista === 'semana') {
@@ -268,7 +271,8 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
             label="Sin repartidor"
             value={counters.despacho?.sinAsignar ?? 0}
             color="text-blue-600"
-            onClick={() => goTo('dia', '__pendientes')}
+            active={filterStatus === '__sin_asignar'}
+            onClick={() => goTo('dia', '__sin_asignar')}
           />
         </div>
       )}
@@ -345,6 +349,8 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
         </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input text-sm">
           <option value="">Todos los estados</option>
+          <option value="__pendientes">Pendientes (todos)</option>
+          <option value="__sin_asignar">Sin repartidor</option>
           {Object.entries(DELIVERY_STATUS_LABEL).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
@@ -356,7 +362,7 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
           ))}
         </select>
         <button onClick={() => {
-          const header = 'Pedido,Cliente,Estación,Línea,Comuna,Fecha,Hora,Código,Estado,Punto';
+          const header = 'Pedido,Cliente,Estación,Línea,Comuna,Fecha,Hora,Código,Estado,Repartidor,Punto';
           const rows = filtered.map(d => [
             d.order?.orderNumber,
             d.customer?.name || d.order?.customerName,
@@ -367,6 +373,7 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
             `${d.windowStart ? formatTime12(d.windowStart) : ''}–${d.windowEnd ? formatTime12(d.windowEnd) : ''}`,
             d.deliveryCode,
             DELIVERY_STATUS_LABEL[d.status] || d.status,
+            repartidores.find((u) => u.id === d.assignedTo)?.name || '',
             d.meetingPoint || '',
           ].map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
           const blob = new Blob(['\uFEFF' + `${header}\n${rows}`], { type: 'text/csv;charset=utf-8;' });
@@ -381,6 +388,54 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
           <RefreshCw size={14} />
         </button>
       </div>
+
+      {/* Despacho: las pendientes sin repartidor se asignan desde aquí. */}
+      {sinAsignar.length > 0 && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-amber-800">
+              <UserPlus size={16} /> Despacho pendiente · {sinAsignar.length} sin repartidor
+            </h3>
+            <button
+              onClick={() => goTo('dia', '__pendientes')}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+            >
+              Ver todas →
+            </button>
+          </div>
+          {repartidores.length === 0 && (
+            <p className="mt-2 text-[11px] text-amber-700">
+              No hay repartidores activos disponibles. La asignación requiere rol ADMIN.
+            </p>
+          )}
+          <div className="mt-2 space-y-2">
+            {sinAsignar.slice(0, 10).map((d) => (
+              <div key={d.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2 text-xs">
+                <span className="font-bold">{d.order?.orderNumber || '—'}</span>
+                <span className="text-muted">{formatDay(d.deliveryDay || d.deliveryDate)} · {d.windowStart || '—'}</span>
+                <span className="truncate">{d.customer?.name || d.order?.customerName || '—'}</span>
+                <span className="ml-auto text-muted">{d.station?.name || '—'}</span>
+                <select
+                  value={selectedCourier[d.id] || ''}
+                  onChange={(e) => setSelectedCourier((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                  className="input w-auto py-1 text-xs"
+                  aria-label={`Repartidor para ${d.order?.orderNumber || d.id}`}
+                >
+                  <option value="">Repartidor…</option>
+                  {repartidores.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+                <button
+                  onClick={() => assignDelivery(d.id, selectedCourier[d.id])}
+                  disabled={!selectedCourier[d.id] || assigning === d.id}
+                  className="ds-btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
+                >
+                  {assigning === d.id ? 'Asignando…' : 'Asignar'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Deliveries table */}
       {loading ? (
@@ -400,6 +455,7 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
                 <th className="px-3 py-2">Cliente</th>
                 <th className="px-3 py-2 hidden sm:table-cell">Estación</th>
                 <th className="px-3 py-2 hidden md:table-cell">Línea</th>
+                <th className="px-3 py-2 hidden lg:table-cell">Repartidor</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2">Acciones</th>
               </tr>
@@ -422,6 +478,13 @@ export function Entregas({ token, initialVista = 'dia', initialStatus = '', onNa
                     </span>
                   </td>
                   <td className="px-3 py-2 hidden md:table-cell text-xs text-muted">{d.station?.line || '—'}</td>
+                  <td className="px-3 py-2 hidden lg:table-cell text-xs">
+                    {d.assignedTo ? (
+                      repartidores.find((u) => u.id === d.assignedTo)?.name || 'Asignado'
+                    ) : (
+                      <span className="font-semibold text-amber-600">Sin asignar</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${DELIVERY_STATUS_PILL[d.status] || 'bg-gray-100 text-gray-700'}`}>
                       {DELIVERY_STATUS_LABEL[d.status] || d.status}

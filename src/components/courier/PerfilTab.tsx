@@ -1,7 +1,10 @@
 'use client';
 
-import { Download, LogOut, ShieldCheck, Timer, UserRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { BellRing, Download, LogOut, ShieldCheck, Timer, UserRound } from 'lucide-react';
 import type { SessionProfile } from '@/lib/api';
+import { pushPermission, pushSupported, subscribePush } from '@/lib/push';
+import { toast } from '@/lib/feedback';
 import type { CourierConfig } from '@/lib/courier/types';
 
 type Props = {
@@ -13,6 +16,36 @@ type Props = {
 };
 
 export default function PerfilTab({ session, config, installAvailable, onInstall, onLogout }: Props) {
+  const [pushStatus, setPushStatus] = useState<'on' | 'off' | 'denied' | 'unsupported'>(
+    pushSupported() ? pushPermission() === 'denied' ? 'denied' : 'off' : 'unsupported',
+  );
+  const [enablingPush, setEnablingPush] = useState(false);
+
+  useEffect(() => {
+    if (!pushSupported()) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setPushStatus(sub ? 'on' : 'off'))
+      .catch(() => setPushStatus('off'));
+  }, []);
+
+  const enablePush = async () => {
+    setEnablingPush(true);
+    // Sin token explícito: la cookie HttpOnly de la sesión de reparto autentica
+    // el registro y el backend asocia la suscripción con este repartidor.
+    const result = await subscribePush('');
+    setEnablingPush(false);
+    if (result === 'ok') {
+      setPushStatus('on');
+      toast.success('Avisos de asignación activados en este dispositivo.');
+    } else if (result === 'denied') {
+      setPushStatus('denied');
+      toast.error('Permiso denegado. Activa las notificaciones en el navegador.');
+    } else {
+      toast.error('No se pudo activar. Revisa la conexión e inténtalo de nuevo.');
+    }
+  };
+
   return (
     <div className="space-y-4 px-4 pb-4">
       <div className="rounded-3xl border border-line bg-white p-5">
@@ -46,6 +79,26 @@ export default function PerfilTab({ session, config, installAvailable, onInstall
           <span className="text-sm font-bold text-[var(--text-primary)]">Activo</span>
         </div>
       </div>
+
+      <button
+        onClick={enablePush}
+        disabled={enablingPush || pushStatus === 'on' || pushStatus === 'unsupported'}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-white py-3 text-sm font-bold text-[var(--text-primary)] disabled:opacity-60"
+      >
+        <BellRing size={16} />
+        {pushStatus === 'on'
+          ? 'Avisos de asignación activos'
+          : enablingPush
+            ? 'Activando…'
+            : pushStatus === 'denied'
+              ? 'Permiso denegado: revisa el navegador'
+              : 'Activar avisos de asignación'}
+      </button>
+      {pushStatus === 'unsupported' && (
+        <p className="px-1 text-center text-[11px] text-[var(--text-secondary)]">
+          Este navegador no admite notificaciones push.
+        </p>
+      )}
 
       {installAvailable && (
         <button

@@ -436,7 +436,12 @@ function Dashboard({
               <Suspense fallback={<TabSkeleton />}>
                 {tab === 'resumen' && <Resumen stats={stats} goals={goals} inventory={inventory} token={token} onChanged={load} onGoAgendados={() => { setOrdenesInit('AGENDADO'); setTab('ordenes'); window.scrollTo({ top: 0 }); }} onNavigate={(t) => { setTab(t); window.scrollTo({ top: 0 }); }} />}
                 {tab === 'ordenes' && <Ordenes token={token} initialStatus={ordenesInit} onInitConsumed={() => setOrdenesInit('')} />}
-                {tab === 'entregas' && <Entregas token={token} />}
+                {tab === 'entregas' && (
+                  <Entregas
+                    token={token}
+                    onNavigateRendiciones={() => { setTab('rendiciones'); window.scrollTo({ top: 0 }); }}
+                  />
+                )}
                 {tab === 'rendiciones' && <Rendiciones />}
                 {tab === 'calendario' && <Calendario token={token} />}
                 {tab === 'productos' && <Productos products={products} token={token} onChanged={refreshTab} />}

@@ -101,6 +101,32 @@ vez; estados `ANULADA`/`CONFIRMADA` no se pueden confirmar de nuevo.
 - El contador del encabezado muestra acciones en cola/conflicto. El service
   worker precarga `/reparto`, `/login` y el manifest para abrir la app sin red.
 
+## Panel admin de logística (Fase 6)
+
+La pestaña **ENTREGAS** del admin pasa a ser el panel de despacho. Todo sale de
+`GET /deliveries/counters` y de los mismos filtros de la tabla:
+
+- **Contadores clicables**: Hoy, Pendientes, Entregados, Vencidos y Sin
+  repartidor filtran la tabla. «Pendientes» usa el scope `pendientes=1`, así que
+  comparte la lista de estados no finales con los contadores.
+- **Despacho**: sección con las entregas pendientes de hoy sin `assignedTo`
+  (`pendientes=1&sinAsignar=1`). Cada fila permite elegir un repartidor activo
+  y llama a `PATCH /deliveries/:id/assign`. El servidor registra la auditoría
+  `ASSIGNED` y envía push best-effort a la PWA con `url: /reparto`; si VAPID no
+  está configurado o falla el envío, la asignación ya persistida no se revierte.
+  Para recibirlo, el repartidor activa **Avisos de asignación** en su pestaña
+  **Perfil**: la suscripción se registra con su `userId` (cookie HttpOnly).
+- **KPIs**: cumplimiento (cerradas con entrega / cerradas de la semana),
+  puntualidad (entregas con `deliveredAt` dentro de la ventana `windowEnd`,
+  comparando horas de Santiago) y vencidos. El KPI de **diferencias** cuenta
+  rendiciones `RENDIDA` con monto declarado distinto del esperado y abre la
+  pestaña de rendiciones.
+- **CSV**: exporta exactamente el resultado filtrado e incluye el repartidor
+  asignado. No se ha tocado el POS ni el cierre de caja.
+
+`GET /users` es solo ADMIN: si quien abre el panel es SELLER, el despacho queda
+sin lista de repartidores y se muestra un aviso en vez de fallar la pantalla.
+
 ## PWA
 
 - Manifest: `/reparto.webmanifest` (`start_url` e `id` = `/reparto`).
