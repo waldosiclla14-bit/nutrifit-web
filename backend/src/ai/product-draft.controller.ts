@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { readJsonBody } from '../common/decorators/raw-body.decorator';
@@ -16,6 +16,12 @@ const MAX_IMAGES = 4;
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductDraftController {
   constructor(private service: ProductDraftService) {}
+
+  @Get('product-draft/status')
+  @Roles(Role.ADMIN)
+  status(@Req() req: any) {
+    return this.service.status(req.user.id);
+  }
 
   @Post('product-draft')
   @Roles(Role.ADMIN)

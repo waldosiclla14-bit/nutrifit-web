@@ -125,6 +125,19 @@ describe('ProductsService', () => {
       expect(result.supplierId).toBeNull();
     });
 
+    it('crea una variante única con stock 0 si no vienen variantes', async () => {
+      prisma.product.findUnique.mockResolvedValue(null);
+      prisma.category.findFirst.mockResolvedValue({ id: 'cat1' });
+      prisma.brand.findFirst.mockResolvedValue(null);
+      prisma.product.create.mockResolvedValue({ id: 'p3', variants: [] });
+
+      await service.create({ name: 'Sin sabores', category: 'Protein', basePrice: 1000, variants: [] });
+
+      const { data } = prisma.product.create.mock.calls[0][0];
+      expect(data.variants.create).toHaveLength(1);
+      expect(data.variants.create[0]).toMatchObject({ variantName: 'Única', physicalStock: 0, price: 1000 });
+    });
+
     it('rejects empty name', async () => {
       await expect(service.create({ name: '', category: 'X', variants: [] }))
         .rejects.toThrow(BadRequestException);

@@ -28,5 +28,6 @@ Reglas estrictas:
 - "size" es la presentación (ej: "1 kg", "30 servicios", "120 cápsulas").
 - "description_short" y "seo_title": español de Chile, sin afirmaciones médicas como cura, trata, previene, adelgaza o quema grasa.
 - "confidence" va de 0 a 1 por campo y debe reflejar tu certeza real.
-- "sources": incluye la etiqueta (type "label") cuando analices una foto, y la URL (type "web") cuando uses una fuente.
+- "sources": incluye la etiqueta (type "label") cuando analices una foto, y la URL (type "web") cuando uses una fuente. En "field" pon el campo exacto que respalda el dato (por ejemplo "isp_number" o "ingredients"); sin ese field el dato se descartará.
+- Si el usuario entrega un código de barras, úsalo como fuente: el servidor overrides cualquier barcode distinto.
 - Si el texto o la imagen no alcanzan para un campo, déjalo en null.`;

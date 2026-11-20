@@ -57,6 +57,7 @@ export class ProductDraftService {
     }
 
     const quota = await this.usage.consume(userId);
+    let succeeded = false;
     const startedAt = Date.now();
     const images = input.images || [];
     const ocrText = [input.text, input.barcode, input.url].filter(Boolean).join('\n');
@@ -96,6 +97,12 @@ export class ProductDraftService {
         parsedAnyResponse = true;
         const data = result.data;
         const text = this.extractText(data);
+        // Un JSON cortado por MAX_TOKENS nunca va a parsear: better fallar claro
+        // que quemar cuota en reintentos con el mismo prompt.
+        if (data?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+          this.logger.warn('Gemini draft: respuesta truncada (MAX_TOKENS)');
+          continue;
+        }
         const tokens = Number(data?.usageMetadata?.totalTokenCount) || 0;
         if (tokens > 0) {
           await this.usage.addTokens(userId, tokens).catch((e: any) => {
@@ -108,6 +115,7 @@ export class ProductDraftService {
 
         const normalized = normalizeDraft(parsed, {
           ocrText,
+          inputBarcode: input.barcode,
           hasPhoto: images.length > 0,
         });
 
@@ -119,6 +127,12 @@ export class ProductDraftService {
           barcode: normalized.draft.barcode || undefined,
         });
 
+        const latencyMs = Date.now() - startedAt;
+        this.logger.log(
+          `Product draft ok model=${model} latencyMs=${latencyMs} web=${webSearchUsed} quota=${quota.used}/${quota.limit}`,
+        );
+
+        succeeded = true;
         return {
           draftId: randomUUID(),
           ...normalized.draft,
@@ -128,7 +142,7 @@ export class ProductDraftService {
           warnings: normalized.warnings,
           meta: {
             model,
-            latencyMs: Date.now() - startedAt,
+            latencyMs,
             webSearchUsed,
             quota: { used: quota.used, limit: quota.limit, resetAt: quota.resetAt },
           },
@@ -159,6 +173,11 @@ export class ProductDraftService {
       throw new ServiceUnavailableException('La IA no respondió. Intenta de nuevo.');
     } finally {
       clearTimeout(timer);
+      if (!succeeded) {
+        await this.usage.refund(userId).catch((e: any) => {
+          this.logger.warn(`No se pudo reembolsar la cuota: ${e?.message}`);
+        });
+      }
     }
   }
 
@@ -224,8 +243,26 @@ export class ProductDraftService {
     }
   }
 
+  /**
+   * Gemini puede devolver varios parts (pensamiento, texto, llamadas a tools).
+   * Tomar solo parts[0] descarta el JSON cuando el primero es un thought vacío.
+   */
   private extractText(data: any): string {
-    return String(data?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+    const parts = data?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return '';
+    return parts
+      .filter((part: any) => part?.thought !== true && typeof part?.text === 'string')
+      .map((part: any) => part.text)
+      .join('')
+      .trim();
+  }
+
+  /** Cuota actual sin consumirla; también sirve para precalentar Render. */
+  async status(userId: string) {
+    return {
+      ...(await this.usage.peek(userId)),
+      configured: !!process.env.GEMINI_API_KEY,
+    };
   }
 
   private safeParse(text: string): DraftModel | null {

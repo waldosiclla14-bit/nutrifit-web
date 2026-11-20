@@ -34,6 +34,9 @@ type Props = {
 };
 
 const MAX_IMAGES = 4;
+const LOW_CONFIDENCE = 0.6;
+
+type Quota = { used: number; limit: number; resetAt: string };
 
 async function fileToCompressedJpeg(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file);
@@ -71,6 +74,8 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
   const [webSearch, setWebSearch] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [result, setResult] = useState<AiDraftResult | null>(null);
+  const [quota, setQuota] = useState<Quota | null>(null);
+  const [confirmedLow, setConfirmedLow] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -86,7 +91,12 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
     setWebSearch(false);
     setScanOpen(false);
     setResult(null);
-  }, [open]);
+    setConfirmedLow(false);
+    // Consulta barata: muestra cuota y precalienta Render antes de generar.
+    apiFetch<Quota>(`/ai/product-draft/status`, { token })
+      .then(setQuota)
+      .catch(() => {});
+  }, [open, token]);
 
   if (!open) return null;
 
@@ -101,18 +111,16 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
 
   const addFiles = async (files: FileList | null) => {
     if (!files) return;
-    const slots = Math.max(0, MAX_IMAGES - images.length);
-    if (slots === 0) return;
-    const next = [...images];
-    for (const file of Array.from(files).slice(0, slots)) {
+    const encoded: { mimeType: string; dataBase64: string }[] = [];
+    for (const file of Array.from(files).slice(0, MAX_IMAGES)) {
       try {
         const dataBase64 = await fileToCompressedJpeg(file);
-        next.push({ mimeType: 'image/jpeg', dataBase64 });
+        encoded.push({ mimeType: 'image/jpeg', dataBase64 });
       } catch {
         toast.error(`No se pudo leer ${file.name}`);
       }
     }
-    setImages(next);
+    if (encoded.length) setImages((prev) => [...prev, ...encoded].slice(0, MAX_IMAGES));
   };
 
   const process = async () => {
@@ -136,6 +144,8 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
       });
       setStage('Buscando duplicados…');
       setResult(draft);
+      setQuota(draft.meta?.quota ?? quota);
+      setConfirmedLow(false);
       setStep('review');
     } catch (err: any) {
       toast.error(err?.message || 'La IA no respondió.');
@@ -149,16 +159,35 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
     value >= 0.85 ? 'bg-emerald-500' : value >= 0.6 ? 'bg-amber-400' : 'bg-red-400';
 
   const Field = ({ label, value, confidence }: { label: string; value: string; confidence: number }) => (
-    <div className="min-w-0">
+    <div className="min-w-0" title={`${label}: confianza ${Math.round(confidence * 100)}%. Revisa este dato antes de usarlo.`}>
       <p className="truncate text-sm text-ink">{value}</p>
       <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted/40">
         <div className={`h-full ${confidenceTone(confidence)}`} style={{ width: `${Math.round(confidence * 100)}%` }} />
       </div>
       <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-muted">
-        {label} · {Math.round(confidence * 100)}%
+        {label} · {Math.round(confidence * 100)}%{confidence < LOW_CONFIDENCE && value !== '—' ? ' ⚠️' : ''}
       </p>
     </div>
   );
+
+  const reviewedFields = result
+    ? [
+        { label: 'Nombre', value: result.name, confidence: result.confidence?.name ?? 0 },
+        { label: 'Marca', value: result.brand, confidence: result.confidence?.brand ?? 0 },
+        { label: 'Presentación', value: result.size, confidence: result.confidence?.size ?? 0 },
+        {
+          label: 'Porciones',
+          value: result.servings != null ? String(result.servings) : null,
+          confidence: result.confidence?.servings ?? 0,
+        },
+        { label: 'Categoría', value: result.category, confidence: result.confidence?.category ?? 0 },
+        { label: 'ISP', value: result.isp_number, confidence: result.confidence?.isp_number ?? 0 },
+      ]
+    : [];
+  const lowConfidenceFields = reviewedFields.filter(
+    (field) => !!field.value && field.confidence < LOW_CONFIDENCE,
+  );
+  const blockedByConfidence = lowConfidenceFields.length > 0 && !confirmedLow;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
@@ -168,6 +197,7 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
             <h2 className="font-display text-base uppercase">Crear ficha con IA</h2>
             <p className="text-xs text-muted">
               {step === 'review' ? 'Revisa los datos antes de usarlos' : 'Foto de etiqueta, barcode, URL o texto'}
+              {quota ? ` · cuota ${quota.used}/${quota.limit}` : ''}
             </p>
           </div>
           <button onClick={onClose} aria-label="Cerrar" className="rounded-full p-2 hover:bg-muted/30">
@@ -307,13 +337,27 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nombre" value={result.name || '—'} confidence={result.confidence?.name ?? 0} />
-                <Field label="Marca" value={result.brand || '—'} confidence={result.confidence?.brand ?? 0} />
-                <Field label="Presentación" value={result.size || '—'} confidence={result.confidence?.size ?? 0} />
-                <Field label="Porciones" value={result.servings != null ? String(result.servings) : '—'} confidence={result.confidence?.servings ?? 0} />
-                <Field label="Categoría" value={result.category || '—'} confidence={result.confidence?.category ?? 0} />
-                <Field label="ISP" value={result.isp_number || '—'} confidence={result.confidence?.isp_number ?? 0} />
+                {reviewedFields.map((field) => (
+                  <Field
+                    key={field.label}
+                    label={field.label}
+                    value={field.value || '—'}
+                    confidence={field.confidence}
+                  />
+                ))}
               </div>
+
+              {lowConfidenceFields.length > 0 && (
+                <label className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={confirmedLow}
+                    onChange={(e) => setConfirmedLow(e.target.checked)}
+                    className="mt-0.5 accent-[#5DD62C]"
+                  />
+                  Ya revisé los campos con baja confianza: {lowConfidenceFields.map((f) => f.label).join(', ')}.
+                </label>
+              )}
 
               {result.flavors?.length > 0 && (
                 <div>
@@ -372,14 +416,16 @@ export function AiDraftSheet({ open, token, onClose, onApply, onQueue }: Props) 
               <button
                 type="button"
                 onClick={() => onQueue(result)}
-                className="ds-btn-secondary px-3 py-2 text-xs"
+                disabled={blockedByConfidence}
+                className="ds-btn-secondary px-3 py-2 text-xs disabled:opacity-40"
               >
                 Agregar a cola
               </button>
               <button
                 type="button"
                 onClick={() => onApply(result)}
-                className="ds-btn-accent px-3 py-2 text-xs"
+                disabled={blockedByConfidence}
+                className="ds-btn-accent px-3 py-2 text-xs disabled:opacity-40"
               >
                 Usar estos datos
               </button>

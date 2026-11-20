@@ -593,3 +593,27 @@ Invoke-RestMethod -Uri "$base/ai/product-draft" -Method Post -WebSession $sess `
 - El segundo deploy (`dep-dbvrfmrm8hqs738pciv0`, con el módulo de logística) falló en `nest build` por OOM con `--max-old-space-size=384`. Se subió a `448` en el `Dockerfile` (verificado localmente: 384 falla, 448 pasa).
 - Deploy `dep-dbvrikff3r2c73fthlj0` (commit `e824dde`) → `live`. Nueva llamada real: `201`, `gemini-3.6-flash`, 6,6 s, `retrievedAt=2026-11-20T03:09:14Z`, cuota `2/60`.
 - Último deploy `dep-dbvrq1n40ujc73em05l0` (commit `83339b3`, incluye cola lote y fixes de reparto) → `live`.
+
+---
+
+## Auditoría 2026-11-20 y correcciones
+
+Hallazgos confirmados por revisión de código (agente `nutrifit-revisor`) y corregidos:
+
+| Severidad | Hallazgo | Corrección |
+| --- | --- | --- |
+| Alto | Aprobar un borrador sin sabores creaba el producto con `variants: []`; el POS caía al fallback `stock: 999` y permitía vender stock inexistente. | El backend crea una variante `Única` con stock 0 cuando no vienen variantes; la cola también envía una variante fallback. |
+| Alto | Un nombre parecido se guardaba como `duplicateWarning` y `approveAiQueue` lo trataba como error fatal. | Se distingue `duplicateIsExact` (barcode) de aviso blando; el aviso se puede ignorar por fila. |
+| Medio | La cuota se descontaba aunque Gemini fallara (422/429/timeout). | `AiUsageService.refund()` devuelve la llamada en toda salida fallida; el `resetAt` ahora lo fija la fecha de la DB. |
+| Medio | El barcode escrito/escaneado se mandaba al prompt pero se descartaba si el modelo devolvía `null` u otro. | `inputBarcode` es autoritativo en `normalizeDraft` y valida el dígito verificador. |
+| Medio | Cualquier foto habilitaba ISP/ingredientes inventados. | La fuente debe citar el campo exacto (`isp_number`/`ingredients`) o el dato debe estar en el texto. |
+| Medio | `extractText` leía solo `parts[0]`: un `thought part` hacía fallar un JSON válido. | Se concatenan todos los `parts` de texto, se ignoran `thought` y se detecta `MAX_TOKENS`. |
+| Medio | Una fuente sin `title` invalidaba todo el array y anulaba ISP/ingredientes. | `title` opcional con fallback a la URL. |
+| Medio | Al aplicar un borrador se arrastraban precio/costo/proveedor de otra ficha. | `applyAiDraft` limpia esos campos. |
+| Medio | `sources`/`confidence` se descartaban al aprobar aunque las columnas ya existían. | Se guardan en `products.aiSources`/`aiConfidence` (create y update). |
+| Bajo | SELLER veía el botón de IA y sus 403 compartían throttle por IP con el ADMIN. | El botón y la cola solo se muestran si el perfil es `ADMIN`. |
+| Bajo | No existía `GET /ai/product-draft/status`. | Endpoint ADMIN que reporta cuota y precalienta Render; la hoja lo llama al abrir. |
+
+Pendiente fuera del código: revisar `autoDeploy` en Render, prueba E2E en iOS/Android y verificar 403 con un usuario SELLER real.
+
+Verificación local tras los fixes: backend `npx jest` 292/292, `npx jest src/ai` 33/33, frontend `npx jest` 183/183, `tsc --noEmit` y ambos `npm run build` OK, `npm run lint` sin errores.

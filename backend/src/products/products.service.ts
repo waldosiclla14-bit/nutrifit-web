@@ -371,6 +371,7 @@ export class ProductsService implements OnModuleInit {
     if (data.seoTitle !== undefined) {
       productData.seoTitle = data.seoTitle ? String(data.seoTitle).trim() : null;
     }
+    Object.assign(productData, this.aiProvenance(data));
     if (data.isActive !== undefined) productData.isActive = !!data.isActive;
     if (data.isFeatured !== undefined) productData.isFeatured = !!data.isFeatured;
     if (data.sku !== undefined) {
@@ -592,6 +593,18 @@ export class ProductsService implements OnModuleInit {
     const comparePrice = Number(data.comparePrice);
     const finalComparePrice = !Number.isNaN(comparePrice) && comparePrice > 0 ? comparePrice : null;
 
+    // Un producto sin variantes cae al fallback de stock 999 en el POS.
+    // Toda ficha nueva (incluida la aprobación IA) nace con una variante en 0.
+    if (variants.length === 0) {
+      variants.push({
+        variantName: 'Única',
+        price: finalBasePrice,
+        costPrice: finalCostPrice,
+        stock: 0,
+        lowStockAlert: 5,
+      });
+    }
+
     // Non-interactive: SKU uniqueness is computed with sequential reads (and the
     // DB @unique constraint on ProductVariant.sku is the hard backstop). A single
     // nested product.create() with variants.create is atomic and pgbouncer-safe.
@@ -636,6 +649,7 @@ export class ProductsService implements OnModuleInit {
           ingredients: data.ingredients ? String(data.ingredients).trim() : null,
           descriptionShort: data.descriptionShort ? String(data.descriptionShort).trim() : null,
           seoTitle: data.seoTitle ? String(data.seoTitle).trim() : null,
+          ...this.aiProvenance(data),
           categoryId,
           brandId,
           supplierId: data.supplierId ? String(data.supplierId) : null,
@@ -651,6 +665,52 @@ export class ProductsService implements OnModuleInit {
       }
       throw err;
     }
+  }
+
+  /**
+   * Trazabilidad del borrador IA aprobado. Se guarda tal cual lo revisó el
+   * admin, acotando tamaño y tipos para no convertir Json en un basurero.
+   */
+  private aiProvenance(data: any): { aiSources?: any; aiConfidence?: any } {
+    const result: { aiSources?: any; aiConfidence?: any } = {};
+
+    if (data.aiSources !== undefined) {
+      const sources = Array.isArray(data.aiSources)
+        ? data.aiSources
+            .filter(
+              (s: any) =>
+                s &&
+                typeof s === 'object' &&
+                ['label', 'web', 'catalog'].includes(s.type) &&
+                typeof s.title === 'string' &&
+                !!s.title.trim(),
+            )
+            .slice(0, 10)
+            .map((s: any) => ({
+              type: s.type,
+              title: s.title.trim().slice(0, 200),
+              ...(typeof s.url === 'string' && /^https?:\/\/\S+$/i.test(s.url)
+                ? { url: s.url.slice(0, 500) }
+                : {}),
+              ...(typeof s.field === 'string' ? { field: s.field.slice(0, 50) } : {}),
+              ...(typeof s.retrievedAt === 'string' ? { retrievedAt: s.retrievedAt.slice(0, 40) } : {}),
+            }))
+        : [];
+      result.aiSources = sources.length ? sources : null;
+    }
+
+    if (data.aiConfidence !== undefined) {
+      const raw = data.aiConfidence && typeof data.aiConfidence === 'object' ? data.aiConfidence : {};
+      const entries = Object.entries(raw)
+        .filter(
+          ([key, value]) =>
+            /^[a-z_]{1,40}$/.test(key) && typeof value === 'number' && value >= 0 && value <= 1,
+        )
+        .slice(0, 30);
+      result.aiConfidence = entries.length ? Object.fromEntries(entries) : null;
+    }
+
+    return result;
   }
 
   private slugify(text: string) {

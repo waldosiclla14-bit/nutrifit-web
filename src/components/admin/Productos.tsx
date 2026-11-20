@@ -2,12 +2,13 @@
 
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { ArrowDownAZ, ArrowUpAZ, ChevronDown, Copy, Pencil, Search, Trash2, X, Camera } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, getSessionUser } from '@/lib/api';
 import { toast, useConfirm } from '@/lib/feedback';
 import { marginCls, marginOf, stockLevel } from '@/lib/admin/format';
 import { normalizeHeader, parseNum } from '@/lib/admin/validate';
 import { generateSku, normalizeSku, skuError } from '@/lib/sku';
 import type { AdminProduct, AdminVariant, AdminSupplier } from '@/types/admin';
+import type { ProductDraftSource } from '@/types/productDraft';
 import { BarcodeScanner } from './BarcodeScanner';
 import { AiDraftSheet } from './productos/AiDraftSheet';
 import type { AiDraftResult } from './productos/AiDraftSheet';
@@ -71,6 +72,7 @@ export function Productos({
   const [saving, setSaving] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aiAllowed, setAiAllowed] = useState(false);
   const [aiQueue, setAiQueue] = useState<QueuedDraft[]>([]);
   const [queueReady, setQueueReady] = useState(false);
   const [approving, setApproving] = useState(false);
@@ -78,7 +80,13 @@ export function Productos({
   const [editing, setEditing] = useState<AdminProduct | null>(null);
   const [editForm, setEditForm] = useState<EditProductForm | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '', supplierId: '', lowStockThreshold: '' });
+  const [form, setForm] = useState({
+    name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '',
+    description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '',
+    supplierId: '', lowStockThreshold: '',
+    aiSources: null as ProductDraftSource[] | null,
+    aiConfidence: null as Record<string, number> | null,
+  });
   const [formVariants, setFormVariants] = useState([
     { variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' },
   ]);
@@ -130,6 +138,11 @@ export function Productos({
       }))
       .catch(() => {});
   }, [token]);
+
+  // El perfil vive en localStorage: solo ADMIN puede usar el asistente.
+  useEffect(() => {
+    setAiAllowed(getSessionUser()?.role === 'ADMIN');
+  }, []);
 
   // Cola de borradores IA: solo en este dispositivo, expira en 24 h.
   useEffect(() => {
@@ -290,7 +303,11 @@ export function Productos({
   };
 
   const resetCreateForm = () => {
-    setForm({ name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '', description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '', supplierId: '', lowStockThreshold: '' });
+    setForm({
+      name: '', sku: '', barcode: '', basePrice: '', costPrice: '', comparePrice: '', category: '', brand: '',
+      description: '', registroIsp: '', size: '', servings: '', ingredients: '', descriptionShort: '', seoTitle: '',
+      supplierId: '', lowStockThreshold: '', aiSources: null, aiConfidence: null,
+    });
     setFormVariants([{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }]);
     setSkuAuto(true);
     setFlavorInput('');
@@ -302,7 +319,18 @@ export function Productos({
     const { form: filled, variants } = draftToForm(draft);
     const sku = filled.sku.trim() || generateSku(filled.category, filled.name);
 
-    setForm((prev) => ({ ...prev, ...filled, sku }));
+    setForm((prev) => ({
+      ...prev,
+      ...filled,
+      sku,
+      aiSources: draft.sources || [],
+      aiConfidence: draft.confidence || {},
+      // La IA nunca define precio: no arrastramos lo que quedó de otra ficha.
+      basePrice: '',
+      costPrice: '',
+      comparePrice: '',
+      supplierId: '',
+    }));
     setFormVariants(
       variants.length > 0
         ? variants
@@ -334,7 +362,14 @@ export function Productos({
         ? `Nombres parecidos: ${similar.join(', ')}.`
         : undefined;
 
-    setAiQueue((prev) => [...prev, makeQueueItem(draft, { duplicateWarning })]);
+    setAiQueue((prev) => [
+      ...prev,
+      makeQueueItem(draft, {
+        duplicateWarning,
+        duplicateIsExact: !!exact,
+        duplicates: draft.duplicates,
+      }),
+    ]);
     setAiOpen(false);
     toast.success('Borrador agregado a la cola. Asigna precio antes de aprobar.');
   };
@@ -358,6 +393,8 @@ export function Productos({
       seoTitle: item.seoTitle,
       basePrice: item.basePrice,
       costPrice: item.costPrice,
+      aiSources: item.aiSources || [],
+      aiConfidence: item.aiConfidence || {},
     }));
     setFormVariants(
       item.flavors.length > 0
@@ -373,7 +410,7 @@ export function Productos({
         : [{ variantName: '', sku: '', barcode: '', price: '', costPrice: '', stock: '', lowStockAlert: '5' }],
     );
     setSkuAuto(false);
-    setDupCheck(null);
+    setDupCheck(item.duplicates ?? null);
     setAiQueue((prev) => prev.filter((i) => i.id !== item.id));
     setShowForm(true);
     requestAnimationFrame(() => {
@@ -393,9 +430,19 @@ export function Productos({
       toast.error(`Falta precio en ${withoutPrice.length} borrador(es). Nada se creó.`);
       return;
     }
+    const newCategories = Array.from(
+      new Set(
+        pending
+          .map((item) => item.category.trim())
+          .filter(Boolean)
+          .filter((name) => categories.length > 0 && !categories.some((c) => c.toLowerCase() === name.toLowerCase())),
+      ),
+    );
     const ok = await confirm({
       title: 'Aprobar borradores',
-      message: `¿Crear ${pending.length} producto(s)? Stock inicial 0 y los precios son los que revisaste en la cola.`,
+      message: `¿Crear ${pending.length} producto(s)? Stock inicial 0 y los precios son los que revisaste en la cola.${
+        newCategories.length ? `\n\nSe crearán categorías nuevas: ${newCategories.join(', ')}.` : ''
+      }`,
       confirmLabel: 'Aprobar todos',
     });
     if (!ok) return;
@@ -406,10 +453,13 @@ export function Productos({
     for (const item of pending) {
       setAiQueue((prev) => patchQueueItem(item.id, { status: 'saving', error: undefined })(prev));
       try {
-        if (item.duplicateWarning) throw new Error(item.duplicateWarning);
+        if (item.duplicateIsExact) throw new Error(item.duplicateWarning || 'El barcode ya está registrado.');
         const price = Number(item.basePrice);
         const cost = Number(item.costPrice) || 0;
         const sku = item.sku.trim() ? normalizeSku(item.sku) : generateSku(item.category, item.name, item.size);
+        // Sin sabores también debe existir una variante: en POS, cero variantes
+        // cae al fallback de stock 999 y permitiría vender stock inexistente.
+        const flavors = item.flavors.length ? item.flavors : ['Única'];
         await apiFetch('/products', {
           method: 'POST',
           token,
@@ -428,7 +478,9 @@ export function Productos({
             ingredients: item.ingredients || undefined,
             descriptionShort: item.descriptionShort || undefined,
             seoTitle: item.seoTitle || undefined,
-            variants: item.flavors.map((flavor) => ({
+            aiSources: item.aiSources || [],
+            aiConfidence: item.aiConfidence || {},
+            variants: flavors.map((flavor) => ({
               variantName: flavor,
               price,
               costPrice: cost,
@@ -471,6 +523,8 @@ export function Productos({
       seoTitle: p.seoTitle || '',
       supplierId: p.supplierId || '',
       lowStockThreshold: p.lowStockThreshold != null ? String(p.lowStockThreshold) : '',
+      aiSources: null,
+      aiConfidence: null,
     });
     const variants = p.variants || [];
     setFormVariants(variants.length > 0
@@ -531,7 +585,14 @@ export function Productos({
     const similarMsg = dup?.similar?.length
       ? `\n\nPosible duplicado por nombre: ${dup.similar.map((s: any) => s.name).join(', ')}.`
       : '';
-    const ok = await confirm({ title: 'Crear producto', message: `¿Crear producto "${form.name}"?${similarMsg}`, confirmLabel: 'Crear' });
+    const newCategory = form.category.trim() && categories.length > 0 && !categories.some((c) => c.toLowerCase() === form.category.trim().toLowerCase())
+      ? `\n\nLa categoría "${form.category.trim()}" es nueva y se creará.`
+      : '';
+    const ok = await confirm({
+      title: 'Crear producto',
+      message: `¿Crear producto "${form.name}"?${similarMsg}${newCategory}`,
+      confirmLabel: 'Crear',
+    });
     if (!ok) return;
     setSubmitting(true);
     try {
@@ -554,6 +615,8 @@ export function Productos({
           ingredients: form.ingredients || undefined,
           descriptionShort: form.descriptionShort || undefined,
           seoTitle: form.seoTitle || undefined,
+          aiSources: form.aiSources || [],
+          aiConfidence: form.aiConfidence || {},
           supplierId: form.supplierId || undefined,
           lowStockThreshold: form.lowStockThreshold ? Number(form.lowStockThreshold) : undefined,
           variants: formVariants
@@ -1012,9 +1075,11 @@ export function Productos({
           <button onClick={() => setShowForm((s) => !s)} className="ds-btn-accent px-4 py-2 text-xs">
             {showForm ? 'Cancelar' : '+ Nuevo'}
           </button>
-          <button onClick={() => setAiOpen(true)} className="ds-btn-secondary px-4 py-2 text-xs">
-            ✨ Crear con IA
-          </button>
+          {aiAllowed && (
+            <button onClick={() => setAiOpen(true)} className="ds-btn-secondary px-4 py-2 text-xs">
+              ✨ Crear con IA
+            </button>
+          )}
         </div>
       </div>
 
@@ -1024,7 +1089,7 @@ export function Productos({
         </div>
       )}
 
-      {aiQueue.length > 0 && (
+      {aiAllowed && aiQueue.length > 0 && (
         <section className="mb-6 rounded-3xl border border-line bg-paper p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -1104,6 +1169,17 @@ export function Productos({
                         className="input mt-1 w-32 disabled:opacity-50"
                       />
                     </label>
+                    {item.duplicateWarning && !item.duplicateIsExact && (
+                      <button
+                        onClick={() =>
+                          setAiQueue((prev) => patchQueueItem(item.id, { duplicateWarning: undefined })(prev))
+                        }
+                        className="px-2 py-2 text-xs text-amber-700 hover:text-amber-900"
+                        title="El nombre es parecido, pero no es un barcode duplicado"
+                      >
+                        Ignorar aviso
+                      </button>
+                    )}
                     <button onClick={() => editQueuedDraft(item)} className="ds-btn-secondary px-3 py-2 text-xs">
                       Editar en formulario
                     </button>

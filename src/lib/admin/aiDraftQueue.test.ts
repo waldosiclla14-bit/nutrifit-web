@@ -1,4 +1,5 @@
 import { loadQueue, makeQueueItem, MAX_QUEUE, patchQueueItem, QUEUE_TTL_MS, saveQueue } from './aiDraftQueue';
+import type { ProductDraftSource } from '@/types/productDraft';
 import type { ProductDraft } from '@/types/productDraft';
 
 const draft: ProductDraft = {
@@ -14,8 +15,8 @@ const draft: ProductDraft = {
   description_short: 'Creatina monohidrato',
   seo_title: 'Creatina 300 g',
   sku_suggested: 'cre-300g',
-  confidence: {},
-  sources: [],
+  confidence: { name: 0.9 },
+  sources: [{ type: 'label', title: 'Etiqueta', field: 'name', retrievedAt: '2026-11-20T00:00:00Z' } as ProductDraftSource],
 };
 
 describe('aiDraftQueue', () => {
@@ -43,9 +44,26 @@ describe('aiDraftQueue', () => {
       costPrice: '',
       status: 'pending',
       duplicateWarning: 'Nombre parecido',
+      duplicateIsExact: false,
+      aiConfidence: { name: 0.9 },
     });
+    expect(item.aiSources).toHaveLength(1);
     expect(item.id).toBeTruthy();
     expect(item.createdAt).toBeGreaterThan(0);
+  });
+
+  it('marca el barcode exacto como bloqueante y rellena trazabilidad de colas viejas', () => {
+    const exact = makeQueueItem(draft, { duplicateWarning: 'Barcode duplicado', duplicateIsExact: true });
+    expect(exact.duplicateIsExact).toBe(true);
+
+    const legacy = { ...makeQueueItem(draft), id: 'legacy' } as any;
+    delete legacy.aiSources;
+    delete legacy.aiConfidence;
+    saveQueue([legacy]);
+
+    const [loaded] = loadQueue();
+    expect(loaded.aiSources).toEqual([]);
+    expect(loaded.aiConfidence).toEqual({});
   });
 
   it('descarta items viejos, limita a 10 y destraba los que quedaron en saving', () => {

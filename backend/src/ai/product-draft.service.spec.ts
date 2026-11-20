@@ -4,6 +4,8 @@ import { ProductDraftService } from './product-draft.service';
 const usageMock = {
   consume: jest.fn(),
   addTokens: jest.fn(),
+  refund: jest.fn(),
+  peek: jest.fn(),
   limit: 60,
 };
 
@@ -52,6 +54,7 @@ describe('ProductDraftService', () => {
     (global as any).fetch = jest.fn();
     usageMock.consume.mockResolvedValue({ used: 1, limit: 60, resetAt: '2026-11-21' });
     usageMock.addTokens.mockResolvedValue(undefined);
+    usageMock.refund.mockResolvedValue(undefined);
     productsMock.findDuplicates.mockResolvedValue({ exact: [], similar: [] });
     service = new ProductDraftService(usageMock as any, productsMock as any);
   });
@@ -79,6 +82,7 @@ describe('ProductDraftService', () => {
     expect(result.meta).toMatchObject({ webSearchUsed: false, quota: { used: 1, limit: 60 } });
     expect(result.meta.latencyMs).toBeGreaterThanOrEqual(0);
     expect(usageMock.addTokens).toHaveBeenCalledWith('u1', 123);
+    expect(usageMock.refund).not.toHaveBeenCalled();
   });
 
   it('devuelve 503 sin GEMINI_API_KEY y no consume cuota', async () => {
@@ -149,6 +153,7 @@ describe('ProductDraftService', () => {
     await expect(service.generate('u1', { mode: 'text', text: 'Whey' })).rejects.toThrow(
       UnprocessableEntityException,
     );
+    expect(usageMock.refund).toHaveBeenCalledWith('u1');
   });
 
   it('acepta JSON envuelto en bloques markdown', async () => {
@@ -220,5 +225,50 @@ describe('ProductDraftService', () => {
     expect(result.meta.webSearchUsed).toBe(false);
     const [, retryOptions] = (global as any).fetch.mock.calls[1];
     expect(JSON.parse(retryOptions.body).tools).toBeUndefined();
+  });
+
+  it('lee el JSON aunque Gemini devuelva un thought antes del texto', async () => {
+    (global as any).fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: 'pensamiento interno', thought: true },
+                { text: '' },
+                { text: JSON.stringify(draft()) },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+
+    const result = await service.generate('u1', { mode: 'text', text: 'Whey' });
+    expect(result.name).toBe('Whey Protein 1 kg');
+  });
+
+  it('devuelve 422 si la respuesta viene truncada por MAX_TOKENS', async () => {
+    (global as any).fetch.mockResolvedValue(
+      geminiReply(draft(), { candidates: [{ content: { parts: [{ text: '{"name":' }] }, finishReason: 'MAX_TOKENS' }] }),
+    );
+
+    await expect(service.generate('u1', { mode: 'text', text: 'Whey' })).rejects.toThrow(
+      UnprocessableEntityException,
+    );
+  });
+
+  it('expone la cuota sin consumirla ni llamar a Gemini', async () => {
+    usageMock.peek.mockResolvedValue({ used: 3, limit: 60, resetAt: '2026-11-21' });
+
+    await expect(service.status('u1')).resolves.toEqual({
+      used: 3,
+      limit: 60,
+      resetAt: '2026-11-21',
+      configured: true,
+    });
+    expect(usageMock.consume).not.toHaveBeenCalled();
+    expect((global as any).fetch).not.toHaveBeenCalled();
   });
 });

@@ -32,7 +32,8 @@ const isHttpUrl = (value: string) => /^https?:\/\/\S+$/i.test(value);
 
 export const DraftSourceSchema = z.object({
   type: z.enum(['label', 'web', 'catalog']),
-  title: z.string().trim().min(1).max(200),
+  // El modelo suele omitir el título de fuentes web: no por eso se pierden todas.
+  title: z.string().trim().max(200).optional().catch(undefined),
   url: z.string().trim().max(500).refine(isHttpUrl, 'URL inválida').optional().catch(undefined),
   field: z.string().trim().max(50).optional().catch(undefined),
   retrievedAt: z.string().trim().min(1).optional().catch(undefined),
@@ -57,7 +58,8 @@ export const DraftModelSchema = z.object({
 
 export type DraftModel = z.infer<typeof DraftModelSchema>;
 
-export type DraftSource = Omit<z.infer<typeof DraftSourceSchema>, 'retrievedAt'> & {
+export type DraftSource = Omit<z.infer<typeof DraftSourceSchema>, 'retrievedAt' | 'title'> & {
+  title: string;
   retrievedAt: string;
 };
 
@@ -86,6 +88,8 @@ export type NormalizeResult = {
 export type NormalizeContext = {
   /** Texto pegado por el usuario, barcode o URL (no es OCR de la foto). */
   ocrText?: string;
+  /** Código escrito/escaneado por el admin: manda sobre lo que diga el modelo. */
+  inputBarcode?: string;
   hasPhoto?: boolean;
   now?: Date;
 };
@@ -114,12 +118,21 @@ export function normalizeDraft(raw: DraftModel, ctx: NormalizeContext = {}): Nor
   const sources: DraftSource[] = (raw.sources || [])
     .filter((s) => !s.url || isHttpUrl(s.url))
     // El modelo no debe inventar la fecha de consulta: siempre la pone el servidor.
-    .map((s) => ({ ...s, retrievedAt: nowIso }))
+    .map((s) => ({
+      ...s,
+      title: s.title || s.url || 'Etiqueta del producto',
+      retrievedAt: nowIso,
+    }))
     .slice(0, 10);
 
-  const hasLabelSource = sources.some((s) => s.type === 'label');
-  const hasWebSource = sources.some((s) => s.type === 'web' && !!s.url);
   const hasTextSource = !!ocrText.trim();
+  // Adjuntar cualquier foto NO basta: la fuente debe citar el campo concreto.
+  const backedBySourceFor = (field: string) =>
+    sources.some(
+      (s) =>
+        (s.type === 'label' && s.field === field) ||
+        (s.type === 'web' && !!s.url && (!s.field || s.field === field)),
+    );
 
   const draft: NormalizedDraft = {
     name: sanitizeText(raw.name, 120, 'name', warnings),
@@ -148,19 +161,30 @@ export function normalizeDraft(raw: DraftModel, ctx: NormalizeContext = {}): Nor
     }
   }
 
-  // ISP: solo si aparece en el texto o hay una fuente (foto/etiqueta/web).
+  // El código que el admin escribió o escaneó es la fuente autoritativa.
+  const inputBarcode = String(ctx.inputBarcode || '').replace(/\D/g, '');
+  if (inputBarcode) {
+    if (!isValidBarcode(inputBarcode)) {
+      draft.barcode = null;
+      warnings.push('El código de barras entregado no es válido: se descartó.');
+    } else if (draft.barcode !== inputBarcode) {
+      if (draft.barcode) warnings.push('El modelo devolvió otro barcode: se usó el código entregado por ti.');
+      draft.barcode = inputBarcode;
+    }
+  }
+
+  // ISP: solo si aparece en el texto o una fuente cita explícitamente el campo.
   if (draft.isp_number) {
     const digits = draft.isp_number.replace(/\D/g, '');
     const foundInText = !!digits && ocrText.replace(/\D/g, '').includes(digits);
-    const backedBySource = ctx.hasPhoto || hasLabelSource || hasWebSource;
-    if (!digits || (!foundInText && !backedBySource)) {
+    if (!digits || (!foundInText && !backedBySourceFor('isp_number'))) {
       draft.isp_number = null;
       warnings.push('Registro ISP sin respaldo verificable: no se guardó.');
     }
   }
 
-  // Ingredientes: solo si vienen de la foto o de una fuente citada.
-  if (draft.ingredients && !(ctx.hasPhoto || hasTextSource || hasLabelSource || hasWebSource)) {
+  // Ingredientes: solo si vienen del texto o una fuente cita explícitamente el campo.
+  if (draft.ingredients && !(hasTextSource || backedBySourceFor('ingredients'))) {
     draft.ingredients = null;
     warnings.push('Ingredientes sin fuente verificable: no se guardaron.');
   }

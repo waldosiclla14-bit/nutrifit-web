@@ -43,6 +43,21 @@ describe('AiUsageService', () => {
     expect(service.limit).toBe(60);
   });
 
+  it('peek devuelve 0 llamadas cuando no hay fila del día', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([]);
+
+    const result = await service.peek('u1');
+
+    expect(result).toMatchObject({ used: 0, limit: 60 });
+    expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('reembolsa la llamada cuando la IA falla', async () => {
+    await service.refund('u1');
+
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+  });
+
   it('registra tokens solo si son positivos', async () => {
     await service.addTokens('u1', 0);
     expect(prismaMock.$executeRaw).not.toHaveBeenCalled();
