@@ -585,3 +585,4 @@ Invoke-RestMethod -Uri "$base/ai/product-draft" -Method Post -WebSession $sess `
 - La respuesta trajo `duplicates`, `warnings`, `confidence`, `sources` y `meta.quota` (`1/60`, reset `2026-11-21`).
 - `retrievedAt` de las fuentes lo fija el servidor (se corrigió un valor inventado por el modelo en la primera prueba).
 - Nota: el auto-deploy de Render no se disparó con los pushes; hubo que lanzar el workflow manual. Revisar `autoDeploy`/`branch` del servicio si vuelve a pasar.
+- El segundo deploy (`dep-dbvrfmrm8hqs738pciv0`, con el módulo de logística) falló en `nest build` por OOM con `--max-old-space-size=384`. Se subió a `448` en el `Dockerfile` (verificado localmente: 384 falla, 448 pasa) y se relanzó el deploy.

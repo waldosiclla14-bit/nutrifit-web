@@ -9,7 +9,7 @@ RUN npm ci --omit=dev && npm install -D prisma @nestjs/cli typescript
 
 COPY . .
 RUN npx prisma generate
-RUN NODE_OPTIONS="--max-old-space-size=384" npx nest build
+RUN NODE_OPTIONS="--max-old-space-size=448" npx nest build
 
 FROM node:20-slim
 
