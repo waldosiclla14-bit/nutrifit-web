@@ -532,5 +532,41 @@ Se adelantó toda la base no dependiente de Gemini. La migración de §4 (Opció
 - `tsc --noEmit`: sin errores en los archivos tocados. Persisten errores previos en `delivery/*` (backend) y `Entregas.tsx` (frontend), ajenos a este cambio.
 
 ### Pendiente para cuando se active la IA
-- Endpoint `/api/ai/product-draft`, zod, cuota, web search y confianza/fuentes.
+- Conexión UI del botón **“Crear con IA”** (paso 7).
 - Modo lote (la cola queda atada a borradores IA).
+
+---
+
+## 9. Endpoint IA implementado (2026-11-19)
+
+`POST /api/ai/product-draft` (`ADMIN`, `@Throttle 8/min`, body hasta 5 MB).
+
+### Backend
+- `product-draft.schema.ts`: esquema zod estricto + post-procesado (dígito verificador EAN/UPC, ISP solo con respaldo, ingredientes solo con etiqueta/fuente, SKU seguro, claims médicos bloqueados, HTML saneado).
+- `product-draft.service.ts`: llamada Gemini con `inlineData` para fotos, JSON schema forzado, fallback de modelos, timeout 25 s, grounding opcional y degradación silenciosa, duplicados reutilizando `ProductsService.findDuplicates`.
+- `product-draft.controller.ts`: validación de `mode`, máximo 4 imágenes (JPEG/PNG/WebP, ≤400 KB), URL http(s) y rol.
+- `ai-usage.service.ts`: cuota diaria por usuario en `ai_usage_daily` con incremento atómico; límite `AI_DRAFT_DAILY_LIMIT` (default 60).
+- `gemini-models.ts`: cadena de fallback compartida con `AiService` y OCR.
+- `products.module.ts`: exporta `ProductsService` para reutilizar duplicados.
+
+### Variables
+| Variable | Default | Uso |
+|---|---|---|
+| `GEMINI_API_KEY` | — | obligatoria; sin ella el endpoint responde 503 |
+| `AI_DRAFT_DAILY_LIMIT` | `60` | borradores diarios por admin |
+
+### Pruebas
+- `npx jest src/ai` → 22/22 (incluye sin key, barcode inválido, ISP sin respaldo, cuota 429, fallback de modelo, grounding y degradación).
+- Backend completo: `npx jest` → 260/260.
+- `npm run build` → OK; `tsc --noEmit` → OK.
+
+### Verificación manual (con key)
+```powershell
+$login = Invoke-RestMethod -Uri "http://localhost:3001/api/auth/login" -Method Post `
+  -ContentType "application/json" `
+  -Body (@{ email="admin@nutrifit.cl"; password="..." } | ConvertTo-Json)
+$h = @{ Authorization = "Bearer $($login.accessToken)" }
+Invoke-RestMethod -Uri "http://localhost:3001/api/ai/product-draft" -Method Post -Headers $h `
+  -ContentType "application/json" `
+  -Body (@{ mode="text"; text="Whey Protein 1 kg, 30 servicios, vainilla y chocolate, FullEnergic" } | ConvertTo-Json)
+```

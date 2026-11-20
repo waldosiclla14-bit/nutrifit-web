@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DocumentOCRProvider, DocumentInput, OCRResult } from './ocr.types';
+import { GEMINI_MODELS } from '../ai/gemini-models';
 
-// Ordered fallback chain (see AiService): retired/overloaded models 404/503.
-const OCR_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+// Cadena de fallback compartida (ver ai/gemini-models.ts).
+const OCR_MODELS = GEMINI_MODELS;
 
 @Injectable()
 export class GeminiOCRProvider implements DocumentOCRProvider {

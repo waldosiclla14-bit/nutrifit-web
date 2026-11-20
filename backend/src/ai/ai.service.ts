@@ -1,12 +1,11 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { GEMINI_MODELS } from './gemini-models';
 
 export type ChatHistoryItem = { role: 'user' | 'model'; text: string };
 
-// Ordered fallback chain: Google retires Flash models aggressively
-// (2.0 shut down Jun 2026, 2.5 scheduled Oct 2026). If the primary 404s
-// (retired) or 503s (overloaded), try the next one instead of failing.
-const MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+// Cadena de fallback compartida (ver gemini-models.ts).
+const MODELS = GEMINI_MODELS;
 
 function fmtCLP(n: number): string {
   try {
