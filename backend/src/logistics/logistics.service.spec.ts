@@ -350,6 +350,34 @@ describe('LogisticsService — rentabilidad y liquidación', () => {
     ).rejects.toThrow('Cobro al cliente inválido');
   });
 
+  it('Entregas en curso se listan pero no generan obligaciÃ³n de pago', async () => {
+    prisma.delivery.findMany.mockResolvedValue([
+      {
+        id: 'del-active',
+        deliveryDay: '2026-11-20',
+        status: DeliveryStatus.CREATED,
+        windowStart: '19:00',
+        windowEnd: '19:30',
+        assignedUser: null,
+        order: {
+          orderNumber: 'NF-000218',
+          customerName: 'Nelson',
+          shippingCost: 1000,
+          subtotal: 26000,
+          discount: 0,
+          totalCost: 12000,
+        },
+      },
+    ]);
+
+    const list: any[] = await service.listActiveDeliveries({ from: '2026-11-01', to: '2026-11-30' });
+
+    expect(list).toHaveLength(1);
+    expect(list[0].orderNumber).toBe('NF-000218');
+    expect(list[0].grossProfit).toBe(14000);
+    expect(list[0].obligacionPago).toBe(false);
+    expect(prisma.deliveryProfitability.create).not.toHaveBeenCalled();
+  });
   describe('liquidaciones parciales y completas', () => {
     const entry = (id: string, amount: number, day: string) => ({
       id,

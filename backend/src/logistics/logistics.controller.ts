@@ -48,6 +48,11 @@ export class LogisticsController {
     return this.logistics.getCouriers();
   }
 
+  @Get('active-deliveries')
+  activeDeliveries(@Query() query: any) {
+    return this.logistics.listActiveDeliveries(query);
+  }
+
   @Get('failed-deliveries')
   failedDeliveries(@Query() query: any) {
     return this.logistics.listFailedDeliveries(query);

@@ -105,7 +105,7 @@ type FailedDelivery = {
   order: { orderNumber: string; customerName: string; shippingCost: number } | null;
 };
 
-type Tab = 'rentabilidad' | 'liquidaciones';
+type Tab = 'rentabilidad' | 'activas' | 'liquidaciones';
 type RangeKey = 'hoy' | '7d' | '30d' | 'mes' | 'personalizado';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -165,6 +165,7 @@ export function RentabilidadLogistica({ token }: { token: string }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [activeDeliveries, setActiveDeliveries] = useState<any[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(true);
@@ -202,17 +203,19 @@ export function RentabilidadLogistica({ token }: { token: string }) {
       if (order.trim()) entryParams.set('order', order.trim());
       entryParams.set('limit', '200');
 
-      const [s, e, st, co] = await Promise.all([
+      const [s, e, st, co, active] = await Promise.all([
         apiFetch<Summary>(`/logistics/summary?${params.toString()}`, { token }),
         apiFetch<Entry[] | { data: Entry[] }>(`/logistics/entries?${entryParams.toString()}`, { token }),
         apiFetch<Settlement[]>(`/logistics/settlements?${params.toString()}&limit=100`, { token }).catch(() => []),
         apiFetch<Courier[]>('/logistics/couriers', { token }).catch(() => []),
+        apiFetch<any[]>(`/logistics/active-deliveries?${params.toString()}`, { token }).catch(() => []),
       ]);
       setSummary(s);
       const list = Array.isArray(e) ? e : e?.data || [];
       setEntries(list);
       setSettlements(st || []);
       setCouriers(co || []);
+      setActiveDeliveries(active || []);
       setSelected((prev) => {
         const valid = new Set(list.filter((x) => x.settlementStatus === 'PENDIENTE' && !x.settlementId).map((x) => x.id));
         return new Set([...prev].filter((id) => valid.has(id)));
@@ -726,6 +729,13 @@ export function RentabilidadLogistica({ token }: { token: string }) {
         </button>
         <button
           type="button"
+          onClick={() => setTab('activas')}
+          className={`rounded-xl px-3 py-2 text-[12px] font-bold ${tab === 'activas' ? 'bg-ink text-paper' : 'text-muted'}`}
+        >
+          En curso ({activeDeliveries.length})
+        </button>
+        <button
+          type="button"
           onClick={() => setTab('liquidaciones')}
           className={`rounded-xl px-3 py-2 text-[12px] font-bold ${tab === 'liquidaciones' ? 'bg-ink text-paper' : 'text-muted'}`}
         >
@@ -911,6 +921,47 @@ export function RentabilidadLogistica({ token }: { token: string }) {
         </div>
       )}
 
+      {tab === 'activas' && (
+        <div className="space-y-2">
+          <div className="rounded-2xl border border-line bg-paper p-3 shadow-sm">
+            <p className="text-[11px] text-muted">
+              Entregas en curso. <strong className="text-ink">No generan obligaciÃ³n de pago</strong> hasta que se marquen como entregadas. Al completarse, aparecen automÃ¡ticamente en "Rentabilidad por entrega".
+            </p>
+          </div>
+          {activeDeliveries.length === 0 ? (
+            <div className="ds-card p-10 text-center">
+              <Truck size={26} className="mx-auto text-muted" />
+              <p className="mt-2 font-bold text-ink">Sin entregas en curso</p>
+              <p className="text-xs text-muted">Los pedidos con entrega aparecen aquÃ­ hasta que se completan.</p>
+            </div>
+          ) : (
+            activeDeliveries.map((d) => (
+              <div key={d.id} className="rounded-2xl border border-line bg-paper p-3 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Truck size={14} className="text-sport-green" />
+                      <p className="font-black text-ink">{d.orderNumber}</p>
+                      <span className="ds-badge ds-badge-warning">{d.status}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted">
+                      {d.customerName} Â· {d.deliveryDay || 'â€”'} {d.window ? `Â· ${d.window}` : ''}
+                    </p>
+                    <p className="text-[10px] text-muted">
+                      Repartidor: {d.courier?.name || <span className="text-red-500">sin asignar</span>}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black uppercase tracking-wide text-muted">Ganancia bruta estimada</p>
+                    <p className="text-base font-black text-ink">{formatPrice(d.grossProfit || 0)}</p>
+                    <p className="text-[10px] text-muted">Cobro entrega {formatPrice(d.customerDeliveryFee || 0)}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
       {tab === 'liquidaciones' && (
         <div className="space-y-2">
           {loading ? (

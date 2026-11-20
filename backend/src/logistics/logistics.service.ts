@@ -577,6 +577,63 @@ export class LogisticsService {
 
   // ── Liquidaciones ─────────────────────────────────────────────────────────
 
+  /**
+   * Entregas en curso (aún no completadas). Se muestran para seguimiento,
+   * pero NO generan obligación de pago: el snapshot financiero solo se crea
+   * cuando la entrega pasa a DELIVERED.
+   */
+  async listActiveDeliveries(query: any = {}) {
+    const { from, to } = this.parseRange(query, 30);
+    const terminal: DeliveryStatus[] = [
+      DeliveryStatus.DELIVERED,
+      DeliveryStatus.CANCELLED,
+      DeliveryStatus.NOT_DELIVERED,
+      DeliveryStatus.CUSTOMER_UNAVAILABLE,
+      DeliveryStatus.INCIDENT,
+    ];
+    const deliveries = await this.prisma.delivery.findMany({
+      where: {
+        status: { notIn: terminal },
+        deliveryDay: { gte: from, lte: to },
+      },
+      select: {
+        id: true,
+        deliveryDay: true,
+        status: true,
+        windowStart: true,
+        windowEnd: true,
+        assignedUser: { select: { id: true, name: true } },
+        order: {
+          select: {
+            orderNumber: true,
+            customerName: true,
+            shippingCost: true,
+            subtotal: true,
+            discount: true,
+            totalCost: true,
+          },
+        },
+      },
+      orderBy: { deliveryDay: 'asc' },
+      take: 200,
+    });
+    return deliveries.map((d) => ({
+      id: d.id,
+      deliveryId: d.id,
+      orderNumber: d.order?.orderNumber || '',
+      customerName: d.order?.customerName || '',
+      deliveryDay: d.deliveryDay,
+      status: d.status,
+      window: d.windowStart && d.windowEnd ? `${d.windowStart}-${d.windowEnd}` : null,
+      courier: d.assignedUser,
+      customerDeliveryFee: Number(d.order?.shippingCost) || 0,
+      grossProfit:
+        (Number(d.order?.subtotal) || 0) -
+        (Number(d.order?.discount) || 0) -
+        (Number(d.order?.totalCost) || 0),
+      obligacionPago: false,
+    }));
+  }
   async listSettlements(query: any = {}) {
     const where: any = {};
     if (query.status && ['PENDIENTE', 'LIQUIDADO', 'ANULADO'].includes(String(query.status))) {
