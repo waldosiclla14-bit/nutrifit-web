@@ -37,7 +37,7 @@ function draft(overrides: Record<string, unknown> = {}) {
     seo_title: 'Whey 1 kg',
     sku_suggested: 'pro-whey1kg',
     confidence: { name: 0.9, servings: 0.7, invented: 0.5 },
-    sources: [{ type: 'label', title: 'Etiqueta frontal', field: 'name' }],
+    sources: [{ type: 'label', title: 'Etiqueta frontal', field: 'name', retrievedAt: '2020-01-01T00:00:00Z' }],
     ...overrides,
   };
 }
@@ -71,7 +71,8 @@ describe('ProductDraftService', () => {
     expect(result.sku_suggested).toBe('PRO-WHEY1KG');
     expect(result.barcode).toBe('5901234123457');
     expect(result.sources[0]).toMatchObject({ type: 'label', title: 'Etiqueta frontal' });
-    expect(result.sources[0].retrievedAt).toBeTruthy();
+    expect(result.sources[0].retrievedAt).not.toBe('2020-01-01T00:00:00Z');
+    expect(Math.abs(Date.now() - new Date(result.sources[0].retrievedAt).getTime())).toBeLessThan(60_000);
     expect(result.confidence.name).toBe(0.9);
     expect(result.confidence.invented).toBeUndefined();
     expect(result.confidence.brand).toBe(0);

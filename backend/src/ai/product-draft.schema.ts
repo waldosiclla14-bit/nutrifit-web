@@ -113,7 +113,8 @@ export function normalizeDraft(raw: DraftModel, ctx: NormalizeContext = {}): Nor
 
   const sources: DraftSource[] = (raw.sources || [])
     .filter((s) => !s.url || isHttpUrl(s.url))
-    .map((s) => ({ ...s, retrievedAt: s.retrievedAt || nowIso }))
+    // El modelo no debe inventar la fecha de consulta: siempre la pone el servidor.
+    .map((s) => ({ ...s, retrievedAt: nowIso }))
     .slice(0, 10);
 
   const hasLabelSource = sources.some((s) => s.type === 'label');

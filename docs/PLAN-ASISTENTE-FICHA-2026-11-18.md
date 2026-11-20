@@ -565,12 +565,23 @@ Se adelantó toda la base no dependiente de Gemini. La migración de §4 (Opció
 - `npm run build` → OK; `tsc --noEmit` → OK.
 
 ### Verificación manual (con key)
+> El login devuelve la cookie HttpOnly `access_token` (no `accessToken` en el body),
+> así que hay que usar una sesión de `Invoke-WebRequest`.
+
 ```powershell
-$login = Invoke-RestMethod -Uri "http://localhost:3001/api/auth/login" -Method Post `
+$base = "https://nutrifit-api-635n.onrender.com/api"
+Invoke-WebRequest -Uri "$base/auth/login" -Method Post `
   -ContentType "application/json" `
-  -Body (@{ email="admin@nutrifit.cl"; password="..." } | ConvertTo-Json)
-$h = @{ Authorization = "Bearer $($login.accessToken)" }
-Invoke-RestMethod -Uri "http://localhost:3001/api/ai/product-draft" -Method Post -Headers $h `
+  -Body (@{ email="admin@nutrifit.cl"; password="..." } | ConvertTo-Json) `
+  -SessionVariable sess -UseBasicParsing | Out-Null
+Invoke-RestMethod -Uri "$base/ai/product-draft" -Method Post -WebSession $sess `
   -ContentType "application/json" `
   -Body (@{ mode="text"; text="Whey Protein 1 kg, 30 servicios, vainilla y chocolate, FullEnergic" } | ConvertTo-Json)
 ```
+
+### Verificación en producción (2026-11-20)
+- Deploy manual `gh workflow run deploy-render.yml --ref main` → run `44664126606`, deploy `dep-dbvrd4d9fdbs73bpt2qg`, estado `live` con commit `0b43763`.
+- `POST /api/ai/product-draft` sin sesión → `401`; con sesión ADMIN → `201` y borrador real de Gemini (`gemini-3.6-flash`, ~8,9 s).
+- La respuesta trajo `duplicates`, `warnings`, `confidence`, `sources` y `meta.quota` (`1/60`, reset `2026-11-21`).
+- `retrievedAt` de las fuentes lo fija el servidor (se corrigió un valor inventado por el modelo en la primera prueba).
+- Nota: el auto-deploy de Render no se disparó con los pushes; hubo que lanzar el workflow manual. Revisar `autoDeploy`/`branch` del servicio si vuelve a pasar.
