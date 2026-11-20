@@ -227,6 +227,120 @@ describe('LogisticsService — rentabilidad y liquidación', () => {
     expect(prisma.auditLog.create).toHaveBeenCalled();
   });
 
+  it('Pedido con varios productos: reconstruye costo desde items cuando totalCost es 0', async () => {
+    prisma.delivery.findUnique.mockResolvedValue(
+      buildDelivery({
+        order: {
+          subtotal: 40000,
+          shippingCost: 1000,
+          totalCost: 0,
+          items: [
+            { quantity: 2, unitCost: 5000, variant: null, product: null },
+            { quantity: 1, unitCost: 0, variant: { costPrice: 7000 }, product: null },
+          ],
+        },
+      }),
+    );
+
+    const entry: any = await service.snapshotDelivery('del-1');
+
+    expect(entry.productRevenue).toBe(40000);
+    expect(entry.productCost).toBe(17000);
+    expect(entry.grossProfit).toBe(23000);
+    expect(entry.netProfit).toBe(21500);
+  });
+
+  it('Pedido con entrega subsidiada completamente: subsidio igual al costo del repartidor', async () => {
+    prisma.logisticsConfig.findFirst.mockResolvedValue({
+      id: 'cfg-sub',
+      courierCost: 4000,
+      customerFee: 0,
+      nutrifitSubsidy: 4000,
+      effectiveFrom: new Date('2026-01-01'),
+      isActive: true,
+    });
+    prisma.delivery.findUnique.mockResolvedValue(
+      buildDelivery({ order: { subtotal: 20000, totalCost: 8000, shippingCost: 0 } }),
+    );
+
+    const entry: any = await service.snapshotDelivery('del-1');
+
+    expect(entry.customerDeliveryFee).toBe(0);
+    expect(entry.courierCost).toBe(4000);
+    expect(entry.nutrifitSubsidy).toBe(4000);
+    expect(entry.logisticsResult).toBe(-4000);
+    expect(entry.netProfit).toBe(8000);
+  });
+
+  it('Entrega fallida (NOT_DELIVERED) no genera obligación de pago', async () => {
+    prisma.delivery.findUnique.mockResolvedValue(
+      buildDelivery({ status: DeliveryStatus.NOT_DELIVERED }),
+    );
+
+    const entry = await service.snapshotDelivery('del-1');
+
+    expect(entry).toBeNull();
+    expect(prisma.deliveryProfitability.create).not.toHaveBeenCalled();
+  });
+
+  it('Entrega fallida con registro previo lo anula, no lo deja pendiente', async () => {
+    const existing = {
+      id: 'profit-1',
+      deliveryId: 'del-1',
+      settlementStatus: 'PENDIENTE',
+      settlementId: null,
+      chargeType: 'ENTREGA_REALIZADA',
+      courierCost: 2500,
+    };
+    prisma.deliveryProfitability.findUnique.mockResolvedValue(existing);
+    prisma.deliveryProfitability.update.mockResolvedValue({ ...existing, settlementStatus: 'ANULADO' });
+    prisma.delivery.findUnique.mockResolvedValue(
+      buildDelivery({ status: DeliveryStatus.CUSTOMER_UNAVAILABLE }),
+    );
+
+    const entry: any = await service.snapshotDelivery('del-1');
+
+    expect(prisma.deliveryProfitability.update).toHaveBeenCalledWith({
+      where: { id: 'profit-1' },
+      data: { settlementStatus: 'ANULADO' },
+    });
+    expect(entry.settlementStatus).toBe('ANULADO');
+  });
+
+  it('Modificar tarifas no altera operaciones históricas ya snapshotadas', async () => {
+    let created: any;
+    prisma.deliveryProfitability.create.mockImplementation(async ({ data }: any) => {
+      created = { id: 'profit-1', ...data };
+      return created;
+    });
+    prisma.delivery.findUnique.mockResolvedValue(buildDelivery());
+
+    const first: any = await service.snapshotDelivery('del-1');
+    expect(first.courierCost).toBe(2500);
+    expect(first.netProfit).toBe(8500);
+
+    prisma.logisticsConfig.create.mockResolvedValue({
+      id: 'cfg-2',
+      courierCost: 3000,
+      customerFee: 1200,
+      nutrifitSubsidy: 1800,
+      isActive: true,
+    });
+    await service.updateConfig(
+      { courierCost: 3000, customerFee: 1200, nutrifitSubsidy: 1800 },
+      'admin-1',
+    );
+
+    prisma.deliveryProfitability.findUnique.mockResolvedValue(created);
+    const again: any = await service.snapshotDelivery('del-1');
+
+    expect(again.courierCost).toBe(2500);
+    expect(again.customerDeliveryFee).toBe(1000);
+    expect(again.netProfit).toBe(8500);
+    expect(again.configSnapshot.courierCost).toBe(2500);
+    expect(prisma.deliveryProfitability.create).toHaveBeenCalledTimes(1);
+    expect(prisma.deliveryProfitability.update).not.toHaveBeenCalled();
+  });
   it('Valida importes inválidos en backend', async () => {
     await expect(
       service.updateConfig({ courierCost: -1, customerFee: 1000 }),

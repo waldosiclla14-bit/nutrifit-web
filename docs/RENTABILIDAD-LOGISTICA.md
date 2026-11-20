@@ -70,11 +70,11 @@ resultadoOperativo  = gananciaDespuésLog. - otrosGastos
 
 ## 6. Pruebas ejecutadas
 
-- `backend`: **21 suites / 242 tests OK**.
+- `backend`: **23 suites / 292 tests OK**.
 - `frontend`: **18 suites / 156 tests OK**.
 - `npx tsc --noEmit` backend y frontend: OK.
 - `npm run build`: OK.
-- Cobertura específica `logistics.service.spec.ts` (12 tests):
+- Cobertura específica `logistics.service.spec.ts` (18 tests, 11 casos obligatorios):
   1. Caso A → $8.500.
   2. Caso B → $7.500.
   3. Sin cobro de entrega → subsidio $2.500.
@@ -87,6 +87,11 @@ resultadoOperativo  = gananciaDespuésLog. - otrosGastos
   10. Liquidación parcial incluye solo las entregas seleccionadas.
   11. Liquidación completa suma el total y atribuye el repartidor.
   12. Confirmar dos veces una liquidación pagada → rechazado.
+  13. Pedido con varios productos: reconstruye costo desde items cuando totalCost es 0.
+  14. Pedido con entrega subsidiada completamente: subsidio = costo del repartidor.
+  15. Entrega fallida (NOT_DELIVERED) no genera obligación de pago.
+  16. Entrega fallida con registro previo lo anula.
+  17. Modificar tarifas no altera operaciones históricas (snapshot congelado).
 
 ## 7. Despliegue
 
