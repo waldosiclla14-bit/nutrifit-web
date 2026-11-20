@@ -533,11 +533,16 @@ Se adelantó toda la base no dependiente de Gemini. La migración de §4 (Opció
 
 ### Frontend (`src/components/admin/`)
 - **Botón “✨ Crear con IA”** junto a “+ Nuevo” en `Productos.tsx`.
-- `productos/AiDraftSheet.tsx`: hoja full-screen con cámara (`capture="environment"` de a 1 foto), galería hasta 4, barcode manual, URL y texto; compresión canvas a máx. 1280 px JPEG y revisión con confianza por campo, fuentes, warnings y duplicados.
+- `productos/AiDraftSheet.tsx`: hoja full-screen con cámara (`capture="environment"` de a 1 foto), galería hasta 4, barcode manual o **escaneado con `BarcodeScanner.tsx`**, URL y texto; compresión canvas a máx. 1280 px JPEG y revisión con confianza por campo, fuentes, warnings y duplicados.
 - El botón **“Usar estos datos”** rellena el formulario existente con `draftToForm()` (SKU sugerido o generado). **Nada se guarda** hasta pulsar “Guardar”.
+- El botón **“Agregar a cola”** deja el borrador en `localStorage` para aprobación posterior.
 
-### Pendiente
-- Modo lote (cola en `localStorage`) y escáner de barcode dentro de la hoja.
+### Modo lote (implementado)
+- `src/lib/admin/aiDraftQueue.ts`: cola máx. 10, expira en 24 h, estados `pending|saving|done|error`; los items en `saving` vuelven a `pending` tras un reload.
+- Cada fila permite cargar **precio (obligatorio) y costo (opcional)** antes de aprobar; la IA nunca inventa precios y el stock siempre nace en 0.
+- **“Aprobar todos”** crea los productos en secuencia `POST /products`, heredando precio/costo a cada sabor y mostrando resultado por fila. Si hay barcode duplicado detectado, la fila se marca como error y se omite.
+- **“Editar en formulario”** saca el item de la cola y abre el formulario normal para revisión manual.
+- Tests: `npx jest src/lib/admin/aiDraftQueue.test.ts` → 3/3 (mapping, expiración/cupo/destrabado y patch por id).
 
 ---
 
